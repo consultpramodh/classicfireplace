@@ -243,7 +243,7 @@ export function replaceWebFormIntakeRows(rows: IntakeRow[], source = "live") {
   const now = new Date().toISOString();
 
   const tx = database.transaction(() => {
-    database.prepare("DELETE FROM intake_rows WHERE id LIKE 'WEBFORM-+'").run();
+    database.prepare("DELETE FROM intake_rows WHERE id LIKE 'WEBFORM-%'").run();
     const insert = database.prepare(`
       INSERT INTO intake_rows (id, data, updated_at) VALUES (@id, @data, @updatedAt)
       ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at
