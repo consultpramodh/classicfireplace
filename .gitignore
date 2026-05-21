@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.env*.local
+.agents/
+.serviceops/
+.tmp/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+npm-debug.log*
+*.tsbuildinfo
+.build-debug.log
+tmp-*.png

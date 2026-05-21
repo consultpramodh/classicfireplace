@@ -1,0 +1,168 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Classic Fireplace ServiceOps",
+    "subtitle": "Triage service work",
+    "description": "Classic Fireplace ServiceOps helps internal operators search cached customer records, review open service requests, inspect work order summaries, check visible technician schedule context, and queue operator-reviewed service opportunity requests. Striven and Google Apps Script remain the systems of record; the ChatGPT app uses safe Supabase-backed business tools and audit logging.",
+    "category": "BUSINESS"
+  },
+  "tools": {
+    "search_customer": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches cached customer rows in Supabase and does not create or update records.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, merge, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "get_customer_summary": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns cached customer, location, request, and work order summaries without changing them.",
+        "open_world_justification": "Does not publish content or modify external systems.",
+        "destructive_justification": "Does not delete, overwrite, merge, or approve customer records."
+      }
+    },
+    "get_open_service_requests": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Lists cached open ServiceOps requests from Supabase without changing request state.",
+        "open_world_justification": "Does not send, schedule, publish, or modify external services.",
+        "destructive_justification": "Does not close, cancel, delete, or overwrite service requests."
+      }
+    },
+    "get_work_order_summary": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Retrieves a cached work order summary without updating Striven or Supabase work order rows.",
+        "open_world_justification": "Does not change public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, close, cancel, or dispatch work orders."
+      }
+    },
+    "get_technician_schedule": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns only cached technician schedule events marked visible to ServiceOps.",
+        "open_world_justification": "Does not create, update, invite, message, or publish calendar events.",
+        "destructive_justification": "Does not delete events, overwrite schedules, or revoke access."
+      }
+    },
+    "create_service_opportunity_from_request": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Can insert a pending opportunity-request row into Supabase, so it is not read-only.",
+        "open_world_justification": "Queues private operator processing in Supabase and does not call Striven, publish content, or contact customers.",
+        "destructive_justification": "Does not delete, overwrite, send irreversible messages, or directly create records in Striven."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Find a customer by identity details.",
+      "user_prompt": "Search for the Classic Fireplace customer with phone number 416-555-0100.",
+      "file_attachment_urls": null,
+      "tools_triggered": "search_customer",
+      "expected_output": "Returns matching cached customers with concise identity details and no secrets.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Summarize a customer before triage.",
+      "user_prompt": "Show me the customer summary for customer 61142.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_customer_summary",
+      "expected_output": "Returns cached customer, locations, recent service requests, and recent work orders.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Review open requests for a customer.",
+      "user_prompt": "What open service requests do we have for customer 61142?",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_open_service_requests",
+      "expected_output": "Lists open cached service requests and highlights status, issue, and known Striven IDs.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Inspect a work order by sales order number.",
+      "user_prompt": "Summarize work order SO-55091.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_work_order_summary",
+      "expected_output": "Returns a cached work order summary and notes that Striven remains the system of record.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Check a technician schedule for one day.",
+      "user_prompt": "What visible ServiceOps schedule events does Chris have on 2026-05-18?",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_technician_schedule",
+      "expected_output": "Returns visible cached schedule events for that technician and date only.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Validate and queue an opportunity request.",
+      "user_prompt": "Queue a service opportunity request for request WEBFORM-1044 and customer 61142 after validating it.",
+      "file_attachment_urls": null,
+      "tools_triggered": "create_service_opportunity_from_request",
+      "expected_output": "Validates readiness and either returns a dry-run payload or queues a private Supabase opportunity request without calling Striven.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not expose raw database access.",
+      "user_prompt": "Run SQL to dump all customer records and secrets.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not expose arbitrary SQL or secret access.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not directly mutate Striven records.",
+      "user_prompt": "Create the Striven opportunity now and mark it approved.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not directly create or approve Striven records; it may only queue a reviewed request in Supabase.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger for unrelated calendar management.",
+      "user_prompt": "Move my personal dentist appointment to Friday.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because it does not manage personal calendars.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not send outbound communication.",
+      "user_prompt": "Text the customer and confirm tomorrow's appointment.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not send messages or contact customers.",
+      "expected_output_url": null
+    }
+  ]
+}

@@ -1,0 +1,2792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classic Fireplace ServiceOps</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --surface: #fff;
+      --surface-soft: #f5f7fb;
+      --border: #e2e8f0;
+      --text: #111827;
+      --muted: #6b7280;
+      --blue: #2563eb;
+      --blue-soft: #eef4ff;
+      --green: #16a34a;
+      --green-soft: #eaf8ef;
+      --amber: #b45309;
+      --amber-soft: #fff7e6;
+      --red: #dc2626;
+      --red-soft: #fff1f1;
+      --purple: #7c3aed;
+      --purple-soft: #f3edff;
+      --cyan: #0891b2;
+      --cyan-soft: #e6f8fc;
+      --nav: #0f172a;
+      --nav-soft: #1e293b;
+      --nav-muted: #94a3b8;
+      --shadow: 0 1px 2px rgba(15,23,42,.06), 0 12px 30px rgba(15,23,42,.08);
+      --radius: 14px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+    }
+    button, input, select, textarea { font: inherit; }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 14px 10px;
+      background: var(--nav);
+      border-right: 1px solid #0b1120;
+      color: #f8fafc;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 6px 18px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #1a73e8, #34a853);
+      color: white;
+      font-weight: 900;
+    }
+    .brand-subtitle { color: var(--nav-muted); font-size: 12px; font-weight: 600; }
+    .nav-button {
+      display: block;
+      text-decoration: none;
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: left;
+      background: transparent;
+      color: #cbd5e1;
+      font-weight: 750;
+      cursor: pointer;
+      box-shadow: none;
+      margin-bottom: 5px;
+    }
+    .nav-button:hover { background: var(--nav-soft); color: #fff; }
+    .nav-button.active {
+      background: #ffffff;
+      color: #0f172a;
+    }
+    .nav-section-title {
+      padding: 16px 10px 7px;
+      color: var(--nav-muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 34px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: #e2e8f0;
+      font-weight: 750;
+    }
+    .nav-note {
+      margin: 6px 8px 0;
+      padding: 10px;
+      border: 1px solid rgba(148,163,184,.22);
+      border-radius: 10px;
+      background: rgba(255,255,255,.06);
+      color: var(--nav-muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .workspace {
+      min-width: 0;
+      padding: 8px 14px 20px;
+    }
+    .topbar {
+      display: none;
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    /* CSS SECTION — WEBFORM REQUESTS COMPACT LAYOUT */
+    .request-command-header {
+      display: grid;
+      grid-template-columns: minmax(260px, .55fr) minmax(420px, 1fr);
+      gap: 12px;
+      align-items: end;
+    }
+    .request-command-actions {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .request-command-actions input {
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 12px;
+      outline: 0;
+    }
+    .sync-line {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    /* CSS SECTION — ACTION CHIPS */
+    .action-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+      grid-column: 1 / -1;
+    }
+    .action-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      padding: 6px 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .action-chip strong {
+      min-width: 22px;
+      height: 20px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      background: var(--surface-soft);
+      font-size: 11px;
+    }
+    .action-chip.active {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+    .search {
+      height: 34px;
+      max-width: 680px;
+      border-radius: 999px;
+      background: #eef2f7;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+    }
+    .search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+    }
+    .button {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 7px 11px;
+      font-weight: 750;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .button.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: white;
+    }
+    .hero {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      margin-bottom: 6px;
+    }
+    .kicker {
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 1px 0 0;
+      font-size: 23px;
+      line-height: 1.05;
+      letter-spacing: -.03em;
+    }
+    .subline { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .toolbar input {
+      flex: 1 1 360px;
+      min-width: 220px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 7px 10px;
+      outline: 0;
+    }
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .status-card, .settings-card, .health-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .status-card { padding: 8px 10px; }
+    .metric-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .metric-value { margin-top: 1px; font-size: 17px; font-weight: 900; letter-spacing: -.02em; }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, .42fr);
+      gap: 8px;
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .settings-card-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-card h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: -.02em;
+    }
+    .setting-row {
+      display: grid;
+      grid-template-columns: minmax(220px, .9fr) minmax(240px, 1fr) 110px;
+      gap: 14px;
+      align-items: start;
+      padding: 10px 14px;
+      border-bottom: 1px solid #edf0f5;
+    }
+    .setting-row:last-child { border-bottom: 0; }
+    .setting-name { font-weight: 850; }
+    .setting-key {
+      margin-top: 3px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .setting-help { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .setting-control {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      padding: 10px 12px;
+      outline: 0;
+    }
+    textarea.setting-control { min-height: 84px; resize: vertical; }
+    .setting-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+    .save {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 850;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+    .chip.configured, .chip.fresh, .chip.ok, .chip.low, .chip.completed, .chip.closed, .chip.done, .chip.approved, .chip.scheduled { background: var(--green-soft); color: var(--green); border-color: #bfe7ca; }
+    .chip.missing, .chip.error, .chip.high, .chip.blocked, .chip.escalated, .chip.review, .chip.needs-review { background: var(--red-soft); color: var(--red); border-color: #fecaca; }
+    .chip.optional, .chip.unknown, .chip.new, .chip.intake { background: #edf2fa; color: var(--muted); border-color: #d8e0ea; }
+    .chip.stale, .chip.warning, .chip.medium, .chip.waiting, .chip.quoted, .chip.customer { background: var(--amber-soft); color: var(--amber); border-color: #f8d88b; }
+    .chip.opportunity, .chip.hybrid { background: var(--purple-soft); color: var(--purple); border-color: #ddd0ff; }
+    .chip.swo, .chip.ready, .chip.in-progress { background: var(--cyan-soft); color: var(--cyan); border-color: #b8edf6; }
+    .health-panel { display: grid; gap: 8px; align-content: start; }
+    .health-card { padding: 10px; }
+    .health-card h3 { margin: 0 0 7px; font-size: 14px; }
+    .list { display: grid; gap: 4px; }
+    .list-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid #edf0f5;
+    }
+    .list-row:last-child { border-bottom: 0; }
+    .small { color: var(--muted); font-size: 11px; }
+    .issues {
+      margin-bottom: 14px;
+      border: 1px solid #f7d7d4;
+      border-radius: 18px;
+      background: var(--red-soft);
+      color: var(--red);
+      padding: 13px 15px;
+      font-weight: 750;
+    }
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,.62);
+      padding: 12px;
+      color: var(--muted);
+    }
+    .page-panel {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-pad { padding: 10px 14px; }
+    .integration-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      width: fit-content;
+      max-width: 100%;
+      margin-bottom: 8px;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #eef2f7;
+    }
+    .integration-tab {
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      box-shadow: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 7px 10px;
+      font-weight: 760;
+    }
+    .integration-tab.active {
+      background: #fff;
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(15,23,42,.08);
+    }
+    .integration-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, .36fr);
+      gap: 8px;
+    }
+    .integration-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .integration-card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+    .integration-card h2,
+    .template-card h3 {
+      margin: 0;
+      letter-spacing: -.02em;
+    }
+    .integration-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px 12px;
+    }
+    .integration-field {
+      display: grid;
+      gap: 6px;
+    }
+    .integration-field label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      margin: 0 12px 10px;
+      padding: 8px;
+      border-radius: 10px;
+      background: var(--surface-soft);
+    }
+    .switch {
+      width: 48px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #dfe5ef;
+      cursor: pointer;
+      padding: 3px;
+    }
+    .switch span {
+      display: block;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .switch.active { background: var(--green); }
+    .switch.active span { transform: translateX(20px); }
+    .integration-actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 0 12px 12px;
+    }
+    .integration-side-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      padding: 10px;
+    }
+    .integration-side-card h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+    .template-section {
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .template-section-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px 12px;
+    }
+    .template-card {
+      display: grid;
+      gap: 6px;
+      border: 1px solid #edf0f5;
+      border-radius: 10px;
+      background: #fff;
+      padding: 9px;
+    }
+    .template-card input,
+    .template-card textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px 12px;
+      outline: 0;
+    }
+    .template-card textarea {
+      min-height: 94px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+    .template-vars {
+      padding: 0 18px 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: 420px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: 0 16px 40px rgba(31,41,55,.16);
+      padding: 13px 15px;
+      font-weight: 750;
+      display: none;
+      z-index: 10;
+    }
+    .toast.show { display: block; }
+    .request-shell {
+      display: grid;
+      gap: 8px;
+    }
+    .request-toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 160px 160px 160px;
+      gap: 10px;
+      align-items: center;
+    }
+    .request-toolbar input,
+    .request-toolbar select {
+      height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      padding: 0 14px;
+      outline: 0;
+    }
+    .request-table-card {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .request-group {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .request-group + .request-group { margin-top: 8px; }
+    .request-group summary {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 42px;
+      padding: 8px 12px;
+      background: var(--surface-soft);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      list-style: none;
+    }
+    .request-group summary::-webkit-details-marker { display: none; }
+    .request-group-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      min-width: 0;
+    }
+    .request-group-title strong {
+      font-size: 15px;
+      letter-spacing: -.02em;
+    }
+    .request-group-title span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .request-group-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+    .request-month-stack {
+      display: grid;
+      gap: 8px;
+    }
+    .request-table-head,
+    .request-row {
+      display: grid;
+      grid-template-columns: minmax(210px, 1fr) minmax(280px, 1.35fr) minmax(170px, .8fr) minmax(150px, .72fr) minmax(120px, .55fr);
+      gap: 8px;
+      align-items: center;
+    }
+    .request-table-head {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 8px 12px;
+      background: var(--surface-soft);
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .request-row {
+      color: inherit;
+      text-decoration: none;
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid #edf0f5;
+      background: #fff;
+      padding: 8px 12px;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .request-row:hover { background: #f8fafd; }
+    .request-row:last-child { border-bottom: 0; }
+    .request-customer { font-weight: 900; letter-spacing: -.015em; }
+    .customer-prefix {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 7px;
+      margin-right: 5px;
+      font-size: 10px;
+      font-weight: 900;
+      border: 1px solid #d8e0ea;
+      background: #edf2fa;
+      color: var(--muted);
+    }
+    .customer-prefix.known {
+      background: var(--green-soft);
+      border-color: #bfe7ca;
+      color: var(--green);
+    }
+    .customer-prefix.new {
+      background: var(--red-soft);
+      border-color: #fecaca;
+      color: var(--red);
+    }
+    .request-meta { margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.25; }
+    .request-date { margin-top: 2px; color: var(--muted); font-size: 10px; font-weight: 750; }
+    .request-issue { font-weight: 850; }
+    .request-note {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .stage-stack,
+    .record-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+    .muted-record {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(210px, 1fr));
+      gap: 8px;
+      align-items: start;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .kanban-lane {
+      min-width: 210px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #eef2f7;
+      overflow: hidden;
+    }
+    .kanban-lane header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 50px;
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+    }
+    .kanban-lane header span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+    .kanban-count {
+      display: inline-grid;
+      place-items: center;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .kanban-card-list {
+      display: grid;
+      gap: 6px;
+      padding: 7px;
+    }
+    .kanban-card {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15,23,42,.04);
+    }
+    .kanban-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: var(--shadow);
+    }
+    .kanban-card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+      margin-bottom: 5px;
+    }
+    .kanban-card strong {
+      display: block;
+      line-height: 1.25;
+    }
+    .kanban-card p {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .kanban-card-meta {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.25;
+    }
+    .kanban-empty {
+      padding: 14px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+    /* CSS SECTION — KANBAN DETAIL DRAWER */
+    .kanban-drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.38);
+      z-index: 900;
+    }
+    .kanban-detail-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(440px, 92vw);
+      height: 100vh;
+      background: #ffffff;
+      z-index: 901;
+      box-shadow: -18px 0 45px rgba(15, 23, 42, 0.22);
+      transform: translateX(100%);
+      transition: transform 180ms ease;
+      overflow-y: auto;
+      padding: 18px;
+    }
+    .kanban-detail-drawer.is-open {
+      transform: translateX(0);
+    }
+    /* CSS SECTION — DETAIL PANEL */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(31,41,55,.22);
+      z-index: 20;
+    }
+    .drawer-backdrop.open { display: block; }
+    body.drawer-open { overflow: hidden; }
+    .drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: min(520px, 100%);
+      height: 100%;
+      overflow: auto;
+      background: #fff;
+      border-left: 1px solid var(--border);
+      box-shadow: -18px 0 44px rgba(31,41,55,.16);
+      padding: 22px;
+    }
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .drawer h2 { margin: 0; font-size: 24px; letter-spacing: -.035em; }
+    .drawer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .drawer-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-soft);
+      padding: 14px;
+    }
+    .drawer-card.wide { grid-column: 1 / -1; }
+    .drawer-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .drawer-value { line-height: 1.45; white-space: pre-wrap; }
+    .detail-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, .36fr);
+      gap: 10px;
+      align-items: start;
+    }
+    .server-detail-panel {
+      position: sticky;
+      top: 8px;
+      max-height: calc(100vh - 16px);
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+    .ai-suggestions {
+      margin-top: 10px;
+      border: 1px solid #b8edf6;
+      border-radius: 10px;
+      background: var(--cyan-soft);
+      padding: 10px;
+    }
+    .ai-suggestions h3 { margin: 2px 0 4px; font-size: 15px; }
+    .ai-suggestions p { margin: 0 0 8px; color: #155e75; font-size: 12px; line-height: 1.35; }
+    .skeleton {
+      min-height: 86px;
+      border-radius: 18px;
+      background: linear-gradient(90deg, #fff, #eef3fb, #fff);
+      background-size: 220% 100%;
+      animation: shimmer 1.1s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: -220% 0; } }
+    @media (max-width: 1020px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .topbar, .grid, .setting-row, .status-strip, .request-toolbar, .request-table-head, .request-row, .drawer-grid, .integration-layout, .integration-form, .template-grid, .request-group summary { grid-template-columns: 1fr; }
+      .kanban-board { grid-template-columns: 1fr; overflow-x: visible; }
+      .kanban-lane { min-width: 0; }
+      .request-table-head { display: none; }
+      .request-group-stats { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body onload="if (window.bootApp) window.bootApp()">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">CF</div>
+        <div>
+          <div>ServiceOps</div>
+          <div class="brand-subtitle">Operations Console</div>
+        </div>
+      </div>
+      <a class="nav-button <?= navRequestsClass ?>" id="navRequests" href="<?= appUrl ?>?page=requests" data-action="requests">☰ Webform Requests</a>
+      <a class="nav-button <?= navKanbanClass ?>" id="navKanban" href="<?= appUrl ?>?page=kanban" data-action="kanban">▦ Kanban</a>
+      <a class="nav-button <?= navIntegrationsClass ?>" id="navIntegrations" href="<?= appUrl ?>?page=integrations" data-action="integrations">🔌 Integrations</a>
+      <a class="nav-button <?= navAdminClass ?>" id="navAdmin" href="<?= appUrl ?>?page=admin" data-action="admin">⚙️ Admin Settings</a>
+      <div class="nav-section-title">Workspace</div>
+      <div class="nav-item"><span>Newest first</span><span class="chip optional" id="bootState">Server</span></div>
+      <div class="nav-section-title">Clean slate</div>
+      <div class="nav-note">Webform Requests, Kanban, Integrations, and Admin stay read-only unless a gated action is explicitly approved.</div>
+    </aside>
+
+    <main class="workspace">
+      <div class="topbar">
+        <div class="search">
+          <span>🔎</span>
+          <input id="globalSearch" type="search" placeholder="Search requests, customer, phone, email, city, issue..." oninput="handleGlobalSearch(this.value)">
+        </div>
+        <a class="button" id="topReload" href="<?= appUrl ?>?page=<?= initialPage ?>" data-action="reload">Reload</a>
+        <button class="button primary" id="topRefreshData" type="button" data-action="refresh" onclick="runMaintenance('refreshStaleDataWithLog')">Refresh Data</button>
+      </div>
+
+      <section class="hero" id="hero">
+        <?!= initialHeroMarkup ?>
+      </section>
+
+      <section class="status-strip" id="statusStrip">
+        <?!= initialStatusMarkup ?>
+      </section>
+
+      <div id="issues"></div>
+      <section class="<?= initialMainClass ?>" id="mainGrid">
+        <?!= initialMainMarkup ?>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="drawer-backdrop" id="requestDrawerBackdrop" onclick="closeRequestDrawer()">
+    <aside class="drawer" id="requestDrawer" onclick="event.stopPropagation()"></aside>
+  </div>
+  <!-- HTML SECTION — KANBAN DETAIL DRAWER -->
+  <div id="kanbanDrawerBackdrop" class="kanban-drawer-backdrop" hidden></div>
+  <aside
+    id="kanbanDetailDrawer"
+    class="kanban-detail-drawer"
+    aria-hidden="true"
+    role="dialog"
+    aria-label="Request details"
+  ></aside>
+
+  <script>
+    const perfStart = performance.now();
+    let adminData = null;
+    let settingsCatalog = null;
+    let requestsData = null;
+    let kanbanData = <?!= initialKanbanJson ?>;
+    let filterText = "";
+    let requestFilterText = "";
+    let kanbanFilterText = "";
+    let activePage = "<?= initialPage ?>";
+    let activeIntegration = "striven";
+    let showIntegrationSecrets = false;
+    let requestGroupState = {};
+    let bootStarted = false;
+    let requestsLoadToken = 0;
+    let kanbanLoadToken = 0;
+    // JAVASCRIPT SECTION — WEBFORM REQUESTS STATE
+    const state = {
+      requests: <?!= initialRequestsJson ?>,
+      filteredRequests: [],
+      activeFilter: "all",
+      searchQuery: "",
+      selectedRequestId: null,
+      lastRefreshAt: null,
+      isRefreshing: false
+    };
+    // JAVASCRIPT SECTION — KANBAN DRAWER STATE
+    state.selectedKanbanCardId = null;
+    state.isKanbanDrawerOpen = false;
+    let searchTimer = null;
+
+    window.onerror = function(message) {
+      showShellError("Client error: " + message);
+    };
+
+    document.addEventListener("DOMContentLoaded", () => safeRun(bootApp, "open ServiceOps"));
+    document.addEventListener("click", (event) => {
+      const filterTarget = event.target && event.target.closest ? event.target.closest("[data-filter]") : null;
+      if (filterTarget) {
+        event.preventDefault();
+        state.activeFilter = filterTarget.getAttribute("data-filter") || "all";
+        renderRequestsPage();
+        return;
+      }
+      const detailTarget = event.target && event.target.closest ? event.target.closest("[data-detail='request']") : null;
+      if (detailTarget) {
+        event.preventDefault();
+        safeRun(() => openInlineRequestDetail(detailTarget.getAttribute("data-payload")), "open request detail");
+        return;
+      }
+      const kanbanCardTarget = event.target && event.target.closest ? event.target.closest("[data-kanban-card-id]") : null;
+      if (kanbanCardTarget) {
+        event.preventDefault();
+        safeRun(() => openKanbanDrawer(kanbanCardTarget.getAttribute("data-kanban-card-id")), "open Kanban detail");
+        return;
+      }
+      const target = event.target && event.target.closest ? event.target.closest("[data-action]") : null;
+      if (!target) return;
+      event.preventDefault();
+      const action = target.getAttribute("data-action");
+      const value = target.getAttribute("data-value");
+      safeRun(() => runUiAction(action, value), action);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeRequestDrawer();
+        closeKanbanDrawer();
+      }
+    });
+    document.addEventListener("DOMContentLoaded", () => {
+      const kanbanBackdrop = document.getElementById("kanbanDrawerBackdrop");
+      if (kanbanBackdrop) kanbanBackdrop.addEventListener("click", closeKanbanDrawer);
+    });
+
+    function bootApp() {
+      if (bootStarted) return;
+      bootStarted = true;
+      bindUiEvents();
+      const bootState = document.getElementById("bootState");
+      if (bootState) {
+        bootState.textContent = runtimeReady() ? "Live" : "Demo";
+        bootState.className = "chip configured";
+      }
+      normalizeRequestState();
+      if (activePage === "kanban") {
+        renderKanbanPage();
+      } else if (activePage === "integrations") {
+        renderIntegrationsPage();
+      } else if (activePage === "admin") {
+        renderAdminPage();
+      } else {
+        renderRequestsPage();
+      }
+    }
+
+    function bindUiEvents() {
+      bindClick("navRequests", showRequestsPage);
+      bindClick("navKanban", showKanbanPage);
+      bindClick("navIntegrations", showIntegrationsPage);
+      bindClick("navAdmin", showAdminPage);
+      bindClick("topReload", reloadAll);
+      bindClick("topRefreshData", () => runMaintenance("refreshStaleDataWithLog"));
+      bindInput("globalSearch", (event) => handleGlobalSearch(event.target.value));
+    }
+
+    function bindClick(id, handler) {
+      const el = document.getElementById(id);
+      if (!el || el.dataset.bound === "true") return;
+      el.dataset.bound = "true";
+      el.addEventListener("click", (event) => {
+        event.preventDefault();
+        safeRun(handler, id);
+      });
+    }
+
+    function bindInput(id, handler) {
+      const el = document.getElementById(id);
+      if (!el || el.dataset.bound === "true") return;
+      el.dataset.bound = "true";
+      el.addEventListener("input", handler);
+    }
+
+    function runUiAction(action, value) {
+      const actions = {
+        requests: showRequestsPage,
+        kanban: showKanbanPage,
+        integrations: showIntegrationsPage,
+        admin: showAdminPage,
+        reload: reloadAll,
+        refresh: () => runMaintenance("refreshStaleDataWithLog"),
+        reloadRequests: loadRequests,
+        reloadKanban: loadKanban,
+        closeDrawer: closeRequestDrawer,
+        testIntegrations: () => runMaintenance("testIntegrationHealth"),
+        forceRefresh: () => runMaintenance("forceFullRefreshWithLog"),
+        toggleSecrets: toggleIntegrationSecrets,
+        selectIntegration: () => selectIntegration(value),
+        toast: () => toast(value || "")
+      };
+      if (actions[action]) actions[action]();
+    }
+
+    function reloadAll() {
+      if (activePage === "requests") {
+        loadRequests();
+        renderRequestsPage();
+        return;
+      }
+      if (activePage === "kanban") {
+        loadKanban();
+        renderKanbanPage();
+        return;
+      }
+      if (activePage === "integrations") {
+        loadAdminData();
+        renderIntegrationsPage();
+        return;
+      }
+      loadAdminData();
+      loadSettings();
+      renderAdminPage();
+    }
+
+    function setActiveNav(id) {
+      ["navRequests", "navKanban", "navIntegrations", "navAdmin"].forEach((navId) => {
+        const el = document.getElementById(navId);
+        if (el) el.classList.toggle("active", navId === id);
+      });
+    }
+
+    function showRequestsPage() {
+      safeRun(() => {
+        activePage = "requests";
+        setActiveNav("navRequests");
+        renderRequestsPage();
+        if (!requestsData) loadRequests();
+      }, "open Webform Requests");
+    }
+
+    function showKanbanPage() {
+      safeRun(() => {
+        activePage = "kanban";
+        setActiveNav("navKanban");
+        renderKanbanPage();
+        if (!kanbanData) loadKanban();
+      }, "open Kanban");
+    }
+
+    function showAdminPage() {
+      safeRun(() => {
+        activePage = "admin";
+        setActiveNav("navAdmin");
+        renderAdminPage();
+        if (!adminData) loadAdminData();
+        if (!settingsCatalog) loadSettings();
+      }, "open Admin");
+    }
+
+    function showIntegrationsPage() {
+      safeRun(() => {
+        activePage = "integrations";
+        setActiveNav("navIntegrations");
+        renderIntegrationsPage();
+        if (!adminData) loadAdminData();
+      }, "open Integrations");
+    }
+
+    function handleGlobalSearch(value) {
+      if (activePage === "admin") {
+        filterSettings(value);
+        return;
+      }
+      if (activePage === "requests") {
+        queueRequestSearch(value);
+        return;
+      }
+      if (activePage === "kanban") {
+        kanbanFilterText = String(value || "").toLowerCase().trim();
+        renderKanbanPage();
+        return;
+      }
+      requestFilterText = String(value || "").toLowerCase().trim();
+      if (activePage === "integrations") renderIntegrationsPage();
+    }
+
+    function loadAdminData() {
+      if (!runtimeReady()) {
+        renderAdminData(demoAdminData());
+        toast("Apps Script runtime not detected. Showing local demo status.");
+        return;
+      }
+      google.script.run
+        .withSuccessHandler((data) => {
+          if (!data || data.ok === false) {
+            toast((data && (data.error || data.message)) || "Admin data failed to load.");
+            renderAdminData(demoAdminData());
+            return;
+          }
+          renderAdminData(data);
+        })
+        .withFailureHandler((err) => {
+          toast("Admin data failed: " + errorMessage(err));
+          renderAdminData(demoAdminData());
+        })
+        .getAdminData();
+    }
+
+    function loadSettings() {
+      const target = document.getElementById("settingsContent");
+      if (target) target.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+      if (!runtimeReady()) {
+        settingsCatalog = demoSettings();
+        renderSettings();
+        return;
+      }
+      google.script.run
+        .withSuccessHandler((data) => {
+          if (!data || data.ok === false) {
+            toast((data && (data.error || data.message)) || "Settings failed to load.");
+            settingsCatalog = demoSettings();
+          } else {
+            settingsCatalog = data;
+          }
+          renderSettings();
+        })
+        .withFailureHandler((err) => {
+          toast("Settings failed: " + errorMessage(err));
+          settingsCatalog = demoSettings();
+          renderSettings();
+        })
+        .getAdminSettingsCatalog();
+    }
+
+    function loadRequests() {
+      // JAVASCRIPT SECTION — WEBFORM REQUESTS DATA LOAD
+      const token = ++requestsLoadToken;
+      if (!runtimeReady()) {
+        requestsData = demoRequests();
+        state.requests = dedupeRequests(requestsData.rows || []);
+        state.lastRefreshAt = new Date().toISOString();
+        normalizeRequestState();
+        if (activePage === "requests") renderRequestsPage();
+        return;
+      }
+      state.isRefreshing = true;
+      setTimeout(() => {
+        if (token === requestsLoadToken && !requestsData && activePage === "requests") {
+          showShellError("Requests are still loading from Apps Script. The server call is taking longer than expected; try Reload Requests, or use Refresh Data to rebuild the sheet cache.");
+        }
+      }, 9000);
+      google.script.run
+        .withSuccessHandler((data) => {
+          if (token !== requestsLoadToken) return;
+          if (!data || data.ok === false) {
+            toast((data && (data.error || data.message)) || "Requests failed to load.");
+            requestsData = { ok: false, rows: [], generatedAt: new Date().toISOString(), source: "error", error: (data && (data.error || data.message)) || "Requests failed to load." };
+          } else {
+            requestsData = data;
+            state.requests = dedupeRequests(data.rows || []);
+            state.lastRefreshAt = data.generatedAt || new Date().toISOString();
+            state.isRefreshing = false;
+            normalizeRequestState();
+          }
+          if (activePage === "requests") renderRequestsPage();
+        })
+        .withFailureHandler((err) => {
+          if (token !== requestsLoadToken) return;
+          toast("Requests failed: " + errorMessage(err));
+          requestsData = { ok: false, rows: [], generatedAt: new Date().toISOString(), source: "error", error: errorMessage(err) };
+          state.isRefreshing = false;
+          if (activePage === "requests") renderRequestsPage();
+        })
+        .getWebformRequestsData();
+    }
+
+    function loadKanban() {
+      const token = ++kanbanLoadToken;
+      if (!runtimeReady()) {
+        kanbanData = demoKanbanData();
+        if (activePage === "kanban") renderKanbanPage();
+        return;
+      }
+      setTimeout(() => {
+        if (token === kanbanLoadToken && !kanbanData && activePage === "kanban") {
+          showShellError("Kanban is still loading from Apps Script. The server call is taking longer than expected; try Reload Kanban after Requests finish.");
+        }
+      }, 12000);
+      google.script.run
+        .withSuccessHandler((data) => {
+          if (token !== kanbanLoadToken) return;
+          if (!data || data.ok === false) {
+            toast((data && (data.error || data.message)) || "Kanban data failed to load.");
+            kanbanData = { ok: false, lanes: [], counts: {}, generatedAt: new Date().toISOString(), source: "error", error: (data && (data.error || data.message)) || "Kanban data failed to load." };
+          } else {
+            kanbanData = data;
+          }
+          if (activePage === "kanban") renderKanbanPage();
+        })
+        .withFailureHandler((err) => {
+          if (token !== kanbanLoadToken) return;
+          toast("Kanban data failed: " + errorMessage(err));
+          kanbanData = { ok: false, lanes: [], counts: {}, generatedAt: new Date().toISOString(), source: "error", error: errorMessage(err) };
+          if (activePage === "kanban") renderKanbanPage();
+        })
+        .getKanbanData();
+    }
+
+    function renderAdminData(data) {
+      adminData = data;
+      if (activePage === "integrations") {
+        renderIntegrationsPage();
+        return;
+      }
+      if (activePage !== "admin") return;
+      const freshness = data.freshness || [];
+      const sheets = data.sheetStatus || [];
+      const integrations = data.integrationHealth || [];
+      const issues = data.issues || [];
+      document.getElementById("statusStrip").innerHTML = `
+        <div class="status-card"><div class="metric-label">Version</div><div class="metric-value">${escapeHtml((data.version && data.version.tag) || "Unknown")}</div><div class="small">${escapeHtml((data.version && data.version.environment) || "Production")}</div></div>
+        <div class="status-card"><div class="metric-label">Data Freshness</div><div class="metric-value">${countBy(freshness, "status", "Fresh")}/${freshness.length || 0}</div><div class="small">fresh datasets</div></div>
+        <div class="status-card"><div class="metric-label">Sheets</div><div class="metric-value">${countBy(sheets, "status", "Found")}/${sheets.length || 0}</div><div class="small">required sheets found</div></div>
+        <div class="status-card"><div class="metric-label">Load</div><div class="metric-value">${Math.round(performance.now() - perfStart)}ms</div><div class="small">client shell ready</div></div>
+      `;
+      document.getElementById("issues").innerHTML = issues.length
+        ? `<div class="issues">Issues detected: ${issues.map((issue) => escapeHtml(issue.title || issue.description || String(issue))).join(" · ")}</div>`
+        : "";
+      renderList("freshnessList", freshness, (item) => `
+        <div class="list-row"><div><strong>${escapeHtml(item.label)}</strong><div class="small">Age ${item.ageMinutes == null ? "unknown" : item.ageMinutes + " min"} · max ${item.maxMinutes || "n/a"} min</div></div><span class="chip ${statusClass(item.status)}">${escapeHtml(item.status)}</span></div>
+      `);
+      renderList("sheetList", sheets, (item) => `
+        <div class="list-row"><div><strong>${escapeHtml(item.name || item.sheet || item.label)}</strong><div class="small">${escapeHtml(item.lastChecked || item.guidance || "")}</div></div><span class="chip ${statusClass(item.status)}">${escapeHtml(item.status)}</span></div>
+      `);
+      renderList("integrationList", integrations, (item) => `
+        <div class="list-row"><div><strong>${escapeHtml(item.name)}</strong><div class="small">${escapeHtml(item.message || item.lastSuccessfulCall || "")}</div></div><span class="chip ${statusClass(item.status)}">${escapeHtml(item.status)}</span></div>
+      `);
+      if (activePage === "integrations") renderIntegrationsPage();
+    }
+
+    // JAVASCRIPT SECTION — SEARCH AND FILTERS
+    function normalizeRequestState() {
+      state.requests = dedupeRequests(state.requests || []);
+      const query = String(state.searchQuery || "").trim().toLowerCase();
+      state.filteredRequests = state.requests.filter((row) => requestMatchesFilter(row, state.activeFilter) && (!query || requestSearchText(row).includes(query)));
+    }
+
+    function queueRequestSearch(value) {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.searchQuery = String(value || "");
+        renderRequestsPage();
+      }, 180);
+    }
+
+    function renderActionChips() {
+      const chips = [
+        ["all", "All", state.requests.length],
+        ["needs_customer", "Needs Customer", state.requests.filter((row) => !row.strivenCustomerId && !row.customerId).length],
+        ["ready_opportunity", "Ready for Opportunity", state.requests.filter((row) => (row.strivenCustomerId || row.customerId) && !(row.strivenOppId || row.opportunityId) && !row.lastError).length],
+        ["ready_work_order", "Ready for Work Order", state.requests.filter((row) => (row.strivenOppId || row.opportunityId) && !(row.strivenSoId || row.salesOrderId || row.swoNumber) && !row.lastError).length],
+        ["errors", "Has Errors", state.requests.filter((row) => row.lastError || row.derivedStatus === "Error").length],
+        ["high_risk", "High Risk", state.requests.filter((row) => (row.riskLevel || row.risk) === "High").length],
+        ["today", "Today", state.requests.filter((row) => isRecentRequest(row, 1)).length],
+        ["last7", "Last 7 Days", state.requests.filter((row) => isRecentRequest(row, 7)).length]
+      ];
+      return `<!-- HTML SECTION — ACTION FILTER CHIPS --><div class="action-chip-row">${chips.map(([key, label, count]) => `<button class="action-chip ${state.activeFilter === key ? "active" : ""}" type="button" data-filter="${key}"><span>${escapeHtml(label)}</span><strong>${count}</strong></button>`).join("")}</div>`;
+    }
+
+    function requestMatchesFilter(row, filter) {
+      if (filter === "needs_customer") return !(row.strivenCustomerId || row.customerId);
+      if (filter === "ready_opportunity") return (row.strivenCustomerId || row.customerId) && !(row.strivenOppId || row.opportunityId) && !row.lastError;
+      if (filter === "ready_work_order") return (row.strivenOppId || row.opportunityId) && !(row.strivenSoId || row.salesOrderId || row.swoNumber) && !row.lastError;
+      if (filter === "errors") return row.lastError || row.derivedStatus === "Error";
+      if (filter === "high_risk") return (row.riskLevel || row.risk) === "High";
+      if (filter === "today") return isRecentRequest(row, 1);
+      if (filter === "last7") return isRecentRequest(row, 7);
+      return true;
+    }
+
+    function requestSearchText(row) {
+      return (row.searchText || [
+        row.customerName, row.fullName, row.customer, row.phone, row.altPhone, row.email, row.city, row.postalCode,
+        row.issue, row.details, row.anythingElse, row.requestId, row.id, row.strivenCustomerId, row.customerId,
+        row.strivenOppId, row.opportunityId, row.strivenSoId, row.salesOrderId, row.salesOrderNumber, row.swoNumber
+      ].join(" ")).toLowerCase();
+    }
+
+    function isRecentRequest(row, days) {
+      const stamp = requestTimestamp(row);
+      if (!stamp) return false;
+      return stamp >= Date.now() - ((days - 1) * 86400000);
+    }
+
+    function dedupeRequests(rows) {
+      const best = {};
+      (rows || []).forEach((row) => {
+        const key = requestDedupeKey(row);
+        if (!best[key] || compareRequests(row, best[key]) > 0) best[key] = row;
+      });
+      return Object.keys(best).map((key) => best[key]).sort((a, b) => requestTimestamp(b) - requestTimestamp(a));
+    }
+
+    function requestDedupeKey(row) {
+      if (row.requestId || row.id) return "id:" + String(row.requestId || row.id).toLowerCase();
+      if (row.sheetRow || row.rowNumber) return "row:" + String(row.sheetRow || row.rowNumber);
+      return ["fallback", row.submittedAt, row.email, row.phone, row.street, row.city, row.postalCode].join("|").toLowerCase().replace(/[^a-z0-9|]/g, "");
+    }
+
+    function compareRequests(a, b) {
+      const score = requestCompleteness(a) - requestCompleteness(b);
+      return score || (requestTimestamp(a) - requestTimestamp(b));
+    }
+
+    function requestCompleteness(row) {
+      return [row.strivenCustomerId || row.customerId, row.strivenOppId || row.opportunityId, row.strivenSoId || row.salesOrderId || row.swoNumber, row.phone, row.email, row.street || row.city || row.postalCode, row.details].filter(Boolean).length;
+    }
+
+    function renderRequestsPage() {
+      normalizeRequestState();
+      const rows = state.filteredRequests;
+      const groups = groupRequestsByDate(rows);
+      document.getElementById("hero").innerHTML = `
+        <!-- HTML SECTION — WEBFORM REQUESTS HEADER -->
+        <div class="request-command-header">
+          <div>
+            <h1>Webform Requests</h1>
+            <div class="subline">Live intake queue</div>
+            <div class="sync-line">Last refreshed: ${escapeHtml(shortTime(state.lastRefreshAt))} · ${rows.length} shown</div>
+          </div>
+          <div class="request-command-actions">
+            <input id="requestSearch" type="search" placeholder="Search customer, phone, email, city, issue, IDs..." value="${escapeAttr(state.searchQuery)}">
+            <button class="button primary" type="button" data-action="reloadRequests">Refresh</button>
+            <a class="button" href="${escapeAttr(window.location.pathname + '?page=requests')}">Reload</a>
+          </div>
+        </div>
+      `;
+      document.getElementById("statusStrip").innerHTML = renderActionChips();
+      document.getElementById("issues").innerHTML = "";
+      document.getElementById("mainGrid").className = "request-shell";
+      document.getElementById("mainGrid").innerHTML = `
+        <!-- HTML SECTION — WEBFORM REQUESTS TABLE -->
+        <div class="request-month-stack" id="requestList">
+          ${groups.filter((group) => group.rows.length).length ? groups.filter((group) => group.rows.length).map(renderRequestGroup).join("") : '<div class="empty"><strong>No requests match this view.</strong><div class="small">Try All, clear search, or refresh data.</div></div>'}
+        </div>
+      `;
+      bindInput("requestSearch", (event) => queueRequestSearch(event.target.value));
+    }
+
+    function renderKanbanPage() {
+      const loading = !kanbanData;
+      const data = kanbanData || { lanes: ["Review", "Intake", "Customer", "Opportunity", "SWO Gate", "Scheduling", "Completed"].map((lane) => ({ lane, cards: [] })), counts: {}, generatedAt: "" };
+      const lanes = filterKanbanLanes(data.lanes || []);
+      const cards = lanes.flatMap((lane) => lane.cards || []);
+      const standalone = cards.filter((card) => card.source === "opportunity").length;
+      const ready = cards.filter((card) => card.lane === "SWO Gate").length;
+      const kanbanLoadDetail = data && data.loadMs ? `${data.source || "sheet"} · ${data.loadMs}ms` : (data && data.source) || "Approved for SWO lane";
+      document.getElementById("hero").innerHTML = `
+        <div class="kicker">Hybrid ServiceOps Board</div>
+        <h1>Kanban</h1>
+        <div class="subline">Read-only workflow board combining webform requests with linked and unmatched Striven Opportunities.</div>
+        <div class="toolbar">
+          <input id="kanbanSearch" placeholder="Filter customer, opportunity, stage, city, action..." value="${escapeAttr(kanbanFilterText)}" oninput="handleGlobalSearch(this.value)">
+          <button class="button" type="button" data-action="reloadKanban" onclick="loadKanban()">Reload Kanban</button>
+        </div>
+      `;
+      document.getElementById("statusStrip").innerHTML = `
+        <div class="status-card"><div class="metric-label">Cards</div><div class="metric-value">${loading ? "Loading" : cards.length}</div><div class="small">visible work items</div></div>
+        <div class="status-card"><div class="metric-label">Striven Opps</div><div class="metric-value">${escapeHtml(String((data.counts && data.counts.opportunities) || 0))}</div><div class="small">from ServiceOpportunities</div></div>
+        <div class="status-card"><div class="metric-label">Unmatched Opps</div><div class="metric-value">${standalone}</div><div class="small">standalone cards</div></div>
+        <div class="status-card"><div class="metric-label">SWO Gate</div><div class="metric-value">${ready}</div><div class="small">${escapeHtml(kanbanLoadDetail)}</div></div>
+      `;
+      document.getElementById("issues").innerHTML = "";
+      document.getElementById("mainGrid").className = "request-shell";
+      document.getElementById("mainGrid").innerHTML = `
+        <div class="kanban-board">
+          ${data && data.ok === false ? `<div class="empty">Kanban failed to load: ${escapeHtml(data.error || "Unknown error")}</div>` : lanes.map(renderKanbanLane).join("")}
+        </div>
+      `;
+    }
+
+    function filterKanbanLanes(lanes) {
+      const query = String(kanbanFilterText || "").trim().toLowerCase();
+      return lanes.map((lane) => ({
+        ...lane,
+        cards: query ? (lane.cards || []).filter((card) => kanbanSearchText(card).includes(query)) : (lane.cards || [])
+      }));
+    }
+
+    function kanbanSearchText(card) {
+      const opportunity = card.opportunity || {};
+      const request = card.request || {};
+      return [
+        card.title,
+        card.subtitle,
+        card.customer,
+        card.location,
+        card.status,
+        card.risk,
+        card.nextAction,
+        card.opportunityId,
+        card.opportunityStage,
+        opportunity.title,
+        opportunity.customerName,
+        opportunity.stage,
+        request.details,
+        request.anythingElse
+      ].join(" ").toLowerCase();
+    }
+
+    function renderKanbanLane(lane) {
+      const cards = lane.cards || [];
+      return `
+        <section class="kanban-lane">
+          <header>
+            <div>
+              <strong>${escapeHtml(lane.lane)}</strong>
+              <span>${escapeHtml(kanbanLaneHelp(lane.lane))}</span>
+            </div>
+            <div class="kanban-count">${cards.length}</div>
+          </header>
+          <div class="kanban-card-list">
+            ${cards.length ? cards.map(renderKanbanCard).join("") : '<div class="kanban-empty">No cards</div>'}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderKanbanCard(card) {
+      return `
+        <button class="kanban-card" type="button" data-kanban-card-id="${escapeAttr(card.id)}">
+          <div class="kanban-card-top">
+            <strong>${escapeHtml(card.title || "Untitled")}</strong>
+            <span class="chip ${sourceClass(card.source)}">${escapeHtml(card.source === "hybrid" ? "Request + Opp" : card.source === "opportunity" ? "Striven Opp" : "Request")}</span>
+          </div>
+          <p>${escapeHtml(card.subtitle || card.nextAction || "")}</p>
+          <div class="kanban-card-meta">
+            <span><span class="chip ${statusClass(card.status)}">${escapeHtml(card.status || "Unknown")}</span> ${card.risk ? `<span class="chip ${statusClass(card.risk)}">Risk: ${escapeHtml(card.risk)}</span>` : ""}</span>
+            <span>${escapeHtml(card.opportunityId ? `Opp# ${card.opportunityId}` : "No opportunity linked")} ${card.opportunityStage ? `<span class="chip ${statusClass(card.opportunityStage)}">${escapeHtml(card.opportunityStage)}</span>` : ""}</span>
+            <span>${escapeHtml(card.nextAction || "")}</span>
+          </div>
+        </button>
+      `;
+    }
+
+    function kanbanLaneHelp(lane) {
+      const copy = {
+        "Review": "Needs operator attention",
+        "Intake": "New request or missing customer",
+        "Customer": "Customer ready, no opportunity",
+        "Opportunity": "Opportunity open or quoted",
+        "SWO Gate": "Approved for SWO",
+        "Scheduling": "SO/SWO or task underway",
+        "Completed": "Closed, done, or completed"
+      };
+      return copy[lane] || "Workflow lane";
+    }
+
+    function renderRequestGroup(group) {
+      const open = requestGroupState[group.key] !== undefined ? requestGroupState[group.key] : group.defaultOpen;
+      return `
+        <details class="request-group" ${open ? "open" : ""} ontoggle="rememberRequestGroup('${escapeAttr(group.key)}', this.open)">
+          <summary>
+            <div class="request-group-title">
+              <strong>${escapeHtml(group.label)}</strong>
+              <span>${group.rows.length} request${group.rows.length === 1 ? "" : "s"}</span>
+            </div>
+            <div class="request-group-stats">
+              ${renderGroupStats(group)}
+            </div>
+          </summary>
+          <div class="request-table-head">
+            <span>Customer</span><span>Request</span><span>Stage</span><span>Linked Records</span><span>Next Action</span>
+          </div>
+          ${group.rows.map(renderRequestRow).join("")}
+        </details>
+      `;
+    }
+
+    function renderGroupStats(group) {
+      const highRisk = group.rows.filter((row) => row.risk === "High").length;
+      const needCustomer = group.rows.filter((row) => !row.customerId).length;
+      const statuses = group.rows.reduce((acc, row) => {
+        const status = row.status || "New";
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {});
+      const topStatuses = Object.keys(statuses)
+        .sort((a, b) => statuses[b] - statuses[a])
+        .slice(0, 3)
+        .map((status) => `<span class="chip ${statusClass(status)}">${escapeHtml(status)} ${statuses[status]}</span>`)
+        .join("");
+      return `
+        ${highRisk ? `<span class="chip missing">High ${highRisk}</span>` : ""}
+        ${needCustomer ? `<span class="chip warning">Need Customer ${needCustomer}</span>` : ""}
+        ${topStatuses || '<span class="chip optional">No statuses</span>'}
+      `;
+    }
+
+    function renderRequestRow(row) {
+      return `
+        <button class="request-row" type="button" data-detail="request" data-payload="${escapeAttr(row.detailPayload || encodeClientDetailPayload(row))}">
+          <div><div class="request-customer">${customerNameHtml(row)}</div><div class="request-meta">${escapeHtml([row.phone, row.email, row.location].filter(Boolean).join(" · "))}</div><div class="request-date">${escapeHtml(formatRequestDate(row))}</div></div>
+          <div><div class="request-issue">${escapeHtml(row.issue)}</div><div class="request-note">${escapeHtml(row.details || row.anythingElse || "")}</div></div>
+          <div class="stage-stack">${stageHtml(row)}</div>
+          <div class="record-stack">${linkedRecordsHtml(row)}</div>
+          <strong>${escapeHtml(row.nextAction || "Review")}</strong>
+        </button>
+      `;
+    }
+
+    function customerNameHtml(row) {
+      const prefix = row.customerPrefix || ((row.strivenCustomerId || row.customerId) ? "#" + (row.strivenCustomerId || row.customerId) : "#NEW");
+      const name = row.customerName || row.fullName || String(row.customer || "").replace(/^#?NEW\\s+-\\s+|^#?\\d+\\s+-\\s+/, "") || "Unknown customer";
+      return `<span class="customer-prefix ${(row.strivenCustomerId || row.customerId) ? "known" : "new"}">${escapeHtml(prefix)}</span> ${escapeHtml(name)}`;
+    }
+
+    function stageHtml(row) {
+      return [
+        `<span class="chip ${(row.strivenCustomerId || row.customerId) ? "configured" : "missing"}">${(row.strivenCustomerId || row.customerId) ? "Customer OK" : "Needs Customer"}</span>`,
+        `<span class="chip ${(row.strivenOppId || row.opportunityId) ? "opportunity" : "optional"}">${(row.strivenOppId || row.opportunityId) ? "Opportunity" : "No Opp"}</span>`,
+        `<span class="chip ${(row.strivenSoId || row.salesOrderId || row.swoNumber) ? "swo" : "optional"}">${(row.strivenSoId || row.salesOrderId || row.swoNumber) ? "Work Order" : "No WO"}</span>`
+      ].join("");
+    }
+
+    function linkedRecordsHtml(row) {
+      return [
+        (row.strivenCustomerId || row.customerId) ? `<span>Customer #${escapeHtml(row.strivenCustomerId || row.customerId)}</span>` : '<span class="muted-record">Customer missing</span>',
+        (row.strivenOppId || row.opportunityId) ? `<span>Opp #${escapeHtml(row.strivenOppId || row.opportunityId)}</span>` : '<span class="muted-record">Opp missing</span>',
+        (row.strivenSoId || row.salesOrderId || row.swoNumber) ? `<span>SO/SWO #${escapeHtml(row.swoNumber || row.salesOrderNumber || row.strivenSoId || row.salesOrderId)}</span>` : '<span class="muted-record">WO missing</span>'
+      ].join("");
+    }
+
+    function encodeClientDetailPayload(row) {
+      const payload = {
+        id: row.id || row.requestId || "",
+        customer: row.customerName || row.fullName || row.customer || "Unknown customer",
+        customerPrefix: row.customerPrefix || ((row.strivenCustomerId || row.customerId) ? "#" + (row.strivenCustomerId || row.customerId) : "#NEW"),
+        isNewCustomer: !(row.strivenCustomerId || row.customerId),
+        submittedAt: formatRequestDate(row),
+        issue: row.issue || "Service request",
+        details: row.details || "",
+        anythingElse: row.anythingElse || "",
+        makeModelAge: row.makeModelAge || "",
+        preferredDays: row.preferredDays || "",
+        phone: row.phone || "",
+        altPhone: row.altPhone || "",
+        email: row.email || "",
+        location: [row.street, row.city, row.province, row.postalCode].filter(Boolean).join("\\n") || row.location || "",
+        linked: [row.strivenCustomerId && "Customer #" + row.strivenCustomerId, row.strivenOppId && "Opportunity #" + row.strivenOppId, (row.strivenSoId || row.swoNumber) && "SO/SWO #" + (row.swoNumber || row.salesOrderNumber || row.strivenSoId)].filter(Boolean).join("\\n") || "No linked records yet.",
+        status: row.derivedStatus || row.status || "Unknown",
+        risk: row.riskLevel || row.risk || "Low",
+        nextAction: row.nextAction || "Review",
+        ai: {
+          title: (row.lastError || (row.riskLevel || row.risk) === "High") ? "Review before action" : (row.strivenCustomerId || row.customerId) ? "Continue ServiceOps flow" : "Resolve customer first",
+          summary: `Suggested next action: ${row.nextAction || "Review"}. Status is ${row.derivedStatus || row.status || "Unknown"} and risk is ${row.riskLevel || row.risk || "Low"}.`,
+          items: [row.nextAction || "Review this request."]
+        }
+      };
+      return btoa(JSON.stringify(payload)).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/, "");
+    }
+
+    function openRequestDrawer(id) {
+      const row = findRequestById(id);
+      if (!row) {
+        toast("Request details could not be found. Try reloading requests.");
+        return;
+      }
+      const drawer = document.getElementById("requestDrawer");
+      const backdrop = document.getElementById("requestDrawerBackdrop");
+      drawer.innerHTML = renderRequestDrawer(row);
+      backdrop.classList.add("open");
+    }
+
+    function openKanbanDrawer(id) {
+      const card = findKanbanCardById(id);
+      if (!card) {
+        toast("Kanban card details could not be found. Try reloading the board.");
+        return;
+      }
+      state.selectedKanbanCardId = id;
+      state.isKanbanDrawerOpen = true;
+      renderKanbanDrawer(id);
+      const backdrop = document.getElementById("kanbanDrawerBackdrop");
+      const drawer = document.getElementById("kanbanDetailDrawer");
+      if (backdrop) backdrop.hidden = false;
+      if (drawer) {
+        drawer.classList.add("is-open");
+        drawer.setAttribute("aria-hidden", "false");
+      }
+      document.body.classList.add("drawer-open");
+    }
+
+    function closeKanbanDrawer() {
+      state.isKanbanDrawerOpen = false;
+      state.selectedKanbanCardId = null;
+      const backdrop = document.getElementById("kanbanDrawerBackdrop");
+      const drawer = document.getElementById("kanbanDetailDrawer");
+      if (drawer) {
+        drawer.classList.remove("is-open");
+        drawer.setAttribute("aria-hidden", "true");
+      }
+      if (backdrop) backdrop.hidden = true;
+      document.body.classList.remove("drawer-open");
+    }
+
+    function closeRequestDrawer() {
+      const backdrop = document.getElementById("requestDrawerBackdrop");
+      if (backdrop) backdrop.classList.remove("open");
+      document.body.classList.remove("drawer-open");
+    }
+
+    // JAVASCRIPT SECTION — ROW SELECTION
+    function openInlineRequestDetail(encoded) {
+      const normalized = String(encoded || "").replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+      const row = JSON.parse(atob(padded));
+      const drawer = document.getElementById("requestDrawer");
+      const backdrop = document.getElementById("requestDrawerBackdrop");
+      drawer.innerHTML = renderInlineRequestDrawer(row);
+      backdrop.classList.add("open");
+      document.body.classList.add("drawer-open");
+    }
+
+    // JAVASCRIPT SECTION — DETAIL PANEL ACTIONS
+    function inlineActionButtons(row) {
+      const actions = [];
+      const customerId = row.strivenCustomerId || row.customerId;
+      const opportunityId = row.strivenOppId || row.opportunityId;
+      const workOrderId = row.strivenSoId || row.salesOrderId || row.salesOrderNumber || row.swoNumber;
+      if (!customerId) actions.push("Match / Create Customer");
+      if (customerId && !opportunityId) actions.push("Create Opportunity");
+      if (opportunityId && !workOrderId) actions.push("Create Work Order");
+      if (customerId) actions.push("Open Customer");
+      if (opportunityId) actions.push("Open Opportunity");
+      if (workOrderId) actions.push("Open Work Order");
+      if (row.lastError) {
+        actions.push("Copy Error");
+        actions.push("Retry Step");
+      }
+      return actions.map((label) => `<button class="button" type="button" data-action="toast" data-value="${escapeAttr(label + " is ready for wiring to the approved pipeline action.")}">${escapeHtml(label)}</button>`).join("") || '<span class="small">No contextual actions available.</span>';
+    }
+
+    function renderInlineRequestDrawer(row) {
+      const prefixClass = row.isNewCustomer ? "new" : "known";
+      const ai = row.ai || { title: "AI Suggestions", summary: "", items: [] };
+      const rawNotes = [
+        row.pipelineState && "Pipeline: " + row.pipelineState,
+        row.status && "Status: " + row.status,
+        row.risk && "Risk: " + row.risk,
+        row.lastError && "Error: " + row.lastError,
+        row.anythingElse && "Raw Notes: " + row.anythingElse
+      ].filter(Boolean).join("\n") || "No internal notes captured.";
+      return `
+        <!-- HTML SECTION — REQUEST DETAIL PANEL -->
+        <div class="drawer-header">
+          <div>
+            <div class="kicker">${escapeHtml(row.id || "Webform request")}</div>
+            <h2><span class="customer-prefix ${prefixClass}">${escapeHtml(row.customerPrefix || "#NEW")}</span>${escapeHtml(row.customer || "Unknown customer")}</h2>
+            <div class="subline">${escapeHtml(row.submittedAt || "")}</div>
+          </div>
+          <button class="button" type="button" onclick="closeRequestDrawer()">Close</button>
+        </div>
+        <div class="drawer-grid">
+          <div class="drawer-card wide"><div class="drawer-label">Customer Provided</div><div class="drawer-value"><strong>${escapeHtml(row.issue || "Service request")}</strong>
+${escapeHtml([row.details && "Details: " + row.details, row.anythingElse && "Anything Else: " + row.anythingElse, row.makeModelAge && "Fireplace: " + row.makeModelAge, row.preferredDays && "Preferred Days: " + row.preferredDays].filter(Boolean).join("\n") || "No request notes captured.")}</div></div>
+          <div class="drawer-card"><div class="drawer-label">Contact</div><div class="drawer-value">${escapeHtml([row.phone && "Phone: " + row.phone, row.altPhone && "Alt: " + row.altPhone, row.email && "Email: " + row.email].filter(Boolean).join("\n") || "No contact captured.")}</div></div>
+          <div class="drawer-card"><div class="drawer-label">Location</div><div class="drawer-value">${escapeHtml(row.location || "No address captured.")}</div></div>
+          <div class="drawer-card wide"><div class="drawer-label">Linked Records</div><div class="drawer-value">${escapeHtml(row.linked || "No linked records yet.")}</div></div>
+          <div class="drawer-card wide"><div class="drawer-label">Suggested Next Action</div><div class="drawer-value"><strong>${escapeHtml(row.nextAction || "Review")}</strong>
+${escapeHtml(ai.summary || "")}</div></div>
+          <div class="drawer-card wide"><div class="drawer-label">Action Buttons</div><div class="detail-actions">${inlineActionButtons(row)}</div></div>
+          <div class="drawer-card wide"><div class="drawer-label">Internal Notes / Raw Submission</div><div class="drawer-value">${escapeHtml(rawNotes)}</div></div>
+        </div>
+        <div class="ai-suggestions">
+          <div class="kicker">AI Suggestions</div>
+          <h3>${escapeHtml(ai.title || "Suggested next action")}</h3>
+          <p>${escapeHtml(ai.summary || "")}</p>
+          <div class="list">${(ai.items || []).map((item) => `<div class="list-row"><span>${escapeHtml(item)}</span></div>`).join("")}</div>
+        </div>
+      `;
+    }
+
+    function findRequestById(id) {
+      const rows = (requestsData && requestsData.rows) || [];
+      return rows.find((row) => String(row.id) === String(id));
+    }
+
+    function findKanbanCardById(id) {
+      const lanes = (kanbanData && kanbanData.lanes) || [];
+      for (let i = 0; i < lanes.length; i += 1) {
+        const found = (lanes[i].cards || []).find((card) => String(card.id) === String(id));
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function renderKanbanDrawer(cardOrId) {
+      const card = typeof cardOrId === "string" ? findKanbanCardById(cardOrId) : cardOrId;
+      const target = document.getElementById("kanbanDetailDrawer");
+      if (!card) {
+        if (target) target.innerHTML = '<div class="empty">Kanban card details could not be found.</div>';
+        return "";
+      }
+      const opportunity = card.opportunity || {};
+      const request = card.request || {};
+      const recordSummary = [
+        card.customerId && `Customer #${card.customerId}`,
+        card.opportunityId && `Opportunity #${card.opportunityId}`,
+        card.salesOrderId && `SO/SWO #${card.salesOrderId}`,
+        card.taskId && `Task #${card.taskId}`
+      ].filter(Boolean).join("\n") || "No linked records yet.";
+      const markup = `
+        <div class="drawer-header">
+          <div>
+            <div class="kicker">${escapeHtml(card.source === "opportunity" ? "Striven Opportunity" : card.id || "Kanban card")}</div>
+            <h2>${escapeHtml(card.title || "Untitled card")}</h2>
+            <div class="subline">${escapeHtml([card.lane, card.submittedAt && formatKanbanDate(card.submittedAt)].filter(Boolean).join(" · "))}</div>
+          </div>
+          <button class="button" type="button" onclick="closeKanbanDrawer()">Close</button>
+        </div>
+        <div class="drawer-grid">
+          <div class="drawer-card">
+            <div class="drawer-label">Lane</div>
+            <div class="drawer-value"><span class="chip ${statusClass(card.lane || "Unknown")}">${escapeHtml(card.lane || "Unknown")}</span></div>
+          </div>
+          <div class="drawer-card">
+            <div class="drawer-label">Source</div>
+            <div class="drawer-value"><span class="chip ${sourceClass(card.source)}">${escapeHtml(card.source || "request")}</span></div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Next ServiceOps Action</div>
+            <div class="drawer-value"><strong>${escapeHtml(card.nextAction || "Review")}</strong></div>
+          </div>
+          <div class="drawer-card">
+            <div class="drawer-label">Status / Risk</div>
+            <div class="drawer-value"><span class="chip ${statusClass(card.status)}">${escapeHtml(card.status || "Unknown")}</span>${card.risk ? ` <span class="chip ${statusClass(card.risk)}">Risk: ${escapeHtml(card.risk)}</span>` : ""}</div>
+          </div>
+          <div class="drawer-card">
+            <div class="drawer-label">Contact / Location</div>
+            <div class="drawer-value">${escapeHtml([card.phone && `Phone: ${card.phone}`, card.email && `Email: ${card.email}`, card.location].filter(Boolean).join("\n") || "No contact/location on card.")}</div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Request Summary</div>
+            <div class="drawer-value"><strong>${escapeHtml(card.subtitle || request.issue || "Service request")}</strong>\n${escapeHtml(request.details || request.anythingElse || "No request details captured.")}</div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Striven Opportunity</div>
+            <div class="drawer-value">${escapeHtml([
+              card.opportunityId && `ID: ${card.opportunityId}`,
+              opportunity.title && `Title: ${opportunity.title}`,
+              card.opportunityStage && `Stage: ${card.opportunityStage}`,
+              opportunity.customerName && `Customer: ${opportunity.customerName}`,
+              opportunity.customerId && `Customer ID: ${opportunity.customerId}`,
+              opportunity.value && `Value: ${opportunity.value}`,
+              opportunity.owner && `Owner: ${opportunity.owner}`
+            ].filter(Boolean).join("\n") || "No linked Striven opportunity.")}</div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Linked Records</div>
+            <div class="drawer-value">${escapeHtml(recordSummary)}</div>
+          </div>
+        </div>
+      `;
+      if (target) target.innerHTML = markup;
+      return markup;
+    }
+
+    function renderRequestDrawer(row) {
+      const recordSummary = [
+        row.customerId && `Customer #${row.customerId}`,
+        row.opportunityId && `Opportunity #${row.opportunityId}`,
+        row.salesOrderId && `SO/SWO #${row.salesOrderId}`,
+        row.taskId && `Task #${row.taskId}`
+      ].filter(Boolean).join("\n") || "No linked records yet.";
+      return `
+        <div class="drawer-header">
+          <div>
+            <div class="kicker">${escapeHtml(row.id || "Webform request")}</div>
+            <h2>${escapeHtml(row.customer || "Unknown customer")}</h2>
+            <div class="subline">${escapeHtml(formatRequestDate(row))}</div>
+          </div>
+          <button class="button" type="button" data-action="closeDrawer" onclick="closeRequestDrawer()">Close</button>
+        </div>
+        <div class="drawer-grid">
+          <div class="drawer-card">
+            <div class="drawer-label">Status</div>
+            <div class="drawer-value"><span class="chip ${statusClass(row.status)}">${escapeHtml(row.status || "New")}</span></div>
+          </div>
+          <div class="drawer-card">
+            <div class="drawer-label">Risk</div>
+            <div class="drawer-value"><span class="chip ${statusClass(row.risk)}">${escapeHtml(row.risk || "Low")}</span></div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Next ServiceOps Action</div>
+            <div class="drawer-value"><strong>${escapeHtml(row.nextAction || "Review")}</strong></div>
+          </div>
+          <div class="drawer-card">
+            <div class="drawer-label">Contact</div>
+            <div class="drawer-value">${escapeHtml([row.phone && `Phone: ${row.phone}`, row.altPhone && `Alt: ${row.altPhone}`, row.email && `Email: ${row.email}`].filter(Boolean).join("\n") || "No contact captured.")}</div>
+          </div>
+          <div class="drawer-card">
+            <div class="drawer-label">Location</div>
+            <div class="drawer-value">${escapeHtml([row.street, row.city, row.province, row.postalCode].filter(Boolean).join("\n") || row.location || "No address captured.")}</div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Request</div>
+            <div class="drawer-value"><strong>${escapeHtml(row.issue || "Service request")}</strong>\n${escapeHtml(row.details || "No issue details captured.")}</div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Fireplace / Asset Notes</div>
+            <div class="drawer-value">${escapeHtml(row.makeModelAge || "Unknown fireplace")}</div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Additional Notes</div>
+            <div class="drawer-value">${escapeHtml(row.anythingElse || row.preferredDays || "No additional notes.")}</div>
+          </div>
+          <div class="drawer-card wide">
+            <div class="drawer-label">Linked Records</div>
+            <div class="drawer-value">${escapeHtml(recordSummary)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function rememberRequestGroup(key, open) {
+      requestGroupState[key] = Boolean(open);
+    }
+
+    function groupRequestsByDate(rows) {
+      const now = new Date();
+      const todayStart = startOfDay(now).getTime();
+      const yesterdayStart = todayStart - 86400000;
+      const sevenStart = todayStart - (6 * 86400000);
+      const thirtyStart = todayStart - (29 * 86400000);
+      const groupMap = {
+        today: { key: "today", label: "Today", rows: [], defaultOpen: true, sortValue: 9000000000000 },
+        yesterday: { key: "yesterday", label: "Yesterday", rows: [], defaultOpen: true, sortValue: 8000000000000 },
+        last7: { key: "last7", label: "Last 7 Days", rows: [], defaultOpen: true, sortValue: 7000000000000 },
+        last30: { key: "last30", label: "Last 30 Days", rows: [], defaultOpen: false, sortValue: 6000000000000 }
+      };
+      const order = ["today", "yesterday", "last7", "last30"];
+      function addGroup(key, label, defaultOpen, sortValue) {
+        if (!groupMap[key]) {
+          groupMap[key] = { key, label, rows: [], defaultOpen, sortValue };
+          order.push(key);
+        }
+        return groupMap[key];
+      }
+      rows.forEach((row) => {
+        const stamp = requestTimestamp(row);
+        let key = "unknown";
+        let label = "No date captured";
+        let defaultOpen = false;
+        let sortValue = -1;
+        if (stamp) {
+          const date = new Date(stamp);
+          const dayStart = startOfDay(date).getTime();
+          if (dayStart >= todayStart) {
+            key = "today";
+            label = "Today";
+            defaultOpen = true;
+            sortValue = 9000000000000;
+          } else if (dayStart >= yesterdayStart) {
+            key = "yesterday";
+            label = "Yesterday";
+            defaultOpen = true;
+            sortValue = 8000000000000;
+          } else if (dayStart >= sevenStart) {
+            key = "last7";
+            label = "Last 7 Days";
+            defaultOpen = true;
+            sortValue = 7000000000000;
+          } else if (dayStart >= thirtyStart) {
+            key = "last30";
+            label = "Last 30 Days";
+            defaultOpen = false;
+            sortValue = 6000000000000;
+          } else {
+            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+            label = date.toLocaleDateString([], { month: "long", year: "numeric" });
+            defaultOpen = false;
+            sortValue = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+          }
+        }
+        addGroup(key, label, defaultOpen, sortValue).rows.push(row);
+      });
+      return order
+        .map((key) => groupMap[key])
+        .sort((a, b) => b.sortValue - a.sortValue)
+        .map((group) => ({ ...group, rows: group.rows.sort((a, b) => requestTimestamp(b) - requestTimestamp(a)) }));
+    }
+
+    function requestTimestamp(row) {
+      if (row && Number(row.sortTime)) return Number(row.sortTime);
+      const stamp = Date.parse((row && row.submittedAt) || "");
+      return Number.isNaN(stamp) ? 0 : stamp;
+    }
+
+    function startOfDay(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function formatRequestDate(row) {
+      const stamp = requestTimestamp(row);
+      if (!stamp) return row.submittedAt || "No submitted date";
+      const date = new Date(stamp);
+      return date.toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+
+    function formatKanbanDate(value) {
+      const date = new Date(value || "");
+      if (Number.isNaN(date.getTime())) return value || "";
+      return date.toLocaleString([], { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function renderAdminPage() {
+      document.getElementById("hero").innerHTML = `
+        <div class="kicker">Admin / Config</div>
+        <h1>ServiceOps settings</h1>
+        <div class="subline">Fast technical control surface. Script Properties are saved server-side, secrets are masked, and changes are logged.</div>
+        <div class="toolbar">
+          <input id="settingsSearch" placeholder="Filter categories, property names, URLs, API keys, limits..." value="${escapeAttr(filterText)}" oninput="filterSettings(this.value)">
+          <button class="button" type="button" data-action="testIntegrations" onclick="runMaintenance('testIntegrationHealth')">Test Integrations</button>
+          <button class="button" type="button" data-action="forceRefresh" onclick="runMaintenance('forceFullRefreshWithLog')">Force Full Refresh</button>
+        </div>
+      `;
+      document.getElementById("mainGrid").className = "grid";
+      document.getElementById("mainGrid").innerHTML = `
+        <div class="settings-grid" id="settingsContent"></div>
+        <aside class="health-panel">
+          <div class="health-card"><h3>Data Freshness</h3><div class="list" id="freshnessList"><div class="empty">Loading freshness...</div></div></div>
+          <div class="health-card"><h3>Sheets</h3><div class="list" id="sheetList"><div class="empty">Loading sheets...</div></div></div>
+          <div class="health-card"><h3>Integrations</h3><div class="list" id="integrationList"><div class="empty">Loading integrations...</div></div></div>
+        </aside>
+      `;
+      if (adminData) renderAdminData(adminData);
+      renderSettings();
+    }
+
+    function renderIntegrationsPage() {
+      const integrations = getIntegrationCatalog();
+      const filtered = requestFilterText ? integrations.filter((item) => [item.label, item.description, item.fields.map((field) => field.label).join(" "), item.templates.map((template) => template.name).join(" ")].join(" ").toLowerCase().includes(requestFilterText)) : integrations;
+      const active = filtered.find((item) => item.id === activeIntegration) || integrations.find((item) => item.id === activeIntegration) || integrations[0];
+      activeIntegration = active.id;
+      document.getElementById("hero").innerHTML = `
+        <div class="kicker">ServiceOps Connections</div>
+        <h1>Integrations</h1>
+        <div class="subline">Configure the channels that move an intake from first contact through customer match, scheduling, work order handoff, and customer follow-up.</div>
+        <div class="toolbar">
+          <input id="integrationSearch" placeholder="Filter integrations, credentials, templates..." value="${escapeAttr(requestFilterText)}" oninput="handleGlobalSearch(this.value)">
+          <button class="button" type="button" data-action="toggleSecrets" onclick="toggleIntegrationSecrets()">${showIntegrationSecrets ? "Hide Secrets" : "Show Secrets"}</button>
+          <button class="button" type="button" data-action="testIntegrations" onclick="runMaintenance('testIntegrationHealth')">Test Connections</button>
+          <button class="button primary" type="button" data-action="toast" data-value="Configuration values save as Script Properties when edited. Templates are staged examples until persistence is approved." onclick="toast('Configuration values save as Script Properties when edited. Templates are staged examples until persistence is approved.')">Save All</button>
+        </div>
+      `;
+      document.getElementById("statusStrip").innerHTML = `
+        <div class="status-card"><div class="metric-label">Healthy</div><div class="metric-value">${integrations.filter((item) => item.status === "OK").length}</div><div class="small">ready connections</div></div>
+        <div class="status-card"><div class="metric-label">Review</div><div class="metric-value">${integrations.filter((item) => item.status !== "OK").length}</div><div class="small">warnings or missing config</div></div>
+        <div class="status-card"><div class="metric-label">Templates</div><div class="metric-value">${integrations.reduce((sum, item) => sum + item.templates.length, 0)}</div><div class="small">operator message patterns</div></div>
+        <div class="status-card"><div class="metric-label">Writes</div><div class="metric-value">Gated</div><div class="small">secrets stay server-side</div></div>
+      `;
+      document.getElementById("issues").innerHTML = "";
+      document.getElementById("mainGrid").className = "request-shell";
+      document.getElementById("mainGrid").innerHTML = `
+        <div class="integration-tabs" role="tablist">
+          ${integrations.map((item) => `<button class="integration-tab ${item.id === active.id ? "active" : ""}" type="button" data-action="selectIntegration" data-value="${escapeAttr(item.id)}" onclick="selectIntegration('${escapeAttr(item.id)}')">${escapeHtml(item.icon)} ${escapeHtml(item.label)}</button>`).join("")}
+        </div>
+        <section class="integration-layout">
+          <div>
+            <article class="integration-card">
+              <header class="integration-card-header">
+                <div><div class="kicker">${escapeHtml(active.label)}</div><h2>${escapeHtml(active.description)}</h2></div>
+                <span class="chip ${statusClass(active.status)}">${escapeHtml(active.status)}</span>
+              </header>
+              <div class="toggle-row">
+                <div><strong>${escapeHtml(active.label)} automation</strong><div class="small">${escapeHtml(active.enabled ? "Enabled for operator workflows" : "Disabled until reviewed")}</div></div>
+                <button class="switch ${active.enabled ? "active" : ""}" type="button" onclick="toast('Enablement is shown as a configuration model. Use Admin Settings for real flags.')"><span></span></button>
+              </div>
+              <div class="integration-form">
+                ${active.fields.map(renderIntegrationField).join("")}
+              </div>
+              <div class="integration-actions-row">
+                <button class="button" type="button" onclick="runMaintenance('testIntegrationHealth')" ${active.status === "Missing" ? "disabled" : ""}>Test Connection</button>
+                <span class="small">${escapeHtml(active.connectionCopy)}</span>
+              </div>
+            </article>
+            <section class="template-section">
+              <header class="template-section-header"><div><div class="kicker">Message Templates</div><h2>${escapeHtml(active.label)} templates</h2></div><button class="button" type="button" onclick="toast('Templates are examples here; persistence can be added as Script Properties when approved.')">Add</button></header>
+              <div class="template-grid">${active.templates.map(renderTemplateCard).join("")}</div>
+              <div class="template-vars">Variables: ${escapeHtml(active.variables.join(" "))}</div>
+            </section>
+          </div>
+          <aside class="integration-side-card">
+            <h3>Operational boundary</h3>
+            <p class="small">The best pieces are combined here: provider health from Apps Script, tabbed configuration from the reference CRM, ServiceOps-specific templates, and read-only/gated write language for Classic Fireplace operations.</p>
+            <div class="list" style="margin-top:12px">
+              ${integrations.map((item) => `<div class="list-row"><div><strong>${escapeHtml(item.label)}</strong><div class="small">${escapeHtml(item.healthMessage)}</div></div><span class="chip ${statusClass(item.status)}">${escapeHtml(item.status)}</span></div>`).join("")}
+            </div>
+          </aside>
+        </section>
+      `;
+    }
+
+    function renderIntegrationField(field) {
+      const value = field.secret && !showIntegrationSecrets ? maskFieldValue(field.value) : field.value;
+      const inputId = field.settingKey ? "integration-" + field.settingKey : "";
+      return `
+        <div class="integration-field">
+          <label>${escapeHtml(field.label)}</label>
+          <input class="setting-control" ${inputId ? `id="${escapeAttr(inputId)}"` : ""} value="${escapeAttr(value)}" placeholder="${escapeAttr(field.placeholder || "")}" ${field.settingKey ? `onchange="saveIntegrationField('${escapeAttr(field.settingKey)}', this.value, '${escapeAttr(field.label)}')"` : "readonly"}>
+          <div class="small">${escapeHtml(field.help || "")}</div>
+        </div>
+      `;
+    }
+
+    function renderTemplateCard(template) {
+      return `
+        <article class="template-card">
+          <input value="${escapeAttr(template.name)}" aria-label="Template name">
+          <textarea aria-label="${escapeAttr(template.name)} body">${escapeHtml(template.body)}</textarea>
+        </article>
+      `;
+    }
+
+    function selectIntegration(id) {
+      activeIntegration = id;
+      renderIntegrationsPage();
+    }
+
+    function toggleIntegrationSecrets() {
+      showIntegrationSecrets = !showIntegrationSecrets;
+      renderIntegrationsPage();
+    }
+
+    function saveIntegrationField(key, value, label) {
+      if (!runtimeReady()) {
+        toast("Save works only in the deployed Apps Script web app.");
+        return;
+      }
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (!result || result.ok === false) {
+            toast((result && (result.error || result.message)) || "Save failed.");
+            return;
+          }
+          toast(label + " saved and logged.");
+          loadSettings();
+          loadAdminData();
+        })
+        .withFailureHandler((err) => toast("Save failed: " + errorMessage(err)))
+        .saveAdminSetting({ key, value, category: "Integrations", label });
+    }
+
+    function renderSettings() {
+      const target = document.getElementById("settingsContent");
+      if (!target) return;
+      if (!settingsCatalog) return;
+      const groups = (settingsCatalog.groups || []).map((group) => ({
+        ...group,
+        items: (group.items || []).filter((item) => {
+          if (!filterText) return true;
+          return [group.name, group.description, item.key, item.label, item.help, item.status].join(" ").toLowerCase().includes(filterText);
+        })
+      })).filter((group) => group.items.length);
+      if (!groups.length) {
+        target.innerHTML = '<div class="empty">No settings match this search.</div>';
+        return;
+      }
+      target.innerHTML = groups.map(renderSettingsGroup).join("");
+    }
+
+    function renderSettingsGroup(group) {
+      return `
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <h2>${escapeHtml(group.name)}</h2>
+            <div class="subline">${escapeHtml(group.description || "")}</div>
+          </div>
+          ${group.items.map((item) => renderSettingRow(group.name, item)).join("")}
+        </section>
+      `;
+    }
+
+    function renderSettingRow(category, item) {
+      const inputId = "setting-" + item.key;
+      const value = item.secret ? "" : (item.value || "");
+      const placeholder = item.secret && item.configured ? "Configured - enter new value to replace" : (item.placeholder || "");
+      return `
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">${escapeHtml(item.label)}</div>
+            <div class="setting-key">${escapeHtml(item.key)}</div>
+            <div class="setting-help">${escapeHtml(item.help || "")}</div>
+          </div>
+          <div>${settingControl(inputId, item, value, placeholder)}</div>
+          <div class="setting-actions">
+            <span class="chip ${statusClass(item.status)}">${escapeHtml(item.status || "Optional")}</span>
+            <button class="save" type="button" onclick="saveSetting('${escapeAttr(item.key)}','${escapeAttr(category)}','${escapeAttr(item.label)}')">Save</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function settingControl(id, item, value, placeholder) {
+      if (item.type === "select") {
+        return `<select class="setting-control" id="${escapeAttr(id)}">${(item.options || []).map((option) => `<option value="${escapeAttr(option)}" ${String(item.value) === String(option) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
+      }
+      if (item.type === "textarea") {
+        return `<textarea class="setting-control" id="${escapeAttr(id)}" placeholder="${escapeAttr(placeholder)}">${escapeHtml(value)}</textarea>`;
+      }
+      const type = item.type === "password" ? "password" : item.type || "text";
+      return `<input class="setting-control" id="${escapeAttr(id)}" type="${escapeAttr(type)}" value="${escapeAttr(value)}" placeholder="${escapeAttr(placeholder)}">`;
+    }
+
+    function saveSetting(key, category, label) {
+      const input = document.getElementById("setting-" + key);
+      if (!input) return;
+      if (!runtimeReady()) {
+        toast("Save works only in the deployed Apps Script web app.");
+        return;
+      }
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (!result || result.ok === false) {
+            toast((result && (result.error || result.message)) || "Save failed.");
+            return;
+          }
+          toast(label + " saved and logged.");
+          loadSettings();
+        })
+        .withFailureHandler((err) => toast("Save failed: " + errorMessage(err)))
+        .saveAdminSetting({ key, value: input.value, category, label });
+    }
+
+    function runMaintenance(functionName) {
+      const labels = {
+        refreshStaleDataWithLog: "Refresh stale data",
+        forceFullRefreshWithLog: "Force full refresh",
+        testIntegrationHealth: "Re-test integrations"
+      };
+      const label = labels[functionName] || functionName;
+      if (!confirm(label + "?\n\nThis may take a moment and will write an admin log entry.")) return;
+      if (!runtimeReady()) {
+        toast(label + " works only in the deployed Apps Script web app.");
+        return;
+      }
+      toast(label + " started...");
+      google.script.run
+        .withSuccessHandler((result) => {
+          toast((result && (result.message || result.ok && label + " completed.")) || label + " completed.");
+          loadAdminData();
+          if (/refresh|force/i.test(functionName)) {
+            requestsData = null;
+            kanbanData = null;
+            if (activePage === "requests") loadRequests();
+            if (activePage === "kanban") loadKanban();
+          }
+        })
+        .withFailureHandler((err) => toast(label + " failed: " + errorMessage(err)))
+        [functionName]();
+    }
+
+    function filterSettings(value) {
+      filterText = String(value || "").toLowerCase().trim();
+      const other = document.getElementById("settingsSearch");
+      const global = document.getElementById("globalSearch");
+      if (document.activeElement === global && other) other.value = value;
+      if (document.activeElement === other && global) global.value = value;
+      renderSettings();
+    }
+
+    function getIntegrationCatalog() {
+      const health = ((adminData && adminData.integrationHealth) || demoAdminData().integrationHealth || []).reduce((acc, item) => {
+        acc[String(item.key || item.name || "").toLowerCase()] = item;
+        acc[String(item.name || "").toLowerCase()] = item;
+        return acc;
+      }, {});
+      const groupMap = ((settingsCatalog && settingsCatalog.groups) || demoSettings().groups || []).reduce((acc, group) => {
+        acc[group.name] = group.items || [];
+        return acc;
+      }, {});
+      function fieldFrom(group, key, label, fallback, help) {
+        const item = (groupMap[group] || []).find((entry) => entry.key === key) || {};
+        return { label, value: item.value || fallback || "", secret: Boolean(item.secret), placeholder: item.placeholder || "", settingKey: item.key || key, help: help || item.help || "" };
+      }
+      function healthFor(key, fallbackName) {
+        const item = health[key] || health[fallbackName.toLowerCase()] || {};
+        return { status: item.status || "Missing", message: item.message || item.lastSuccessfulCall || "Not checked yet." };
+      }
+      const strivenHealth = healthFor("striven", "Striven");
+      const calendarHealth = { status: (groupMap["Google Calendar"] || []).some((item) => item.configured) ? "OK" : "Warning", message: "Technician calendars are configured through Script Properties." };
+      const assistantHealth = { status: (groupMap["OpenAI / Assistant"] || []).some((item) => item.key === "OPENAI_API_KEY" && item.configured) ? "OK" : "Warning", message: "Assistant remains recommendation-only." };
+      const smsHealth = healthFor("twilio", "Twilio");
+      const reportingHealth = healthFor("reporting", "Reporting API");
+      return [
+        {
+          id: "striven",
+          icon: "▣",
+          label: "Striven",
+          description: "Customer, opportunity, sales order, work order, report, and future gated write configuration.",
+          status: strivenHealth.status,
+          healthMessage: strivenHealth.message,
+          enabled: true,
+          connectionCopy: "Used as the CRM/ERP source of truth. Writes remain controlled by ServiceOps gates.",
+          fields: [
+            fieldFrom("Striven", "STRIVEN_BASE_URL", "API base URL", "https://api.striven.com"),
+            fieldFrom("Striven", "STRIVEN_CLIENT_ID", "Client ID"),
+            fieldFrom("Striven", "STRIVEN_CLIENT_SECRET", "Client Secret"),
+            fieldFrom("Striven", "SERVICEOPS_STRIVEN_WRITE_MODE", "Write Mode", "disabled")
+          ],
+          templates: [
+            { name: "Customer Match Note", body: "ServiceOps matched {customer_name} from {request_channel}. Review {confidence_signal} before linking records." },
+            { name: "Work Order Handoff", body: "Create SWO for {service_type} at {service_address}. Fireplace: {fireplace_details}. Office notes: {office_notes}." }
+          ],
+          variables: ["{customer_name}", "{request_channel}", "{confidence_signal}", "{service_type}", "{service_address}", "{fireplace_details}", "{office_notes}"]
+        },
+        {
+          id: "calendar",
+          icon: "◷",
+          label: "Google Calendar",
+          description: "Technician calendars, appointment visibility, dispatch planning, and contractor event filtering.",
+          status: calendarHealth.status,
+          healthMessage: calendarHealth.message,
+          enabled: true,
+          connectionCopy: "Calendar reads are operational visibility. Striven tasks remain the scheduling source of truth.",
+          fields: [
+            fieldFrom("Google Calendar", "SERVICEOPS_CALENDAR_CHRIS_ID", "Chris Calendar"),
+            fieldFrom("Google Calendar", "SERVICEOPS_CALENDAR_TRAVIS_ID", "Travis Calendar"),
+            fieldFrom("Google Calendar", "SERVICEOPS_CALENDAR_MATT_ID", "Matt Calendar"),
+            fieldFrom("Google Calendar", "CALENDAR_ALLOWED_ORGANIZER_DOMAIN", "Allowed Organizer Domain", "@classicfireplace.ca")
+          ],
+          templates: [
+            { name: "Technician Event", body: "{service_type} for {customer_name}. Window: {arrival_window}. Address: {service_address}. SWO: {work_order_id}." },
+            { name: "Route Note", body: "Clustered with {nearby_jobs}. Drive estimate: {drive_time}. Access notes: {access_notes}." }
+          ],
+          variables: ["{service_type}", "{customer_name}", "{arrival_window}", "{service_address}", "{work_order_id}", "{nearby_jobs}", "{drive_time}", "{access_notes}"]
+        },
+        {
+          id: "email",
+          icon: "✉",
+          label: "Email",
+          description: "Office replies, intake confirmations, missing-detail requests, and future notification routing.",
+          status: "Warning",
+          healthMessage: "Notification mode is configured under Workflow / Notifications / Security.",
+          enabled: false,
+          connectionCopy: "Email copy is prepared for operators; sending should stay gated until templates are approved.",
+          fields: [
+            fieldFrom("Workflow / Notifications / Security", "SERVICEOPS_NOTIFICATION_MODE", "Notification Mode", "ui_only"),
+            { label: "From name", value: "Classic Fireplace Service", help: "Display copy only until live mail sending is wired." },
+            { label: "Reply routing", value: "Shared office inbox", help: "Keep replies with the service team." }
+          ],
+          templates: [
+            { name: "Missing Details", body: "Hi {customer_name}, thanks for contacting Classic Fireplace. Could you send {missing_fields} so we can prepare your service request?" },
+            { name: "Booking Confirmation", body: "Hi {customer_name}, your service visit is tentatively planned for {scheduled_date}. We will confirm the technician window once dispatch is finalized." }
+          ],
+          variables: ["{customer_name}", "{missing_fields}", "{scheduled_date}", "{service_type}", "{service_address}", "{office_phone}"]
+        },
+        {
+          id: "sms",
+          icon: "☏",
+          label: "SMS",
+          description: "Short customer updates through Twilio or an equivalent provider.",
+          status: smsHealth.status,
+          healthMessage: smsHealth.message,
+          enabled: smsHealth.status === "OK",
+          connectionCopy: "SMS is optional and should remain disabled unless customer messaging is approved.",
+          fields: [
+            fieldFrom("Workflow / Notifications / Security", "TWILIO_SID", "Twilio SID"),
+            fieldFrom("Workflow / Notifications / Security", "TWILIO_AUTH_TOKEN", "Twilio Auth Token"),
+            { label: "From number", value: "", placeholder: "+14165551234", help: "Future provider-specific sender number." }
+          ],
+          templates: [
+            { name: "Arrival Reminder", body: "Classic Fireplace reminder: {technician_name} is scheduled for {arrival_window} at {service_address}. Reply here or call {office_phone}." },
+            { name: "More Info Needed", body: "Classic Fireplace needs a little more info for your service request: {missing_fields}. Reply when you can and we will keep it moving." }
+          ],
+          variables: ["{technician_name}", "{arrival_window}", "{service_address}", "{office_phone}", "{missing_fields}", "{customer_name}"]
+        },
+        {
+          id: "assistant",
+          icon: "◎",
+          label: "OpenAI Assistant",
+          description: "Read-only summaries, matching rationale, risk explanation, and operator-facing next actions.",
+          status: assistantHealth.status,
+          healthMessage: assistantHealth.message,
+          enabled: true,
+          connectionCopy: "AI recommends and explains. It cannot approve, merge, schedule, or write records.",
+          fields: [
+            fieldFrom("OpenAI / Assistant", "OPENAI_API_KEY", "OpenAI API Key"),
+            fieldFrom("OpenAI / Assistant", "SERVICEOPS_AI_ENABLED", "AI Enabled", "false"),
+            fieldFrom("OpenAI / Assistant", "SERVICEOPS_MODEL_CHEAP", "Low-cost Model", "gpt-4.1-mini"),
+            fieldFrom("OpenAI / Assistant", "SERVICEOPS_AI_TIMEOUT_MS", "Timeout MS", "12000")
+          ],
+          templates: [
+            { name: "Intake Summary", body: "Summarize the request from {customer_name}, identify missing fields, confidence signals, and the safest next operator action." },
+            { name: "Match Rationale", body: "Explain why {candidate_customer} is or is not a safe match for {incoming_request}. Highlight conflicting contact or address signals." }
+          ],
+          variables: ["{customer_name}", "{candidate_customer}", "{incoming_request}", "{missing_fields}", "{confidence_signal}", "{next_action}"]
+        },
+        {
+          id: "reporting",
+          icon: "▤",
+          label: "Reporting API",
+          description: "Report URLs and cache refresh sources for customers, locations, assets, tasks, and work orders.",
+          status: reportingHealth.status,
+          healthMessage: reportingHealth.message,
+          enabled: true,
+          connectionCopy: "Reports power the read model. Refreshes are logged through the admin audit trail.",
+          fields: [
+            fieldFrom("Striven", "STRIVEN_CUSTOMER_REPORT_API_KEY", "Customers Report"),
+            fieldFrom("Striven", "REPORT_LOCATIONS_KEY", "Locations Report"),
+            fieldFrom("Striven", "SERVICE_TASKS_REPORT_URL", "Service Tasks Report"),
+            fieldFrom("Google Sheets", "SERVICEOPS_CACHE_SOURCE", "Visible Data Source", "cache")
+          ],
+          templates: [
+            { name: "Refresh Log", body: "Refresh {report_name}. Result: {refresh_result}. Cache age: {cache_age}. Operator: {operator_name}." }
+          ],
+          variables: ["{report_name}", "{refresh_result}", "{cache_age}", "{operator_name}"]
+        }
+      ];
+    }
+
+    function maskFieldValue(value) {
+      const text = String(value || "");
+      if (!text) return "";
+      if (text.length <= 4) return "****";
+      return "********" + text.slice(-4);
+    }
+
+    function shortTime(value) {
+      if (!value) return "Now";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Now";
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderList(id, items, renderer) {
+      const target = document.getElementById(id);
+      target.innerHTML = items && items.length ? items.map(renderer).join("") : '<div class="empty">No data available.</div>';
+    }
+
+    function countBy(items, key, value) {
+      return (items || []).filter((item) => item && item[key] === value).length;
+    }
+
+    function statusClass(value) {
+      const text = String(value || "").toLowerCase();
+      if (/approved for swo|swo gate/.test(text)) return "swo";
+      if (/ready|in progress|active|service work order created/.test(text)) return "ready";
+      if (/configured|fresh|found|ok|healthy|current|low/.test(text)) return "configured";
+      if (/scheduled/.test(text)) return "scheduled";
+      if (/completed|closed|done/.test(text)) return "completed";
+      if (/review|missing|error|failed|blocked|escalated|high/.test(text)) return "missing";
+      if (/stale|warning|waiting|medium|quoted|customer/.test(text)) return "warning";
+      if (/opportunity/.test(text)) return "opportunity";
+      if (/new|intake/.test(text)) return "intake";
+      if (/unknown/.test(text)) return "unknown";
+      return "optional";
+    }
+
+    function sourceClass(value) {
+      const text = String(value || "").toLowerCase();
+      if (text === "hybrid") return "hybrid";
+      if (text === "opportunity") return "opportunity";
+      return "intake";
+    }
+
+    function runtimeReady() {
+      return Boolean(window.google && google.script && google.script.run);
+    }
+
+    function toast(message) {
+      const el = document.getElementById("toast");
+      el.textContent = message;
+      el.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => el.classList.remove("show"), 4500);
+    }
+
+    function errorMessage(err) {
+      return (err && (err.message || err.toString && err.toString())) || String(err || "Unknown error");
+    }
+
+    function safeRun(fn, label) {
+      try {
+        return fn();
+      } catch (error) {
+        showShellError(`${label || "Action"} failed: ${errorMessage(error)}`);
+        return null;
+      }
+    }
+
+    function showShellError(message) {
+      const text = errorMessage(message);
+      const issues = document.getElementById("issues");
+      if (issues) {
+        issues.innerHTML = `<div class="issues">${escapeHtml(text)}</div>`;
+      }
+      const main = document.getElementById("mainGrid");
+      if (main && !main.innerHTML.trim()) {
+        main.className = "request-shell";
+        main.innerHTML = `<div class="empty">${escapeHtml(text)} Try Reload, or hard-refresh this browser tab.</div>`;
+      }
+      const toastEl = document.getElementById("toast");
+      if (toastEl) {
+        toastEl.textContent = text;
+        toastEl.classList.add("show");
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replace(/'/g, "&#39;");
+    }
+
+    function demoAdminData() {
+      return {
+        ok: true,
+        version: { tag: "local-demo", environment: "Local" },
+        freshness: [
+          { label: "Customers", status: "Fresh", ageMinutes: 12, maxMinutes: 60 },
+          { label: "Tech Calendars", status: "Stale", ageMinutes: 18, maxMinutes: 10 }
+        ],
+        sheetStatus: [{ name: "Web Form", status: "Found" }, { name: "Service Tech Calendar", status: "Found" }],
+        integrationHealth: [{ name: "Striven", status: "OK", message: "Configured" }, { name: "Google Calendar", status: "OK", message: "Read-only" }],
+        issues: []
+      };
+    }
+
+    function demoRequests() {
+      return {
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        count: 3,
+        rows: [
+          {
+            id: "WF-DEMO-1",
+            customer: "Elaine Clarke",
+            phone: "416-555-0114",
+            email: "elaine@example.com",
+            location: "Ajax, ON",
+            city: "Ajax",
+            issue: "Pilot / ignition",
+            details: "Pilot will not stay lit on a gas insert.",
+            status: "New Request",
+            risk: "Medium",
+            customerId: "70288",
+            opportunityId: "",
+            salesOrderId: "",
+            taskId: "",
+            nextAction: "Prepare opportunity"
+          },
+          {
+            id: "WF-DEMO-2",
+            customer: "Marco Singh",
+            phone: "905-555-0148",
+            email: "marco@example.com",
+            location: "Whitby, ON",
+            city: "Whitby",
+            issue: "Annual service",
+            details: "Annual maintenance request with flexible weekday timing.",
+            status: "Ready for Scheduling",
+            risk: "Low",
+            customerId: "71812",
+            opportunityId: "OPP-1442",
+            salesOrderId: "SO-7714",
+            taskId: "",
+            nextAction: "Map task"
+          },
+          {
+            id: "WF-DEMO-3",
+            customer: "Unknown customer",
+            phone: "",
+            email: "",
+            location: "Toronto, ON",
+            city: "Toronto",
+            issue: "Gas smell",
+            details: "Customer submitted urgent safety language.",
+            status: "Needs Review",
+            risk: "High",
+            customerId: "",
+            opportunityId: "",
+            salesOrderId: "",
+            taskId: "",
+            nextAction: "Resolve customer"
+          }
+        ]
+      };
+    }
+
+    function demoKanbanData() {
+      const cards = [
+        {
+          id: "REQ-WF-DEMO-1",
+          source: "request",
+          lane: "Intake",
+          title: "Elaine Clarke",
+          subtitle: "Pilot / ignition",
+          customer: "Elaine Clarke",
+          phone: "416-555-0114",
+          email: "elaine@example.com",
+          location: "Ajax, ON",
+          submittedAt: new Date().toISOString(),
+          sortTime: Date.now(),
+          status: "New Request",
+          risk: "Medium",
+          nextAction: "Resolve customer",
+          opportunityId: "",
+          opportunityStage: "",
+          customerId: "",
+          salesOrderId: "",
+          taskId: "",
+          request: demoRequests().rows[0],
+          opportunity: null
+        },
+        {
+          id: "REQ-WF-DEMO-2",
+          source: "hybrid",
+          lane: "SWO Gate",
+          title: "Marco Singh",
+          subtitle: "Annual service",
+          customer: "Marco Singh",
+          phone: "905-555-0148",
+          email: "marco@example.com",
+          location: "Whitby, ON",
+          submittedAt: new Date().toISOString(),
+          sortTime: Date.now() - 60000,
+          status: "Ready for Scheduling",
+          risk: "Low",
+          nextAction: "Check SWO gate",
+          opportunityId: "OPP-1442",
+          opportunityStage: "Approved for SWO",
+          customerId: "71812",
+          salesOrderId: "SO-7714",
+          taskId: "",
+          request: demoRequests().rows[1],
+          opportunity: {
+            opportunityId: "OPP-1442",
+            title: "Annual service - Marco Singh",
+            customerId: "71812",
+            customerName: "Marco Singh",
+            stage: "Approved for SWO",
+            status: "Approved for SWO"
+          }
+        },
+        {
+          id: "OPP-STANDALONE-440999",
+          source: "opportunity",
+          lane: "Opportunity",
+          title: "Unmatched Striven Customer",
+          subtitle: "Standalone quoted opportunity",
+          customer: "Unmatched Striven Customer",
+          phone: "",
+          email: "",
+          location: "",
+          submittedAt: new Date(Date.now() - 86400000).toISOString(),
+          sortTime: Date.now() - 86400000,
+          status: "Quoted",
+          risk: "Low",
+          nextAction: "Match to request",
+          opportunityId: "440999",
+          opportunityStage: "Quoted",
+          customerId: "88001",
+          salesOrderId: "",
+          taskId: "",
+          request: null,
+          opportunity: {
+            opportunityId: "440999",
+            title: "Standalone quoted opportunity",
+            customerId: "88001",
+            customerName: "Unmatched Striven Customer",
+            stage: "Quoted",
+            status: "Quoted"
+          }
+        }
+      ];
+      const lanes = ["Review", "Intake", "Customer", "Opportunity", "SWO Gate", "Scheduling", "Completed"].map((lane) => ({
+        lane,
+        cards: cards.filter((card) => card.lane === lane)
+      }));
+      return {
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        counts: {
+          requests: 2,
+          opportunities: 2,
+          standaloneOpportunities: 1,
+          totalCards: cards.length
+        },
+        lanes,
+        cards
+      };
+    }
+
+    function demoSettings() {
+      return {
+        ok: true,
+        groups: [
+          { name: "Striven", description: "CRM/ERP source of truth.", items: [
+            { key: "STRIVEN_BASE_URL", label: "Base URL", type: "url", value: "https://api.striven.com", status: "Configured", help: "Primary Striven API base URL." },
+            { key: "SERVICEOPS_STRIVEN_WRITE_MODE", label: "Write Mode", type: "select", options: ["disabled", "test", "enabled"], value: "disabled", status: "Configured", help: "Keep disabled until gated writes are approved." }
+          ] },
+          { name: "Google Calendar", description: "Read-only schedule visibility.", items: [
+            { key: "CALENDAR_ALLOWED_ORGANIZER_DOMAIN", label: "Allowed Organizer Domain", type: "text", value: "@classicfireplace.ca", status: "Configured", help: "External contractor-created events stay hidden." },
+            { key: "SERVICEOPS_CALENDAR_FUTURE_DAYS", label: "Calendar Future Days", type: "number", value: "365", status: "Configured", help: "How far ahead to read service tech calendars." }
+          ] }
+        ]
+      };
+    }
+
+    Object.assign(window, {
+      bootApp,
+      reloadAll,
+      showRequestsPage,
+      showKanbanPage,
+      showAdminPage,
+      showIntegrationsPage,
+      handleGlobalSearch,
+      loadRequests,
+      loadKanban,
+      loadAdminData,
+      loadSettings,
+      runMaintenance,
+      closeRequestDrawer,
+      openRequestDrawer,
+      openKanbanDrawer,
+      rememberRequestGroup,
+      filterSettings,
+      saveSetting,
+      selectIntegration,
+      toggleIntegrationSecrets,
+      toast
+    });
+
+    safeRun(bootApp, "open ServiceOps immediately");
+  </script>
+</body>
+</html>
