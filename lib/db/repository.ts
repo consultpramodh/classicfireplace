@@ -4,6 +4,8 @@
  */
 
 import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
+import { dirname, isAbsolute, join } from "node:path";
 import { getCalendarTechnicians, getEnv, LOOKUP_ALIASES } from "@/lib/config/serviceops-config";
 import { demoAudit, demoIntakeRows, demoTaskMapping } from "@/lib/data/demo-data";
 import { findValueByAliases, formatCity, formatCountry, formatEmail, formatName, formatPhone, formatPostal, formatProvince, formatStreet, normalizeEmail, normalizePhone10, safeText } from "@/lib/serviceops/normalization";
@@ -21,13 +23,19 @@ export type SnapshotMeta = {
 };
 
 function dbPathFromUrl(url: string): string {
-  return url.startsWith("file:") ? url.slice(5) : url;
+  const rawPath = url.startsWith("file:") ? url.slice(5) : url;
+  if (process.env.VERCEL && !isAbsolute(rawPath)) {
+    return join("/tmp", rawPath.replace(/^\.?[\\/]+/, ""));
+  }
+  return rawPath;
 }
 
 export function getDb() {
   if (!db) {
-    db = new Database(dbPathFromUrl(getEnv().databaseUrl));
-    db.pragma("journal_mode = WAL");
+    const databasePath = dbPathFromUrl(getEnv().databaseUrl);
+    mkdirSync(dirname(databasePath), { recursive: true });
+    db = new Database(databasePath);
+    db.pragma(process.env.VERCEL ? "journal_mode = DELETE" : "journal_mode = WAL");
     migrate(db);
   }
   return db;
@@ -235,7 +243,7 @@ export function replaceWebFormIntakeRows(rows: IntakeRow[], source = "live") {
   const now = new Date().toISOString();
 
   const tx = database.transaction(() => {
-    database.prepare("DELETE FROM intake_rows WHERE id LIKE 'WEBFORM-%'").run();
+    database.prepare("DELETE FROM intake_rows WHERE id LIKE 'WEBFORM-+'").run();
     const insert = database.prepare(`
       INSERT INTO intake_rows (id, data, updated_at) VALUES (@id, @data, @updatedAt)
       ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at
