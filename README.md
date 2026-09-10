@@ -8,7 +8,8 @@ This `task_mapping` branch is the project ledger for the Classic Fireplace Task 
 2. `PROJECT_CURRENT_STATE.md` — current known production/source state and blockers.
 3. `PROJECT_CHECKPOINT.md` — latest continuation checkpoint and exact next action.
 4. `docs/PREINSPECTION_FLOW.md` — current agreed PreInspection business workflow.
-5. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
+5. `docs/API_REFRESH_POLICY.md` — current API/report refresh cadence, duplicate-call finding, and target guardrails.
+6. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
 
 ## Repository layout
 
