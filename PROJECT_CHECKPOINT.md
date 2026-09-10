@@ -12,33 +12,42 @@ Existing bound Apps Script project. Canonical Apps Script deployment/version ID 
 
 ## Active Objective
 
-Make GitHub the durable project ledger; then simplify and stabilize the PreInspection workflow without losing working safeguards.
+Complete GitHub production-source parity, then simplify and stabilize the PreInspection workflow without losing working safeguards.
 
 ## Last Verified Outcome
 
 - GitHub connector access to `consultpramodh/classicfireplace` is working.
 - `task_mapping` and dated backup branch exist.
 - Deployment-history evidence is present on GitHub.
-- R3.4.20a execution evidence proves a full 36-file Apps Script POST read-back existed locally after deployment.
-- The attempted local GitHub push of that 36-file snapshot failed and did not reach GitHub.
+- R3.4.20a execution evidence proves a full 36-file Apps Script POST read-back existed locally after deployment and matched the pushed Apps Script source byte-for-byte.
+- That execution also created local Git commit `e3b941d`, but its GitHub push failed and the source never reached the remote repository.
+- The exact R3.4.20a execution transcript has been recovered from the ChatGPT File Library.
+- `tools/capture-live-apps-script.ps1` is now committed on `task_mapping`. It performs a fresh clasp clone, SHA-256 inventory, heuristic sensitive-content scan, and ZIP packaging without attempting GitHub authentication.
 
 ## Current Blocker
 
-The exact current 36-file Apps Script POST source is not accessible through the connected tools, and the public repository cannot safely receive raw historical source containing customer PII/secrets without a content-safety pass.
+The exact current 36-file Apps Script source bodies are not accessible through the connected Google Drive/GitHub tools. Bound Apps Script projects are not exposed as ordinary Google Drive files through the current connector. The public repository must not receive raw source until it has been reviewed for credentials/customer PII.
 
 ## Evidence
 
 - R3.4.20a execution: Apps Script remote read-back PASS; GitHub sync FAILED with exit code 128 after password-authentication attempt.
 - R3.4.20a targeted Task 18241 schedule test later returned `decision=BLOCK`, `pass=false`; auto feature was subsequently enabled.
-- Current GitHub branch inspection confirms the 36 source files are absent.
+- Current GitHub branch inspection confirms the 36 production source files are absent.
 
 ## Next Exact Action
 
-Capture one fresh authenticated 36-file live Apps Script pull/POST read-back, scan it for secrets/customer PII, then sync the safe exact source to `apps-script/` using the connected GitHub integration and read the branch back to prove parity.
+Run `tools/capture-live-apps-script.ps1` locally against the Task Mapping Apps Script Script ID. Upload the generated `TaskMapping-LIVE-<timestamp>.zip` to the Task Mapping ChatGPT conversation. Then:
+
+1. inspect all captured files for secrets/customer PII;
+2. compare the 36-file inventory against the known production inventory;
+3. verify hashes and source completeness;
+4. commit the safe canonical source to `apps-script/` using the connected GitHub integration;
+5. read GitHub back and prove parity;
+6. record the successful source-sync execution and update `executions/latest.json`.
 
 ## Fastest Safe Execution Path
 
-`fresh live pull → sensitive-content scan → source inventory/hash manifest → GitHub connector commit → GitHub read-back → record execution → continue PreInspect simplification`
+`fresh live clasp clone → SHA manifest → sensitive-content review → GitHub connector commit → GitHub read-back → parity PASS → continue PreInspect simplification`
 
 ## Deferred
 
