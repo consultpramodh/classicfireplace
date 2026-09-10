@@ -43,13 +43,17 @@ For material code changes:
 12. preserve the existing production deployment unless migration is intentional;
 13. health-check;
 14. feature-verify the intended outcome;
-15. checkpoint the verified state.
+15. synchronize verified source + release evidence to GitHub through the connected GitHub connector;
+16. read GitHub back to prove the remote archive exists;
+17. checkpoint the verified state.
 
 ## GitHub rule
 
-GitHub is the persistent project ledger and rollback history. Sync only **after** Apps Script remote read-back establishes the final source state. A local Git commit is not a GitHub backup until the remote branch is read back successfully.
+GitHub is the persistent project ledger and rollback history. For every ChatGPT-assisted Task Mapping code change, GitHub synchronization is a **mandatory same-procedure step** after Apps Script remote read-back. Do not wait for the user to request it again.
 
-Use the connected GitHub integration. Do not request or embed GitHub passwords, PATs, connector credentials, OAuth tokens, Script Properties, API keys, or cookies.
+Use the connected GitHub integration for repository mutations. Do not request or embed GitHub passwords, PATs, connector credentials, OAuth tokens, Script Properties, API keys, or cookies. Do not use local `git push` as the normal workflow.
+
+A local Git commit is not a GitHub backup until the remote branch is read back successfully.
 
 ## Versioning
 
@@ -92,4 +96,4 @@ Then identify the active objective, bottleneck, risk level, and fastest safe pat
 
 ## Non-negotiable summary
 
-Current authoritative source before assumptions. Evidence before conclusions. One active objective. Critical path first. Minimum safe change. Preserve working functionality. Never push incomplete source. Read back consequential writes. Reconcile before completion. Test according to blast radius. Preserve rollback. Fix root causes. Every checkpoint has one exact next action. Never claim verification that did not occur.
+Current authoritative source before assumptions. Evidence before conclusions. One active objective. Critical path first. Minimum safe change. Preserve working functionality. Never push incomplete source. Read back consequential writes. Reconcile before completion. Test according to blast radius. Preserve rollback. Fix root causes. Every verified code change gets a GitHub connector sync and GitHub read-back. Every checkpoint has one exact next action. Never claim verification that did not occur.
