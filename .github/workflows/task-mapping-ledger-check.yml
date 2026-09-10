@@ -1,0 +1,77 @@
+name: Task Mapping Ledger Check
+
+on:
+  push:
+    branches:
+      - task_mapping
+  pull_request:
+    branches:
+      - task_mapping
+
+permissions:
+  contents: read
+
+jobs:
+  verify-ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required project-ledger files
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            README.md
+            PROJECT_OPERATING_RULES.md
+            PROJECT_CURRENT_STATE.md
+            PROJECT_CHECKPOINT.md
+            TASK_MAPPING_SYNC_POLICY.md
+            executions/latest.json
+          )
+          for f in "${required[@]}"; do
+            test -f "$f" || { echo "Missing required file: $f"; exit 1; }
+          done
+
+      - name: Validate execution JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib
+          for p in pathlib.Path('executions').glob('*.json'):
+              with p.open('r', encoding='utf-8') as f:
+                  json.load(f)
+              print(f'OK {p}')
+          PY
+
+      - name: Reject forbidden credential files
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden='(^|/)(\.clasprc\.json|\.env|\.env\..*|credentials\.json|client_secret.*\.json|.*\.pem|.*\.key)$'
+          bad=$(git ls-files | grep -E "$forbidden" || true)
+          if [ -n "$bad" ]; then
+            echo "Forbidden credential-like files are tracked:"
+            echo "$bad"
+            exit 1
+          fi
+
+      - name: Check current-source status declaration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d apps-script ]; then
+            count=$(find apps-script -type f ! -name README.md | wc -l | tr -d ' ')
+            echo "Apps Script source file count: $count"
+            if [ "$count" -gt 0 ]; then
+              grep -qiE 'parity|verified|source' PROJECT_CURRENT_STATE.md || {
+                echo 'PROJECT_CURRENT_STATE.md must describe source/parity status when apps-script source is present.'
+                exit 1
+              }
+            fi
+          fi
+
+      - name: Summary
+        run: echo 'Task Mapping project-ledger checks passed.'
