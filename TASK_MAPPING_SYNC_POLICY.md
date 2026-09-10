@@ -1,53 +1,77 @@
 # Task Mapping — Verified Execution Sync Policy
 
-This branch is the source archive for verified Classic Fireplace Apps Script Task Mapping executions.
+This branch is the source archive and project ledger for verified Classic Fireplace Apps Script Task Mapping work.
 
-## Required post-execution GitHub step
+## Mandatory automated GitHub step
 
-Every Task Mapping auto-patch package should, after a successful Apps Script push and byte-for-byte remote read-back, prepare the verified POST source for synchronization to this `task_mapping` branch.
+For every ChatGPT-assisted Task Mapping code change, GitHub synchronization is part of the same completion procedure. It is not an optional follow-up and should not require a separate user reminder.
 
-The actual GitHub write must use the authenticated ChatGPT GitHub connector for `consultpramodh`, not a local `git push` that asks the operator for a username, password, PAT, or other GitHub credential.
+After Apps Script reaches `DEPLOYED_SOURCE_VERIFIED`, ChatGPT must use the already-connected GitHub connector for `consultpramodh/classicfireplace` to synchronize the verified source and release metadata to `task_mapping`.
 
-The sync must happen only after the Apps Script deployment has reached `DEPLOYED_SOURCE_VERIFIED`. A failed Apps Script deployment must never be pushed as the current verified source.
+Do not ask the operator for GitHub credentials. Do not run local `git push`, interactive HTTPS authentication, PAT prompts, or password authentication.
 
-## Repository layout
+## Required execution order
 
-- `apps-script/` — exact Apps Script source from the final post-push `clasp pull` read-back.
-- `executions/` — one JSON execution record per verified deployment.
-- `executions/latest.json` — metadata for the most recent verified deployment.
+`pull live Apps Script → validate/patch → targeted regression checks → freshness pull → clasp push → POST read-back → verify source → prepare connector handoff → GitHub connector sync → GitHub read-back → update execution record/checkpoint → final status`
+
+A Task Mapping change is not considered fully archived until the GitHub read-back succeeds.
+
+## What gets synchronized
+
+- `apps-script/` — exact verified Apps Script source from the final POST/read-back snapshot when safe to publish.
+- `executions/` — one machine-readable record per verified deployment/release.
+- `executions/latest.json` — latest recorded release state.
+- `PROJECT_CURRENT_STATE.md` — current production/source truth when materially changed.
+- `PROJECT_CHECKPOINT.md` — exact continuation point and next action.
+- `docs/` — stable business/process documentation only when the agreed design changes.
+- `deployment-history/` — recovered or newly verified release history.
 
 Each execution record should include at minimum:
 
 - release/version name;
 - execution timestamp;
 - Apps Script script ID;
-- pre-patch and post-patch hashes for changed files when available;
 - exact changed-file list;
-- deployment verification status;
-- GitHub branch name;
-- whether runtime feature verification has been completed.
+- pre/post hashes when available;
+- Apps Script deployment/source verification status;
+- runtime feature-verification status;
+- GitHub branch and commit SHA after successful sync;
+- rollback target;
+- known blockers or safety concerns.
 
 ## Authentication rule
 
-1. Do not prompt the operator for GitHub credentials as part of a Task Mapping patch package.
-2. Do not use GitHub password authentication, interactive HTTPS prompts, locally entered PATs, or embedded GitHub tokens.
-3. Do not attempt to extract, copy, save, or expose the ChatGPT GitHub connector credential; connector authentication remains managed by ChatGPT.
-4. GitHub repository mutations for this workflow are performed through the already-connected GitHub connector in ChatGPT.
-5. The operator should only need to run the local Apps Script patch/verification package; GitHub authentication must not be part of that local execution.
+1. GitHub writes use the connected ChatGPT GitHub connector.
+2. Never request the operator's GitHub username/password/PAT for this workflow.
+3. Never attempt to extract, copy, save, or expose the connector credential.
+4. Local Apps Script tooling may use the operator's existing Google/clasp authorization, but it must not perform GitHub authentication.
+5. A local Git commit is not evidence of a GitHub backup. Only connector write + GitHub read-back counts.
 
 ## Safety rules
 
-1. GitHub sync occurs after Apps Script remote read-back, never before.
-2. The source committed under `apps-script/` must come from the final `POST/src` read-back, not from the local working directory alone.
-3. If GitHub sync fails after Apps Script deployment, report Apps Script as deployed/source-verified but GitHub sync as failed; do not misreport the Apps Script deployment as rolled back.
-4. Never force-push `task_mapping` as part of an auto-patch execution.
-5. Fail closed on a branch conflict or stale GitHub base; do not overwrite newer branch work.
-6. Do not commit credentials, Script Properties, OAuth tokens, API keys, cookies, or other secrets.
+1. GitHub sync occurs only after Apps Script remote read-back establishes the final source state.
+2. Never sync a failed or uncertain Apps Script deployment as current verified source.
+3. Never force-push `task_mapping` as part of an automated patch procedure.
+4. Fail closed on a stale GitHub base or branch conflict.
+5. Never commit credentials, Script Properties, OAuth tokens, API keys, cookies, or other secrets.
+6. Because the current repository is public, scan source/history for customer PII and private operational data before publishing raw source.
+7. If exact live source cannot be safely or authoritatively captured, record the gap in `PROJECT_CHECKPOINT.md`; do not substitute stale or partial source.
 
-## Current workflow convention
+## Automation boundary
 
-Future Task Mapping patch packages should not run `git clone`, `git push`, or any interactive GitHub authentication command. They should finish by producing the exact verified POST source and execution metadata for connector sync.
+The connected GitHub connector can automate repository writes from ChatGPT, but it cannot lend its credential to a PowerShell/clasp process running on the operator's PC. Therefore:
 
-The intended execution order is:
+- local/Apps Script execution produces or exposes the verified POST source;
+- ChatGPT performs the GitHub write automatically through the connector once that verified source is accessible;
+- no separate GitHub login or manual push is part of the procedure.
 
-`pull live Apps Script → validate/patch → regression checks → freshness pull → clasp push → POST read-back → prepare GitHub handoff artifact → ChatGPT GitHub connector sync to task_mapping → final status`
+## Completion rule
+
+Before reporting a Task Mapping change complete, report these states separately:
+
+- Apps Script deployment/source verification;
+- runtime feature verification;
+- GitHub synchronization;
+- GitHub read-back/parity.
+
+Never collapse these into one generic `PASS` if any stage is incomplete.
