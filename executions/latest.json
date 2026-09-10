@@ -1,0 +1,11 @@
+{
+  "version": "R3.4.20a",
+  "sourceReleaseDate": "2026-09-09",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
+  "runtimeFeatureVerified": false,
+  "githubSourceParity": "NOT_VERIFIED",
+  "githubSyncStatusForR3_4_20a": "FAILED",
+  "currentSafetyConcern": "Task 18241 schedule-gate regression returned pass=false/BLOCK before PreInspect auto was subsequently enabled.",
+  "nextAction": "Capture fresh live 36-file source, scan for sensitive content, sync through connected GitHub integration, read back, then continue PreInspect simplification."
+}

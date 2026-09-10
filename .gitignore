@@ -1,0 +1,21 @@
+# Credentials / local authentication
+.clasprc.json
+.env
+.env.*
+*.pem
+*.key
+
+# Local workspaces and backups
+PRE/
+POST/
+FRESH/
+WORK/
+node_modules/
+*.zip
+*.tmp
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,26 @@
+{
+  "version": "R3.4.20a",
+  "timestamp": "2026-09-09T11:52:55.665811-04:00",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "branch": "task_mapping",
+  "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
+  "runtimeFeatureVerified": false,
+  "before35Hash": "0410ad7b8f2c13d40a0a957540781b48093ea04a4b49a7fcd8b5ba07297c6828",
+  "after35Hash": "0ce224f2dce9ddabe087caced541628294737070f5d85d436473f752e9848e81",
+  "changedFiles": [
+    "src/35_PreInspect_Task_Review.js"
+  ],
+  "sourceOfArchive": "POST/src remote clasp read-back",
+  "githubLocalCommit": "e3b941d",
+  "githubSyncStatus": "FAILED",
+  "githubSyncError": "git push failed with exit code 128 after password authentication was attempted",
+  "githubRemoteSourcePresent": false,
+  "autoFeatureEnabledAfterDeploymentPackage": false,
+  "laterRuntimeEvidence": {
+    "contractsPass": true,
+    "task18241ScheduleGatePass": false,
+    "task18241ScheduleDecision": "BLOCK",
+    "autoWasSubsequentlyEnabled": true
+  },
+  "notes": "Do not treat the local commit as a GitHub backup. Source was verified in Apps Script but did not reach the remote repository."
+}
