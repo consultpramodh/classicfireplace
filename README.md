@@ -17,9 +17,14 @@ This `task_mapping` branch is the project ledger for the Classic Fireplace Task 
 - `deployment-history/` — human-readable release/deployment history recovered from verified execution evidence.
 - `docs/` — stable workflow/design documentation.
 - `history/` — historical source manifests and legacy evidence that must not be mistaken for current production source.
+- `tools/` — small operator utilities used to capture or verify project state. `capture-live-apps-script.ps1` performs a fresh clasp clone, SHA-256 inventory, review-only sensitive-content scan, and ZIP packaging without attempting GitHub authentication.
 
 ## Current warning
 
 The repository is public. Raw source snapshots must not include credentials, tokens, customer PII, or other private data. The current live Apps Script project has been proven by clasp execution logs to contain 36 files, but the exact current 36-file POST source is not presently available through the connected tools. Therefore `apps-script/` is intentionally marked incomplete rather than populated from a stale or partial source snapshot.
 
 GitHub must never be described as production-parity until a full live pull, source verification, safe-content check, GitHub commit, and GitHub read-back all succeed.
+
+## Capture the live source
+
+Run the PowerShell utility in `tools/capture-live-apps-script.ps1` with the current Apps Script Script ID. It creates a timestamped ZIP on the Windows Desktop containing only the pulled source, a SHA-256 manifest, and a heuristic sensitive-content report. Upload that ZIP to the Task Mapping ChatGPT conversation; the connected GitHub integration is then used for the repository write and final parity read-back.
