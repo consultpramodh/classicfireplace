@@ -1,6 +1,6 @@
 # PreInspection — Canonical Business Flow
 
-**Status:** agreed target design as of 2026-09-10. This documents the desired business flow; it does not claim every stage is implemented or runtime-verified.
+**Status:** agreed target design as of 2026-09-11. This documents the desired business flow; it does not claim every stage is implemented or runtime-verified.
 
 ## A. Read Calendar identifiers
 
@@ -11,7 +11,9 @@ From the Google Calendar event, look for one or more of:
 3. Customer Phone Number
 4. Customer Address
 
-Multiple identifiers should corroborate one another rather than create competing workflows.
+Also retain the **Calendar organizer email** as the authoritative PreInspection Requested By / sales-rep identity.
+
+Multiple customer identifiers should corroborate one another rather than create competing workflows.
 
 ## B. Resolve the customer
 
@@ -33,7 +35,7 @@ Normalize the Calendar address, match against customer locations, identify the o
 
 ## C. Convergence package
 
-Every branch must converge to one verified package containing, where available:
+Every customer branch must converge to one verified package containing, where available:
 
 - Customer ID
 - Customer Number
@@ -48,6 +50,8 @@ Every branch must converge to one verified package containing, where available:
 - Match Source
 - Match Evidence
 - Match Status
+
+Separately preserve the Calendar organizer email for sales-rep/Requested By resolution.
 
 If no unique customer can be established: **REVIEW; no task mutation.**
 
@@ -69,7 +73,7 @@ The task should be reconciled to:
 
 - Customer — resolved customer
 - Location — resolved customer location
-- Requested By — resolved customer contact (`Type: contact`)
+- **Requested By — Striven Employee resolved by exact Google Calendar organizer email (`Type: employee`)**
 - Start Date/Time — Google Calendar
 - Due Date/Time — Google Calendar
 - Assigned Pool — Pool 8
@@ -78,11 +82,15 @@ The task should be reconciled to:
 - Technician-completed fields — not prefilled
 - Sales Order — not required/pushed merely to create the PreInspection task
 
+The customer Contact remains available for customer/contact context, but it is not used as PreInspection Requested By.
+
+If the organizer email is missing, has no Striven Employee match, or resolves ambiguously: **REVIEW and do not fall back to the customer contact.**
+
 Update only fields that differ from the desired state.
 
 ## F. Verify and link
 
-Read the task back from Striven and verify the material state. Then maintain one idempotent managed Striven Task link in the PreInspection Calendar description while preserving organizer-authored text.
+Read the task back from Striven and verify the material state, including the Requested By Employee ID. Then maintain one idempotent managed Striven Task link in the PreInspection Calendar description while preserving organizer-authored text.
 
 ## G. Technician completion
 
