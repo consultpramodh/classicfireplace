@@ -5,13 +5,16 @@
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
   "runtimeFeatureVerified": true,
-  "runtimeVerificationScope": "Organizer-to-Employee Requested By observed PASS on live Task 18379 (Spencer Bambek, Employee 20) via no-sheet read-only audit. Legacy tasks 18241 and 18362 still retain contact Requested By and require reconciliation.",
+  "runtimeVerificationScope": "Organizer-to-Employee Requested By verified on live existing PreInspection tasks. Task 18379 already matched Spencer Bambek Employee 20. Tasks 18241 and 18362 were reconciled from customer contacts to Warren Jennings Employee 54 and Adam Stokes Employee 31 respectively, with RequestedBy-only writes and final Striven read-back PASS.",
   "sourceFileCountPushed": 36,
   "changedFiles": [
     "35_PreInspect_Task_Review.js",
     "36_PreInspect_Task_Create.js"
   ],
   "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
+  "actualProcessRequestedByRule": "REFLECTED_IN_PRODUCTION_SOURCE",
+  "actualProcessSpreadsheetDependency": "STILL_PRESENT",
+  "spreadsheetDependencyDetails": "The production existing-task Requested By path delegates to preinspectR3421PushRequestedByOrganizerPlan_, and the production create path uses preinspectR3421BuildRequestedByForEvent_. However, preinspectR3421ResolveTaskContext_ still reads PreInspect Task Mapping when context is incomplete, and preinspectR3421OrganizerEmailForEvent_ reads the PreInspect Calendar sheet to resolve organizer email. The no-sheet audit/reconciliation tests bypass these spreadsheet lookups and therefore do not prove the full normal workflow is spreadsheet-independent.",
   "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
-  "nextAction": "Reconcile legacy PreInspection Tasks 18241 and 18362 to their organizer Employees with read-back verification, then upload the verified POST ZIP for exact 36-file GitHub source parity."
+  "nextAction": "Replace the production organizer/context sheet lookups with direct Calendar/event inputs so normal PreInspection reconciliation and creation can run without PreInspect Calendar or PreInspect Task Mapping dependency, then regression-test both existing-task and new-task paths."
 }
