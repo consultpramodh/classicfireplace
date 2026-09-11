@@ -1,0 +1,25 @@
+{
+  "release": "R3.4.21a_REQUESTED_BY_ORGANIZER_EMPLOYEE_PACKAGE_FIX",
+  "date": "2026-09-11",
+  "status": "PACKAGE_FIXED_NOT_YET_DEPLOYED",
+  "failedAttempt": {
+    "release": "R3.4.21_REQUESTED_BY_ORGANIZER_EMPLOYEE",
+    "productionWritePerformed": false,
+    "failureStage": "clasp wrapper / project discovery before PRE clone",
+    "rootCause": "PowerShell wrapper used $Args as a named parameter; $Args is an automatic PowerShell variable, so clasp subcommands were not forwarded and clasp printed generic usage text."
+  },
+  "fix": {
+    "claspParameter": "$ClaspArgs",
+    "scriptIdDefaultRestored": true,
+    "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+    "projectFingerprintStillRequired": true,
+    "packageSelfTest": "PASS",
+    "changedFileAllowlist": [
+      "35_PreInspect_Task_Review.js",
+      "36_PreInspect_Task_Create.js"
+    ],
+    "postPushFullProjectVerification": true,
+    "automaticRollbackOnVerificationFailure": true
+  },
+  "next": "Run the corrected R3.4.21a ZIP via RUN_AUTO_UPDATE.cmd and require DEPLOYED_SOURCE_VERIFIED before runtime testing."
+}
