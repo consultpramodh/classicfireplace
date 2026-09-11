@@ -4,17 +4,19 @@
   "sourceReleaseDate": "2026-09-11",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
-  "runtimeFeatureVerified": true,
-  "runtimeVerificationScope": "Organizer-to-Employee Requested By verified on live existing PreInspection tasks. Task 18379 already matched Spencer Bambek Employee 20. Tasks 18241 and 18362 were reconciled from customer contacts to Warren Jennings Employee 54 and Adam Stokes Employee 31 respectively, with RequestedBy-only writes and final Striven read-back PASS.",
+  "runtimeFeatureVerified": false,
+  "runtimeRegression": true,
+  "runtimeRegressionObservedAt": "2026-09-11T17:32:00-04:00",
+  "runtimeRegressionDetails": "After manual no-sheet reconciliation set Task 18379 to Spencer Employee 20, Task 18241 to Warren Employee 54, and Task 18362 to Adam Employee 31, the normal PreInspection OPEN-task schedule identity reconcile subsequently overwrote those Employee Requested By values back to customer contacts. Runtime logs show Task 18379 previousRequestedBy id 20 -> contact 56293, Task 18241 id 54 -> contact 56268, and Task 18362 id 31 -> contact 56310, using resolutionMethod CUSTOMER_CONTACT_PHONE and status PUSHED_AND_VERIFIED.",
   "sourceFileCountPushed": 36,
   "changedFiles": [
     "35_PreInspect_Task_Review.js",
     "36_PreInspect_Task_Create.js"
   ],
   "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
-  "actualProcessRequestedByRule": "REFLECTED_IN_PRODUCTION_SOURCE",
+  "actualProcessRequestedByRule": "REGRESSION_OLD_CONTACT_PATH_STILL_ACTIVE",
+  "likelyCause": "R3.4.21c patched one known Requested By plan path, but the scheduled PREINSPECT_OPEN_TASK_SCHEDULE_IDENTITY_RECONCILE / PREINSPECT_SELECTED_SCHEDULE_IDENTITY_RECONCILE path is still reaching an old or alternate customer-contact implementation. No evidence has been found of a later full Apps Script source deployment overwriting R3.4.21c; duplicate/alternate function definition or call path is therefore the leading hypothesis pending live function-source diagnostics.",
   "actualProcessSpreadsheetDependency": "STILL_PRESENT",
-  "spreadsheetDependencyDetails": "The production existing-task Requested By path delegates to preinspectR3421PushRequestedByOrganizerPlan_, and the production create path uses preinspectR3421BuildRequestedByForEvent_. However, preinspectR3421ResolveTaskContext_ still reads PreInspect Task Mapping when context is incomplete, and preinspectR3421OrganizerEmailForEvent_ reads the PreInspect Calendar sheet to resolve organizer email. The no-sheet audit/reconciliation tests bypass these spreadsheet lookups and therefore do not prove the full normal workflow is spreadsheet-independent.",
   "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
-  "nextAction": "Replace the production organizer/context sheet lookups with direct Calendar/event inputs so normal PreInspection reconciliation and creation can run without PreInspect Calendar or PreInspect Task Mapping dependency, then regression-test both existing-task and new-task paths."
+  "nextAction": "Do not re-fix individual tasks yet. Run a read-only live function-source diagnostic for pushSelectedPreInspectRequestedBy, preinspectR32PushRequestedByPlan_, and preinspectR3421PushRequestedByOrganizerPlan_ to identify the active implementation, then patch the exact scheduled reconcile path and regression-test that it cannot revert Employee Requested By to a customer contact."
 }
