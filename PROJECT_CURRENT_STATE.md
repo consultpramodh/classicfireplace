@@ -9,21 +9,33 @@ Classic Fireplace Task Mapping — Install, Delivery, Service, and PreInspection
 ## Production Apps Script
 
 - Script ID: `1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m`
-- Recent clasp execution evidence shows the live project contains **36 files**.
-- Latest source release for which remote Apps Script read-back was explicitly recorded in available evidence: **PreInspect R3.4.20a**.
-- R3.4.20a changed only `35_PreInspect_Task_Review.js`.
-- Apps Script POST read-back for that release reported remote source equal to WORK byte-for-byte.
+- Live project contains **36 files**.
+- Latest source release explicitly pushed and POST-read-back verified: **PreInspect R3.4.21c**.
+- R3.4.21c changed only:
+  - `35_PreInspect_Task_Review.js`
+  - `36_PreInspect_Task_Create.js`
+- Full 36-file POST source matched the intended WORK source after push.
+- Runtime business verification of organizer → Employee Requested By is still pending on one real PreInspection row.
+
+### R3.4.21c verified hashes
+
+- `35_PreInspect_Task_Review.js`
+  - PRE: `0ce224f2dce9ddabe087caced541628294737070f5d85d436473f752e9848e81`
+  - POST: `ace973c125a621744af388630c7596a72a8951b0cce89324b9ab6c6bdbf8b464`
+- `36_PreInspect_Task_Create.js`
+  - PRE: `e5d93757a99eb7f6880de30a8721a3b3e99f8ae6b47f69f482be54e20a055a0f`
+  - POST: `2dd95a1f2e664ecb8adcc5377be166d27200362f42f115f21c3307f12c45aff0`
 
 ## GitHub state
 
 - Repository: `consultpramodh/classicfireplace`
 - Branch: `task_mapping`
 - Repository visibility: **public**.
-- A dated safety branch exists: `task-mapping-full-backup-20260909`.
-- Current GitHub source parity with production is **NOT VERIFIED** because the exact current 36-file source is not yet present under `apps-script/`.
-- GitHub is the project ledger and all ChatGPT-assisted source syncs must use the connected GitHub integration, never local password/PAT pushes.
+- GitHub is the project ledger and ChatGPT-assisted source syncs use the connected GitHub integration, never local password/PAT pushes.
+- R3.4.21c deployment evidence is recorded in `executions/2026-09-11-r3.4.21c-deployed.json` and `executions/latest.json`.
+- Exact production-source parity under `apps-script/` is still **PENDING** because the verified POST ZIP remains on the local PC and has not yet been uploaded into this conversation for source archival.
 
-## PreInspection Requested By rule — approved 2026-09-11
+## PreInspection Requested By rule — LIVE SOURCE DEPLOYED
 
 The previous customer-contact Requested By behavior is superseded **for PreInspection only**.
 
@@ -31,23 +43,17 @@ New rule:
 
 `Google Calendar organizer email → exact Striven Employee → RequestedBy { Id: EmployeeId, Type: employee }`
 
-- Customer contacts remain available for customer/contact resolution, but they are not PreInspection Requested By.
-- Missing organizer, zero employee matches, or multiple employee matches must REVIEW/fail closed.
+- Customer contacts remain available for customer/contact resolution, but are not PreInspection Requested By.
+- Missing organizer, zero employee matches, or multiple employee matches must REVIEW / NO WRITE.
 - No customer-contact fallback.
-- New PreInspection creation and existing OPEN PreInspection reconciliation must both use this organizer-employee rule.
+- New PreInspection creation and existing OPEN PreInspection reconciliation both use this organizer-employee rule.
 - Install, Delivery, and Service Requested By logic is unchanged.
 
-GitHub now contains:
+**Source deployment status:** `DEPLOYED_SOURCE_VERIFIED`.
 
-- `docs/PREINSPECTION_REQUESTED_BY_POLICY.md` — canonical requirement;
-- `tools/patch-preinspect-requestedby-organizer.js` — fail-closed source patcher;
-- `tools/deploy-preinspect-requestedby-organizer.ps1` — fresh pull → patch → syntax check → freshness pull → clasp push → POST read-back → package procedure.
-
-**Deployment status:** PATCH PACKAGE READY / NOT YET EXECUTED AGAINST LIVE APPS SCRIPT. Do not claim production behavior changed until the deployment utility completes and a real PreInspect row verifies the organizer Employee on read-back.
+**Runtime behavior status:** `PENDING_REAL_PREINSPECT_ROW`.
 
 ## Current PreInspection operating design
-
-Agreed simplified flow:
 
 `Calendar identifiers + organizer → Resolve Customer/Location/Contact → Resolve organizer Employee → Find or create one OPEN PreInspect task → Sync authoritative task fields → Verify → Append task link to Calendar → Technician completes task → final SO attached → find Install event/task by exact SO and same customer → append PreInspection link below Install task link.`
 
@@ -55,27 +61,23 @@ The Calendar customer resolver starts from one or more of Customer Number, Sales
 
 If the customer is verified but the Calendar event lacks the Customer Number, the intended design remains a non-blocking email to the event organizer requesting that the Customer Number be added.
 
-## API/report refresh finding — 2026-09-10
+## API/report refresh finding
 
-The current Task Mapping source snapshot contains overlapping scheduled report-refresh layers:
+The current Task Mapping source contains overlapping scheduled report-refresh layers:
 
 - five live operational slots at approximately 8:30 AM, 11:30 AM, 1:30 PM, 3:30 PM, and 5:30 PM;
 - six additional Refresh/Rebuild + Calendar Link slots at approximately 8:00 AM, 10:00 AM, 12:00 PM, 2:00 PM, 4:00 PM, and 6:00 PM.
 
-At current task/work-order dataset sizes, the live operational slots perform about **40 small-report GETs/day**, while the six extra refresh/rebuild slots add about **24 substantially duplicate report GETs/day**. This is approximately **64 scheduled operational report GETs/day before daily big-data refreshes and row-specific API calls**.
+At current task/work-order dataset sizes, the live operational slots perform about **40 small-report GETs/day**, while the six extra refresh/rebuild slots add about **24 substantially duplicate report GETs/day**.
 
-Recommended minimal correction: keep the five operational slots and once-daily big-data refresh, but stop the six Calendar Link slots from unconditionally re-fetching operational Striven reports. See `docs/API_REFRESH_POLICY.md`.
+Recommended minimal correction remains: keep the five operational slots and once-daily big-data refresh, but stop the six Calendar Link slots from unconditionally re-fetching operational Striven reports. See `docs/API_REFRESH_POLICY.md`.
 
-**API-cadence status: REVIEWED / NOT YET DEPLOYED.**
-
-## Known working/proven areas
-
-Available execution evidence has demonstrated substantial portions of the PreInspect flow, including customer/task matching, new-task creation, historical customer-contact Requested By writes, Pool 8 assignment, no-Sales-Order creation behavior, task read-back, and Calendar task-link writes.
+**API-cadence status:** REVIEWED / NOT YET DEPLOYED.
 
 ## Known gaps / risks
 
-1. **GitHub source parity:** current 36-file production source is not present on GitHub.
-2. **Requested By migration:** organizer→Employee patch is packaged but not yet live/runtime-verified.
+1. **Runtime Requested By proof:** run one real PreInspection and confirm task read-back shows the organizer's Striven Employee.
+2. **GitHub source parity:** upload the verified R3.4.21c POST ZIP so the exact 36-file production source can be archived.
 3. **Scheduler safety:** the targeted Task 18241 schedule gate previously returned `pass:false` / `BLOCK`, but PreInspect auto was subsequently enabled.
 4. **API/report cadence:** six 2-hour refresh/rebuild slots duplicate report pulls already performed by five operational slots; reduction is recommended but not yet deployed.
 5. **Field 854:** historical runtime evidence showed read-back mismatches; final reliable end-to-end behavior remains to be proven after simplification.
@@ -86,4 +88,4 @@ Available execution evidence has demonstrated substantial portions of the PreIns
 
 ## Current active objective
 
-Deploy and verify the PreInspection-only Requested By change to Calendar organizer → Striven Employee, archive the verified POST source to GitHub, then continue the API-cadence and PreInspection simplification work.
+Runtime-verify R3.4.21c on one real PreInspection row, archive the verified POST source to GitHub, then continue the API-cadence and PreInspection simplification work.
