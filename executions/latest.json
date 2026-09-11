@@ -4,7 +4,8 @@
   "sourceReleaseDate": "2026-09-11",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
-  "runtimeFeatureVerified": false,
+  "runtimeFeatureVerified": true,
+  "runtimeVerificationScope": "Organizer-to-Employee Requested By observed PASS on live Task 18379 (Spencer Bambek, Employee 20) via no-sheet read-only audit. Legacy tasks 18241 and 18362 still retain contact Requested By and require reconciliation.",
   "sourceFileCountPushed": 36,
   "changedFiles": [
     "35_PreInspect_Task_Review.js",
@@ -12,5 +13,5 @@
   ],
   "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
   "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
-  "nextAction": "Runtime-verify one real PreInspection row, then upload the verified POST ZIP so the exact 36-file production source can be archived to GitHub through the connected integration."
+  "nextAction": "Reconcile legacy PreInspection Tasks 18241 and 18362 to their organizer Employees with read-back verification, then upload the verified POST ZIP for exact 36-file GitHub source parity."
 }
