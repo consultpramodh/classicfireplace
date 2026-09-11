@@ -1,0 +1,13 @@
+{
+  "release": "R3.4.21a_REQUESTED_BY_ORGANIZER_EMPLOYEE_PACKAGE_FIX",
+  "date": "2026-09-11",
+  "status": "BLOCKED_BEFORE_WRITE",
+  "productionWritePerformed": false,
+  "selfTest": "PASS",
+  "blockedStep": "PRE source pull / project fingerprint",
+  "observedMessage": "Project file already exists.",
+  "rootCause": "clasp v3 project discovery can inherit an existing parent .clasp.json; clone/rootDir behavior made the temporary workspace non-isolated.",
+  "correctiveRelease": "R3.4.21b_REQUESTED_BY_ORGANIZER_EMPLOYEE_ISOLATED_CLASP",
+  "correctiveAction": "Stop using clasp clone. Create an isolated .clasp.json per PRE/WORK/FRESH/POST/ROLLBACK workspace and invoke clasp pull/push with an explicit --project path.",
+  "businessRule": "PreInspection only: Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback."
+}
