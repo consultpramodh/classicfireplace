@@ -1,56 +1,67 @@
 # Task Mapping — Latest Checkpoint
 
-**Checkpoint date:** 2026-09-10
+**Checkpoint date:** 2026-09-11
 
 ## Production Version
 
-`PreInspect R3.4.20a` is the latest source release explicitly evidenced as remotely read back from Apps Script in the available release logs. Runtime feature verification is incomplete.
-
-## Deployment
-
-Existing bound Apps Script project. Canonical Apps Script deployment/version ID is currently **UNKNOWN** to the connected tools.
+`PreInspect R3.4.20a` remains the latest source release explicitly evidenced as remotely read back from Apps Script in the available release logs. The approved next patch is `R3.4.21_REQUESTED_BY_ORGANIZER_EMPLOYEE`, but it is **not yet deployed**.
 
 ## Active Objective
 
-Complete GitHub production-source parity, then simplify and stabilize the PreInspection workflow without losing working safeguards.
+Deploy and runtime-verify the PreInspection-only Requested By change:
 
-## Last Verified Outcome
+`Calendar organizer email → exact Striven Employee → RequestedBy.Type = employee`
 
-- GitHub connector access to `consultpramodh/classicfireplace` is working.
-- `task_mapping` and dated backup branch exist.
-- Deployment-history evidence is present on GitHub.
-- R3.4.20a execution evidence proves a full 36-file Apps Script POST read-back existed locally after deployment and matched the pushed Apps Script source byte-for-byte.
-- That execution also created local Git commit `e3b941d`, but its GitHub push failed and the source never reached the remote repository.
-- The exact R3.4.20a execution transcript has been recovered from the ChatGPT File Library.
-- `tools/capture-live-apps-script.ps1` is now committed on `task_mapping`. It performs a fresh clasp clone, SHA-256 inventory, heuristic sensitive-content scan, and ZIP packaging without attempting GitHub authentication.
+Install, Delivery, and Service must remain unchanged.
 
-## Current Blocker
+## Prepared change
 
-The exact current 36-file Apps Script source bodies are not accessible through the connected Google Drive/GitHub tools. Bound Apps Script projects are not exposed as ordinary Google Drive files through the current connector. The public repository must not receive raw source until it has been reviewed for credentials/customer PII.
+GitHub `task_mapping` now contains:
 
-## Evidence
+- `docs/PREINSPECTION_REQUESTED_BY_POLICY.md`;
+- updated `docs/PREINSPECTION_FLOW.md`;
+- `tools/patch-preinspect-requestedby-organizer.js`;
+- `tools/deploy-preinspect-requestedby-organizer.ps1`.
 
-- R3.4.20a execution: Apps Script remote read-back PASS; GitHub sync FAILED with exit code 128 after password-authentication attempt.
-- R3.4.20a targeted Task 18241 schedule test later returned `decision=BLOCK`, `pass=false`; auto feature was subsequently enabled.
-- Current GitHub branch inspection confirms the 36 production source files are absent.
+The patcher is fail-closed and targets only:
 
-## Next Exact Action
+- `35_PreInspect_Task_Review.js` — existing OPEN task Requested By reconciliation;
+- `36_PreInspect_Task_Create.js` — new-task Requested By seed.
 
-Run `tools/capture-live-apps-script.ps1` locally against the Task Mapping Apps Script Script ID. Upload the generated `TaskMapping-LIVE-<timestamp>.zip` to the Task Mapping ChatGPT conversation. Then:
+The new rule resolves the Calendar organizer email to exactly one Striven Employee, sends `RequestedBy = { Id: EmployeeId, Type: 'employee' }`, performs authoritative task read-back for existing-task reconciliation, and does not fall back to the customer contact.
 
-1. inspect all captured files for secrets/customer PII;
-2. compare the 36-file inventory against the known production inventory;
-3. verify hashes and source completeness;
-4. commit the safe canonical source to `apps-script/` using the connected GitHub integration;
-5. read GitHub back and prove parity;
-6. record the successful source-sync execution and update `executions/latest.json`.
+## Current blocker
 
-## Fastest Safe Execution Path
+The connected tools cannot write directly to the bound Apps Script project. The live source must still be pulled/pushed through the already-authorized local `clasp` session. GitHub authentication is not involved; GitHub writes remain connector-driven from ChatGPT.
 
-`fresh live clasp clone → SHA manifest → sensitive-content review → GitHub connector commit → GitHub read-back → parity PASS → continue PreInspect simplification`
+## Next exact action
 
-## Deferred
+From the local repository, run:
 
-- broad unrelated refactors;
-- cosmetic sheet work;
-- new PreInspect features beyond the agreed lifecycle until the source/version ledger and scheduler safety are under control.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\deploy-preinspect-requestedby-organizer.ps1
+```
+
+The utility performs:
+
+`clasp auth check → live PRE pull → two-file patch → syntax checks → freshness re-pull → bound-project push → POST pull → byte-for-byte verification → POST ZIP`
+
+After it succeeds, upload the generated POST ZIP to this Task Mapping conversation. Then ChatGPT will immediately sync the exact verified POST source and execution record through the connected GitHub integration and read it back.
+
+## Required runtime verification
+
+After deployment, use one real PreInspection whose organizer resolves unambiguously to a Striven Employee and verify:
+
+1. Task Type = 105;
+2. Requested By ID equals the organizer Employee ID;
+3. Requested By is an Employee rather than customer Contact;
+4. Customer/Location/Pool/dates/854/Description behavior is unchanged;
+5. Install/Delivery/Service behavior is unaffected.
+
+## Other open items
+
+- production GitHub source parity still pending;
+- overlapping report-refresh cadence reduction is reviewed but not deployed;
+- PreInspect scheduler safety remains under review;
+- Field 854 and new-location paths still require final controlled proofs;
+- DONE → Install Calendar and DONE → Sales Order handoffs remain downstream work.
