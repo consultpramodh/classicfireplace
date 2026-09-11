@@ -1,0 +1,44 @@
+{
+  "version": "R3.4.21c",
+  "businessRelease": "R3.4.21_REQUESTED_BY_ORGANIZER_EMPLOYEE",
+  "packageRelease": "R3.4.21c_REQUESTED_BY_ORGANIZER_EMPLOYEE_COUNT_FIX",
+  "date": "2026-09-11",
+  "timezone": "America/Toronto",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
+  "runtimeFeatureVerified": false,
+  "sourceFileCountPushed": 36,
+  "changedFiles": [
+    "35_PreInspect_Task_Review.js",
+    "36_PreInspect_Task_Create.js"
+  ],
+  "hashes": {
+    "35_PreInspect_Task_Review.js": {
+      "before": "0ce224f2dce9ddabe087caced541628294737070f5d85d436473f752e9848e81",
+      "after": "ace973c125a621744af388630c7596a72a8951b0cce89324b9ab6c6bdbf8b464"
+    },
+    "36_PreInspect_Task_Create.js": {
+      "before": "e5d93757a99eb7f6880de30a8721a3b3e99f8ae6b47f69f482be54e20a055a0f",
+      "after": "2dd95a1f2e664ecb8adcc5377be166d27200362f42f115f21c3307f12c45aff0"
+    }
+  },
+  "behavior": {
+    "scope": "PREINSPECTION_ONLY",
+    "requestedBySource": "GOOGLE_CALENDAR_ORGANIZER_EMAIL",
+    "strivenEntity": "EMPLOYEE",
+    "payloadType": "employee",
+    "unresolvedOrganizer": "REVIEW_NO_WRITE",
+    "customerContactFallback": false
+  },
+  "verification": {
+    "packageSelfTest": "PASS",
+    "syntaxCheck": "PASS",
+    "freshnessPullBeforePush": "PASS",
+    "push": "PASS",
+    "postPullFullProjectShaVerification": "PASS",
+    "successMarker": "DEPLOYED_SOURCE_VERIFIED"
+  },
+  "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
+  "runtimeVerificationRequired": "Use one real PreInspection row and confirm Requested By equals the Calendar organizer's exact Striven Employee on task read-back.",
+  "notes": "R3.4.21a and R3.4.21b were packaging/runtime guard failures before production push. R3.4.21c is the first successful live deployment of the organizer-to-Employee Requested By rule."
+}
