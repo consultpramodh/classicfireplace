@@ -4,7 +4,7 @@
 
 ## Production Version
 
-`PreInspect R3.4.20a` remains the latest source release explicitly evidenced as remotely read back from Apps Script in the available release logs. The approved next patch is `R3.4.21_REQUESTED_BY_ORGANIZER_EMPLOYEE`, but it is **not yet deployed**.
+`PreInspect R3.4.20a` remains the latest source release explicitly evidenced as remotely read back from Apps Script. The approved next business change is still `R3.4.21_REQUESTED_BY_ORGANIZER_EMPLOYEE`; it is **not yet deployed**.
 
 ## Active Objective
 
@@ -14,43 +14,47 @@ Deploy and runtime-verify the PreInspection-only Requested By change:
 
 Install, Delivery, and Service must remain unchanged.
 
-## Prepared change
+## Deployment attempts
 
-GitHub `task_mapping` now contains:
+### R3.4.21a — BLOCKED BEFORE WRITE
 
-- `docs/PREINSPECTION_REQUESTED_BY_POLICY.md`;
-- updated `docs/PREINSPECTION_FLOW.md`;
-- `tools/patch-preinspect-requestedby-organizer.js`;
-- `tools/deploy-preinspect-requestedby-organizer.ps1`.
+The local package self-test passed, but the PRE source pull printed `Project file already exists.` and the unified Task Mapping fingerprint failed. The guard stopped the package before any Apps Script push, so production source was not modified.
 
-The patcher is fail-closed and targets only:
+Root cause: clasp v3 can discover an existing parent `.clasp.json`, while clone/rootDir configuration-file behavior changed in v3. Temporary deployment folders therefore were not isolated strongly enough.
 
-- `35_PreInspect_Task_Review.js` — existing OPEN task Requested By reconciliation;
-- `36_PreInspect_Task_Create.js` — new-task Requested By seed.
+The failed attempt is recorded in `executions/2026-09-11-r3.4.21a-blocked.json`.
 
-The new rule resolves the Calendar organizer email to exactly one Striven Employee, sends `RequestedBy = { Id: EmployeeId, Type: 'employee' }`, performs authoritative task read-back for existing-task reconciliation, and does not fall back to the customer contact.
+### R3.4.21b — PREPARED
 
-## Current blocker
+The corrected package no longer uses `clasp clone`.
 
-The connected tools cannot write directly to the bound Apps Script project. The live source must still be pulled/pushed through the already-authorized local `clasp` session. GitHub authentication is not involved; GitHub writes remain connector-driven from ChatGPT.
+Each PRE / WORK / FRESH / POST / ROLLBACK workspace gets its own explicit `.clasp.json` containing the known Task Mapping Script ID and `rootDir: src`. Every pull or push uses `--project <exact workspace .clasp.json>`, preventing clasp from inheriting another project file elsewhere on the PC.
+
+The package still preserves the existing safeguards:
+
+- package self-test before production access;
+- known Task Mapping Script ID;
+- 30+ file unified-project fingerprint;
+- exactly two allowlisted changed files (`35_PreInspect_Task_Review.js`, `36_PreInspect_Task_Create.js`);
+- syntax checks;
+- fresh-source comparison immediately before push;
+- full POST SHA verification;
+- automatic PRE rollback plus rollback read-back if verification fails;
+- no local GitHub authentication/push.
+
+## Current business rule
+
+PreInspection Requested By resolves from the Google Calendar organizer email to exactly one Striven Employee and writes `RequestedBy.Type = employee`. There is no customer-contact fallback. Unresolved or ambiguous organizer identity must REVIEW / NO WRITE.
 
 ## Next exact action
 
-From the local repository, run:
+Run the R3.4.21b ZIP package and double-click `RUN_AUTO_UPDATE.cmd`.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\deploy-preinspect-requestedby-organizer.ps1
-```
-
-The utility performs:
-
-`clasp auth check → live PRE pull → two-file patch → syntax checks → freshness re-pull → bound-project push → POST pull → byte-for-byte verification → POST ZIP`
-
-After it succeeds, upload the generated POST ZIP to this Task Mapping conversation. Then ChatGPT will immediately sync the exact verified POST source and execution record through the connected GitHub integration and read it back.
+Success must end with `DEPLOYED_SOURCE_VERIFIED` and produce a verified POST ZIP. Upload that POST ZIP to this Task Mapping conversation so ChatGPT can archive the exact verified source and execution record through the connected GitHub integration.
 
 ## Required runtime verification
 
-After deployment, use one real PreInspection whose organizer resolves unambiguously to a Striven Employee and verify:
+After source deployment succeeds, use one real PreInspection whose organizer resolves unambiguously to a Striven Employee and verify:
 
 1. Task Type = 105;
 2. Requested By ID equals the organizer Employee ID;
