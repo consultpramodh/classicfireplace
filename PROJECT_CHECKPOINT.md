@@ -4,68 +4,79 @@
 
 ## Production Version
 
-`PreInspect R3.4.20a` remains the latest source release explicitly evidenced as remotely read back from Apps Script. The approved next business change is still `R3.4.21_REQUESTED_BY_ORGANIZER_EMPLOYEE`; it is **not yet deployed**.
+`PreInspect R3.4.21c` is now the latest source release explicitly pushed to the live Apps Script project and POST-read-back verified.
 
-## Active Objective
-
-Deploy and runtime-verify the PreInspection-only Requested By change:
+Business change:
 
 `Calendar organizer email → exact Striven Employee → RequestedBy.Type = employee`
 
-Install, Delivery, and Service must remain unchanged.
+Scope is **PreInspection only**. Install, Delivery, and Service Requested By behavior is unchanged.
 
-## Deployment attempts
+## Verified deployment result
 
-### R3.4.21a — BLOCKED BEFORE WRITE
+The R3.4.21c auto-update completed successfully with `DEPLOYED_SOURCE_VERIFIED`.
 
-The local package self-test passed, but the PRE source pull printed `Project file already exists.` and the unified Task Mapping fingerprint failed. The guard stopped the package before any Apps Script push, so production source was not modified.
+Verified sequence:
 
-Root cause: clasp v3 can discover an existing parent `.clasp.json`, while clone/rootDir configuration-file behavior changed in v3. Temporary deployment folders therefore were not isolated strongly enough.
+1. clasp authorization PASS;
+2. package self-test PASS;
+3. known Task Mapping Script ID used;
+4. exact live PRE source pulled;
+5. exactly two PreInspect files patched;
+6. syntax checks PASS;
+7. FRESH pull completed immediately before push;
+8. 36 files pushed to the existing Apps Script project;
+9. POST pull completed;
+10. full-project SHA verification PASS.
 
-The failed attempt is recorded in `executions/2026-09-11-r3.4.21a-blocked.json`.
+Changed files:
 
-### R3.4.21b — PREPARED
+- `35_PreInspect_Task_Review.js`
+- `36_PreInspect_Task_Create.js`
 
-The corrected package no longer uses `clasp clone`.
+The deployment evidence is recorded in:
 
-Each PRE / WORK / FRESH / POST / ROLLBACK workspace gets its own explicit `.clasp.json` containing the known Task Mapping Script ID and `rootDir: src`. Every pull or push uses `--project <exact workspace .clasp.json>`, preventing clasp from inheriting another project file elsewhere on the PC.
+- `executions/2026-09-11-r3.4.21c-deployed.json`
+- `executions/latest.json`
 
-The package still preserves the existing safeguards:
+## Runtime verification still required
 
-- package self-test before production access;
-- known Task Mapping Script ID;
-- 30+ file unified-project fingerprint;
-- exactly two allowlisted changed files (`35_PreInspect_Task_Review.js`, `36_PreInspect_Task_Create.js`);
-- syntax checks;
-- fresh-source comparison immediately before push;
-- full POST SHA verification;
-- automatic PRE rollback plus rollback read-back if verification fails;
-- no local GitHub authentication/push.
+Source deployment is proven. Business behavior is not yet fully runtime-proven.
 
-## Current business rule
-
-PreInspection Requested By resolves from the Google Calendar organizer email to exactly one Striven Employee and writes `RequestedBy.Type = employee`. There is no customer-contact fallback. Unresolved or ambiguous organizer identity must REVIEW / NO WRITE.
-
-## Next exact action
-
-Run the R3.4.21b ZIP package and double-click `RUN_AUTO_UPDATE.cmd`.
-
-Success must end with `DEPLOYED_SOURCE_VERIFIED` and produce a verified POST ZIP. Upload that POST ZIP to this Task Mapping conversation so ChatGPT can archive the exact verified source and execution record through the connected GitHub integration.
-
-## Required runtime verification
-
-After source deployment succeeds, use one real PreInspection whose organizer resolves unambiguously to a Striven Employee and verify:
+Use one real PreInspection whose Google Calendar organizer resolves unambiguously to a Striven Employee and verify:
 
 1. Task Type = 105;
-2. Requested By ID equals the organizer Employee ID;
-3. Requested By is an Employee rather than customer Contact;
-4. Customer/Location/Pool/dates/854/Description behavior is unchanged;
-5. Install/Delivery/Service behavior is unaffected.
+2. Requested By ID equals the organizer's Striven Employee ID;
+3. Requested By entity/type is Employee;
+4. no customer-contact fallback occurred;
+5. Customer, Location, Pool 8, dates, field 854 and technician-owned Description behavior remain correct;
+6. Install / Delivery / Service remain unaffected.
+
+## GitHub source parity
+
+GitHub ledger/history is current through R3.4.21c, but the exact 36-file POST source snapshot is **not yet archived under `apps-script/`**.
+
+The verified POST ZIP was created locally as:
+
+`TaskMapping-R3.4.21c_REQUESTED_BY_ORGANIZER_EMPLOYEE_COUNT_FIX-POST-20260911-154430.zip`
+
+Upload that ZIP to this Task Mapping conversation. Then ChatGPT can:
+
+1. inspect the exact verified source;
+2. compare the 36-file inventory;
+3. screen for secrets/customer PII before committing to the public repository;
+4. archive the safe canonical source using the connected GitHub integration;
+5. read GitHub back and mark production-source parity PASS.
 
 ## Other open items
 
-- production GitHub source parity still pending;
 - overlapping report-refresh cadence reduction is reviewed but not deployed;
 - PreInspect scheduler safety remains under review;
 - Field 854 and new-location paths still require final controlled proofs;
 - DONE → Install Calendar and DONE → Sales Order handoffs remain downstream work.
+
+## Next exact action
+
+**Run one real PreInspection reconciliation to verify organizer → Employee Requested By.**
+
+Then upload the verified POST ZIP for the GitHub source archive.
