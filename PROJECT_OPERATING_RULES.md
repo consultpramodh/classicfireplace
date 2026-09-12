@@ -36,16 +36,37 @@ For material code changes:
 5. make the smallest safe change;
 6. run syntax/dependency checks;
 7. run targeted tests proportional to blast radius;
-8. verify changed-file inventory;
-9. push to the existing bound Apps Script project;
-10. re-pull and compare when needed;
-11. create an identifiable immutable release/version;
-12. preserve the existing production deployment unless migration is intentional;
-13. health-check;
-14. feature-verify the intended outcome;
-15. synchronize verified source + release evidence to GitHub through the connected GitHub connector;
-16. read GitHub back to prove the remote archive exists;
-17. checkpoint the verified state.
+8. run all available pre-push regression, preview, dry-run, or read-only checks for the changed functionality and every affected workflow;
+9. verify changed-file inventory;
+10. **do not push to the bound production Apps Script project unless the pre-push gate passes**;
+11. push to the existing bound Apps Script project only after that gate passes;
+12. immediately re-pull/read back and compare the production source;
+13. run post-push health/smoke/runtime verification for the intended behavior;
+14. if post-push verification fails, stop further rollout and use the preserved rollback path rather than continuing on an unverified state;
+15. create an identifiable immutable release/version when appropriate;
+16. preserve the existing production deployment unless migration is intentional;
+17. synchronize verified source + release evidence to GitHub through the connected GitHub connector;
+18. read GitHub back to prove the remote archive exists;
+19. checkpoint the verified state.
+
+## Mandatory pre-push gate
+
+Production Apps Script push is a release action, not a testing shortcut.
+
+Before any production push, the changed functionality must pass every practical verification available without changing production, including as applicable:
+
+- syntax/parse validation;
+- dependency and function-connectivity checks;
+- changed-file scope verification;
+- preview/dry-run/read-only execution;
+- duplicate-prevention and relationship-integrity checks;
+- regression checks for Install, Delivery, Service, and PreInspection when shared code is affected;
+- known-good / known-bad test cases relevant to the changed path;
+- confirmation that public/menu/trigger entrypoints remain intact unless intentionally changed.
+
+If the functionality cannot be adequately verified pre-push, stop and explicitly identify the missing proof. Do not silently use production as the test environment.
+
+Some behavior can only be proven after a production push because it depends on live Apps Script/Striven/Calendar execution. In those cases, the push may occur only after all available pre-push checks pass, and the change remains **UNVERIFIED** until immediate post-push read-back and runtime verification pass.
 
 ## GitHub rule
 
@@ -96,4 +117,4 @@ Then identify the active objective, bottleneck, risk level, and fastest safe pat
 
 ## Non-negotiable summary
 
-Current authoritative source before assumptions. Evidence before conclusions. One active objective. Critical path first. Minimum safe change. Preserve working functionality. Never push incomplete source. Read back consequential writes. Reconcile before completion. Test according to blast radius. Preserve rollback. Fix root causes. Every verified code change gets a GitHub connector sync and GitHub read-back. Every checkpoint has one exact next action. Never claim verification that did not occur.
+Current authoritative source before assumptions. Evidence before conclusions. One active objective. Critical path first. Minimum safe change. Preserve working functionality. **Verify before production push.** Never push incomplete or pre-push-failing source. Read back consequential writes. Reconcile before completion. Test according to blast radius. Preserve rollback. Fix root causes. Every verified code change gets a GitHub connector sync and GitHub read-back. Every checkpoint has one exact next action. Never claim verification that did not occur.
