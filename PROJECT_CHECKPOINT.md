@@ -43,28 +43,32 @@ Therefore:
 - architecture/contracts: current;
 - four-workflow documentation coverage: current;
 - project-wide rollback baseline: current;
-- repository-side TEST framework: created;
-- separate Apps Script TEST environment: **PENDING**;
+- same-project shadow TEST strategy: defined;
+- rewritten `TM2_` source: **NOT YET BUILT FROM CURRENT LIVE SOURCE**;
 - production Apps Script source parity: **PENDING**.
 
-Do not physically reorganize production code using the August historical snapshot or a reconstructed approximation.
+Do not build the rewrite from the August historical snapshot or a reconstructed approximation.
 
-## TEST environment gate
+## Same-project shadow TEST strategy
 
-Before physical source cleanup is promoted to production, establish an isolated TEST environment with:
+The agreed low-friction approach is to test the rewrite inside the **existing Apps Script Script ID and existing spreadsheet** while preserving all old files/functions.
 
-- separate Apps Script project;
-- separate TEST spreadsheet;
-- TEST Install Calendar;
-- TEST Delivery Calendar;
-- TEST Service Calendar;
-- TEST PreInspection Calendar;
-- separate environment configuration;
-- time-driven triggers disabled initially;
-- Striven sandbox when available, otherwise explicit allowlist-only TEST writes;
-- production spreadsheet/calendar targets rejected when `ENVIRONMENT=TEST`.
+Rules:
 
-Repository-side TEST definitions now live under:
+- keep every existing production file/function;
+- rewritten files use the `TM2_` prefix;
+- rewritten functions use the `tm2_` prefix;
+- no duplicate legacy global names;
+- current production triggers/menus keep calling the legacy implementation initially;
+- rewritten code starts in `SHADOW_READ_ONLY` mode;
+- no rewritten time-driven triggers are installed during early testing;
+- comparisons use current sheet/Calendar/Striven data without changing workflow sheets;
+- controlled canary writes are manual-only and require explicit case/write gates;
+- shared-module testing must cover every affected workflow;
+- workflow cutover happens one workflow at a time through a narrow routing flag/adapter;
+- legacy implementation remains available for rollback until the rewritten path is stable.
+
+Repository-side definitions live under:
 
 - `docs/testing/TEST_ENVIRONMENT_PLAN.md`
 - `config/environments/`
@@ -75,15 +79,30 @@ Repository-side TEST definitions now live under:
 - `tests/shared/`
 - `test-evidence/`
 
-## Production promotion rule
+## Important source-push distinction
 
-No reorganized or modified Task Mapping code is pushed to the production Apps Script project until the affected functionality passes the available pre-push TEST gate.
+Adding inert `TM2_` files to the existing Script ID is technically a production-project source change even before routing is switched.
 
-Required sequence:
+Therefore the first shadow deployment must satisfy this gate:
 
-`fresh source -> isolated TEST candidate -> syntax/dependency checks -> affected workflow regressions -> shared-module caller regressions -> isolated write/read-back checks -> PRE-PUSH GATE PASS -> production push -> immediate source read-back -> targeted runtime verification -> GitHub verified-source sync/read-back`
+1. fresh exact live-source capture;
+2. legacy file inventory/hashes recorded;
+3. new `TM2_` files pass syntax/static dependency checks;
+4. global-name collision audit PASS;
+5. no existing trigger/menu/public route points to `TM2_`;
+6. push adds only the intended `TM2_` files;
+7. immediate re-pull confirms every legacy file remains unchanged;
+8. only then begin manual `SHADOW_READ_ONLY` execution.
 
-Any behavior that can only be proven in production remains explicitly `POST_PUSH_RUNTIME_PROOF_REQUIRED`; it is not assumed to pass.
+## Functional promotion rule
+
+Rewritten logic does not become the live workflow merely because the files exist in the project.
+
+For each workflow:
+
+`legacy active -> TM2 shadow read-only -> parity/regression checks -> controlled canary when needed -> CUTOVER_READY -> route that workflow only -> immediate runtime verification -> retain legacy rollback`
+
+Any behavior that cannot be proven before cutover remains explicitly unverified; it is not assumed to pass.
 
 ## Architecture direction
 
@@ -93,13 +112,15 @@ Existing public/menu/trigger entrypoints remain until replacements are proven.
 
 ## Exact next action
 
-1. **Capture the exact current 36-file live Apps Script source.**
-2. Screen it for secrets/PII/private operational values and archive the safe verified source under `apps-script/`.
-3. Create the separate Apps Script TEST project/spreadsheet/calendars and clone the current 36-file source into TEST **unchanged first**.
-4. Prove the unchanged TEST clone can run the four workflow regression baselines without touching production targets.
-5. Build the complete file/function/caller/trigger/sheet/API/write inventory for Install, Delivery, Service, PreInspection, and shared modules.
-6. Only then begin physical source cleanup in TEST.
-7. Promote cleanup to production only after the applicable TEST gate passes.
+1. **Capture the exact current 36-file live Apps Script source once.**
+2. Build the complete file/function/caller/trigger/sheet/API/write inventory for Install, Delivery, Service, PreInspection, and shared modules.
+3. Design the `TM2_` rewritten files from that exact current source while leaving legacy files untouched.
+4. Run syntax/dependency/global-collision checks before adding any `TM2_` files to the existing Script ID.
+5. Add the inert `TM2_` files only; do not redirect menus/triggers.
+6. Re-pull and prove all legacy files are unchanged.
+7. Run manual `SHADOW_READ_ONLY` regression comparisons on the existing sheet.
+8. Introduce controlled canary writes only after read-only parity passes.
+9. Cut over one workflow at a time only after that workflow reaches `CUTOVER_READY`.
 
 Classify every function during inventory as:
 
