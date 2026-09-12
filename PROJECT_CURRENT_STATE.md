@@ -6,125 +6,110 @@
 
 `task_mapping` is the **single canonical Task Mapping branch**.
 
-Backup manifests, architecture plans, workflow rules, execution evidence, release history, and future verified source archives are organized as folders inside this branch rather than as permanent parallel branches.
+The project covers Install, Delivery, Service, PreInspection, and shared modules.
 
-## Project
-
-Classic Fireplace Task Mapping — Install, Delivery, Service, and PreInspection.
-
-## Production Apps Script
+## Live Apps Script project
 
 - Script ID: `1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m`
-- Live project contains **36 files**.
-- Latest recorded source release: **R3.4.22 — R30 Requested By Router Fix**.
-- R3.4.22 changed only `35_PreInspect_Task_Review.js` from the immediately preceding release.
-- Source deployment status: **DEPLOYED_SOURCE_VERIFIED**.
-- Source verification recorded: pre-pull 36 files, post-pull 36 files, freshness guard PASS, syntax check PASS, POST SHA read-back PASS.
+- Active business release: **R3.4.22 — R30 Requested By Router Fix**.
+- Legacy production source before TM2 shadow deployment: **36 files**.
+- TM2 shadow files added on 2026-09-12: **19 files**.
+- Current remote file count after verified AutoPatch read-back: **55 files**.
+- Legacy routing remains active.
+- All TM2 cutover flags remain false.
 
-## R3.4.22 runtime verification
+## TM2 Shadow R0 deployment
 
-The actual production R30 Requested By route was verified live for all three linked PreInspection tasks on 2026-09-11:
+Status: `DEPLOYED_SHADOW_SOURCE_VERIFIED`
 
-- Task 18379 → organizer `spencer@classicfireplace.ca` → Striven Employee 20.
-- Task 18241 → organizer `warren@classicfireplace.ca` → Striven Employee 54.
-- Task 18362 → organizer `adam@classicfireplace.ca` → Striven Employee 31.
+GitHub Actions run `34710451571` used the guarded AutoPatch pipeline and the configured clasp CI credential.
 
-All three writes used `CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE`, and final Striven read-back returned `RequestedBy.Type=employee` with PASS.
+Verified sequence:
 
-The final read-only audit recorded:
+- Google clasp CI authorization: PASS;
+- fresh PRE clone: 36 legacy files;
+- legacy hashes recorded: PASS;
+- candidate syntax and TM2-prefix checks: PASS;
+- global-name collision check: PASS;
+- freshness clone immediately before push: PASS;
+- guarded push: PASS;
+- POST clone: 55 files;
+- all 36 legacy files hash-identical to PRE: PASS;
+- all 19 TM2 files hash-identical to candidate: PASS;
+- rollback required: NO;
+- GitHub Actions job conclusion: SUCCESS.
 
-- Calendar events: 7
-- Existing linked PreInspection tasks: 3
-- PASS: 3
-- FAIL: 0
-- REVIEW: 0
-- Events without existing task: 4
+The AutoPatch run ended with `DEPLOYED_SHADOW_SOURCE_VERIFIED`.
 
-The next normal scheduled PreInspection batch still needs a follow-up read-only audit to close the historical scheduler-regression proof completely.
+Evidence:
 
-## Authoritative PreInspection Requested By rule
+- execution record: `executions/tm2-shadow-r0-2026-09-12.json`;
+- human-readable evidence: `test-evidence/2026-09-12-tm2-shadow-r0-deployed.md`;
+- Actions artifact ID: `10303171560`;
+- artifact SHA-256: `f21cfb049821ff8ccfe9676b576bb766e6d5859b97531458425c0258eb25be2f`.
 
-This rule applies only to PreInspection Task Type 105:
+## TM2 safety state
 
-`Google Calendar organizer email → exactly one Striven Employee → RequestedBy { Id: EmployeeId, Type: employee }`
+TM2 R0 is intentionally inert:
 
-Guardrails:
+- mode: `SHADOW_READ_ONLY`;
+- Striven writes: disabled;
+- Calendar writes: disabled;
+- CREATE/RECREATE: disabled;
+- TM2 trigger installation: disabled;
+- Install cutover: false;
+- Delivery cutover: false;
+- Service cutover: false;
+- PreInspection cutover: false;
+- legacy menus/triggers remain unchanged.
 
-- organizer missing → REVIEW / no Requested By write;
-- zero employee matches → REVIEW;
-- multiple employee matches → REVIEW;
-- no customer-contact fallback;
-- customer Contact may still support customer/contact resolution but is not PreInspection Requested By;
-- Install, Delivery, and Service Requested By behavior remains unchanged.
+The 19 candidate files are stored in GitHub under `apps-script/tm2-shadow/`.
+
+## Runtime verification state
+
+`SHADOW_RUNTIME_VERIFIED = PENDING`
+
+Source deployment and remote source read-back are proven. The next layer is automatic execution of the read-only TM2 diagnostics/parity functions. Runtime verification must remain separate from source verification until those functions actually execute successfully.
+
+Initial runtime targets:
+
+- `tm2_connectivityAudit()`;
+- `tm2_diagnostics()`;
+- `tm2_shadowRunAll()`.
+
+Remote execution through clasp/Apps Script requires the script's API-executable / Cloud-project prerequisites to be compatible. Do not change the production Cloud-project association merely to enable remote execution without a dedicated review.
+
+## R3.4.22 business verification remains intact
+
+The production PreInspection Requested By fix remains the latest verified live business behavior. All three linked PreInspection tasks tested on 2026-09-11 resolved Calendar organizer email to the exact Striven Employee and read back `RequestedBy.Type=employee` successfully.
+
+The TM2 shadow deployment did not alter that legacy source or routing.
 
 ## GitHub/source parity
 
-- Repository: `consultpramodh/classicfireplace`
-- Canonical branch: `task_mapping`
-- Repository visibility: **public**.
-- Exact current 36-file production source is **not yet archived under `apps-script/`**.
-- `executions/latest.json` still records `githubSourceParity = PENDING_POST_ZIP_UPLOAD`.
+- Repository: `consultpramodh/classicfireplace`;
+- canonical branch: `task_mapping`;
+- repository visibility: public;
+- TM2 R0 source parity: verified;
+- exact 36-file legacy production source is preserved in the AutoPatch PRE artifact for 30 days, but is **not yet permanently archived under `apps-script/`** because the public-repository sensitive-content review is still required.
 
-The repository is authoritative for project state, contracts, deployment evidence, architecture, backup manifests, and branch-consolidation history, but must not yet be described as exact production-source parity.
+Do not publish raw legacy source to the public repository until credentials, Script Properties, report URLs/IDs, customer PII, and private operational values have been screened.
 
-The older August source snapshot is historical only and must not be promoted as current.
-
-## Repository reorganization status
-
-The repository has been consolidated back into one canonical branch, `task_mapping`.
-
-Current organization:
-
-- `backups/` — backup manifests and rollback references;
-- `docs/architecture/` — architecture, process contracts, gap register, migration plan;
-- `docs/policies/` — API refresh and version/release policy;
-- `docs/workflows/preinspection/` — PreInspection flow and Requested By policy;
-- `history/releases/` — release-specific historical notes;
-- `history/source-snapshots/` — historical source evidence;
-- `executions/`, `deployment-history/`, `tools/`, and `apps-script/` retain their operational roles.
-
-The temporary backup/reorg/main branches created during the first cleanup pass are now redundant because their unique durable content has been preserved inside `task_mapping`. They can be deleted from the GitHub branch list after final verification.
-
-### Target pipeline
+## Architecture direction
 
 `SOURCE → NORMALIZE → RESOLVE → MATCH → CLASSIFY → PLAN → EXECUTE → VERIFY → LINK/HANDOFF → ENDPOINT`
 
-The target is a compatibility-preserving strangler migration, not a rewrite.
+The migration is a compatibility-preserving shadow/strangler migration. Legacy code remains the rollback path until each workflow reaches verified cutover readiness.
 
-## Highest-priority known gaps / risks
+## Highest-priority next work
 
-1. **Exact live-source archive still missing from GitHub.** No physical code reorganization should begin until the current 36-file source is captured and screened.
-2. **Recovery relationship integrity.** CREATE/RECREATE planning must prove SO→Customer, Location→Customer, Contact→Customer and other required ownership relationships before mutation.
-3. **Report cache safety.** Unexpected/empty report shapes must not wipe last-known-good report data; report schema and pagination termination need explicit verification.
-4. **Service multi-fireplace Calendar links.** Event-level task-set aggregation must be proven so FP#1/FP#2 links cannot overwrite one another.
-5. **Calendar link repair.** Link repair should depend on exact event/task relationship, not blindly on task OPEN status; writes need Calendar read-back verification.
-6. **Scheduler ownership.** Five operational slots and six refresh/rebuild+link slots create duplicate API load and race surface; one scheduler/freshness owner is needed.
-7. **Deferred recovery semantics.** Wait-until-later cases such as completed-today replacement must be explicit `DEFERRED_RETRY`, not generic SKIP.
-8. **PreInspection lifecycle completion.** DONE → final SO → exact Install match → verified PreInspection link handoff is not yet a fully runtime-proven production endpoint.
-9. **Field 854 proof.** Historical read-back mismatch remains unresolved unless later authoritative evidence is produced.
-10. **New-location creation.** Corrected create payload still needs one controlled successful create/read-back proof.
-11. **Missing Customer Number organizer notification.** Agreed non-blocking deduplicated email remains to be implemented/proven.
-12. **DONE → Sales Order Internal Notes.** Remains a separate guarded downstream handoff and is not production-complete.
+1. Automate/prove read-only TM2 runtime execution without changing live business routing.
+2. Use the freshly captured legacy PRE source to build the complete file/function/caller/trigger/sheet/API/write inventory across Install, Delivery, Service, PreInspection, and shared modules.
+3. Classify every function as `CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN`.
+4. Expand TM2 from R0 scaffolding into behavior-equivalent read-only planners/resolvers one workflow at a time.
+5. Compare legacy vs TM2 outcomes on current data.
+6. Only after parity passes, enable tightly controlled canary writes and then one-workflow-at-a-time cutover.
 
-## API/report refresh finding
+## Repository housekeeping note
 
-Current scheduling contains overlapping refresh layers:
-
-- five live operational slots around 8:30, 11:30, 1:30, 3:30 and 5:30;
-- six Refresh/Rebuild + Calendar Link slots around 8:00, 10:00, 12:00, 2:00, 4:00 and 6:00.
-
-Prior analysis estimated roughly 40 small operational report GETs/day from the main slots plus roughly 24 substantially duplicate GETs/day from the six additional refresh slots, before daily big-data and record-specific calls.
-
-Recommended direction remains: retain operational cadence initially, introduce report freshness/TTL, and stop link-only activity from blindly re-fetching reports already inside approved freshness windows.
-
-**API-cadence status:** REVIEWED / NOT YET DEPLOYED.
-
-## Current active objective
-
-1. Finish repository-path cleanup and verify `task_mapping` contains all durable material from the redundant Task Mapping branches.
-2. Delete the redundant branches in GitHub UI.
-3. Capture and screen the exact current 36-file production Apps Script source.
-4. Archive it safely under `apps-script/` and prove GitHub read-back parity.
-5. Build the complete file/function/caller/trigger/sheet/API/write inventory.
-6. Classify functions as CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN.
-7. Only then begin physical source reorganization, starting with scheduler/report-cache safety and relationship-resolution integrity.
+`task_mapping` remains the only canonical branch. Temporary `task_mapping_autopatch_stage*` refs created while wiring the connector-based setup are noncanonical and are not used by the AutoPatch workflow; they should be deleted when branch-delete access is available.
