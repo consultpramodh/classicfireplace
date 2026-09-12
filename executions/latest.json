@@ -6,6 +6,17 @@
   "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
   "runtimeFeatureVerified": true,
   "runtimeVerificationScope": "Actual production R30 Requested By router verified live on all three linked PreInspection tasks for 2026-09-11. Task 18379 resolved spencer@classicfireplace.ca to Spencer Bambek Employee 20; Task 18241 resolved warren@classicfireplace.ca to Warren Jennings Employee 54; Task 18362 resolved adam@classicfireplace.ca to Adam Stokes Employee 31. All writes used resolutionMethod CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE and final Striven read-back returned RequestedBy.Type=employee with pass=true.",
+  "finalReadOnlyAudit": {
+    "test": "checkAllTodaysPreinspectRequestedByNoSheetV2",
+    "date": "2026-09-11",
+    "calendarEventCount": 7,
+    "existingPreinspectionTaskCount": 3,
+    "passCount": 3,
+    "failCount": 0,
+    "reviewCount": 0,
+    "eventsWithoutExistingTask": 4,
+    "pass": true
+  },
   "runtimeRegressionPreviouslyObserved": true,
   "runtimeRegressionObservedAt": "2026-09-11T17:32:00-04:00",
   "confirmedRootCause": "The scheduled/manual Requested By route was pushSelectedPreInspectRequestedBy -> preinspectR30RunManualPush_('REQUESTED_BY') -> preinspectR30PushRequestedBy_(ctx). That R30 function explicitly resolved desired.contactId and PATCHed RequestedBy { Id: desired.contactId, Type: 'contact' }, bypassing the R3.4.21 organizer Employee helper.",
@@ -59,9 +70,9 @@
   ],
   "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
   "actualProcessRequestedByRule": "R30_ROUTER_RUNTIME_VERIFIED_EMPLOYEE",
-  "todaysLinkedTasksReconciled": "3_OF_3_RUNTIME_PASS_PENDING_FINAL_READ_ONLY_AUDIT",
+  "todaysLinkedTasksReconciled": "3_OF_3_PASS_FINAL_READ_ONLY_AUDIT_VERIFIED",
   "scheduledBatchRegressionProof": "PENDING_NEXT_SCHEDULED_BATCH",
   "actualProcessSpreadsheetDependency": "STILL_PRESENT",
   "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
-  "nextAction": "Run checkAllTodaysPreinspectRequestedByNoSheetV2 once more. Expected: existingPreinspectionTaskCount=3, passCount=3, failCount=0, reviewCount=0. Then leave the next scheduled PreInspection batch to run normally and re-audit afterward to prove the scheduler no longer reverts Employee Requested By values."
+  "nextAction": "Do not manually touch the three verified tasks. After the next normal scheduled PreInspection batch, rerun checkAllTodaysPreinspectRequestedByNoSheetV2. If it remains 3 PASS / 0 FAIL / 0 REVIEW, close the historical customer-contact regression as scheduler-verified."
 }
