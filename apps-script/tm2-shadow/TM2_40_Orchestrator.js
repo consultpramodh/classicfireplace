@@ -46,30 +46,40 @@ function tm2_shadowRunWorkflow(workflow, maxRows) {
 }
 
 function tm2_shadowInstall() {
-  return tm2_shadowRunWorkflow('Install', 100);
+  return tm2_runWithEvidence_('tm2_shadowInstall', 'Install', function() {
+    return tm2_shadowRunWorkflow('Install', 100);
+  });
 }
 
 function tm2_shadowDelivery() {
-  return tm2_shadowRunWorkflow('Delivery', 100);
+  return tm2_runWithEvidence_('tm2_shadowDelivery', 'Delivery', function() {
+    return tm2_shadowRunWorkflow('Delivery', 100);
+  });
 }
 
 function tm2_shadowService() {
-  return tm2_shadowRunWorkflow('Service', 100);
+  return tm2_runWithEvidence_('tm2_shadowService', 'Service', function() {
+    return tm2_shadowRunWorkflow('Service', 100);
+  });
 }
 
 function tm2_shadowPreInspection() {
-  return tm2_shadowRunWorkflow('PreInspection', 100);
+  return tm2_runWithEvidence_('tm2_shadowPreInspection', 'PreInspection', function() {
+    return tm2_shadowRunWorkflow('PreInspection', 100);
+  });
 }
 
 function tm2_shadowRunAll() {
-  tm2_assertShadowSafe_();
-  return {
-    tm2Version: TM2_VERSION,
-    mode: TM2_MODE.name,
-    Install: tm2_shadowInstall(),
-    Delivery: tm2_shadowDelivery(),
-    Service: tm2_shadowService(),
-    PreInspection: tm2_shadowPreInspection(),
-    writeAttempts: 0
-  };
+  return tm2_runWithEvidence_('tm2_shadowRunAll', 'ALL', function() {
+    tm2_assertShadowSafe_();
+    return {
+      tm2Version: TM2_VERSION,
+      mode: TM2_MODE.name,
+      Install: tm2_shadowInstall(),
+      Delivery: tm2_shadowDelivery(),
+      Service: tm2_shadowService(),
+      PreInspection: tm2_shadowPreInspection(),
+      writeAttempts: 0
+    };
+  });
 }
