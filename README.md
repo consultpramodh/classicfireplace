@@ -1,6 +1,16 @@
 # Classic Fireplace — Task Mapping
 
-This `task_mapping` branch is the **single canonical project home** for the Classic Fireplace Task Mapping system: Install, Delivery, Service, and PreInspection.
+The canonical GitHub branch for the Classic Fireplace Task Mapping system is now:
+
+`task-mapping/main`
+
+Branch hierarchy:
+
+- `task-mapping/main` — canonical current project state and release ledger.
+- `task-mapping/reorg/task-mapping-architecture-20260911` — active architecture/reorganization work branched from canonical main.
+- `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911` — frozen pre-reorganization backup branch.
+
+Legacy flat branch names may remain temporarily because the connected GitHub action set does not expose branch deletion. They are not canonical and must not receive new work.
 
 Production Apps Script is not changed merely because repository documentation or architecture is reorganized here.
 
@@ -9,16 +19,17 @@ Production Apps Script is not changed merely because repository documentation or
 1. `PROJECT_CURRENT_STATE.md` — latest verified production/source state, active risks, and reorganization status.
 2. `PROJECT_CHECKPOINT.md` — exact continuation point and next action.
 3. `PROJECT_OPERATING_RULES.md` — mandatory change, test, deployment, verification, and recovery rules.
-4. `docs/architecture/README.md` — architecture/reorganization index.
-5. `docs/architecture/PROCESS_CONTRACT_MATRIX.md` — per-workflow guardrails, endpoints, retry states, and write/read-back contracts.
-6. `docs/architecture/GAP_REGISTER.md` — prioritized failure modes and open proof gaps.
-7. `docs/PREINSPECTION_FLOW.md` — agreed PreInspection business workflow.
-8. `docs/API_REFRESH_POLICY.md` — current API/report-refresh analysis and target cadence.
-9. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
+4. `docs/BRANCH_STRUCTURE.md` — canonical branch hierarchy and legacy-branch policy.
+5. `docs/architecture/README.md` — architecture/reorganization index.
+6. `docs/architecture/PROCESS_CONTRACT_MATRIX.md` — per-workflow guardrails, endpoints, retry states, and write/read-back contracts.
+7. `docs/architecture/GAP_REGISTER.md` — prioritized failure modes and open proof gaps.
+8. `docs/PREINSPECTION_FLOW.md` — agreed PreInspection business workflow.
+9. `docs/API_REFRESH_POLICY.md` — current API/report-refresh analysis and target cadence.
+10. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
 
 ## Repository layout
 
-- `apps-script/` — exact verified Apps Script source **only when full production-source parity has been proven and the source is safe to publish**.
+- `apps-script/` — exact verified Apps Script source only when full production-source parity has been proven and the source is safe to publish.
 - `docs/architecture/` — target architecture, process contracts, endpoint definitions, gap register, and staged migration plan.
 - `docs/` — stable workflow/policy documentation.
 - `executions/` — machine-readable verified deployment/release records; `latest.json` is the latest recorded release.
@@ -42,7 +53,7 @@ This repository is public.
 
 Raw Apps Script source must not be archived here until it is screened for credentials, tokens, customer PII, private operational data, and unsafe hard-coded endpoints.
 
-The live Apps Script project is known to contain **36 files**, and R3.4.22 was source-pushed and POST-read-back verified. However, the exact current 36-file POST source is still **not archived under `apps-script/`**. Therefore GitHub production-source parity remains pending.
+The live Apps Script project is known to contain 36 files, and R3.4.22 was source-pushed and POST-read-back verified. However, the exact current 36-file POST source is still not archived under `apps-script/`. Therefore GitHub production-source parity remains pending.
 
 Do not reconstruct current production source from an older snapshot and label it current.
 
