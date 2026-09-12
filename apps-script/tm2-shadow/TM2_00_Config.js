@@ -1,4 +1,4 @@
-const TM2_VERSION = 'TM2_SHADOW_R0_20260912';
+const TM2_VERSION = 'TM2_SHADOW_R0_1_20260912';
 
 const TM2_MODE = Object.freeze({
   name: 'SHADOW_READ_ONLY',
@@ -6,6 +6,13 @@ const TM2_MODE = Object.freeze({
   createRecreateEnabled: false,
   calendarWriteEnabled: false,
   triggerInstallEnabled: false
+});
+
+const TM2_TEST_EVIDENCE = Object.freeze({
+  enabled: true,
+  sheetName: 'TM2 Test Log',
+  hideSheet: true,
+  maxDataRows: 5000
 });
 
 const TM2_ENDPOINT = Object.freeze({
