@@ -1,21 +1,35 @@
 {
-  "version": "R3.4.21c",
-  "businessRelease": "R3.4.21_REQUESTED_BY_ORGANIZER_EMPLOYEE",
+  "version": "R3.4.22",
+  "businessRelease": "R3.4.22_R30_REQUESTED_BY_ROUTER_FIX",
   "sourceReleaseDate": "2026-09-11",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
   "runtimeFeatureVerified": false,
-  "runtimeRegression": true,
+  "runtimeRegressionPreviouslyObserved": true,
   "runtimeRegressionObservedAt": "2026-09-11T17:32:00-04:00",
-  "runtimeRegressionDetails": "After manual no-sheet reconciliation set Task 18379 to Spencer Employee 20, Task 18241 to Warren Employee 54, and Task 18362 to Adam Employee 31, the normal PreInspection OPEN-task schedule identity reconcile overwrote those Employees back to customer Contacts. Runtime logs show Task 18379 Employee 20 -> Contact 56293, Task 18241 Employee 54 -> Contact 56268, and Task 18362 Employee 31 -> Contact 56310.",
-  "confirmedRootCause": "The actual scheduled/manual Requested By route is pushSelectedPreInspectRequestedBy -> preinspectR30RunManualPush_('REQUESTED_BY') -> preinspectR30PushRequestedBy_(ctx). Live function-source diagnostics proved preinspectR30PushRequestedBy_ still called preinspectR30ResolveRequestedBy_, compared desired.contactId, and PATCHed RequestedBy { Id: desired.contactId, Type: 'contact' }. R3.4.21c correctly changed preinspectR32PushRequestedByPlan_ to the organizer Employee helper, but the active R30 scheduled route bypassed that R32 function entirely.",
-  "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
-  "actualProcessRequestedByRule": "CONFIRMED_R30_CONTACT_ROUTER_BUG",
-  "r3422PreparedFix": "Replace only preinspectR30PushRequestedBy_(ctx) so it delegates to preinspectR3421PushRequestedByOrganizerPlan_(ctx). Package: TaskMapping-PreInspect-R3.4.22-R30-REQUESTED-BY-ROUTER-FIX.zip. Not deployed yet.",
-  "r3422ExpectedChangedFiles": [
+  "confirmedRootCause": "The scheduled/manual Requested By route was pushSelectedPreInspectRequestedBy -> preinspectR30RunManualPush_('REQUESTED_BY') -> preinspectR30PushRequestedBy_(ctx). That R30 function explicitly resolved desired.contactId and PATCHed RequestedBy { Id: desired.contactId, Type: 'contact' }, bypassing the R3.4.21 organizer Employee helper.",
+  "r3422Fix": "preinspectR30PushRequestedBy_(ctx) now delegates directly to preinspectR3421PushRequestedByOrganizerPlan_(ctx).",
+  "changedFiles": [
     "35_PreInspect_Task_Review.js"
   ],
+  "sourceVerification": {
+    "prePullFileCount": 36,
+    "postPullFileCount": 36,
+    "freshnessGuard": "PASS",
+    "syntaxCheck": "PASS",
+    "postShaReadback": "PASS",
+    "beforeSha256": "ace973c125a621744af388630c7596a72a8951b0cce89324b9ab6c6bdbf8b464",
+    "afterSha256": "716677b70bea05ed4129175a1e67e17eca6bf462cae16c26dfa763357c373f71"
+  },
+  "liveFunctionDiagnostic": {
+    "function": "preinspectR30PushRequestedBy_",
+    "contactPayload": false,
+    "contactIdLogic": false,
+    "organizerEmployeeLogic": true
+  },
+  "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
+  "actualProcessRequestedByRule": "SOURCE_ROUTER_FIXED_RUNTIME_REVERIFY_PENDING",
   "actualProcessSpreadsheetDependency": "STILL_PRESENT",
   "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
-  "nextAction": "Deploy guarded R3.4.22 one-file router fix. Then rerun diagnoseExactPreinspectR30RequestedBy and verify contactPayload=false, contactIdLogic=false, organizerEmployeeLogic=true before repairing/rechecking live PreInspection tasks."
+  "nextAction": "Run one controlled live Requested By reconciliation through the actual R30 route and verify the result reports CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE with RequestedBy.Type=employee, then recheck today's existing PreInspection tasks and confirm the scheduled reconcile no longer reverts them to customer contacts."
 }
