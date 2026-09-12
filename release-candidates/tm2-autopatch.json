@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "release": "TM2_SHADOW_R0",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "sourceDirectory": "apps-script/tm2-shadow",
+  "expectedLegacyNonTm2Count": 36,
+  "claspVersion": "3.3.0",
+  "mode": "SHADOW_READ_ONLY"
+}
