@@ -1,0 +1,25 @@
+{
+  "environment": "TEST",
+  "spreadsheetId": "TEST_SPREADSHEET_ID_HERE",
+  "calendars": {
+    "install": "TEST_INSTALL_CALENDAR_ID_HERE",
+    "delivery": "TEST_DELIVERY_CALENDAR_ID_HERE",
+    "service": "TEST_SERVICE_CALENDAR_ID_HERE",
+    "preinspection": "TEST_PREINSPECTION_CALENDAR_ID_HERE"
+  },
+  "writes": {
+    "enabled": false,
+    "strivenAllowlistOnly": true,
+    "allowCreateRecreate": false,
+    "allowTriggerInstall": false
+  },
+  "allowlists": {
+    "customerIds": [],
+    "salesOrderIds": [],
+    "taskIds": []
+  },
+  "evidence": {
+    "label": "TEST",
+    "destination": "TEST_EVIDENCE_DESTINATION_HERE"
+  }
+}
