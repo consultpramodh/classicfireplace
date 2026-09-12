@@ -1,26 +1,34 @@
 # Task Mapping Reorganization Plan
 
-**Canonical branch:** `task-mapping/main`
-
-**Active reorganization branch:** `task-mapping/reorg/task-mapping-architecture-20260911`
-
-**Frozen backup branch:** `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911`
+**Canonical branch:** `task_mapping`
 
 ## Objective
 
-Reorganize the Task Mapping system without changing working business behavior until each migrated path has contract parity and targeted verification.
+Reorganize the entire Task Mapping system—Install, Delivery, Service, and PreInspection—without changing working business behavior until each migrated path has contract parity and targeted verification.
 
 The target is not a rewrite. It is a staged strangler migration from overlapping/legacy ownership to one canonical execution pipeline.
 
+## Four-workflow coverage requirement
+
+The reorganization applies equally to:
+
+1. Install
+2. Delivery
+3. Service
+4. PreInspection
+
+No phase is considered complete if shared code has been reorganized but one or more affected workflows have not been inventoried and regression-checked.
+
+Dedicated workflow contracts live under `docs/workflows/` and shared acceptance rules live in `docs/architecture/PROCESS_CONTRACT_MATRIX.md`.
+
 ## Non-negotiable preservation rules
 
-- Keep canonical current project material on `task-mapping/main`.
-- Perform architecture/refactor work on grouped `task-mapping/reorg/...` branches created from canonical main.
-- Preserve frozen rollback points under `task-mapping/backup/...`.
+- Keep durable project material inside the single canonical `task_mapping` branch.
+- Use folders and immutable commit SHAs for durable backups/history; do not create permanent backup/reorg branches merely to simulate folders.
 - Preserve current public/menu/trigger entry points until replacements are proven.
 - Preserve existing sheet names, header expectations, Calendar IDs, task-type rules, assignment rules, and approved Calendar write exceptions.
+- Preserve workflow-specific differences; do not genericize away Install, Delivery, Service, or PreInspection guardrails.
 - Do not delete legacy files/functions merely because they look redundant.
-- Do not merge division-specific guardrails into a generic rule when the business rules differ.
 - No production write is considered complete without the required read-back/reconciliation for that operation.
 - No uncertain CREATE may be blindly retried.
 - REVIEW/BLOCKED states must fail closed.
@@ -73,15 +81,16 @@ These are target responsibilities, not an instruction to rename every current fi
 
 ### Phase 0 — Freeze and inventory
 
-- Preserve the pre-reorganization baseline under `history/pre-reorg/2026-09-11/` and the grouped backup branch.
+- Preserve project-wide baseline under `backups/2026-09-12/PROJECT_WIDE_REORG_BASELINE.md`.
 - Capture exact current Apps Script source when available.
-- Build function/file/trigger/sheet/API/write inventory.
+- Build function/file/trigger/sheet/API/write inventory for all four workflows and shared modules.
 - Mark every function as CANONICAL, ADAPTER, LEGACY-USED, LEGACY-UNUSED, or UNKNOWN.
+- Map every shared function to the workflows that call it.
 
 ### Phase 1 — Endpoint and guardrail contracts
 
 - Adopt canonical endpoint states.
-- Document per-division guardrails.
+- Document Install, Delivery, Service, and PreInspection guardrails.
 - Document deferred/retry behavior.
 - Require every non-terminal state to have an owner and next transition.
 
@@ -91,46 +100,53 @@ These are target responsibilities, not an instruction to rename every current fi
 - Separate refresh/rebuild from link mutation.
 - Add report schema validation and last-known-good cache protection.
 - Introduce TTL-based report freshness.
+- Regression-check scheduler/report changes across every workflow using the shared reports.
 
 ### Phase 3 — Relationship resolver
 
 - Centralize Customer/SO/Location/Contact/Employee relationship proof.
 - Require cross-entity ownership validation before CREATE/RECREATE/PATCH.
-- Keep PreInspect Requested By organizer->Employee rule isolated in its workflow profile.
+- Preserve each workflow's matching evidence/priority differences.
+- Keep PreInspection Requested By organizer->Employee rule isolated in its workflow profile.
 
 ### Phase 4 — Planner/executor separation
 
 - Matching/planning becomes pure/read-only.
 - Striven writes move behind a single executor.
-- Write plans include expected state and verification requirements.
+- Write plans include workflow identity, expected state, guardrails, and verification requirements.
+- Regression-check all workflows using shared planner/executor primitives.
 
 ### Phase 5 — Recovery isolation
 
 - Recovery reuses the same resolver/planner/executor.
 - Replace presence-only ID checks with relationship-integrity checks.
 - Represent wait-until-later cases as `DEFERRED_RETRY`, not generic SKIP.
+- Preserve workflow-specific recovery rules.
 
 ### Phase 6 — Calendar link/handoff service
 
 - Aggregate all expected links per Calendar event before writing.
+- Preserve Install and Delivery managed-link rules.
 - Support Service multi-fireplace task sets.
+- Support PreInspection downstream Install handoff only under its proven contract.
 - Decouple Calendar-link repair from Striven task mutability where relationship evidence is exact.
 - Read back Calendar descriptions after material writes.
 
-### Phase 7 — PreInspect lifecycle completion
+### Phase 7 — Workflow lifecycle completion
 
-- Complete DONE -> final SO -> exact same-customer Install target -> verified PreInspect link handoff.
-- Add the separate guarded SO Internal Notes handoff only after its contract is proven.
-- Close missing-Customer-Number notification and new-location proof gaps.
+- Install: verify normal sync, recovery, and Calendar-link lifecycle.
+- Delivery: verify normal sync, assignment, recovery, and Calendar-link lifecycle.
+- Service: verify event-level multi-task synchronization, technician assignment, recovery, and complete link sets.
+- PreInspection: complete DONE -> final SO -> exact same-customer Install target -> verified PreInspection link handoff; close Field 854/new-location/missing-customer-number/SO-notes proof gaps.
 
 ### Phase 8 — Compatibility cleanup
 
 - Convert legacy public functions to thin adapters.
 - Remove dynamic candidate/fallback routing only after call graph and contract tests prove safe ownership.
-- Delete dead functions/files only after verified zero callers and regression coverage.
+- Delete dead functions/files only after verified zero callers and regression coverage across every affected workflow.
 
 ## No-delete rule during early migration
 
-Until exact live-source parity exists and the call graph is complete, early reorganization commits may add documentation, tests, adapters, or canonical modules, but must not delete production functions/files.
+Until exact live-source parity exists and the complete call graph is grounded in the live 36-file source, early reorganization may add documentation, tests, adapters, or canonical modules, but must not delete production functions/files.
 
-Legacy flat branches are not part of the active architecture. New work must target the grouped `task-mapping/...` hierarchy.
+The acceptance checklist for workflow coverage is `docs/workflows/WORKFLOW_COVERAGE_MATRIX.md`.
