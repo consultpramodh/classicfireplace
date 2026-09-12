@@ -3,10 +3,10 @@ name: Task Mapping Ledger Check
 on:
   push:
     branches:
-      - task_mapping
+      - task-mapping/main
   pull_request:
     branches:
-      - task_mapping
+      - task-mapping/main
 
 permissions:
   contents: read
