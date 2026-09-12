@@ -4,7 +4,8 @@
   "sourceReleaseDate": "2026-09-11",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
-  "runtimeFeatureVerified": false,
+  "runtimeFeatureVerified": true,
+  "runtimeVerificationScope": "Actual production R30 Requested By router verified live on Task 18379. preinspectR30PushRequestedBy_(ctx) delegated to preinspectR3421PushRequestedByOrganizerPlan_(ctx), resolved Calendar organizer spencer@classicfireplace.ca to Striven Employee 20 Spencer Bambek, PATCHed RequestedBy.Type=employee, and final Striven read-back returned id 20 / type employee with pass=true.",
   "runtimeRegressionPreviouslyObserved": true,
   "runtimeRegressionObservedAt": "2026-09-11T17:32:00-04:00",
   "confirmedRootCause": "The scheduled/manual Requested By route was pushSelectedPreInspectRequestedBy -> preinspectR30RunManualPush_('REQUESTED_BY') -> preinspectR30PushRequestedBy_(ctx). That R30 function explicitly resolved desired.contactId and PATCHed RequestedBy { Id: desired.contactId, Type: 'contact' }, bypassing the R3.4.21 organizer Employee helper.",
@@ -27,9 +28,21 @@
     "contactIdLogic": false,
     "organizerEmployeeLogic": true
   },
+  "liveRouterRuntimeTest": {
+    "test": "testR3422ActualR30Route18379",
+    "taskId": 18379,
+    "organizerEmail": "spencer@classicfireplace.ca",
+    "employeeId": 20,
+    "employeeName": "Spencer Bambek",
+    "resolutionMethod": "CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE",
+    "afterRequestedById": 20,
+    "afterRequestedByType": "employee",
+    "pass": true
+  },
   "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
-  "actualProcessRequestedByRule": "SOURCE_ROUTER_FIXED_RUNTIME_REVERIFY_PENDING",
+  "actualProcessRequestedByRule": "R30_ROUTER_RUNTIME_VERIFIED_EMPLOYEE",
+  "scheduledBatchRegressionProof": "PENDING_NEXT_BATCH_OR_CONTROLLED_ALL_OPEN_RECONCILE",
   "actualProcessSpreadsheetDependency": "STILL_PRESENT",
   "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
-  "nextAction": "Run one controlled live Requested By reconciliation through the actual R30 route and verify the result reports CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE with RequestedBy.Type=employee, then recheck today's existing PreInspection tasks and confirm the scheduled reconcile no longer reverts them to customer contacts."
+  "nextAction": "Run one controlled all-OPEN PreInspection Requested By reconciliation through the repaired R30 route, verify every writable Task Type 105 result uses CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE and no CUSTOMER_CONTACT_PHONE/contact payload appears, then re-audit today's tasks after the next scheduled PreInspection batch."
 }
