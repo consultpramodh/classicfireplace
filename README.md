@@ -13,20 +13,31 @@ Production Apps Script is not changed merely because repository documentation or
 3. `PROJECT_OPERATING_RULES.md` — mandatory change, test, deployment, verification, and recovery rules.
 4. `docs/README.md` — documentation index.
 5. `docs/REPOSITORY_STRUCTURE.md` — single-branch folder map and branch-retirement plan.
-6. `docs/architecture/README.md` — architecture/reorganization index.
-7. `docs/architecture/PROCESS_CONTRACT_MATRIX.md` — per-workflow guardrails, endpoints, retry states, and write/read-back contracts.
-8. `docs/architecture/GAP_REGISTER.md` — prioritized failure modes and open proof gaps.
-9. `docs/workflows/preinspection/FLOW.md` — agreed PreInspection business workflow.
+6. `docs/workflows/README.md` — project-wide workflow index covering Install, Delivery, Service, and PreInspection.
+7. `docs/workflows/WORKFLOW_COVERAGE_MATRIX.md` — confirms equal workflow coverage and pending live-source inventory work.
+8. `docs/architecture/README.md` — architecture/reorganization index.
+9. `docs/architecture/PROCESS_CONTRACT_MATRIX.md` — shared and per-workflow guardrails, endpoints, retry states, and write/read-back contracts.
 10. `docs/policies/API_REFRESH_POLICY.md` — API/report-refresh analysis and target cadence.
 11. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
+
+## Four workflow domains
+
+The repository maintains dedicated documentation for all four workflows:
+
+- `docs/workflows/install/`
+- `docs/workflows/delivery/`
+- `docs/workflows/service/`
+- `docs/workflows/preinspection/`
+
+Shared/common logic belongs in `docs/architecture/`. A refactor affecting shared code is not accepted until every affected workflow contract is checked.
 
 ## Repository layout
 
 - `apps-script/` — exact verified Apps Script source only when full production-source parity has been proven and the source is safe to publish.
-- `backups/` — backup manifests and rollback references previously spread across backup branches.
+- `backups/` — project-wide backup manifests and rollback references previously spread across backup branches.
 - `docs/architecture/` — target architecture, process contracts, endpoint definitions, gap register, and staged migration plan.
 - `docs/policies/` — cross-workflow policies such as API cadence and versioning/release standards.
-- `docs/workflows/` — workflow-specific business rules and process documentation.
+- `docs/workflows/` — workflow-specific business rules and process documentation for all four workflows.
 - `executions/` — machine-readable verified deployment/release records; `latest.json` is the latest recorded release.
 - `deployment-history/` — human-readable release/deployment history.
 - `history/releases/` — release-specific historical notes.
@@ -60,10 +71,11 @@ Until exact live-source parity and a complete caller/dependency inventory exist:
 
 - do not delete or rename production functions/files merely for cleanliness;
 - preserve menus, triggers, sheet names, Calendar IDs, task-type rules, assignment rules, and public entrypoints;
+- preserve Install, Delivery, Service, and PreInspection-specific behavior;
 - document one canonical owner for each responsibility;
 - separate resolution/matching/planning from mutation;
 - require explicit endpoint states and read-back verification for material writes;
 - fail closed on ambiguous relationships;
 - never blindly retry an uncertain CREATE.
 
-The canonical architecture and workflow-specific guardrails are in `docs/architecture/`.
+The canonical architecture and workflow-specific guardrails are in `docs/architecture/` and `docs/workflows/`.
