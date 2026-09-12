@@ -1,124 +1,161 @@
-# Task Mapping — TEST Environment Plan
+# Task Mapping — Same-Project Shadow Test Plan
 
 ## Purpose
 
-Create an isolated environment for validating Task Mapping changes before any code is pushed to the production Apps Script project.
+Validate rewritten Task Mapping code inside the **existing production Apps Script project and existing spreadsheet** without replacing or deleting the current working implementation.
 
-This plan covers the entire Task Mapping system:
+This plan covers Install, Delivery, Service, PreInspection, and every shared module they depend on.
 
-- Install
-- Delivery
-- Service
-- PreInspection
-- shared scheduler/report/cache/resolution/planning/execution/link/verification modules
+## Chosen strategy
 
-## Hard release rule
+We are **not** creating a second permanent Apps Script TEST project or duplicate workbook at this stage.
 
-No reorganized or modified Task Mapping code is pushed to the production Apps Script project until the affected functionality passes the available pre-push TEST gates.
+Instead, use a compatibility-preserving **shadow/sidecar migration** inside the current Script ID:
 
-A production push is followed by source read-back and runtime verification. Passing pre-push tests does not replace post-push verification.
+- keep every existing production file and function;
+- add rewritten files beside them;
+- give all rewritten files/functions unique names so they cannot override current globals;
+- do not connect rewritten functions to existing triggers or menus initially;
+- run rewritten logic manually in read-only shadow mode first;
+- compare rewritten results with current production behavior;
+- permit tightly controlled canary writes only after shadow parity passes;
+- cut over one workflow at a time only after evidence is sufficient;
+- keep the old implementation available for rollback until the new path is proven stable.
 
-## Environment separation
+## Naming rule
 
-### Production
+Apps Script files share one global JavaScript namespace. Duplicate global function/variable names are unsafe.
 
-- existing production Apps Script project
-- production spreadsheet
-- production Install, Delivery, Service, and PreInspection calendars
-- production Striven data
-- existing production triggers
+Rewritten source must therefore use a unique prefix. Current convention:
 
-Production remains unchanged while TEST is being prepared and while cleanup/refactor work is under validation.
+- file prefix: `TM2_`
+- function prefix: `tm2_`
 
-### TEST
+Examples:
 
-TEST should use:
+- `TM2_10_Calendar_Source.js`
+- `TM2_20_Relationship_Resolver.js`
+- `tm2_buildInstallPlan_()`
+- `tm2_runInstallShadowAudit()`
 
-- a separate Apps Script project;
-- a separate spreadsheet copied from the Task Mapping workbook structure;
-- dedicated TEST Install Calendar;
-- dedicated TEST Delivery Calendar;
-- dedicated TEST Service Calendar;
-- dedicated TEST PreInspection Calendar;
-- separate environment configuration / Script Properties;
-- no time-driven triggers initially;
-- clear TEST logging/evidence.
+Existing public/menu/trigger functions retain their current names until an intentional cutover.
 
-## Striven write isolation
+## Runtime modes
 
-Preferred option: use an isolated Striven sandbox/test tenant if one exists.
+### `SHADOW_READ_ONLY`
 
-If no Striven sandbox exists, TEST Striven mutation must be fail-closed and allowlist-only:
+Default mode.
 
-- only explicitly approved test Customer IDs may be mutated;
-- only explicitly approved test Sales Order IDs may be used for write-capable tests;
-- only explicitly approved test Task IDs may be patched;
-- CREATE/RECREATE tests require an explicit TEST write-enable gate plus approved test context;
-- all non-allowlisted records are read-only;
-- uncertain CREATE is never retried blindly.
+- may read the existing spreadsheet, Calendars, reports, and Striven data;
+- may calculate mappings, matches, plans, endpoint classifications, and expected writes;
+- must not mutate Striven, Calendar business content, production mapping data, triggers, or production configuration;
+- records evidence in logs / test evidence rather than adding new workflow sheets or columns.
 
-TEST must never silently fall back to unrestricted production Striven writes.
+### `CANARY_WRITE`
 
-## Calendar write isolation
+Manual-only controlled mode.
 
-TEST code must write only to the four dedicated TEST calendars. Production Calendar IDs must not be accepted by a TEST environment.
+Allowed only after the relevant shadow tests pass.
 
-Managed-link tests must preserve authored text, remain idempotent, aggregate all expected links for an event, and verify Calendar read-back.
+- no time-driven triggers;
+- no bulk all-workflow writes;
+- explicit workflow + event/row/task context required;
+- explicit write-enable gate required;
+- duplicate prevention and relationship checks rerun immediately before mutation;
+- material writes require read-back verification;
+- uncertain CREATE is never blindly retried.
 
-## Sheet isolation
+### `CUTOVER_READY`
 
-TEST must use the TEST spreadsheet only. Production spreadsheet IDs must be rejected when `ENVIRONMENT=TEST`.
+Evidence state only. It does not automatically switch production routing.
 
-## Environment contract
+A workflow becomes `CUTOVER_READY` only after shadow parity, canary verification, and regression coverage pass.
 
-One environment resolver should supply all environment-sensitive IDs and write policy. Business logic should not scatter `if (TEST)` checks throughout unrelated workflow functions.
+## No-trigger rule during shadow testing
 
-Required environment fields are documented under `config/environments/`.
+Current production triggers continue invoking the current implementation.
 
-## Initial trigger policy
+Rewritten `tm2_...` entrypoints must not be added to existing time-driven triggers during early testing. Initial execution is manual from the Apps Script editor or an explicitly isolated test runner.
 
-Time-driven triggers stay disabled until manual TEST runs prove:
+No rewritten `onOpen`, `onEdit`, or other trigger-compatible function may use a legacy public name.
 
-1. correct target project;
-2. correct spreadsheet;
-3. correct TEST calendars;
-4. correct Striven write restrictions;
-5. duplicate prevention;
-6. read-back verification;
-7. no unexpected production references.
+## Existing-sheet testing rule
 
-Only after those checks pass should controlled TEST triggers be installed.
+The existing workbook remains the source of realistic production data.
 
-## Pre-push promotion gate
+To keep testing low-friction:
 
-A candidate release may be considered for production only when applicable checks pass:
+- do not create duplicate production workflow sheets merely for the rewrite;
+- do not add permanent test columns to the live mapping sheets;
+- use read-only comparison wherever possible;
+- use existing diagnostics/logging or external test-evidence records for comparisons;
+- canary writes must target only the explicitly selected/approved case.
 
-1. exact changed-file scope known;
-2. syntax checks PASS;
-3. function/dependency checks PASS;
-4. environment isolation checks PASS;
-5. Install regression PASS when affected;
-6. Delivery regression PASS when affected;
-7. Service regression PASS when affected;
-8. PreInspection regression PASS when affected;
-9. shared-module regression PASS for every caller workflow;
-10. duplicate/recovery cases PASS where affected;
-11. Calendar managed-link cases PASS where affected;
-12. expected REVIEW/BLOCKED/DEFERRED behavior PASS;
-13. material TEST writes read back correctly;
-14. no production IDs/writes observed from TEST;
-15. changed-file inventory matches the intended change.
+## Striven and Calendar safety
 
-If a check cannot be executed before production because it depends on production-only state, record it explicitly as `POST_PUSH_RUNTIME_PROOF_REQUIRED`. It does not become an assumed PASS.
+Because the same project uses live Striven and Calendar context, `CANARY_WRITE` is a real production-data mutation and must be treated accordingly.
 
-## Production promotion sequence
+Before a canary mutation:
 
-`fresh production source pull -> compare TEST candidate to production -> final changed-file allowlist -> pre-push gate PASS -> production push -> immediate production source read-back -> targeted production smoke/runtime verification -> rollback on failure -> GitHub verified-source sync/read-back`
+1. fresh Calendar/read source state;
+2. exact workflow context;
+3. relationship integrity proof;
+4. duplicate check;
+5. explicit manual write enable;
+6. smallest possible changed scope;
+7. authoritative read-back after write.
+
+Bulk CREATE/RECREATE remains disabled during early shadow validation.
+
+## Four-workflow acceptance
+
+If a rewritten shared helper is used by multiple workflows, regression evidence must cover every caller workflow:
+
+- Install;
+- Delivery;
+- Service;
+- PreInspection.
+
+A shared-module rewrite is not accepted because one workflow passes.
+
+## Cutover method
+
+Do not replace all production routes at once.
+
+For each workflow:
+
+1. old implementation remains active;
+2. new `TM2_` implementation runs in shadow;
+3. compare results on known-good and known-bad cases;
+4. perform one or more controlled canary cases where required;
+5. mark workflow `CUTOVER_READY` only after PASS;
+6. introduce a narrow routing flag/adapter at the existing public entrypoint;
+7. switch only that workflow to the new path;
+8. immediately runtime-verify;
+9. revert the routing flag if verification fails;
+10. keep legacy implementation until stabilization and explicit retirement review.
+
+## Pre-push distinction
+
+Adding inert `TM2_` files to the same Script ID is technically a source change to the production Apps Script project even while production routing remains unchanged.
+
+Therefore before any new shadow files are pushed:
+
+- exact current live source must be freshly captured;
+- old-file hashes/inventory must be recorded;
+- new files must pass syntax/static dependency checks;
+- new globals must be checked for collisions;
+- old files must remain byte-for-byte unchanged unless a separately approved change is required;
+- no current trigger/menu entrypoint may point to the new implementation.
+
+After push, re-pull and verify that all legacy files are unchanged and only the intended `TM2_` files were added/updated.
 
 ## Current status
 
-Repository-side TEST framework: IN PROGRESS.
+Repository shadow-test framework: DEFINED.
 
-Separate Google Apps Script TEST project, TEST spreadsheet, TEST calendars, and Striven isolation: NOT YET CREATED/VERIFIED.
+Exact current live source capture: PENDING.
 
-Exact current 36-file production source archive: PENDING.
+`TM2_` rewritten source: NOT YET BUILT FROM CURRENT LIVE SOURCE.
+
+Production routing changes: NONE.
