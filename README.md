@@ -1,16 +1,8 @@
 # Classic Fireplace — Task Mapping
 
-The canonical GitHub branch for the Classic Fireplace Task Mapping system is now:
+`task_mapping` is the **single canonical GitHub branch** for the Classic Fireplace Task Mapping system: Install, Delivery, Service, and PreInspection.
 
-`task-mapping/main`
-
-Branch hierarchy:
-
-- `task-mapping/main` — canonical current project state and release ledger.
-- `task-mapping/reorg/task-mapping-architecture-20260911` — active architecture/reorganization work branched from canonical main.
-- `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911` — frozen pre-reorganization backup branch.
-
-Legacy flat branch names may remain temporarily because the connected GitHub action set does not expose branch deletion. They are not canonical and must not receive new work.
+All durable project material belongs inside this branch. Backup and architecture records are organized as folders, not permanent parallel branches.
 
 Production Apps Script is not changed merely because repository documentation or architecture is reorganized here.
 
@@ -19,23 +11,26 @@ Production Apps Script is not changed merely because repository documentation or
 1. `PROJECT_CURRENT_STATE.md` — latest verified production/source state, active risks, and reorganization status.
 2. `PROJECT_CHECKPOINT.md` — exact continuation point and next action.
 3. `PROJECT_OPERATING_RULES.md` — mandatory change, test, deployment, verification, and recovery rules.
-4. `docs/BRANCH_STRUCTURE.md` — canonical branch hierarchy and legacy-branch policy.
-5. `docs/architecture/README.md` — architecture/reorganization index.
-6. `docs/architecture/PROCESS_CONTRACT_MATRIX.md` — per-workflow guardrails, endpoints, retry states, and write/read-back contracts.
-7. `docs/architecture/GAP_REGISTER.md` — prioritized failure modes and open proof gaps.
-8. `docs/PREINSPECTION_FLOW.md` — agreed PreInspection business workflow.
-9. `docs/API_REFRESH_POLICY.md` — current API/report-refresh analysis and target cadence.
-10. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
+4. `docs/README.md` — documentation index.
+5. `docs/REPOSITORY_STRUCTURE.md` — single-branch folder map and branch-retirement plan.
+6. `docs/architecture/README.md` — architecture/reorganization index.
+7. `docs/architecture/PROCESS_CONTRACT_MATRIX.md` — per-workflow guardrails, endpoints, retry states, and write/read-back contracts.
+8. `docs/architecture/GAP_REGISTER.md` — prioritized failure modes and open proof gaps.
+9. `docs/workflows/preinspection/FLOW.md` — agreed PreInspection business workflow.
+10. `docs/policies/API_REFRESH_POLICY.md` — API/report-refresh analysis and target cadence.
+11. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
 
 ## Repository layout
 
 - `apps-script/` — exact verified Apps Script source only when full production-source parity has been proven and the source is safe to publish.
+- `backups/` — backup manifests and rollback references previously spread across backup branches.
 - `docs/architecture/` — target architecture, process contracts, endpoint definitions, gap register, and staged migration plan.
-- `docs/` — stable workflow/policy documentation.
+- `docs/policies/` — cross-workflow policies such as API cadence and versioning/release standards.
+- `docs/workflows/` — workflow-specific business rules and process documentation.
 - `executions/` — machine-readable verified deployment/release records; `latest.json` is the latest recorded release.
 - `deployment-history/` — human-readable release/deployment history.
-- `history/` — historical evidence and source manifests that must not be mistaken for current production source.
-- `history/pre-reorg/2026-09-11/` — frozen repository/ledger baseline before architecture reorganization.
+- `history/releases/` — release-specific historical notes.
+- `history/source-snapshots/` — historical source evidence that must not be mistaken for current production source.
 - `tools/` — operator utilities used to capture, inspect, patch, or verify project state.
 - `.github/workflows/` — repository checks.
 
