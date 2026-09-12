@@ -1,12 +1,24 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-09-11 (America/Toronto)
+**Last updated:** 2026-09-12 (America/Toronto)
+
+## Canonical GitHub home
+
+The canonical Task Mapping branch is now:
+
+`task-mapping/main`
+
+Current branch hierarchy:
+
+- `task-mapping/main` — canonical current state, contracts, execution ledger, and future verified source archive.
+- `task-mapping/reorg/task-mapping-architecture-20260911` — active reorganization branch, created from canonical main.
+- `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911` — frozen pre-reorganization backup branch.
+
+Legacy flat refs (`task_mapping`, `reorg/task-mapping-architecture-20260911`, and `backup/task-mapping-r3.4.22-pre-reorg-20260911`) are superseded and must not receive new work. They may remain visible until branch deletion is available through the connected GitHub tooling.
 
 ## Project
 
 Classic Fireplace Task Mapping — Install, Delivery, Service, and PreInspection.
-
-`task_mapping` is the single canonical GitHub project branch for current state, architecture, process contracts, execution history, and future source archival.
 
 ## Production Apps Script
 
@@ -19,7 +31,7 @@ Classic Fireplace Task Mapping — Install, Delivery, Service, and PreInspection
 
 ## R3.4.22 runtime verification
 
-The actual production R30 Requested By route has been verified live for all three linked PreInspection tasks on 2026-09-11:
+The actual production R30 Requested By route was verified live for all three linked PreInspection tasks on 2026-09-11:
 
 - Task 18379 → organizer `spencer@classicfireplace.ca` → Striven Employee 20.
 - Task 18241 → organizer `warren@classicfireplace.ca` → Striven Employee 54.
@@ -56,27 +68,31 @@ Guardrails:
 ## GitHub/source parity
 
 - Repository: `consultpramodh/classicfireplace`
-- Canonical branch: `task_mapping`
+- Canonical branch: `task-mapping/main`
 - Repository visibility: **public**.
 - Exact current 36-file production source is **not yet archived under `apps-script/`**.
 - `executions/latest.json` still records `githubSourceParity = PENDING_POST_ZIP_UPLOAD`.
 
-This means the repository is authoritative for project state, contracts, deployment evidence, and architecture, but **must not yet be described as exact production-source parity**.
+This means the repository is authoritative for project state, contracts, deployment evidence, and architecture, but must not yet be described as exact production-source parity.
 
 The older August source snapshot is historical only and must not be promoted as current.
 
 ## Reorganization status
 
-The repository reorganization has started inside `task_mapping` without modifying production Apps Script.
+Repository reorganization has started without modifying production Apps Script.
 
-Canonical architecture material now lives under `docs/architecture/`:
+Canonical architecture material lives under `docs/architecture/` on `task-mapping/main` and is developed on the grouped reorganization branch:
+
+`task-mapping/reorg/task-mapping-architecture-20260911`
+
+Architecture material includes:
 
 - `README.md` — architecture index and migration status;
 - `REORGANIZATION_PLAN.md` — staged ownership/migration plan;
 - `PROCESS_CONTRACT_MATRIX.md` — Install, Delivery, Service, PreInspection, Report/Cache, Scheduler, Calendar and verification contracts;
 - `GAP_REGISTER.md` — prioritized failure modes and unresolved proof gaps.
 
-A frozen pre-reorganization ledger baseline is stored under `history/pre-reorg/2026-09-11/`.
+A frozen pre-reorganization ledger baseline is stored under `history/pre-reorg/2026-09-11/`, and the dedicated grouped backup branch preserves the same historical point.
 
 ### Target pipeline
 
@@ -87,7 +103,7 @@ The target is a compatibility-preserving strangler migration, not a rewrite.
 ## Highest-priority known gaps / risks
 
 1. **Exact live-source archive still missing from GitHub.** No physical code reorganization should begin until the current 36-file source is captured and screened.
-2. **Recovery relationship integrity.** CREATE/RECREATE planning must prove SO→Customer, Location→Customer, Contact→Customer and other required ownership relationships before mutation; prior runtime failures reached Striven with invalid Contact/Location relationships.
+2. **Recovery relationship integrity.** CREATE/RECREATE planning must prove SO→Customer, Location→Customer, Contact→Customer and other required ownership relationships before mutation.
 3. **Report cache safety.** Unexpected/empty report shapes must not wipe last-known-good report data; report schema and pagination termination need explicit verification.
 4. **Service multi-fireplace Calendar links.** Event-level task-set aggregation must be proven so FP#1/FP#2 links cannot overwrite one another.
 5. **Calendar link repair.** Link repair should depend on exact event/task relationship, not blindly on task OPEN status; writes need Calendar read-back verification.

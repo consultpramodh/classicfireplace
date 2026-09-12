@@ -1,6 +1,12 @@
 # Task Mapping Architecture Index
 
-This folder is the canonical architecture/reorganization area for the `task_mapping` branch.
+This folder is the canonical architecture/reorganization area for the Task Mapping project on:
+
+`task-mapping/main`
+
+Active architecture/refactor work is carried on:
+
+`task-mapping/reorg/task-mapping-architecture-20260911`
 
 ## Read in this order
 
@@ -18,11 +24,15 @@ This folder is the canonical architecture/reorganization area for the `task_mapp
 
 Completed:
 
+- branch hierarchy reorganized under `task-mapping/...`;
 - pre-reorganization repository/ledger baseline recorded under `history/pre-reorg/2026-09-11/`;
+- grouped backup branch created;
+- grouped reorganization branch created from canonical main;
 - per-workflow process contracts captured;
 - canonical endpoint model captured;
 - highest-risk failure modes registered;
-- current root state/checkpoint updated to R3.4.22.
+- root state/checkpoint updated to R3.4.22;
+- CI and sync policy moved to `task-mapping/main`.
 
 Still required before physical source moves:
 
@@ -35,7 +45,7 @@ Still required before physical source moves:
 
 ## Safety boundary
 
-No production Apps Script has been reorganized merely because this repository structure changed.
+No production Apps Script has been reorganized merely because the repository structure changed.
 
 Until exact source parity and call-graph inventory exist:
 

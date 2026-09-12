@@ -6,12 +6,15 @@
 
 This file records the repository/ledger baseline immediately before architecture reorganization work began.
 
-It is stored inside the canonical `task_mapping` branch so future work does not depend on a separate backup branch.
+The canonical branch is now `task-mapping/main`, and the frozen grouped backup branch is:
+
+`task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911`
 
 ## Frozen repository point
 
-- Canonical branch at freeze: `task_mapping`
+- Canonical branch at freeze: legacy `task_mapping`
 - Frozen source-ledger commit: `3732d857ec4683905e6bbc0123c0a71bde3e31b0`
+- Frozen grouped backup branch head: `b23dafb5184f894dfb5c87aa9c516680bfe6ff95`
 - Latest recorded production release at freeze: `R3.4.22_R30_REQUESTED_BY_ROUTER_FIX`
 - Apps Script status in `executions/latest.json`: `DEPLOYED_SOURCE_VERIFIED`
 - PreInspection Requested By runtime verification: PASS on the repaired R30 route for the three linked tasks on 2026-09-11.
@@ -35,8 +38,6 @@ The historical August snapshot is not the current production release and may con
 
 ## Reorganization safety rule
 
-Reorganization may change repository documentation, architecture contracts, tests, adapters, and later source ownership only through guarded steps.
-
 Production Apps Script must not be changed merely to make the repository look cleaner.
 
 Before broad physical source moves/deletions:
@@ -49,6 +50,6 @@ Before broad physical source moves/deletions:
 6. build complete caller/dependency/trigger/sheet/API/write inventory;
 7. preserve rollback to this baseline and later verified source releases.
 
-## Historical side branches
+## Branch-history note
 
-Temporary branches created during the first reorganization pass may remain in GitHub history, but no active project material should depend on them. Their unique content has been consolidated into `task_mapping`.
+The original flat backup/reorganization branch names are superseded by the grouped `task-mapping/...` hierarchy. They may remain visible because the connected GitHub action set does not currently expose safe branch deletion. No active work should target those legacy refs.

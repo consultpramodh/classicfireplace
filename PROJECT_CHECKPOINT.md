@@ -1,12 +1,16 @@
 # Task Mapping — Latest Checkpoint
 
-**Checkpoint date:** 2026-09-11 (America/Toronto)
+**Checkpoint date:** 2026-09-12 (America/Toronto)
 
 ## Canonical GitHub home
 
-All active Task Mapping project material is now being consolidated inside the `task_mapping` branch.
+The active Task Mapping branch hierarchy is now:
 
-The temporary backup/reorganization branches remain historical markers, but their unique planning/backup content is duplicated into `task_mapping` so no active work depends on those side branches.
+- `task-mapping/main` — canonical project branch.
+- `task-mapping/reorg/task-mapping-architecture-20260911` — active reorganization branch based on canonical main.
+- `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911` — frozen pre-reorganization backup branch.
+
+Legacy flat branch refs are superseded and must not receive new work.
 
 ## Production Version
 
@@ -53,12 +57,13 @@ After the next normal scheduled PreInspection batch, rerun the read-only Request
 
 ## GitHub source parity
 
-The current repository still does **not** contain the exact current 36-file production Apps Script source under `apps-script/`.
+The repository still does **not** contain the exact current 36-file production Apps Script source under `apps-script/`.
 
 Therefore:
 
 - project ledger parity: current;
 - architecture/contracts: current;
+- branch hierarchy: current;
 - production Apps Script source parity: **PENDING**.
 
 Do not physically reorganize production code using the August historical snapshot or a reconstructed approximation.
@@ -67,20 +72,17 @@ Do not physically reorganize production code using the August historical snapsho
 
 Repository-only reorganization has begun, with no production Apps Script mutation.
 
-The canonical planning material is now organized under:
+Canonical planning material is stored under `docs/architecture/` on `task-mapping/main` and developed through:
 
-`docs/architecture/`
-
-with:
-
-- `README.md`
-- `REORGANIZATION_PLAN.md`
-- `PROCESS_CONTRACT_MATRIX.md`
-- `GAP_REGISTER.md`
+`task-mapping/reorg/task-mapping-architecture-20260911`
 
 The frozen pre-reorganization repository baseline is recorded under:
 
 `history/pre-reorg/2026-09-11/BACKUP_MANIFEST.md`
+
+and preserved as a dedicated grouped branch:
+
+`task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911`
 
 ### Architecture direction
 

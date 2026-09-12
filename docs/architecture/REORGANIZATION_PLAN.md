@@ -1,6 +1,10 @@
 # Task Mapping Reorganization Plan
 
-**Canonical branch:** `task_mapping`
+**Canonical branch:** `task-mapping/main`
+
+**Active reorganization branch:** `task-mapping/reorg/task-mapping-architecture-20260911`
+
+**Frozen backup branch:** `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911`
 
 ## Objective
 
@@ -10,7 +14,9 @@ The target is not a rewrite. It is a staged strangler migration from overlapping
 
 ## Non-negotiable preservation rules
 
-- Keep active project material inside `task_mapping`.
+- Keep canonical current project material on `task-mapping/main`.
+- Perform architecture/refactor work on grouped `task-mapping/reorg/...` branches created from canonical main.
+- Preserve frozen rollback points under `task-mapping/backup/...`.
 - Preserve current public/menu/trigger entry points until replacements are proven.
 - Preserve existing sheet names, header expectations, Calendar IDs, task-type rules, assignment rules, and approved Calendar write exceptions.
 - Do not delete legacy files/functions merely because they look redundant.
@@ -67,7 +73,7 @@ These are target responsibilities, not an instruction to rename every current fi
 
 ### Phase 0 — Freeze and inventory
 
-- Preserve the pre-reorganization baseline under `history/pre-reorg/2026-09-11/`.
+- Preserve the pre-reorganization baseline under `history/pre-reorg/2026-09-11/` and the grouped backup branch.
 - Capture exact current Apps Script source when available.
 - Build function/file/trigger/sheet/API/write inventory.
 - Mark every function as CANONICAL, ADAPTER, LEGACY-USED, LEGACY-UNUSED, or UNKNOWN.
@@ -126,3 +132,5 @@ These are target responsibilities, not an instruction to rename every current fi
 ## No-delete rule during early migration
 
 Until exact live-source parity exists and the call graph is complete, early reorganization commits may add documentation, tests, adapters, or canonical modules, but must not delete production functions/files.
+
+Legacy flat branches are not part of the active architecture. New work must target the grouped `task-mapping/...` hierarchy.
