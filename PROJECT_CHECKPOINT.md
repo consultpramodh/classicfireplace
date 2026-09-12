@@ -4,13 +4,39 @@
 
 ## Canonical GitHub home
 
-The active Task Mapping branch hierarchy is now:
+`task_mapping` is the single canonical Task Mapping project branch.
 
-- `task-mapping/main` — canonical project branch.
-- `task-mapping/reorg/task-mapping-architecture-20260911` — active reorganization branch based on canonical main.
-- `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911` — frozen pre-reorganization backup branch.
+The repository is being organized internally by folders rather than permanent backup/reorg sub-branches.
 
-Legacy flat branch refs are superseded and must not receive new work.
+## Project-wide workflow coverage
+
+The reorganization explicitly covers all four workflow domains:
+
+1. Install
+2. Delivery
+3. Service
+4. PreInspection
+
+Dedicated workflow documentation now exists under:
+
+- `docs/workflows/install/`
+- `docs/workflows/delivery/`
+- `docs/workflows/service/`
+- `docs/workflows/preinspection/`
+
+`docs/workflows/WORKFLOW_COVERAGE_MATRIX.md` is the project-wide checklist preventing one workflow from being treated as representative of the entire system.
+
+## Project-wide backup baseline
+
+A repository/ledger rollback baseline for the entire project is stored at:
+
+`backups/2026-09-12/PROJECT_WIDE_REORG_BASELINE.md`
+
+It captures canonical commit `4754c4011685cce3e7be0a13e86eb2798a7f2e92` before the four-workflow documentation expansion.
+
+The backup covers Install, Delivery, Service, PreInspection, shared architecture, policies, execution/deployment evidence, tools, and history.
+
+This remains a repository/ledger backup—not exact live Apps Script source parity.
 
 ## Production Version
 
@@ -18,42 +44,17 @@ Latest recorded production source release:
 
 `R3.4.22 — R30 Requested By Router Fix`
 
-Business rule:
-
-`Calendar organizer email → exact Striven Employee → RequestedBy.Type = employee`
-
-Scope is **PreInspection only**. Install, Delivery, and Service Requested By behavior is unchanged.
+The R3.4.22 business change applies to PreInspection Requested By only; Install, Delivery, and Service Requested By behavior remains unchanged.
 
 ## Verified source deployment
 
-R3.4.22 source deployment is recorded as `DEPLOYED_SOURCE_VERIFIED`.
-
-Recorded verification includes:
-
-1. fresh live source pull;
-2. 36-file pre-pull count;
-3. one-file R30 router fix in `35_PreInspect_Task_Review.js`;
-4. syntax check PASS;
-5. freshness guard PASS;
-6. push to the existing Apps Script project;
-7. 36-file post-pull count;
-8. POST SHA read-back PASS.
+R3.4.22 source deployment is recorded as `DEPLOYED_SOURCE_VERIFIED` with a 36-file pre/post pull and POST SHA verification.
 
 ## Verified runtime behavior
 
-The repaired production R30 route was runtime-verified on all three linked PreInspection tasks for 2026-09-11:
+The repaired production PreInspection R30 route was runtime-verified on all three linked PreInspection tasks for 2026-09-11 and the final read-only audit recorded 3 PASS / 0 FAIL / 0 REVIEW.
 
-- Task 18379 → Spencer Bambek Employee 20;
-- Task 18241 → Warren Jennings Employee 54;
-- Task 18362 → Adam Stokes Employee 31.
-
-All used `CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE`, and final read-back showed `RequestedBy.Type=employee`.
-
-The final read-only audit recorded 3 PASS / 0 FAIL / 0 REVIEW for the three existing linked tasks.
-
-### Remaining scheduler proof
-
-After the next normal scheduled PreInspection batch, rerun the read-only Requested By audit. If the same linked tasks remain correct, the historical scheduled-route customer-contact regression can be considered scheduler-verified closed.
+The next normal scheduled PreInspection batch still needs a follow-up read-only audit to close the historical scheduled-route regression proof completely.
 
 ## GitHub source parity
 
@@ -63,26 +64,28 @@ Therefore:
 
 - project ledger parity: current;
 - architecture/contracts: current;
-- branch hierarchy: current;
+- four-workflow documentation coverage: current;
+- project-wide rollback baseline: current;
 - production Apps Script source parity: **PENDING**.
 
 Do not physically reorganize production code using the August historical snapshot or a reconstructed approximation.
 
 ## Reorganization checkpoint
 
-Repository-only reorganization has begun, with no production Apps Script mutation.
+Current durable organization inside `task_mapping`:
 
-Canonical planning material is stored under `docs/architecture/` on `task-mapping/main` and developed through:
-
-`task-mapping/reorg/task-mapping-architecture-20260911`
-
-The frozen pre-reorganization repository baseline is recorded under:
-
-`history/pre-reorg/2026-09-11/BACKUP_MANIFEST.md`
-
-and preserved as a dedicated grouped branch:
-
-`task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911`
+- `backups/` — project-wide rollback/backup manifests;
+- `docs/architecture/` — common architecture, endpoint contracts, gaps, migration plan;
+- `docs/policies/` — API refresh and version/release policy;
+- `docs/workflows/install/` — Install contract;
+- `docs/workflows/delivery/` — Delivery contract;
+- `docs/workflows/service/` — Service contract;
+- `docs/workflows/preinspection/` — PreInspection contract, detailed flow, and Requested By policy;
+- `executions/` — machine-readable release/runtime evidence;
+- `deployment-history/` — human-readable deployment evidence;
+- `history/` — release/source historical evidence;
+- `tools/` — capture/patch/test/verification utilities;
+- `apps-script/` — reserved for exact verified current source once parity is proven.
 
 ### Architecture direction
 
@@ -92,9 +95,9 @@ The migration is compatibility-preserving. Existing public/menu/trigger entrypoi
 
 ## Exact next action
 
-**Capture the exact current 36-file live Apps Script source, screen it for secrets/PII, archive it under `apps-script/`, and verify GitHub read-back parity.**
+**Capture the exact current 36-file live Apps Script source, screen it for secrets/PII/private operational values, archive it under `apps-script/`, and verify GitHub read-back parity.**
 
-Then build the complete production inventory:
+Then build the complete production inventory **for all four workflows and all shared modules**:
 
 - every file;
 - every public/private function;
@@ -103,8 +106,9 @@ Then build the complete production inventory:
 - sheets read/written and header expectations;
 - Calendar reads/writes;
 - Striven reports/API endpoints and mutations;
+- workflow ownership for Install / Delivery / Service / PreInspection;
 - relationship/matching rules;
-- assignment rules;
+- assignment/requested-by rules;
 - create/recreate/recovery rules;
 - kill switches/caps/business-hour gates;
 - fingerprints/idempotency rules;
