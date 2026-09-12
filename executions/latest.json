@@ -5,7 +5,7 @@
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
   "runtimeFeatureVerified": true,
-  "runtimeVerificationScope": "Actual production R30 Requested By router verified live on Task 18379. preinspectR30PushRequestedBy_(ctx) delegated to preinspectR3421PushRequestedByOrganizerPlan_(ctx), resolved Calendar organizer spencer@classicfireplace.ca to Striven Employee 20 Spencer Bambek, PATCHed RequestedBy.Type=employee, and final Striven read-back returned id 20 / type employee with pass=true.",
+  "runtimeVerificationScope": "Actual production R30 Requested By router verified live on all three linked PreInspection tasks for 2026-09-11. Task 18379 resolved spencer@classicfireplace.ca to Spencer Bambek Employee 20; Task 18241 resolved warren@classicfireplace.ca to Warren Jennings Employee 54; Task 18362 resolved adam@classicfireplace.ca to Adam Stokes Employee 31. All writes used resolutionMethod CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE and final Striven read-back returned RequestedBy.Type=employee with pass=true.",
   "runtimeRegressionPreviouslyObserved": true,
   "runtimeRegressionObservedAt": "2026-09-11T17:32:00-04:00",
   "confirmedRootCause": "The scheduled/manual Requested By route was pushSelectedPreInspectRequestedBy -> preinspectR30RunManualPush_('REQUESTED_BY') -> preinspectR30PushRequestedBy_(ctx). That R30 function explicitly resolved desired.contactId and PATCHed RequestedBy { Id: desired.contactId, Type: 'contact' }, bypassing the R3.4.21 organizer Employee helper.",
@@ -28,21 +28,40 @@
     "contactIdLogic": false,
     "organizerEmployeeLogic": true
   },
-  "liveRouterRuntimeTest": {
-    "test": "testR3422ActualR30Route18379",
-    "taskId": 18379,
-    "organizerEmail": "spencer@classicfireplace.ca",
-    "employeeId": 20,
-    "employeeName": "Spencer Bambek",
-    "resolutionMethod": "CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE",
-    "afterRequestedById": 20,
-    "afterRequestedByType": "employee",
-    "pass": true
-  },
+  "liveRouterRuntimeTests": [
+    {
+      "taskId": 18379,
+      "organizerEmail": "spencer@classicfireplace.ca",
+      "employeeId": 20,
+      "employeeName": "Spencer Bambek",
+      "resolutionMethod": "CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE",
+      "afterRequestedByType": "employee",
+      "pass": true
+    },
+    {
+      "taskId": 18241,
+      "organizerEmail": "warren@classicfireplace.ca",
+      "employeeId": 54,
+      "employeeName": "Warren Jennings",
+      "resolutionMethod": "CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE",
+      "afterRequestedByType": "employee",
+      "pass": true
+    },
+    {
+      "taskId": 18362,
+      "organizerEmail": "adam@classicfireplace.ca",
+      "employeeId": 31,
+      "employeeName": "Adam Stokes",
+      "resolutionMethod": "CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE",
+      "afterRequestedByType": "employee",
+      "pass": true
+    }
+  ],
   "requestedByRule": "Calendar organizer email -> exact Striven Employee -> RequestedBy.Type=employee; no customer-contact fallback",
   "actualProcessRequestedByRule": "R30_ROUTER_RUNTIME_VERIFIED_EMPLOYEE",
-  "scheduledBatchRegressionProof": "PENDING_NEXT_BATCH_OR_CONTROLLED_ALL_OPEN_RECONCILE",
+  "todaysLinkedTasksReconciled": "3_OF_3_RUNTIME_PASS_PENDING_FINAL_READ_ONLY_AUDIT",
+  "scheduledBatchRegressionProof": "PENDING_NEXT_SCHEDULED_BATCH",
   "actualProcessSpreadsheetDependency": "STILL_PRESENT",
   "githubSourceParity": "PENDING_POST_ZIP_UPLOAD",
-  "nextAction": "Run one controlled all-OPEN PreInspection Requested By reconciliation through the repaired R30 route, verify every writable Task Type 105 result uses CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE and no CUSTOMER_CONTACT_PHONE/contact payload appears, then re-audit today's tasks after the next scheduled PreInspection batch."
+  "nextAction": "Run checkAllTodaysPreinspectRequestedByNoSheetV2 once more. Expected: existingPreinspectionTaskCount=3, passCount=3, failCount=0, reviewCount=0. Then leave the next scheduled PreInspection batch to run normally and re-audit afterward to prove the scheduler no longer reverts Employee Requested By values."
 }
