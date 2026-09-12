@@ -1,91 +1,121 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-09-11
+**Last updated:** 2026-09-11 (America/Toronto)
 
 ## Project
 
 Classic Fireplace Task Mapping — Install, Delivery, Service, and PreInspection.
 
+`task_mapping` is the single canonical GitHub project branch for current state, architecture, process contracts, execution history, and future source archival.
+
 ## Production Apps Script
 
 - Script ID: `1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m`
 - Live project contains **36 files**.
-- Latest source release explicitly pushed and POST-read-back verified: **PreInspect R3.4.21c**.
-- R3.4.21c changed only:
-  - `35_PreInspect_Task_Review.js`
-  - `36_PreInspect_Task_Create.js`
-- Full 36-file POST source matched the intended WORK source after push.
-- Runtime business verification of organizer → Employee Requested By is still pending on one real PreInspection row.
+- Latest recorded source release: **R3.4.22 — R30 Requested By Router Fix**.
+- R3.4.22 changed only `35_PreInspect_Task_Review.js` from the immediately preceding release.
+- Source deployment status: **DEPLOYED_SOURCE_VERIFIED**.
+- Source verification recorded: pre-pull 36 files, post-pull 36 files, freshness guard PASS, syntax check PASS, POST SHA read-back PASS.
 
-### R3.4.21c verified hashes
+## R3.4.22 runtime verification
 
-- `35_PreInspect_Task_Review.js`
-  - PRE: `0ce224f2dce9ddabe087caced541628294737070f5d85d436473f752e9848e81`
-  - POST: `ace973c125a621744af388630c7596a72a8951b0cce89324b9ab6c6bdbf8b464`
-- `36_PreInspect_Task_Create.js`
-  - PRE: `e5d93757a99eb7f6880de30a8721a3b3e99f8ae6b47f69f482be54e20a055a0f`
-  - POST: `2dd95a1f2e664ecb8adcc5377be166d27200362f42f115f21c3307f12c45aff0`
+The actual production R30 Requested By route has been verified live for all three linked PreInspection tasks on 2026-09-11:
 
-## GitHub state
+- Task 18379 → organizer `spencer@classicfireplace.ca` → Striven Employee 20.
+- Task 18241 → organizer `warren@classicfireplace.ca` → Striven Employee 54.
+- Task 18362 → organizer `adam@classicfireplace.ca` → Striven Employee 31.
+
+All three writes used `CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE`, and final Striven read-back returned `RequestedBy.Type=employee` with PASS.
+
+The final read-only audit recorded:
+
+- Calendar events: 7
+- Existing linked PreInspection tasks: 3
+- PASS: 3
+- FAIL: 0
+- REVIEW: 0
+- Events without existing task: 4
+
+The next normal scheduled PreInspection batch still needs a follow-up read-only audit to close the historical scheduler-regression proof completely.
+
+## Authoritative PreInspection Requested By rule
+
+This rule applies only to PreInspection Task Type 105:
+
+`Google Calendar organizer email → exactly one Striven Employee → RequestedBy { Id: EmployeeId, Type: employee }`
+
+Guardrails:
+
+- organizer missing → REVIEW / no Requested By write;
+- zero employee matches → REVIEW;
+- multiple employee matches → REVIEW;
+- no customer-contact fallback;
+- customer Contact may still support customer/contact resolution but is not PreInspection Requested By;
+- Install, Delivery, and Service Requested By behavior remains unchanged.
+
+## GitHub/source parity
 
 - Repository: `consultpramodh/classicfireplace`
-- Branch: `task_mapping`
+- Canonical branch: `task_mapping`
 - Repository visibility: **public**.
-- GitHub is the project ledger and ChatGPT-assisted source syncs use the connected GitHub integration, never local password/PAT pushes.
-- R3.4.21c deployment evidence is recorded in `executions/2026-09-11-r3.4.21c-deployed.json` and `executions/latest.json`.
-- Exact production-source parity under `apps-script/` is still **PENDING** because the verified POST ZIP remains on the local PC and has not yet been uploaded into this conversation for source archival.
+- Exact current 36-file production source is **not yet archived under `apps-script/`**.
+- `executions/latest.json` still records `githubSourceParity = PENDING_POST_ZIP_UPLOAD`.
 
-## PreInspection Requested By rule — LIVE SOURCE DEPLOYED
+This means the repository is authoritative for project state, contracts, deployment evidence, and architecture, but **must not yet be described as exact production-source parity**.
 
-The previous customer-contact Requested By behavior is superseded **for PreInspection only**.
+The older August source snapshot is historical only and must not be promoted as current.
 
-New rule:
+## Reorganization status
 
-`Google Calendar organizer email → exact Striven Employee → RequestedBy { Id: EmployeeId, Type: employee }`
+The repository reorganization has started inside `task_mapping` without modifying production Apps Script.
 
-- Customer contacts remain available for customer/contact resolution, but are not PreInspection Requested By.
-- Missing organizer, zero employee matches, or multiple employee matches must REVIEW / NO WRITE.
-- No customer-contact fallback.
-- New PreInspection creation and existing OPEN PreInspection reconciliation both use this organizer-employee rule.
-- Install, Delivery, and Service Requested By logic is unchanged.
+Canonical architecture material now lives under `docs/architecture/`:
 
-**Source deployment status:** `DEPLOYED_SOURCE_VERIFIED`.
+- `README.md` — architecture index and migration status;
+- `REORGANIZATION_PLAN.md` — staged ownership/migration plan;
+- `PROCESS_CONTRACT_MATRIX.md` — Install, Delivery, Service, PreInspection, Report/Cache, Scheduler, Calendar and verification contracts;
+- `GAP_REGISTER.md` — prioritized failure modes and unresolved proof gaps.
 
-**Runtime behavior status:** `PENDING_REAL_PREINSPECT_ROW`.
+A frozen pre-reorganization ledger baseline is stored under `history/pre-reorg/2026-09-11/`.
 
-## Current PreInspection operating design
+### Target pipeline
 
-`Calendar identifiers + organizer → Resolve Customer/Location/Contact → Resolve organizer Employee → Find or create one OPEN PreInspect task → Sync authoritative task fields → Verify → Append task link to Calendar → Technician completes task → final SO attached → find Install event/task by exact SO and same customer → append PreInspection link below Install task link.`
+`SOURCE → NORMALIZE → RESOLVE → MATCH → CLASSIFY → PLAN → EXECUTE → VERIFY → LINK/HANDOFF → ENDPOINT`
 
-The Calendar customer resolver starts from one or more of Customer Number, Sales Order Number, Customer Phone Number, and Customer Address. The Calendar organizer is a separate authoritative input for Requested By / sales-rep ownership.
+The target is a compatibility-preserving strangler migration, not a rewrite.
 
-If the customer is verified but the Calendar event lacks the Customer Number, the intended design remains a non-blocking email to the event organizer requesting that the Customer Number be added.
+## Highest-priority known gaps / risks
+
+1. **Exact live-source archive still missing from GitHub.** No physical code reorganization should begin until the current 36-file source is captured and screened.
+2. **Recovery relationship integrity.** CREATE/RECREATE planning must prove SO→Customer, Location→Customer, Contact→Customer and other required ownership relationships before mutation; prior runtime failures reached Striven with invalid Contact/Location relationships.
+3. **Report cache safety.** Unexpected/empty report shapes must not wipe last-known-good report data; report schema and pagination termination need explicit verification.
+4. **Service multi-fireplace Calendar links.** Event-level task-set aggregation must be proven so FP#1/FP#2 links cannot overwrite one another.
+5. **Calendar link repair.** Link repair should depend on exact event/task relationship, not blindly on task OPEN status; writes need Calendar read-back verification.
+6. **Scheduler ownership.** Five operational slots and six refresh/rebuild+link slots create duplicate API load and race surface; one scheduler/freshness owner is needed.
+7. **Deferred recovery semantics.** Wait-until-later cases such as completed-today replacement must be explicit `DEFERRED_RETRY`, not generic SKIP.
+8. **PreInspection lifecycle completion.** DONE → final SO → exact Install match → verified PreInspection link handoff is not yet a fully runtime-proven production endpoint.
+9. **Field 854 proof.** Historical read-back mismatch remains unresolved unless later authoritative evidence is produced.
+10. **New-location creation.** Corrected create payload still needs one controlled successful create/read-back proof.
+11. **Missing Customer Number organizer notification.** Agreed non-blocking deduplicated email remains to be implemented/proven.
+12. **DONE → Sales Order Internal Notes.** Remains a separate guarded downstream handoff and is not production-complete.
 
 ## API/report refresh finding
 
-The current Task Mapping source contains overlapping scheduled report-refresh layers:
+Current scheduling contains overlapping refresh layers:
 
-- five live operational slots at approximately 8:30 AM, 11:30 AM, 1:30 PM, 3:30 PM, and 5:30 PM;
-- six additional Refresh/Rebuild + Calendar Link slots at approximately 8:00 AM, 10:00 AM, 12:00 PM, 2:00 PM, 4:00 PM, and 6:00 PM.
+- five live operational slots around 8:30, 11:30, 1:30, 3:30 and 5:30;
+- six Refresh/Rebuild + Calendar Link slots around 8:00, 10:00, 12:00, 2:00, 4:00 and 6:00.
 
-At current task/work-order dataset sizes, the live operational slots perform about **40 small-report GETs/day**, while the six extra refresh/rebuild slots add about **24 substantially duplicate report GETs/day**.
+Prior analysis estimated roughly 40 small operational report GETs/day from the main slots plus roughly 24 substantially duplicate GETs/day from the six additional refresh slots, before daily big-data and record-specific calls.
 
-Recommended minimal correction remains: keep the five operational slots and once-daily big-data refresh, but stop the six Calendar Link slots from unconditionally re-fetching operational Striven reports. See `docs/API_REFRESH_POLICY.md`.
+Recommended direction remains: retain operational cadence initially, introduce report freshness/TTL, and stop link-only activity from blindly re-fetching reports already inside approved freshness windows.
 
 **API-cadence status:** REVIEWED / NOT YET DEPLOYED.
 
-## Known gaps / risks
-
-1. **Runtime Requested By proof:** run one real PreInspection and confirm task read-back shows the organizer's Striven Employee.
-2. **GitHub source parity:** upload the verified R3.4.21c POST ZIP so the exact 36-file production source can be archived.
-3. **Scheduler safety:** the targeted Task 18241 schedule gate previously returned `pass:false` / `BLOCK`, but PreInspect auto was subsequently enabled.
-4. **API/report cadence:** six 2-hour refresh/rebuild slots duplicate report pulls already performed by five operational slots; reduction is recommended but not yet deployed.
-5. **Field 854:** historical runtime evidence showed read-back mismatches; final reliable end-to-end behavior remains to be proven after simplification.
-6. **New-location creation:** corrected new-location payload still needs one controlled successful create/read-back proof.
-7. **DONE → Install Calendar handoff:** design and dry-run matching are complete; actual Calendar mutation is not implemented/runtime-tested.
-8. **DONE → Sales Order Internal Notes:** prior implementation remains preview/read-only.
-9. **Missing Customer Number organizer email:** agreed requirement; not yet implemented.
-
 ## Current active objective
 
-Runtime-verify R3.4.21c on one real PreInspection row, archive the verified POST source to GitHub, then continue the API-cadence and PreInspection simplification work.
+1. Capture and screen the exact current 36-file production Apps Script source.
+2. Archive it safely under `apps-script/` and prove GitHub read-back parity.
+3. Build the complete file/function/caller/trigger/sheet/API/write inventory.
+4. Classify functions as CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN.
+5. Only then begin physical source reorganization, starting with scheduler/report-cache safety and relationship-resolution integrity.

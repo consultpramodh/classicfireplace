@@ -1,82 +1,116 @@
 # Task Mapping — Latest Checkpoint
 
-**Checkpoint date:** 2026-09-11
+**Checkpoint date:** 2026-09-11 (America/Toronto)
+
+## Canonical GitHub home
+
+All active Task Mapping project material is now being consolidated inside the `task_mapping` branch.
+
+The temporary backup/reorganization branches remain historical markers, but their unique planning/backup content is duplicated into `task_mapping` so no active work depends on those side branches.
 
 ## Production Version
 
-`PreInspect R3.4.21c` is now the latest source release explicitly pushed to the live Apps Script project and POST-read-back verified.
+Latest recorded production source release:
 
-Business change:
+`R3.4.22 — R30 Requested By Router Fix`
+
+Business rule:
 
 `Calendar organizer email → exact Striven Employee → RequestedBy.Type = employee`
 
 Scope is **PreInspection only**. Install, Delivery, and Service Requested By behavior is unchanged.
 
-## Verified deployment result
+## Verified source deployment
 
-The R3.4.21c auto-update completed successfully with `DEPLOYED_SOURCE_VERIFIED`.
+R3.4.22 source deployment is recorded as `DEPLOYED_SOURCE_VERIFIED`.
 
-Verified sequence:
+Recorded verification includes:
 
-1. clasp authorization PASS;
-2. package self-test PASS;
-3. known Task Mapping Script ID used;
-4. exact live PRE source pulled;
-5. exactly two PreInspect files patched;
-6. syntax checks PASS;
-7. FRESH pull completed immediately before push;
-8. 36 files pushed to the existing Apps Script project;
-9. POST pull completed;
-10. full-project SHA verification PASS.
+1. fresh live source pull;
+2. 36-file pre-pull count;
+3. one-file R30 router fix in `35_PreInspect_Task_Review.js`;
+4. syntax check PASS;
+5. freshness guard PASS;
+6. push to the existing Apps Script project;
+7. 36-file post-pull count;
+8. POST SHA read-back PASS.
 
-Changed files:
+## Verified runtime behavior
 
-- `35_PreInspect_Task_Review.js`
-- `36_PreInspect_Task_Create.js`
+The repaired production R30 route was runtime-verified on all three linked PreInspection tasks for 2026-09-11:
 
-The deployment evidence is recorded in:
+- Task 18379 → Spencer Bambek Employee 20;
+- Task 18241 → Warren Jennings Employee 54;
+- Task 18362 → Adam Stokes Employee 31.
 
-- `executions/2026-09-11-r3.4.21c-deployed.json`
-- `executions/latest.json`
+All used `CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE`, and final read-back showed `RequestedBy.Type=employee`.
 
-## Runtime verification still required
+The final read-only audit recorded 3 PASS / 0 FAIL / 0 REVIEW for the three existing linked tasks.
 
-Source deployment is proven. Business behavior is not yet fully runtime-proven.
+### Remaining scheduler proof
 
-Use one real PreInspection whose Google Calendar organizer resolves unambiguously to a Striven Employee and verify:
-
-1. Task Type = 105;
-2. Requested By ID equals the organizer's Striven Employee ID;
-3. Requested By entity/type is Employee;
-4. no customer-contact fallback occurred;
-5. Customer, Location, Pool 8, dates, field 854 and technician-owned Description behavior remain correct;
-6. Install / Delivery / Service remain unaffected.
+After the next normal scheduled PreInspection batch, rerun the read-only Requested By audit. If the same linked tasks remain correct, the historical scheduled-route customer-contact regression can be considered scheduler-verified closed.
 
 ## GitHub source parity
 
-GitHub ledger/history is current through R3.4.21c, but the exact 36-file POST source snapshot is **not yet archived under `apps-script/`**.
+The current repository still does **not** contain the exact current 36-file production Apps Script source under `apps-script/`.
 
-The verified POST ZIP was created locally as:
+Therefore:
 
-`TaskMapping-R3.4.21c_REQUESTED_BY_ORGANIZER_EMPLOYEE_COUNT_FIX-POST-20260911-154430.zip`
+- project ledger parity: current;
+- architecture/contracts: current;
+- production Apps Script source parity: **PENDING**.
 
-Upload that ZIP to this Task Mapping conversation. Then ChatGPT can:
+Do not physically reorganize production code using the August historical snapshot or a reconstructed approximation.
 
-1. inspect the exact verified source;
-2. compare the 36-file inventory;
-3. screen for secrets/customer PII before committing to the public repository;
-4. archive the safe canonical source using the connected GitHub integration;
-5. read GitHub back and mark production-source parity PASS.
+## Reorganization checkpoint
 
-## Other open items
+Repository-only reorganization has begun, with no production Apps Script mutation.
 
-- overlapping report-refresh cadence reduction is reviewed but not deployed;
-- PreInspect scheduler safety remains under review;
-- Field 854 and new-location paths still require final controlled proofs;
-- DONE → Install Calendar and DONE → Sales Order handoffs remain downstream work.
+The canonical planning material is now organized under:
 
-## Next exact action
+`docs/architecture/`
 
-**Run one real PreInspection reconciliation to verify organizer → Employee Requested By.**
+with:
 
-Then upload the verified POST ZIP for the GitHub source archive.
+- `README.md`
+- `REORGANIZATION_PLAN.md`
+- `PROCESS_CONTRACT_MATRIX.md`
+- `GAP_REGISTER.md`
+
+The frozen pre-reorganization repository baseline is recorded under:
+
+`history/pre-reorg/2026-09-11/BACKUP_MANIFEST.md`
+
+### Architecture direction
+
+`SOURCE → NORMALIZE → RESOLVE → MATCH → CLASSIFY → PLAN → EXECUTE → VERIFY → LINK/HANDOFF → ENDPOINT`
+
+The migration is compatibility-preserving. Existing public/menu/trigger entrypoints remain until replacements are proven.
+
+## Exact next action
+
+**Capture the exact current 36-file live Apps Script source, screen it for secrets/PII, archive it under `apps-script/`, and verify GitHub read-back parity.**
+
+Then build the complete production inventory:
+
+- every file;
+- every public/private function;
+- caller/callee graph;
+- menus and trigger entrypoints;
+- sheets read/written and header expectations;
+- Calendar reads/writes;
+- Striven reports/API endpoints and mutations;
+- relationship/matching rules;
+- assignment rules;
+- create/recreate/recovery rules;
+- kill switches/caps/business-hour gates;
+- fingerprints/idempotency rules;
+- compatibility aliases;
+- known-good and known-bad regression cases.
+
+Classify every function as:
+
+`CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN`
+
+Only after that inventory is grounded in the exact live source should physical source reorganization begin.
