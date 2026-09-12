@@ -4,17 +4,9 @@
 
 ## Canonical GitHub home
 
-The canonical Task Mapping branch is now:
+`task_mapping` is the **single canonical Task Mapping branch**.
 
-`task-mapping/main`
-
-Current branch hierarchy:
-
-- `task-mapping/main` — canonical current state, contracts, execution ledger, and future verified source archive.
-- `task-mapping/reorg/task-mapping-architecture-20260911` — active reorganization branch, created from canonical main.
-- `task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911` — frozen pre-reorganization backup branch.
-
-Legacy flat refs (`task_mapping`, `reorg/task-mapping-architecture-20260911`, and `backup/task-mapping-r3.4.22-pre-reorg-20260911`) are superseded and must not receive new work. They may remain visible until branch deletion is available through the connected GitHub tooling.
+Backup manifests, architecture plans, workflow rules, execution evidence, release history, and future verified source archives are organized as folders inside this branch rather than as permanent parallel branches.
 
 ## Project
 
@@ -68,31 +60,30 @@ Guardrails:
 ## GitHub/source parity
 
 - Repository: `consultpramodh/classicfireplace`
-- Canonical branch: `task-mapping/main`
+- Canonical branch: `task_mapping`
 - Repository visibility: **public**.
 - Exact current 36-file production source is **not yet archived under `apps-script/`**.
 - `executions/latest.json` still records `githubSourceParity = PENDING_POST_ZIP_UPLOAD`.
 
-This means the repository is authoritative for project state, contracts, deployment evidence, and architecture, but must not yet be described as exact production-source parity.
+The repository is authoritative for project state, contracts, deployment evidence, architecture, backup manifests, and branch-consolidation history, but must not yet be described as exact production-source parity.
 
 The older August source snapshot is historical only and must not be promoted as current.
 
-## Reorganization status
+## Repository reorganization status
 
-Repository reorganization has started without modifying production Apps Script.
+The repository has been consolidated back into one canonical branch, `task_mapping`.
 
-Canonical architecture material lives under `docs/architecture/` on `task-mapping/main` and is developed on the grouped reorganization branch:
+Current organization:
 
-`task-mapping/reorg/task-mapping-architecture-20260911`
+- `backups/` — backup manifests and rollback references;
+- `docs/architecture/` — architecture, process contracts, gap register, migration plan;
+- `docs/policies/` — API refresh and version/release policy;
+- `docs/workflows/preinspection/` — PreInspection flow and Requested By policy;
+- `history/releases/` — release-specific historical notes;
+- `history/source-snapshots/` — historical source evidence;
+- `executions/`, `deployment-history/`, `tools/`, and `apps-script/` retain their operational roles.
 
-Architecture material includes:
-
-- `README.md` — architecture index and migration status;
-- `REORGANIZATION_PLAN.md` — staged ownership/migration plan;
-- `PROCESS_CONTRACT_MATRIX.md` — Install, Delivery, Service, PreInspection, Report/Cache, Scheduler, Calendar and verification contracts;
-- `GAP_REGISTER.md` — prioritized failure modes and unresolved proof gaps.
-
-A frozen pre-reorganization ledger baseline is stored under `history/pre-reorg/2026-09-11/`, and the dedicated grouped backup branch preserves the same historical point.
+The temporary backup/reorg/main branches created during the first cleanup pass are now redundant because their unique durable content has been preserved inside `task_mapping`. They can be deleted from the GitHub branch list after final verification.
 
 ### Target pipeline
 
@@ -130,8 +121,10 @@ Recommended direction remains: retain operational cadence initially, introduce r
 
 ## Current active objective
 
-1. Capture and screen the exact current 36-file production Apps Script source.
-2. Archive it safely under `apps-script/` and prove GitHub read-back parity.
-3. Build the complete file/function/caller/trigger/sheet/API/write inventory.
-4. Classify functions as CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN.
-5. Only then begin physical source reorganization, starting with scheduler/report-cache safety and relationship-resolution integrity.
+1. Finish repository-path cleanup and verify `task_mapping` contains all durable material from the redundant Task Mapping branches.
+2. Delete the redundant branches in GitHub UI.
+3. Capture and screen the exact current 36-file production Apps Script source.
+4. Archive it safely under `apps-script/` and prove GitHub read-back parity.
+5. Build the complete file/function/caller/trigger/sheet/API/write inventory.
+6. Classify functions as CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN.
+7. Only then begin physical source reorganization, starting with scheduler/report-cache safety and relationship-resolution integrity.
