@@ -16,11 +16,30 @@ After Apps Script reaches `DEPLOYED_SOURCE_VERIFIED`, ChatGPT must use the alrea
 
 Do not ask the operator for GitHub credentials. Do not run local `git push`, interactive HTTPS authentication, PAT prompts, or password authentication.
 
+## Mandatory production push gate
+
+Do **not** push changed code to the bound production Apps Script project merely so it can be tested there.
+
+Before production push, all practical non-production verification for the changed path must pass, including as applicable:
+
+- syntax/parse checks;
+- dependency/function-connectivity checks;
+- changed-file scope checks;
+- read-only/preview/dry-run tests;
+- relationship-integrity and duplicate-prevention checks;
+- targeted known-good / known-bad regressions;
+- regression coverage for every affected workflow: Install, Delivery, Service, PreInspection;
+- public/menu/trigger entrypoint preservation checks.
+
+If any required pre-push check fails, the production push is blocked.
+
+If a behavior can only be verified against the live Apps Script/Striven/Calendar environment, all available pre-push checks must still pass first. The post-push state remains **UNVERIFIED** until immediate source read-back and runtime verification pass.
+
 ## Required execution order
 
-`pull live Apps Script → validate/patch → targeted regression checks → freshness pull → clasp push → POST read-back → verify source → prepare connector handoff → GitHub connector sync → GitHub read-back → update execution record/checkpoint → final status`
+`pull live Apps Script → backup/freeze → validate/patch outside production → syntax/dependency checks → targeted functional regressions → cross-workflow regressions when shared code changes → preview/dry-run/read-only verification → changed-file verification → PRE-PUSH GATE PASS → freshness pull → clasp push → POST source read-back → runtime smoke/feature verification → verify/rollback decision → prepare connector handoff → GitHub connector sync → GitHub read-back → update execution record/checkpoint → final status`
 
-A Task Mapping change is not considered fully archived until the GitHub read-back succeeds.
+A Task Mapping change is not considered complete merely because the push command succeeded.
 
 ## Project-wide coverage requirement
 
@@ -56,8 +75,10 @@ Each execution record should include at minimum:
 - Apps Script script ID;
 - exact changed-file list;
 - pre/post hashes when available;
+- pre-push verification status;
 - Apps Script deployment/source verification status;
 - runtime feature-verification status;
+- affected-workflow regression coverage;
 - GitHub branch and commit SHA after successful sync;
 - rollback target;
 - known blockers or safety concerns.
@@ -72,14 +93,16 @@ Each execution record should include at minimum:
 
 ## Safety rules
 
-1. GitHub sync occurs only after Apps Script remote read-back establishes the final source state.
-2. Never sync a failed or uncertain Apps Script deployment as current verified source.
-3. Never force-push `task_mapping` as part of an automated patch procedure.
-4. Fail closed on a stale GitHub base or branch conflict.
-5. Never commit credentials, Script Properties, OAuth tokens, API keys, cookies, customer PII, or other secrets/private operational data.
-6. Because the repository is public, screen raw source/history before publishing.
-7. If exact live source cannot be safely or authoritatively captured, record the gap; do not substitute stale or partial source.
-8. Do not delete production functions/files during repository cleanup unless exact live-source parity, caller inventory, and regression evidence justify it.
+1. Production Apps Script push is blocked until the pre-push gate passes.
+2. GitHub sync of current verified source occurs only after Apps Script remote read-back establishes the final source state.
+3. Never sync a failed or uncertain Apps Script deployment as current verified source.
+4. Never force-push `task_mapping` as part of an automated patch procedure.
+5. Fail closed on a stale GitHub base or branch conflict.
+6. Never commit credentials, Script Properties, OAuth tokens, API keys, cookies, customer PII, or other secrets/private operational data.
+7. Because the repository is public, screen raw source/history before publishing.
+8. If exact live source cannot be safely or authoritatively captured, record the gap; do not substitute stale or partial source.
+9. Do not delete production functions/files during repository cleanup unless exact live-source parity, caller inventory, and regression evidence justify it.
+10. A successful transport response is not functional verification; required read-back/reconciliation still applies.
 
 ## Backup policy
 
@@ -101,6 +124,7 @@ The connected GitHub connector can automate repository writes from ChatGPT, but 
 
 Before reporting a Task Mapping change complete, report these states separately:
 
+- pre-push functional verification;
 - Apps Script deployment/source verification;
 - runtime feature verification;
 - GitHub synchronization;
