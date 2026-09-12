@@ -28,3 +28,26 @@ function tm2_diagnostics() {
     return result;
   });
 }
+
+function tm2_testSuite() {
+  return tm2_runWithEvidence_('tm2_testSuite', 'ALL', function() {
+    tm2_assertShadowSafe_();
+
+    const result = {
+      tm2Version: TM2_VERSION,
+      mode: TM2_MODE.name,
+      connectivity: tm2_connectivityAudit(),
+      diagnostics: tm2_diagnostics(),
+      shadow: tm2_shadowRunAll(),
+      writeAttempts: 0
+    };
+
+    tm2_verifyNoWrites_(result);
+    tm2_log_('TEST_SUITE_COMPLETE', {
+      tm2Version: TM2_VERSION,
+      mode: TM2_MODE.name,
+      writeAttempts: 0
+    });
+    return result;
+  });
+}
