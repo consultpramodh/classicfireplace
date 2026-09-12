@@ -1,38 +1,45 @@
-# Task Mapping Environment Configuration
+# Task Mapping Shadow/Test Controls
 
-Environment-sensitive values must be resolved centrally rather than hard-coded through workflow files.
+The current cleanup strategy uses the **same Apps Script project and same spreadsheet** while keeping the legacy implementation active.
 
-## Required environments
+Environment/test controls are centralized here so rewritten workflow code does not scatter ad-hoc `if (TEST)` checks throughout business logic.
 
-- `TEST`
-- `PRODUCTION`
+## Current strategy
 
-## Required configuration categories
+- existing production Script ID remains the project;
+- existing production spreadsheet remains the data source;
+- existing legacy files/functions/triggers remain active;
+- rewritten files are added with the `TM2_` file prefix;
+- rewritten functions use the `tm2_` prefix;
+- rewritten code starts in `SHADOW_READ_ONLY` mode;
+- no rewritten time-driven triggers are installed initially.
 
-Each environment must provide or resolve:
+## Required control categories
 
-- environment name;
-- spreadsheet ID;
-- Install Calendar ID;
-- Delivery Calendar ID;
-- Service Calendar ID;
-- PreInspection Calendar ID;
+The rewritten framework must centrally resolve:
+
+- migration mode: `SHADOW_READ_ONLY`, `CANARY_WRITE`, or later cutover state;
+- current workflow under test;
 - write-enabled flag;
-- Striven base/account context when environment-specific;
-- approved TEST Customer IDs;
-- approved TEST Sales Order IDs;
-- approved TEST Task IDs;
-- CREATE/RECREATE permission for TEST;
-- trigger-install permission;
-- logging/evidence destination.
+- CREATE/RECREATE permission;
+- allowed canary Customer IDs when needed;
+- allowed canary Sales Order IDs when needed;
+- allowed canary Task IDs when needed;
+- allowed Event IDs / selected mapping rows when needed;
+- trigger-install permission (false during shadow testing);
+- logging/evidence destination;
+- per-workflow cutover flags once promotion begins.
 
 ## Safety rules
 
-1. TEST must reject production spreadsheet/calendar IDs.
-2. TEST must not perform unrestricted Striven writes.
-3. TEST write-capable operations require explicit allowlist validation.
-4. Missing or ambiguous environment configuration fails closed.
-5. Secrets remain in Script Properties or another approved secret store and are never committed here.
-6. Environment selection must be visible in logs and TEST evidence.
+1. Default mode is `SHADOW_READ_ONLY`.
+2. Shadow mode performs no Striven/Calendar/task mutation.
+3. `CANARY_WRITE` requires explicit manual enable plus explicit case context.
+4. Missing or ambiguous control configuration fails closed.
+5. No legacy public function names may be reused by rewritten code before intentional cutover.
+6. No legacy trigger target may be redirected merely by adding rewritten files.
+7. Old files remain unchanged during initial shadow deployment.
+8. Secrets remain in Script Properties or another approved secret store and are never committed here.
+9. Mode and workflow must be visible in every test execution log/evidence record.
 
-`test.example.json` is a non-secret schema/example only. Do not put real credentials or sensitive IDs in the public repository unless they are intentionally public and approved.
+`test.example.json` is a non-secret control example only. Do not place credentials, private API values, or customer PII in the public repository.
