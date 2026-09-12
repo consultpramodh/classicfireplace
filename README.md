@@ -1,31 +1,13 @@
-# Classic Fireplace — Task Mapping
+# Legacy Task Mapping Backup Branch
 
-This `task_mapping` branch is the project ledger for the Classic Fireplace Task Mapping system: Install, Delivery, Service, and PreInspection.
+This flat backup branch name is superseded.
 
-## Start here
+Use the grouped frozen backup branch instead:
 
-1. `PROJECT_OPERATING_RULES.md` — how this project must be changed, tested, deployed, verified, versioned, and recovered.
-2. `PROJECT_CURRENT_STATE.md` — current known production/source state and blockers.
-3. `PROJECT_CHECKPOINT.md` — latest continuation checkpoint and exact next action.
-4. `docs/PREINSPECTION_FLOW.md` — current agreed PreInspection business workflow.
-5. `docs/API_REFRESH_POLICY.md` — current API/report refresh cadence, duplicate-call finding, and target guardrails.
-6. `TASK_MAPPING_SYNC_POLICY.md` — required Apps Script → GitHub synchronization procedure.
+`task-mapping/backup/task-mapping-r3.4.22-pre-reorg-20260911`
 
-## Repository layout
+The canonical project branch is:
 
-- `apps-script/` — exact verified Apps Script source when a full current POST/read-back snapshot is available and safe to publish.
-- `executions/` — one machine-readable record per verified deployment/release; `latest.json` points to the latest recorded release.
-- `deployment-history/` — human-readable release/deployment history recovered from verified execution evidence.
-- `docs/` — stable workflow/design documentation.
-- `history/` — historical source manifests and legacy evidence that must not be mistaken for current production source.
-- `tools/` — small operator utilities used to capture or verify project state. `capture-live-apps-script.ps1` performs a fresh clasp clone, SHA-256 inventory, review-only sensitive-content scan, and ZIP packaging without attempting GitHub authentication.
+`task-mapping/main`
 
-## Current warning
-
-The repository is public. Raw source snapshots must not include credentials, tokens, customer PII, or other private data. The current live Apps Script project has been proven by clasp execution logs to contain 36 files, but the exact current 36-file POST source is not presently available through the connected tools. Therefore `apps-script/` is intentionally marked incomplete rather than populated from a stale or partial source snapshot.
-
-GitHub must never be described as production-parity until a full live pull, source verification, safe-content check, GitHub commit, and GitHub read-back all succeed.
-
-## Capture the live source
-
-Run the PowerShell utility in `tools/capture-live-apps-script.ps1` with the current Apps Script Script ID. It creates a timestamped ZIP on the Windows Desktop containing only the pulled source, a SHA-256 manifest, and a heuristic sensitive-content report. Upload that ZIP to the Task Mapping ChatGPT conversation; the connected GitHub integration is then used for the repository write and final parity read-back.
+Do not start new work on this legacy branch. It remains visible only because the connected GitHub action set does not currently expose safe branch deletion.
