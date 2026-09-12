@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "release": "TM2_SHADOW_R0",
+  "executedAt": "2026-09-12T18:12:24Z",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "githubBranch": "task_mapping",
+  "githubReleaseCommit": "3a94e9b016d3c63c8ed7d6a817b010f916a59505",
+  "githubActionsRunId": 34710451571,
+  "githubActionsArtifactId": 10303171560,
+  "mode": "SHADOW_READ_ONLY",
+  "legacyFileCountBefore": 36,
+  "tm2FilesAdded": 19,
+  "remoteFileCountAfter": 55,
+  "prePushFreshnessVerification": "PASS",
+  "legacyHashPreservation": "PASS",
+  "tm2HashReadbackVerification": "PASS",
+  "appsScriptSourceDeployment": "DEPLOYED_SHADOW_SOURCE_VERIFIED",
+  "runtimeFeatureVerification": "PENDING",
+  "affectedWorkflowRegressionCoverage": "PENDING_SHADOW_RUNTIME",
+  "cutover": {
+    "Install": false,
+    "Delivery": false,
+    "Service": false,
+    "PreInspection": false
+  },
+  "writeSafety": {
+    "strivenWritesEnabled": false,
+    "calendarWritesEnabled": false,
+    "createRecreateEnabled": false,
+    "tm2TriggersEnabled": false
+  },
+  "rollbackRequired": false,
+  "artifactSha256": "f21cfb049821ff8ccfe9676b576bb766e6d5859b97531458425c0258eb25be2f",
+  "nextAction": "Automate and verify read-only TM2 runtime execution, then begin parity/inventory work."
+}
