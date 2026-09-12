@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "TM2_SHADOW_R0_1_TEST_EVIDENCE_LOG",
+  "release": "TM2_SHADOW_R0_2_ONE_CLICK_TEST_SUITE",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "sourceDirectory": "apps-script/tm2-shadow",
   "expectedLegacyNonTm2Count": 36,
