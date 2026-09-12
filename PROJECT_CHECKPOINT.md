@@ -2,126 +2,104 @@
 
 **Checkpoint date:** 2026-09-12 (America/Toronto)
 
-## Canonical GitHub home
+## Canonical branch
 
-`task_mapping` is the single canonical Task Mapping project branch.
+`task_mapping` is the single canonical Task Mapping branch.
 
-The repository is organized internally by folders rather than permanent backup/reorg sub-branches.
+## Scope
 
-## Project-wide workflow coverage
-
-The cleanup/reorganization covers all four workflow domains:
+The cleanup/rewrite covers:
 
 1. Install
 2. Delivery
 3. Service
 4. PreInspection
+5. shared scheduler/report/cache/resolution/planning/execution/link/verification modules
 
-Dedicated workflow documentation exists under `docs/workflows/`, and the workflow coverage matrix prevents one workflow from being treated as representative of the whole system.
+## Active production behavior
 
-## Project-wide backup baseline
-
-`backups/2026-09-12/PROJECT_WIDE_REORG_BASELINE.md` records the repository/ledger rollback point before the four-workflow cleanup structure was expanded.
-
-This is a project-wide repository backup reference, not exact live Apps Script source parity.
-
-## Production Version
-
-Latest recorded production source release:
+Latest verified business release remains:
 
 `R3.4.22 — R30 Requested By Router Fix`
 
-R3.4.22 is recorded as `DEPLOYED_SOURCE_VERIFIED`. The repaired PreInspection Requested By route was runtime-verified on the three linked PreInspection tasks for 2026-09-11. Install, Delivery, and Service Requested By behavior was not intentionally changed by that release.
+The legacy 36-file implementation remains the live routed system. TM2 has not taken over any production workflow.
 
-## GitHub source parity
+## Zero-touch AutoPatch status
 
-The repository still does **not** contain the exact current 36-file production Apps Script source under `apps-script/`.
+`CLASPRC_JSON` is configured in GitHub Actions and the first fully automated guarded deployment completed successfully.
 
-Therefore:
+GitHub Actions run: `34710451571`
 
-- project ledger parity: current;
-- architecture/contracts: current;
-- four-workflow documentation coverage: current;
-- project-wide rollback baseline: current;
-- same-project shadow TEST strategy: defined;
-- rewritten `TM2_` source: **NOT YET BUILT FROM CURRENT LIVE SOURCE**;
-- production Apps Script source parity: **PENDING**.
+Result:
 
-Do not build the rewrite from the August historical snapshot or a reconstructed approximation.
+`DEPLOYED_SHADOW_SOURCE_VERIFIED`
 
-## Same-project shadow TEST strategy
+Verified facts:
 
-The agreed low-friction approach is to test the rewrite inside the **existing Apps Script Script ID and existing spreadsheet** while preserving all old files/functions.
+- PRE live clone contained 36 legacy files;
+- freshness clone immediately before push matched PRE;
+- 19 new `TM2_` files were added;
+- POST live clone contained 55 files;
+- all 36 legacy files were hash-identical to PRE;
+- all 19 TM2 files were hash-identical to the GitHub candidate;
+- no rollback was required;
+- workflow job conclusion was SUCCESS.
 
-Rules:
+Evidence is recorded in:
 
-- keep every existing production file/function;
-- rewritten files use the `TM2_` prefix;
-- rewritten functions use the `tm2_` prefix;
-- no duplicate legacy global names;
-- current production triggers/menus keep calling the legacy implementation initially;
-- rewritten code starts in `SHADOW_READ_ONLY` mode;
-- no rewritten time-driven triggers are installed during early testing;
-- comparisons use current sheet/Calendar/Striven data without changing workflow sheets;
-- controlled canary writes are manual-only and require explicit case/write gates;
-- shared-module testing must cover every affected workflow;
-- workflow cutover happens one workflow at a time through a narrow routing flag/adapter;
-- legacy implementation remains available for rollback until the rewritten path is stable.
+- `executions/tm2-shadow-r0-2026-09-12.json`
+- `test-evidence/2026-09-12-tm2-shadow-r0-deployed.md`
 
-Repository-side definitions live under:
+The GitHub Actions PRE-source/evidence artifact is ID `10303171560`, SHA-256 `f21cfb049821ff8ccfe9676b576bb766e6d5859b97531458425c0258eb25be2f`.
 
-- `docs/testing/TEST_ENVIRONMENT_PLAN.md`
-- `config/environments/`
-- `tests/install/`
-- `tests/delivery/`
-- `tests/service/`
-- `tests/preinspection/`
-- `tests/shared/`
-- `test-evidence/`
+## Current TM2 state
 
-## Important source-push distinction
+TM2 R0 is present in the existing Apps Script project but remains inert:
 
-Adding inert `TM2_` files to the existing Script ID is technically a production-project source change even before routing is switched.
+- `SHADOW_READ_ONLY`;
+- Striven writes disabled;
+- Calendar writes disabled;
+- CREATE/RECREATE disabled;
+- TM2 trigger installation disabled;
+- Install cutover false;
+- Delivery cutover false;
+- Service cutover false;
+- PreInspection cutover false;
+- legacy menus/triggers unchanged.
 
-Therefore the first shadow deployment must satisfy this gate:
+Repository candidate source is under:
 
-1. fresh exact live-source capture;
-2. legacy file inventory/hashes recorded;
-3. new `TM2_` files pass syntax/static dependency checks;
-4. global-name collision audit PASS;
-5. no existing trigger/menu/public route points to `TM2_`;
-6. push adds only the intended `TM2_` files;
-7. immediate re-pull confirms every legacy file remains unchanged;
-8. only then begin manual `SHADOW_READ_ONLY` execution.
+`apps-script/tm2-shadow/`
 
-## Functional promotion rule
+## Runtime verification
 
-Rewritten logic does not become the live workflow merely because the files exist in the project.
+`SHADOW_RUNTIME_VERIFIED = PENDING`
 
-For each workflow:
+The source push/read-back has been proven. The next proof is actual read-only execution of:
 
-`legacy active -> TM2 shadow read-only -> parity/regression checks -> controlled canary when needed -> CUTOVER_READY -> route that workflow only -> immediate runtime verification -> retain legacy rollback`
+- `tm2_connectivityAudit()`
+- `tm2_diagnostics()`
+- `tm2_shadowRunAll()`
 
-Any behavior that cannot be proven before cutover remains explicitly unverified; it is not assumed to pass.
+Automating those functions requires remote Apps Script execution support. First determine whether the existing project can use clasp/Apps Script API execution safely without changing its Cloud-project association or requiring a risky production authorization migration.
 
-## Architecture direction
+## Source parity
 
-`SOURCE → NORMALIZE → RESOLVE → MATCH → CLASSIFY → PLAN → EXECUTE → VERIFY → LINK/HANDOFF → ENDPOINT`
+- TM2 source parity: VERIFIED.
+- Legacy PRE source: captured in the Actions artifact.
+- Permanent public GitHub archive of the exact 36-file legacy source: PENDING sensitive-content screening.
 
-Existing public/menu/trigger entrypoints remain until replacements are proven.
+Do not publish raw legacy source until credentials, Script Properties, private report identifiers/URLs, customer PII, and other operationally sensitive values are screened.
 
 ## Exact next action
 
-1. **Capture the exact current 36-file live Apps Script source once.**
-2. Build the complete file/function/caller/trigger/sheet/API/write inventory for Install, Delivery, Service, PreInspection, and shared modules.
-3. Design the `TM2_` rewritten files from that exact current source while leaving legacy files untouched.
-4. Run syntax/dependency/global-collision checks before adding any `TM2_` files to the existing Script ID.
-5. Add the inert `TM2_` files only; do not redirect menus/triggers.
-6. Re-pull and prove all legacy files are unchanged.
-7. Run manual `SHADOW_READ_ONLY` regression comparisons on the existing sheet.
-8. Introduce controlled canary writes only after read-only parity passes.
-9. Cut over one workflow at a time only after that workflow reaches `CUTOVER_READY`.
+1. Probe/configure zero-touch read-only TM2 runtime execution without rerouting any legacy workflow.
+2. If safe remote execution is available, run `tm2_connectivityAudit()`, `tm2_diagnostics()`, and `tm2_shadowRunAll()` automatically and record the results.
+3. Build the complete legacy inventory from the freshly captured PRE source: files, functions, callers/callees, menus, triggers, sheets, Calendar operations, Striven reports/API writes, workflow ownership, relationship rules, assignment rules, recovery rules, guards and fingerprints.
+4. Classify every legacy function as `CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN`.
+5. Expand TM2 one workflow at a time from scaffolding to behavior-equivalent read-only planning and compare its decisions against the current legacy implementation.
+6. Do not enable TM2 writes or workflow cutover until read-only parity and affected-workflow regression checks pass.
 
-Classify every function during inventory as:
+## Repository housekeeping
 
-`CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN`
+`task_mapping` remains canonical. Temporary `task_mapping_autopatch_stage*` refs created during connector setup are noncanonical and unused; remove them when branch-delete access is available.
