@@ -3,10 +3,10 @@ name: Task Mapping Ledger Check
 on:
   push:
     branches:
-      - task-mapping/main
+      - task_mapping
   pull_request:
     branches:
-      - task-mapping/main
+      - task_mapping
 
 permissions:
   contents: read
@@ -29,6 +29,12 @@ jobs:
             PROJECT_CHECKPOINT.md
             TASK_MAPPING_SYNC_POLICY.md
             executions/latest.json
+            docs/workflows/README.md
+            docs/workflows/WORKFLOW_COVERAGE_MATRIX.md
+            docs/workflows/install/README.md
+            docs/workflows/delivery/README.md
+            docs/workflows/service/README.md
+            docs/workflows/preinspection/README.md
           )
           for f in "${required[@]}"; do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
@@ -72,6 +78,18 @@ jobs:
               }
             fi
           fi
+
+      - name: Verify four-workflow coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          for workflow in install delivery service preinspection; do
+            test -f "docs/workflows/$workflow/README.md" || {
+              echo "Missing workflow documentation: $workflow"
+              exit 1
+            }
+          done
+          echo 'All four workflow documentation domains are present.'
 
       - name: Summary
         run: echo 'Task Mapping project-ledger checks passed.'
