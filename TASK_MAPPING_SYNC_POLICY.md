@@ -1,24 +1,18 @@
 # Task Mapping — Verified Execution Sync Policy
 
-The canonical GitHub branch for verified Classic Fireplace Apps Script Task Mapping work is:
+The single canonical GitHub branch for verified Classic Fireplace Apps Script Task Mapping work is:
 
-`task-mapping/main`
+`task_mapping`
 
-Architecture/reorganization work must branch from canonical main under the grouped namespace, for example:
+All durable project material—including Install, Delivery, Service, PreInspection, shared architecture, backups, execution records, history, and future verified source—belongs inside this branch.
 
-`task-mapping/reorg/...`
-
-Frozen rollback/backups belong under:
-
-`task-mapping/backup/...`
-
-Legacy flat branch refs such as `task_mapping`, `reorg/...`, and `backup/...` are superseded and must not receive new work.
+Do not create permanent backup/reorganization branches merely to simulate folders. Use repository folders plus immutable commit SHAs for durable backup/history. Temporary work branches are allowed only when genuinely useful for an isolated change/PR and are disposable after reconciliation.
 
 ## Mandatory automated GitHub step
 
 For every ChatGPT-assisted Task Mapping code change, GitHub synchronization is part of the same completion procedure. It is not an optional follow-up and should not require a separate user reminder.
 
-After Apps Script reaches `DEPLOYED_SOURCE_VERIFIED`, ChatGPT must use the already-connected GitHub connector for `consultpramodh/classicfireplace` to synchronize the verified source and release metadata to `task-mapping/main`, or to a temporary grouped work branch that is subsequently reconciled into `task-mapping/main`.
+After Apps Script reaches `DEPLOYED_SOURCE_VERIFIED`, ChatGPT must use the already-connected GitHub connector for `consultpramodh/classicfireplace` to synchronize verified source and release metadata to `task_mapping`.
 
 Do not ask the operator for GitHub credentials. Do not run local `git push`, interactive HTTPS authentication, PAT prompts, or password authentication.
 
@@ -28,15 +22,32 @@ Do not ask the operator for GitHub credentials. Do not run local `git push`, int
 
 A Task Mapping change is not considered fully archived until the GitHub read-back succeeds.
 
+## Project-wide coverage requirement
+
+Every change must be assessed against all affected workflow domains:
+
+- Install;
+- Delivery;
+- Service;
+- PreInspection;
+- shared cross-workflow modules.
+
+If a shared helper is changed, regression scope must include every workflow that calls it or explicitly document why a workflow is unaffected.
+
+No project-wide backup/checkpoint may represent only one workflow as if it covered the entire Task Mapping system.
+
 ## What gets synchronized
 
 - `apps-script/` — exact verified Apps Script source from the final POST/read-back snapshot when safe to publish.
+- `backups/` — project-wide backup manifests and rollback commit references.
 - `executions/` — one machine-readable record per verified deployment/release.
 - `executions/latest.json` — latest recorded release state.
 - `PROJECT_CURRENT_STATE.md` — current production/source truth when materially changed.
 - `PROJECT_CHECKPOINT.md` — exact continuation point and next action.
-- `docs/` — stable business/process/architecture documentation when the agreed design changes.
-- `deployment-history/` — recovered or newly verified release history.
+- `docs/architecture/` — common architecture, endpoint, guardrail, and migration contracts.
+- `docs/policies/` — shared operating/release/API policies.
+- `docs/workflows/` — dedicated Install, Delivery, Service, and PreInspection contracts.
+- `deployment-history/` and `history/` — recovered/newly verified release and historical evidence.
 
 Each execution record should include at minimum:
 
@@ -63,19 +74,20 @@ Each execution record should include at minimum:
 
 1. GitHub sync occurs only after Apps Script remote read-back establishes the final source state.
 2. Never sync a failed or uncertain Apps Script deployment as current verified source.
-3. Never force-push `task-mapping/main` as part of an automated patch procedure.
+3. Never force-push `task_mapping` as part of an automated patch procedure.
 4. Fail closed on a stale GitHub base or branch conflict.
-5. Never commit credentials, Script Properties, OAuth tokens, API keys, cookies, or other secrets.
-6. Because the current repository is public, scan source/history for customer PII and private operational data before publishing raw source.
-7. If exact live source cannot be safely or authoritatively captured, record the gap in `PROJECT_CHECKPOINT.md`; do not substitute stale or partial source.
+5. Never commit credentials, Script Properties, OAuth tokens, API keys, cookies, customer PII, or other secrets/private operational data.
+6. Because the repository is public, screen raw source/history before publishing.
+7. If exact live source cannot be safely or authoritatively captured, record the gap; do not substitute stale or partial source.
+8. Do not delete production functions/files during repository cleanup unless exact live-source parity, caller inventory, and regression evidence justify it.
 
-## Branch policy
+## Backup policy
 
-- `task-mapping/main` is the only canonical current branch.
-- Reorganization and risky refactors start from `task-mapping/main` under `task-mapping/reorg/...`.
-- Frozen rollback points use `task-mapping/backup/...`.
-- A grouped reorg branch must not become authoritative merely because it is newer; canonical status changes only when verified work is reconciled into `task-mapping/main` and read back.
-- Legacy flat branch refs are historical aliases only.
+Use immutable Git commit SHAs plus manifests under `backups/` as the normal durable rollback record.
+
+A backup manifest must state its scope. Project-wide backup manifests must explicitly include Install, Delivery, Service, PreInspection, and shared modules.
+
+A repository/ledger backup is not automatically an Apps Script source backup. Keep those statuses separate.
 
 ## Automation boundary
 
@@ -92,6 +104,7 @@ Before reporting a Task Mapping change complete, report these states separately:
 - Apps Script deployment/source verification;
 - runtime feature verification;
 - GitHub synchronization;
-- GitHub read-back/parity.
+- GitHub read-back/parity;
+- affected-workflow regression coverage.
 
 Never collapse these into one generic `PASS` if any stage is incomplete.
