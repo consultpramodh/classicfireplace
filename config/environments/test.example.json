@@ -1,25 +1,27 @@
 {
-  "environment": "TEST",
-  "spreadsheetId": "TEST_SPREADSHEET_ID_HERE",
-  "calendars": {
-    "install": "TEST_INSTALL_CALENDAR_ID_HERE",
-    "delivery": "TEST_DELIVERY_CALENDAR_ID_HERE",
-    "service": "TEST_SERVICE_CALENDAR_ID_HERE",
-    "preinspection": "TEST_PREINSPECTION_CALENDAR_ID_HERE"
-  },
+  "strategy": "SAME_PROJECT_SHADOW",
+  "mode": "SHADOW_READ_ONLY",
+  "workflow": null,
   "writes": {
     "enabled": false,
-    "strivenAllowlistOnly": true,
     "allowCreateRecreate": false,
     "allowTriggerInstall": false
   },
-  "allowlists": {
+  "canaryAllowlists": {
     "customerIds": [],
     "salesOrderIds": [],
-    "taskIds": []
+    "taskIds": [],
+    "eventIds": [],
+    "mappingRows": []
+  },
+  "cutover": {
+    "install": false,
+    "delivery": false,
+    "service": false,
+    "preinspection": false
   },
   "evidence": {
-    "label": "TEST",
-    "destination": "TEST_EVIDENCE_DESTINATION_HERE"
+    "label": "TM2_SHADOW",
+    "destination": "LOGS_OR_TEST_EVIDENCE"
   }
 }
