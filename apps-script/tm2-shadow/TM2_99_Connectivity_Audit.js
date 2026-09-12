@@ -8,7 +8,8 @@ function tm2_connectivityAudit() {
       'tm2_shadowService',
       'tm2_shadowPreInspection',
       'tm2_shadowRunAll',
-      'tm2_diagnostics'
+      'tm2_diagnostics',
+      'tm2_testSuite'
     ];
 
     const tm2Functions = {};
