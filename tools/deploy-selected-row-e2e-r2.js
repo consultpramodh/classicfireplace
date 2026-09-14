@@ -21,6 +21,8 @@ const expectedPreFileCount = Number(manifest.expectedPreFileCount || 0);
 const oldPublicFunction = String(manifest.oldPublicFunction || 'runSelectedTaskMappingRowEndToEnd');
 const newPublicFunction = String(manifest.newPublicFunction || 'runSelectedTaskMappingRowEndToEndR2');
 const expectedMenuReferenceCount = Number(manifest.expectedMenuReferenceCount || 8);
+const oldMenuReference = `'${oldPublicFunction}'`;
+const newMenuReference = `'${newPublicFunction}'`;
 
 if (!scriptId) throw new Error('release manifest missing scriptId');
 if (!fs.existsSync(sourceFile)) throw new Error(`sourceFile missing: ${sourceFile}`);
@@ -130,11 +132,11 @@ try {
   const preHashes = hashMap(preSrc, preNames);
 
   const menuPre = fs.readFileSync(path.join(preSrc, menuFileName), 'utf8');
-  const oldCount = countLiteral(menuPre, oldPublicFunction);
+  const oldCount = countLiteral(menuPre, oldMenuReference);
   if (oldCount !== expectedMenuReferenceCount) {
-    throw new Error(`expected ${expectedMenuReferenceCount} menu/dependency references to ${oldPublicFunction}, found ${oldCount}`);
+    throw new Error(`expected ${expectedMenuReferenceCount} exact menu/dependency references to ${oldPublicFunction}, found ${oldCount}`);
   }
-  if (menuPre.includes(newPublicFunction)) throw new Error(`menu already contains ${newPublicFunction}`);
+  if (countLiteral(menuPre, newMenuReference) !== 0) throw new Error(`menu already contains exact ${newPublicFunction} reference`);
 
   console.log('=== SELECTED ROW E2E R2 3/9 preserve PRE evidence ===');
   copyDir(preRoot, preArchiveDir);
@@ -144,12 +146,12 @@ try {
   const workSrc = path.join(workRoot, 'src');
   fs.copyFileSync(sourceFile, path.join(workSrc, targetFileName));
 
-  const patchedMenu = menuPre.split(oldPublicFunction).join(newPublicFunction);
-  if (countLiteral(patchedMenu, newPublicFunction) !== expectedMenuReferenceCount) {
-    throw new Error('patched menu did not contain expected R2 reference count');
+  const patchedMenu = menuPre.split(oldMenuReference).join(newMenuReference);
+  if (countLiteral(patchedMenu, newMenuReference) !== expectedMenuReferenceCount) {
+    throw new Error('patched menu did not contain expected exact R2 reference count');
   }
-  if (countLiteral(patchedMenu, oldPublicFunction) !== 0) {
-    throw new Error('patched menu still contains old public function reference');
+  if (countLiteral(patchedMenu, oldMenuReference) !== 0) {
+    throw new Error('patched menu still contains old exact public function reference');
   }
   fs.writeFileSync(path.join(workSrc, menuFileName), patchedMenu);
 
@@ -184,11 +186,11 @@ try {
   if (postHashes[targetFileName] !== sha256(sourceFile)) throw new Error('POST R2 file hash mismatch');
 
   const postMenu = fs.readFileSync(path.join(postSrc, menuFileName), 'utf8');
-  if (countLiteral(postMenu, newPublicFunction) !== expectedMenuReferenceCount) {
-    throw new Error('POST menu R2 reference count mismatch');
+  if (countLiteral(postMenu, newMenuReference) !== expectedMenuReferenceCount) {
+    throw new Error('POST menu exact R2 reference count mismatch');
   }
-  if (countLiteral(postMenu, oldPublicFunction) !== 0) {
-    throw new Error('POST menu still references R1 public function');
+  if (countLiteral(postMenu, oldMenuReference) !== 0) {
+    throw new Error('POST menu still references R1 public function exactly');
   }
   run(process.execPath, ['--check', path.join(postSrc, targetFileName)], repoRoot);
   run(process.execPath, ['--check', path.join(postSrc, menuFileName)], repoRoot);
