@@ -1,16 +1,18 @@
 # Classic Fireplace — Project Portfolio
 
-This file is the canonical portfolio index. Long-lived project work is grouped into a small number of branches rather than one branch/project per chat.
+This file is the canonical portfolio index. Long-lived work is grouped into a small number of branches rather than one branch/project per chat.
 
-| Project | Canonical branch | Tracker |
-|---|---|---|
-| Task Mapping & Field Operations | `task_mapping` | #23 |
-| ServiceOps & Customer Service | `cf-serviceops` | #24 |
-| Striven Data Hub & Analytics | `striven-central-data-hub` | #25 |
-| Product, Inventory & Commerce Automation | `product-inventory-commerce` | #26 |
-| Growth, Marketing & Business Development | `growth-marketing` | #27 |
+| Project | Canonical branch | Tracker | Work items |
+|---|---|---|---|
+| Task Mapping & Field Operations | `task_mapping` | #23 | #32–#42 |
+| ServiceOps & Customer Service | `cf-serviceops` | #24 | Existing Stage issues #1–#22 plus #43–#45 |
+| Striven Data Hub & Analytics | `striven-central-data-hub` | #25 | #46–#55 |
+| Product, Inventory & Commerce Automation | `product-inventory-commerce` | #26 | #56–#68 |
+| Growth, Marketing & Business Development | `growth-marketing` | #27 | #69–#79 |
 
 Portfolio tracker: #28
+
+Each canonical branch owns a `PROJECT_BOARD.md` that mirrors its tracker and links the feature-level issues.
 
 ## Standard project status
 
@@ -30,15 +32,18 @@ Portfolio tracker: #28
 - Keep existing live Script IDs and deployment boundaries until a verified migration says otherwise.
 - A feature stays a subproject unless it has a distinct codebase/deployment lifecycle substantial enough to justify a new canonical branch.
 - New chats do not automatically create new GitHub projects.
-- Each canonical branch owns its own `PROJECT_BOARD.md`.
-- Tracker issues hold portfolio-visible status; branch files hold code-adjacent status.
+- Tracker issues hold portfolio-visible status; branch `PROJECT_BOARD.md` files hold code-adjacent status.
+- Feature issues are the actionable units; parent trackers are indexes, not duplicate task lists.
 - `IDEA` and `GOOD TO HAVE` items must not silently enter active work.
 - `TESTING / VERIFY` is not the same as `DONE`.
-
-## Noncanonical setup artifact
-
-`project-management-setup-temp` was created during setup and is not a canonical project branch. Delete it when branch-delete access is available; do not place work there.
+- Cross-project work must have one owning project and explicit handoff boundaries rather than duplicate ownership.
 
 ## Native GitHub Projects
 
-The current ChatGPT GitHub connector does not expose GitHub Projects board creation. Tracker issues plus branch-local project boards are therefore the current source of truth. They are intentionally structured so they can be migrated into native GitHub Projects later without changing the taxonomy.
+ServiceOps already has a native GitHub Project referenced by issue #11.
+
+The current ChatGPT GitHub connector does not expose creation or Project-v2 Status-field mutation for additional native GitHub Projects. For Task Mapping, Data Hub, Product/Inventory and Growth/Marketing, the tracker issue + branch `PROJECT_BOARD.md` + linked feature issues are therefore the current canonical management structure.
+
+## Noncanonical setup artifact
+
+`project-management-setup-temp` is not a canonical project branch. Do not place work there. Delete it only after confirming branch-delete access and that no workflow/reference depends on it.
