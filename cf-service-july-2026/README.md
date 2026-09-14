@@ -1,6 +1,6 @@
 # CF ServiceOps — Zero-Touch R1
 
-Branch: `cf-service-zero-touch-r1`
+Branch: `cf-service`
 
 Target bound Apps Script Script ID: `1QZp4NAFeA8LmWBN31ylJYdK4XFepBX1h2lP_APaR-d1lTAC-d8LA9x3g`
 
@@ -24,3 +24,7 @@ Safety invariants:
 - queue projection must preserve Customer/Contact/Location/Sales Order/Task hyperlinks.
 
 Initial R1 scope is deliberately narrow: transactional cache freshness, Sales Order item-policy defect, false same-state circuit breaker, and obsolete durable-Quoted manual-review normalization. Broader controller consolidation follows only after the R1 canary passes.
+
+## Current updater status
+
+The first downloaded PowerShell build stopped safely at step 1 because the wrapper used PowerShell's reserved automatic `$Args` variable for clasp argument forwarding. No pull, patch, or production push occurred. The updater on this branch now uses `ClaspArgs` explicitly and includes the full PRE/FRESH/POST verification flow.
