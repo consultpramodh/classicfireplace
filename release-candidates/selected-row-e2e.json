@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "release": "SELECTED_ROW_E2E_R1_20260914",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "sourceFile": "patches/task-mapping/93_Selected_Row_End_To_End.js",
+  "targetFile": "93_Selected_Row_End_To_End.js",
+  "menuFile": "02_Menu.js",
+  "expectedPreFileCount": 55,
+  "claspVersion": "3.3.0"
+}
