@@ -1,56 +1,62 @@
-# Task Mapping Fix Pack R4 — Deployment Evidence
+# Task Mapping Fix Pack R4 / R4.1 — Deployment & Runtime Evidence
 
-**Release:** `TASK_MAPPING_FIX_PACK_R4_20260915`  
+**Base release:** `TASK_MAPPING_FIX_PACK_R4_20260915`  
+**Service lookup hotfix:** `TASK_MAPPING_FIX_PACK_R4_1_20260915`  
 **Branch:** `task_mapping`  
 **Apps Script:** existing bound production project  
-**Deployment run:** `35008409555`  
-**Deployment job:** `104513907947`  
-**Artifact:** `10412816389`  
-**Artifact SHA256:** `47b5d3ad540f8928d934fb6a932ac7e5e5a702a2c16a793ce9d0bd7940ecd752`
 
 ## Deployment result
 
-- `DEPLOYED_SOURCE_VERIFIED`
-- PRE clone: 58 files
-- POST clone: 59 files
+- R4 source deployment: `DEPLOYED_SOURCE_VERIFIED`
+- R4 PRE clone: 58 files
+- R4 POST clone: 59 files
 - Added: `97_Task_Mapping_Fix_Pack_R4.js`
-- Modified existing files only:
-  - `02_Menu.js`
-  - `01_Shared_Utilities.js`
-  - `40_Report_Refresh_Workflow.js`
-  - `92_Striven_Task_Patch_Helper.js`
-  - `95_Delivery_Calendar_Link_Test.js`
-- All other PRE files hash-preserved.
-- PRE source retained in the workflow artifact as rollback evidence.
-- Production TM2 cutover flags were not changed.
-- Runtime regression is still required; source deployment success is not being treated as feature verification.
+- Production TM2 cutover flags remained OFF.
+- R4.1 corrected Service Calendar lookup to include the live `SERVICE_CONFIG.TECH_CALENDARS` configuration and preserved compatibility fallbacks.
+- R4.1 source deployment: `DEPLOYED_SOURCE_VERIFIED`.
+- R4.1 PRE / POST file count: 59 / 59; only `97_Task_Mapping_Fix_Pack_R4.js` changed.
 
-## Fix tracker
+## R4.1 read-only regression — 2026-09-15
 
-| ID | Fix | R4 source status | Runtime status |
+Function: `runTaskMappingFixPackR4Regression()`  
+Execution: **Completed** in 43.229 seconds.  
+Mode: `READ_ONLY_REGRESSION`.  
+Business workflow writes: **0**.
+
+Verified from runtime evidence:
+
+- Report parser: **PASS** — valid empty result recognized, valid rows recognized, malformed/unrecognized result blocked.
+- TM2 connectivity audit: **PASS**.
+- TM2 diagnostics: **PASS**.
+- TM2 Install shadow: **PASS**, 45 rows; endpoint counts `DEFERRED_RETRY=4`, `SHADOW_ONLY=40`, `REVIEW_REQUIRED=1`.
+- TM2 Delivery shadow: **PASS**, 14 rows; endpoint counts `DEFERRED_RETRY=2`, `SHADOW_ONLY=11`, `REVIEW_REQUIRED=1`.
+- TM2 Service shadow: **PASS**, 81 rows; endpoint counts `DEFERRED_RETRY=5`, `SHADOW_ONLY=75`, `REVIEW_REQUIRED=1`.
+- TM2 PreInspection shadow: **PASS**, 74 rows; endpoint counts `SHADOW_ONLY=56`, `REVIEW_REQUIRED=18`.
+- TM2 all-workflow shadow run: **PASS**.
+- TM2 test suite: **PASS**.
+- All cutover flags remained false and TM2 business write attempts remained 0.
+- The prior `Service Calendar event not found for aggregated link write` exception did **not** recur; the R4.1 regression completed successfully. Event-level Service dry-run detail was truncated from Apps Script logging, so individual Service event outcomes are not claimed as fully verified yet.
+- Control Tower data build did not throw during the completed regression; visual UI acceptance still requires manual inspection.
+
+## Updated fix tracker
+
+| ID | Fix | Source status | Runtime status after R4.1 regression |
 |---|---|---|---|
-| FIX-01 | PreInspection AM/PM date-time reconciliation | DEPLOYED — R4 routes OPEN PreInspection through R3 local-meridiem sequential PATCH/read-back | PENDING regression/write test |
-| FIX-02 | Shared rolling 24-hour recently-completed protection | DEPLOYED — automatic recovery source guard now delegates to rolling 24-hour guard | PENDING runtime evidence |
-| FIX-03 | Prevent blind retry after uncertain writes | DEPLOYED in consolidated selected-row path; fresh state is read before deciding whether a mutation is needed; existing guarded recovery remains reconcile-before-retry | PENDING runtime evidence |
-| FIX-04 | Material selected-row write read-back | DEPLOYED — consolidated selected-row path requires authoritative task read-back before Calendar link write; Service Calendar link write has read-back | PENDING runtime evidence |
-| FIX-05 | Separate OPEN / recent completion / completed-review / recovery handling | DEPLOYED in consolidated selected-row + automatic recovery guard | PENDING runtime evidence |
-| FIX-06 | Service multi-fireplace event-level link aggregation | DEPLOYED — Service rows grouped by Event ID; one managed link block contains all task links; write read back | PENDING dry-run/runtime evidence |
-| FIX-07 | Calendar freshness before selected-row consequential work | DEPLOYED — authoritative Calendar event is re-read and compared before selected-row write path | PENDING runtime evidence |
-| FIX-08 | Duplicate prevention immediately before CREATE/RECREATE | PRESERVED — existing guarded recovery execution re-plans immediately before create/recreate; R4 does not bypass it | PENDING regression evidence |
-| FIX-09 | PreInspection organizer → exact Employee Requested By | PRESERVED + INCLUDED — selected-row PreInspection path retains exact organizer-to-employee resolution; prior runtime evidence already showed exact Employee resolution | Regression pending |
-| FIX-10 | Valid zero-row report vs failed/malformed report | DEPLOYED — recognized empty array is valid; unknown/malformed shape throws before sheet replacement; pagination cap throws | PENDING regression |
-| FIX-11 | Separate legacy mapping status from TM2 endpoint | DEPLOYED — Control Tower shows legacy status and TM2 endpoint separately | PENDING UI regression |
-| FIX-12 | Exception-first operational display | DEPLOYED — Master menu Control Tower modal with workflow summaries + exception queue | PENDING UI regression |
-| FIX-13 | One consolidated regression suite | DEPLOYED — `runTaskMappingFixPackR4Regression()` | PENDING one-click run |
-| FIX-14 | Recent completions cannot be automatically recreated | DEPLOYED in selected-row and automatic recovery paths through rolling 24-hour protection | PENDING runtime evidence |
+| FIX-01 | PreInspection AM/PM date-time reconciliation | DEPLOYED | **CONTROLLED WRITE TEST STILL REQUIRED** — read-only regression cannot prove the corrected Striven PATCH/read-back path |
+| FIX-02 | Shared rolling 24-hour recently-completed protection | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
+| FIX-03 | Prevent blind retry after uncertain writes | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
+| FIX-04 | Material selected-row write read-back | DEPLOYED | **RUNTIME WRITE TEST REQUIRED** |
+| FIX-05 | Separate OPEN / recent completion / completed-review / recovery handling | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
+| FIX-06 | Service multi-fireplace event-level link aggregation | R4.1 DEPLOYED | **READ-ONLY PIPELINE PASS AT SUITE LEVEL** — previous missing-calendar exception fixed; individual event outcomes still need compact evidence / controlled runtime verification |
+| FIX-07 | Calendar freshness before selected-row consequential work | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
+| FIX-08 | Duplicate prevention immediately before CREATE/RECREATE | PRESERVED | **TARGETED RECOVERY REGRESSION REQUIRED** |
+| FIX-09 | PreInspection organizer → exact Employee Requested By | PRESERVED | **PRIOR RUNTIME EVIDENCE PASS**; R4.1 regression did not alter this path |
+| FIX-10 | Valid zero-row report vs failed/malformed report | DEPLOYED | **PASS** in R4.1 read-only regression |
+| FIX-11 | Separate legacy mapping status from TM2 endpoint | DEPLOYED | **DATA-BUILD PASS**; visual review pending |
+| FIX-12 | Exception-first operational display | DEPLOYED | **DATA-BUILD PASS**; visual review pending |
+| FIX-13 | One consolidated regression suite | DEPLOYED | **PASS** — completed successfully |
+| FIX-14 | Recent completions cannot be automatically recreated | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
 
-## New Master menu controls
+## Current next verification
 
-- `🧭 Task Mapping Control Tower`
-- `🧪 Run R4 Read-Only Regression`
-
-All existing `🚀 Run Selected Row End-to-End` menu entries now route to `runSelectedTaskMappingRowEndToEndR4()`.
-
-## Exact next verification
-
-Run **Master Sync → 🧪 Run R4 Read-Only Regression** once. This regression makes no Striven or Calendar business-data writes. It runs the consolidated read-only checks, TM2 shadow suite, Service link dry-run, report parser checks, and Control Tower data build. After that evidence is reviewed, perform one controlled selected-row write test for the PreInspection AM/PM case.
+The read-only regression gate has passed. The next controlled verification is one known-safe **PreInspection OPEN task with the AM/PM mismatch** using the existing `🚀 Run Selected Row End-to-End` menu command. Acceptance requires exact Striven Start/Due read-back and the correct Calendar task link. No wider production cutover is authorized by this regression result.
