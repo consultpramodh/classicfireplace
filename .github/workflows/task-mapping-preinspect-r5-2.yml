@@ -1,0 +1,55 @@
+name: Task Mapping PreInspect R5.2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/preinspect-r5-2-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-preinspect-r5-2
+  cancel-in-progress: false
+
+jobs:
+  guarded-preinspect-r5-2:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify Google clasp CI authorization is configured
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASPRC_JSON:-}" ]; then
+            echo "CLASPRC_JSON repository secret is not configured. No Apps Script write attempted."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Run guarded PreInspect R5.2 deployment
+        shell: bash
+        run: node tools/deploy-preinspect-r5-2.js
+      - name: Preserve PRE source and verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-preinspect-r5-2-${{ github.run_id }}
+          path: task-mapping-preinspect-r5-2-output/
+          if-no-files-found: warn
+          retention-days: 30
