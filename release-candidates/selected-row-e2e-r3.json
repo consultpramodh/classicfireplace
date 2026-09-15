@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "release": "SELECTED_ROW_E2E_R3_20260915",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "sourceFile": "patches/task-mapping/96_Selected_Row_End_To_End_R3.js",
+  "targetFile": "96_Selected_Row_End_To_End_R3.js",
+  "menuFile": "02_Menu.js",
+  "expectedPreFileCount": 57,
+  "oldPublicFunction": "runSelectedTaskMappingRowEndToEndR2",
+  "newPublicFunction": "runSelectedTaskMappingRowEndToEndR3",
+  "expectedMenuReferenceCount": 8,
+  "claspVersion": "3.3.0"
+}
