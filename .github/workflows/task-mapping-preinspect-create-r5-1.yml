@@ -1,0 +1,51 @@
+name: Task Mapping PreInspect Create R5.1
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/preinspect-create-r5-1-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-preinspect-create-r5-1
+  cancel-in-progress: false
+
+jobs:
+  guarded-preinspect-create-r5-1:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify Google clasp CI authorization is configured
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Run guarded PreInspect R5.1 create fix
+        shell: bash
+        run: node tools/deploy-preinspect-create-r5-1.js
+      - name: Preserve PRE source and verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-preinspect-create-r5-1-${{ github.run_id }}
+          path: task-mapping-preinspect-create-r5-1-output/
+          if-no-files-found: warn
+          retention-days: 30
