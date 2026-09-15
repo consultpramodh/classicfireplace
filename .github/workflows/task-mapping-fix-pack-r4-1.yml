@@ -45,9 +45,21 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
+      - name: Build R4.1 runtime manifest
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const m = JSON.parse(fs.readFileSync('release-candidates/task-mapping-fix-pack-r4.json', 'utf8'));
+          m.release = 'TASK_MAPPING_FIX_PACK_R4_1_20260915';
+          m.expectedPreFileCount = 59;
+          m.targetFile = '97_Task_Mapping_Fix_Pack_R4.js';
+          fs.writeFileSync('r4-1-runtime-manifest.json', JSON.stringify(m, null, 2));
+          NODE
+
       - name: Run guarded R4.1 Service Calendar fix deployment
         shell: bash
-        run: node tools/deploy-task-mapping-fix-pack-r4-1.js release-candidates/task-mapping-fix-pack-r4-1.json
+        run: node tools/deploy-task-mapping-fix-pack-r4-1.js r4-1-runtime-manifest.json
 
       - name: Preserve PRE source and verification evidence
         if: always()
