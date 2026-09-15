@@ -243,7 +243,7 @@ try {
 
   if (!r3.includes('TM_SELECTED_ROW_E2E_R3_3_20260915')) throw new Error('Unexpected live R3.3 marker');
   if (!r4.includes('TM_FIX_PACK_R4_5_20260915')) throw new Error('Unexpected live R4.5 marker');
-  if (!pi.includes('BLOCKED_STRIVEN_PI_PM_PATCH_DEFECT')) throw new Error('R4.5 PM quarantine missing from live PI source');
+  if (!pi.includes('tmR45AssertPreInspectDateTimePatchSafe_')) throw new Error('R4.5 PM quarantine hook missing from live PI source');
 
   if (!pi.includes('function preinspectR46GetCanonicalV1Schedule_(')) {
     pi += canonicalHelper;
@@ -307,7 +307,7 @@ try {
   ].forEach(marker => { if (!postR3.includes(marker)) throw new Error('POST R3 missing R4.6 marker ' + marker); });
 
   if (!postR4.includes('TM_FIX_PACK_R4_6_20260915')) throw new Error('POST R4 missing R4.6 version marker');
-  if (!postPI.includes('BLOCKED_STRIVEN_PI_PM_PATCH_DEFECT')) throw new Error('POST PI lost R4.5 PM quarantine');
+  if (!postPI.includes('tmR45AssertPreInspectDateTimePatchSafe_')) throw new Error('POST PI lost R4.5 PM quarantine hook');
 
   evidence.status = 'DEPLOYED_SOURCE_VERIFIED';
   evidence.completedAt = new Date().toISOString();
