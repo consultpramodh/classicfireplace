@@ -1,0 +1,57 @@
+name: Task Mapping Capture PreInspect R5.2 Source
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/capture-preinspect-r5-2-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-capture-preinspect-r5-2
+  cancel-in-progress: false
+
+jobs:
+  capture-live-source:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Clone live project read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p live-preinspect-r5-2
+          cd live-preinspect-r5-2
+          npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src
+          sha256sum src/35_PreInspect_Task_Review.js > source-sha256.txt
+          node --check src/35_PreInspect_Task_Review.js
+      - name: Upload live source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-live-preinspect-r5-2-${{ github.run_id }}
+          path: live-preinspect-r5-2/
+          if-no-files-found: error
+          retention-days: 30
