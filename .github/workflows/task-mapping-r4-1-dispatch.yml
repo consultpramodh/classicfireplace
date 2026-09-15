@@ -58,7 +58,7 @@ jobs:
 
       - name: Run guarded R4.5 PreInspection PM quarantine deployment
         shell: bash
-        run: node tools/deploy-task-mapping-fix-pack-r4-5.js r4-5-runtime-manifest.json
+        run: node tools/deploy-task-mapping-fix-pack-r4-5b.js r4-5-runtime-manifest.json
 
       - name: Preserve PRE source and verification evidence
         if: always()
