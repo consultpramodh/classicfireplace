@@ -1,4 +1,4 @@
-name: Task Mapping Fix Pack R4.5
+name: Task Mapping Fix Pack R4.6
 
 on:
   workflow_dispatch:
@@ -12,11 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: task-mapping-fix-pack-r4-5
+  group: task-mapping-fix-pack-r4-6
   cancel-in-progress: false
 
 jobs:
-  deploy-r4-5:
+  deploy-r4-6:
     if: github.repository == 'consultpramodh/classicfireplace'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -45,26 +45,26 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
-      - name: Build R4.5 runtime manifest
+      - name: Build R4.6 runtime manifest
         shell: bash
         run: |
           node - <<'NODE'
           const fs = require('fs');
           const m = JSON.parse(fs.readFileSync('release-candidates/task-mapping-fix-pack-r4.json', 'utf8'));
-          m.release = 'TASK_MAPPING_FIX_PACK_R4_5_20260915';
+          m.release = 'TASK_MAPPING_FIX_PACK_R4_6_20260915';
           m.expectedPreFileCount = 59;
-          fs.writeFileSync('r4-5-runtime-manifest.json', JSON.stringify(m, null, 2));
+          fs.writeFileSync('r4-6-runtime-manifest.json', JSON.stringify(m, null, 2));
           NODE
 
-      - name: Run guarded R4.5 PreInspection PM quarantine deployment
+      - name: Run guarded R4.6 canonical v1 PreInspection schedule deployment
         shell: bash
-        run: node tools/deploy-task-mapping-fix-pack-r4-5b.js r4-5-runtime-manifest.json
+        run: node tools/deploy-task-mapping-fix-pack-r4-6.js r4-6-runtime-manifest.json
 
       - name: Preserve PRE source and verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: task-mapping-fix-pack-r4-5-${{ github.run_id }}
-          path: task-mapping-r4-5-output/
+          name: task-mapping-fix-pack-r4-6-${{ github.run_id }}
+          path: task-mapping-r4-6-output/
           if-no-files-found: warn
           retention-days: 30
