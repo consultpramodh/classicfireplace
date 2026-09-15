@@ -75,39 +75,39 @@ const readFreshReplacement = `function tmR4_readFreshCalendarEvent_(ctx) {
   } else if (ctx.division === 'Delivery' && typeof TASKMAP_PROJECT !== 'undefined' && TASKMAP_PROJECT && TASKMAP_PROJECT.DELIVERY_CALENDAR_ID) {
     addCandidate(TASKMAP_PROJECT.DELIVERY_CALENDAR_ID);
   } else if (ctx.division === 'PreInspection') {
-    if (typeof preinspectR3418bFindFreshCalendarEvent_ === 'function') {
-      const found = preinspectR3418bFindFreshCalendarEvent_(eventId);
+    if (typeof preinspectR3419FindEvent_ === 'function') {
+      const found = preinspectR3419FindEvent_(eventId);
       if (found && found.event) {
-        return { event: found.event, calendarId: found.calendarId || null, start: found.event.getStartTime(), end: found.event.getEndTime() };
+        if (typeof preinspectR3420AssertProductionEvent_ === 'function') {
+          preinspectR3420AssertProductionEvent_(found);
+        }
+        return {
+          event: found.event,
+          calendarId: found.calendarId || null,
+          start: found.event.getStartTime(),
+          end: found.event.getEndTime()
+        };
       }
     }
-    if (typeof PREINSPECT_R34 !== 'undefined' && PREINSPECT_R34 && PREINSPECT_R34.CALENDAR_ID) addCandidate(PREINSPECT_R34.CALENDAR_ID);
+    if (typeof PREINSPECT_R3418F_CALENDAR_ID !== 'undefined' && PREINSPECT_R3418F_CALENDAR_ID) addCandidate(PREINSPECT_R3418F_CALENDAR_ID);
+    if (typeof PREINSPECT_REVIEW_CONFIG !== 'undefined' && PREINSPECT_REVIEW_CONFIG && PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC) addCandidate(PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC.CALENDAR_ID);
+    if (typeof PREINSPECT_CALENDAR_SYNC_CONFIG !== 'undefined' && PREINSPECT_CALENDAR_SYNC_CONFIG) addCandidate(PREINSPECT_CALENDAR_SYNC_CONFIG.CALENDAR_ID);
   } else if (ctx.division === 'Service') {
-    // Authoritative Service source is SERVICE_CONFIG.TECH_CALENDARS / serviceGetTechCalendarConfigs_.
-    // R4 incorrectly looked only for TASKMAP_PROJECT.SERVICE_CALENDARS, which is not the live config.
     if (typeof serviceGetTechCalendarConfigs_ === 'function') {
       try {
         const configs = serviceGetTechCalendarConfigs_() || [];
         configs.forEach(addCandidate);
-      } catch (err) {
-        // Fall through to direct config compatibility sources below.
-      }
+      } catch (err) {}
     }
-    if (!candidates.length && typeof SERVICE_CONFIG !== 'undefined' && SERVICE_CONFIG && Array.isArray(SERVICE_CONFIG.TECH_CALENDARS)) {
-      SERVICE_CONFIG.TECH_CALENDARS.forEach(addCandidate);
-    }
-    if (!candidates.length && typeof SERVICE_TECH_CALENDARS !== 'undefined' && Array.isArray(SERVICE_TECH_CALENDARS)) {
-      SERVICE_TECH_CALENDARS.forEach(addCandidate);
-    }
+    if (!candidates.length && typeof SERVICE_CONFIG !== 'undefined' && SERVICE_CONFIG && Array.isArray(SERVICE_CONFIG.TECH_CALENDARS)) SERVICE_CONFIG.TECH_CALENDARS.forEach(addCandidate);
+    if (!candidates.length && typeof SERVICE_TECH_CALENDARS !== 'undefined' && Array.isArray(SERVICE_TECH_CALENDARS)) SERVICE_TECH_CALENDARS.forEach(addCandidate);
     if (!candidates.length && typeof TASKMAP_PROJECT !== 'undefined' && TASKMAP_PROJECT && TASKMAP_PROJECT.SERVICE_CALENDARS) {
       const svc = TASKMAP_PROJECT.SERVICE_CALENDARS;
-      if (Array.isArray(svc)) svc.forEach(addCandidate);
-      else Object.keys(svc).forEach(function(key){ addCandidate(svc[key]); });
+      if (Array.isArray(svc)) svc.forEach(addCandidate); else Object.keys(svc).forEach(function(key){ addCandidate(svc[key]); });
     }
     if (!candidates.length && typeof SERVICE_CALENDAR_CONFIG !== 'undefined' && SERVICE_CALENDAR_CONFIG) {
       const cfg = SERVICE_CALENDAR_CONFIG;
-      if (Array.isArray(cfg)) cfg.forEach(addCandidate);
-      else Object.keys(cfg).forEach(function(key){ addCandidate(cfg[key]); });
+      if (Array.isArray(cfg)) cfg.forEach(addCandidate); else Object.keys(cfg).forEach(function(key){ addCandidate(cfg[key]); });
     }
   }
 
@@ -124,95 +124,77 @@ const readFreshReplacement = `function tmR4_readFreshCalendarEvent_(ctx) {
   return null;
 }`;
 
-const servicePipelineReplacement = `function tmR4_runServiceCalendarLinkPipeline_(dryRun, limitEvents) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss && ss.getSheetByName('Service Task Mapping');
-  if (!sheet) throw new Error('Missing Service Task Mapping sheet.');
-  const data = sheet.getDataRange().getDisplayValues();
-  if (!data.length) return { status: 'NO_ROWS', events: [] };
-  const headers = data[0].map(function(v){return String(v||'').trim();});
-  const eventIdx = headers.indexOf('Event ID');
-  if (eventIdx < 0) throw new Error('Service Task Mapping is missing Event ID.');
-  const eventIds=[], seen={};
-  for(let r=1;r<data.length;r++){
-    const eventId=String(data[r][eventIdx]||'').trim();
-    if(!eventId||seen[eventId])continue;
-    seen[eventId]=true; eventIds.push(eventId);
-  }
-  const max=Number(limitEvents||0)>0?Math.min(eventIds.length,Number(limitEvents)):eventIds.length;
-  const results=[];
-  for(let i=0;i<max;i++){
-    try {
-      const model=tmR4_buildServiceEventLinkModel_(eventIds[i]);
-      if(!model.eligible){results.push({eventId:model.eventId,status:'REVIEW',reason:model.reason});continue;}
-      results.push(tmR4_applyServiceEventLinkModel_(model,!!dryRun));
-    } catch(err) {
-      results.push({eventId:eventIds[i],status:'REVIEW',reason:'Service Calendar link event was isolated instead of aborting the batch: '+String(err&&err.message?err.message:err)});
-    }
-  }
-  return { mode:dryRun?'DRY_RUN':'PUSH', status:'COMPLETE', eventCount:max, events:results, reviewCount:results.filter(function(x){return x&&x.status==='REVIEW';}).length };
-}`;
-
-const applyServiceReplacement = `function tmR4_applyServiceEventLinkModel_(model, dryRun) {
-  if (!model || !model.eligible) return { status:'REVIEW', eventId:model&&model.eventId, reason:model&&model.reason };
-  const ctx={division:'Service',eventId:model.eventId};
-  const fresh=tmR4_readFreshCalendarEvent_(ctx);
-  if(!fresh||!fresh.event){
-    return { status:'REVIEW', eventId:model.eventId, taskIds:model.taskIds||[], writeCount:0, reason:'Authoritative Service Calendar event was not found. No Calendar write attempted.' };
-  }
-  const original=String(fresh.event.getDescription()||'');
-  const cleaned=stlRemoveManagedBlocksFromDescription_(original,'SERVICE');
-  const links=[];
-  if(model.salesOrderNumber) links.push({label:'Sales Order #'+model.salesOrderNumber,url:STL_SALES_ORDER_BASE_URL+encodeURIComponent(model.salesOrderNumber)});
-  model.taskIds.forEach(function(taskId){const row=model.taskRows[taskId]||{};links.push({label:'Task #'+taskId+(row['Task Name']?' - '+row['Task Name']:''),url:STL_TASK_BASE_URL+encodeURIComponent(taskId)});});
-  if(!links.length) return {status:'NO_LINKS',eventId:model.eventId,taskIds:model.taskIds};
-  let block='<br><br>------- Striven Links -------<br>';
-  links.forEach(function(link){block+='<a href="'+link.url+'">'+String(link.label||'')+'</a><br>';});
-  block+='------------------------------------';
-  const next=String(cleaned||'').replace(/\\s+$/g,'')+block;
-  const result={status:dryRun?'WOULD_WRITE':'WRITTEN',eventId:model.eventId,calendarId:fresh.calendarId||null,taskIds:model.taskIds,salesOrderNumber:model.salesOrderNumber||null,writeCount:dryRun?0:1,previewLength:next.length};
-  if(dryRun)return result;
-  fresh.event.setDescription(next);
-  const readBack=tmR4_readFreshCalendarEvent_(ctx);
-  if(!readBack||!readBack.event)throw new Error('Service Calendar event disappeared after aggregated link write.');
-  const actual=String(readBack.event.getDescription()||'');
-  for(let i=0;i<model.taskIds.length;i++){
-    const url=STL_TASK_BASE_URL+encodeURIComponent(model.taskIds[i]);
-    if(actual.indexOf(url)===-1)throw new Error('Service Calendar read-back is missing Task #'+model.taskIds[i]+' after aggregated write.');
-  }
-  if(model.salesOrderNumber){const soUrl=STL_SALES_ORDER_BASE_URL+encodeURIComponent(model.salesOrderNumber);if(actual.indexOf(soUrl)===-1)throw new Error('Service Calendar read-back is missing Sales Order link after aggregated write.');}
-  result.readBackVerified=true;
+const regressionReplacement = `function runTaskMappingFixPackR4Regression() {
+  const result = {
+    version: TM_FIX_PACK_R4.VERSION,
+    mode: 'READ_ONLY_REGRESSION',
+    reportParser: tmR4_testReportParser_(),
+    preinspectCalendarLookup: tmR42_testPreInspectCalendarLookup_(),
+    tm2: typeof tm2_testSuite === 'function' ? tm2_testSuite() : { status: 'MISSING' },
+    serviceCalendarLinksDryRun: tmR4_runServiceCalendarLinkPipeline_(true, TM_FIX_PACK_R4.SERVICE_LINK_LIMIT_EVENTS),
+    controlTower: tmR4_buildControlTowerData_(),
+    businessWritesPerformed: false
+  };
+  Logger.log(JSON.stringify(result, null, 2));
   return result;
 }`;
 
-const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'task-mapping-r4-1-'));
+const helperText = `\n\nfunction tmR42_testPreInspectCalendarLookup_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss && ss.getSheetByName('PreInspect Task Mapping');
+  if (!sheet) throw new Error('R4.2 regression: missing PreInspect Task Mapping sheet.');
+  const data = sheet.getDataRange().getDisplayValues();
+  if (!data.length) throw new Error('R4.2 regression: PreInspect Task Mapping is empty.');
+  const headers = data[0].map(function(v) { return String(v || '').trim(); });
+  const eventIdx = headers.indexOf('Event ID');
+  if (eventIdx < 0) throw new Error('R4.2 regression: PreInspect Task Mapping is missing Event ID.');
+  let sampleEventId = '', sampleRow = 0;
+  for (let r = 1; r < data.length; r++) {
+    const id = String(data[r][eventIdx] || '').trim();
+    if (!id) continue;
+    sampleEventId = id; sampleRow = r + 1; break;
+  }
+  if (!sampleEventId) return { status: 'PASS_NO_SAMPLE_ROWS', writesPerformed: false };
+  const fresh = tmR4_readFreshCalendarEvent_({ division: 'PreInspection', eventId: sampleEventId });
+  if (!fresh || !fresh.event) throw new Error('R4.2 regression: authoritative PreInspection Calendar event lookup failed for mapping row ' + sampleRow + '.');
+  return { status: 'PASS', writesPerformed: false, mappingRow: sampleRow, eventId: sampleEventId, calendarId: fresh.calendarId || null, start: fresh.start ? fresh.start.toISOString() : null, end: fresh.end ? fresh.end.toISOString() : null };
+}\n`;
+
+const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'task-mapping-r4-2-'));
 const preRoot=path.join(tmp,'PRE'),freshRoot=path.join(tmp,'FRESH'),workRoot=path.join(tmp,'WORK'),postRoot=path.join(tmp,'POST');
 [preRoot,freshRoot,workRoot,postRoot].forEach(d=>fs.mkdirSync(d,{recursive:true}));
-const outputDir=path.resolve(repoRoot,'task-mapping-r4-1-output'); fs.mkdirSync(outputDir,{recursive:true});
+const outputDir=path.resolve(repoRoot,'task-mapping-r4-2-output'); fs.mkdirSync(outputDir,{recursive:true});
 const evidencePath=path.join(outputDir,'evidence.json'), preArchiveDir=path.join(outputDir,'PRE_SOURCE');
-const evidence={schemaVersion:1,release:manifest.release||'TASK_MAPPING_FIX_PACK_R4_1',scriptId,startedAt:new Date().toISOString(),targetFile:targetFileName,status:'STARTED'};
+const evidence={schemaVersion:1,release:manifest.release||'TASK_MAPPING_FIX_PACK_R4_2',scriptId,startedAt:new Date().toISOString(),targetFile:targetFileName,status:'STARTED'};
 let pushed=false;
 try{
-  console.log('=== R4.1 1/8 authorize ==='); clasp(['show-authorized-user','--json'],repoRoot);
-  console.log('=== R4.1 2/8 PRE clone ==='); clasp(['clone',scriptId,'--rootDir','src'],preRoot);
+  console.log('=== R4.2 1/8 authorize ==='); clasp(['show-authorized-user','--json'],repoRoot);
+  console.log('=== R4.2 2/8 PRE clone ==='); clasp(['clone',scriptId,'--rootDir','src'],preRoot);
   const preSrc=path.join(preRoot,'src'), preNames=listFiles(preSrc); if(preNames.length!==expectedPreFileCount)throw new Error(`expected ${expectedPreFileCount} PRE files, found ${preNames.length}`);
   if(!preNames.includes(targetFileName))throw new Error('PRE missing '+targetFileName);
   const preHashes=hashMap(preSrc,preNames); copyDir(preRoot,preArchiveDir);
-  console.log('=== R4.1 3/8 build patch ==='); copyDir(preRoot,workRoot); const workSrc=path.join(workRoot,'src'); const targetPath=path.join(workSrc,targetFileName);
+  console.log('=== R4.2 3/8 build patch ==='); copyDir(preRoot,workRoot); const workSrc=path.join(workRoot,'src'); const targetPath=path.join(workSrc,targetFileName);
   let text=fs.readFileSync(targetPath,'utf8');
-  if(!text.includes("TM_FIX_PACK_R4_20260915"))throw new Error('Unexpected R4 version marker');
-  text=text.replace("TM_FIX_PACK_R4_20260915","TM_FIX_PACK_R4_1_20260915");
+  if(!text.includes('TM_FIX_PACK_R4_1_20260915'))throw new Error('Unexpected live R4.1 version marker');
+  text=text.replace('TM_FIX_PACK_R4_1_20260915','TM_FIX_PACK_R4_2_20260915');
   text=replaceNamedFunction(text,'tmR4_readFreshCalendarEvent_',readFreshReplacement);
-  text=replaceNamedFunction(text,'tmR4_runServiceCalendarLinkPipeline_',servicePipelineReplacement);
-  text=replaceNamedFunction(text,'tmR4_applyServiceEventLinkModel_',applyServiceReplacement);
+  text=replaceNamedFunction(text,'runTaskMappingFixPackR4Regression',regressionReplacement);
+  if(!text.includes('function tmR42_testPreInspectCalendarLookup_(')) text += helperText;
   fs.writeFileSync(targetPath,text); run(process.execPath,['--check',targetPath],repoRoot);
   const untouched=preNames.filter(n=>n!==targetFileName); assertExactHashes(preHashes,hashMap(workSrc,untouched),untouched,'WORK preservation');
-  console.log('=== R4.1 4/8 freshness clone ==='); clasp(['clone',scriptId,'--rootDir','src'],freshRoot); const freshSrc=path.join(freshRoot,'src'); const freshNames=listFiles(freshSrc); if(JSON.stringify(freshNames)!==JSON.stringify(preNames))throw new Error('Freshness file set changed'); assertExactHashes(preHashes,hashMap(freshSrc,preNames),preNames,'freshness guard');
-  console.log('=== R4.1 5/8 push ==='); clasp(['push','--force'],workRoot); pushed=true;
-  console.log('=== R4.1 6/8 POST clone ==='); clasp(['clone',scriptId,'--rootDir','src'],postRoot); const postSrc=path.join(postRoot,'src'); const postNames=listFiles(postSrc); if(JSON.stringify(postNames)!==JSON.stringify(preNames))throw new Error('POST file set changed'); const postHashes=hashMap(postSrc,postNames); assertExactHashes(preHashes,postHashes,untouched,'POST untouched preservation');
+  console.log('=== R4.2 4/8 freshness clone ==='); clasp(['clone',scriptId,'--rootDir','src'],freshRoot); const freshSrc=path.join(freshRoot,'src'); const freshNames=listFiles(freshSrc); if(JSON.stringify(freshNames)!==JSON.stringify(preNames))throw new Error('Freshness file set changed'); assertExactHashes(preHashes,hashMap(freshSrc,preNames),preNames,'freshness guard');
+  console.log('=== R4.2 5/8 push ==='); clasp(['push','--force'],workRoot); pushed=true;
+  console.log('=== R4.2 6/8 POST clone ==='); clasp(['clone',scriptId,'--rootDir','src'],postRoot); const postSrc=path.join(postRoot,'src'); const postNames=listFiles(postSrc); if(JSON.stringify(postNames)!==JSON.stringify(preNames))throw new Error('POST file set changed'); const postHashes=hashMap(postSrc,postNames); assertExactHashes(preHashes,postHashes,untouched,'POST untouched preservation');
   const postText=fs.readFileSync(path.join(postSrc,targetFileName),'utf8'); run(process.execPath,['--check',path.join(postSrc,targetFileName)],repoRoot);
-  console.log('=== R4.1 7/8 verify contracts ===');
-  ['SERVICE_CONFIG','serviceGetTechCalendarConfigs_','Authoritative Service Calendar event was not found','Service Calendar link event was isolated','TM_FIX_PACK_R4_1_20260915'].forEach(marker=>{if(!postText.includes(marker))throw new Error('POST missing R4.1 marker '+marker);});
-  evidence.status='DEPLOYED_SOURCE_VERIFIED'; evidence.completedAt=new Date().toISOString(); evidence.preFileCount=preNames.length; evidence.postFileCount=postNames.length; evidence.preTargetSha256=preHashes[targetFileName]; evidence.postTargetSha256=postHashes[targetFileName]; evidence.modifiedExistingFiles=[targetFileName]; evidence.runtimeTest='R4_READ_ONLY_REGRESSION_REQUIRED'; fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));
-  console.log('=== R4.1 8/8 complete ==='); console.log('DEPLOYED_SOURCE_VERIFIED');
-}catch(err){evidence.status='FAILED';evidence.failedAt=new Date().toISOString();evidence.error=String(err&&err.stack||err);if(pushed){try{clasp(['push','--force'],preRoot);evidence.rollback='ROLLBACK_PUSH_COMPLETED';}catch(re){evidence.rollback='ROLLBACK_FAILED';evidence.rollbackError=String(re&&re.stack||re);}}else evidence.rollback='NOT_NEEDED_NO_PUSH_COMPLETED';fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));throw err;}
+  console.log('=== R4.2 7/8 verify contracts ===');
+  ['TM_FIX_PACK_R4_2_20260915','preinspectR3419FindEvent_','preinspectR3420AssertProductionEvent_','PREINSPECT_R3418F_CALENDAR_ID','PREINSPECT_REVIEW_CONFIG','PREINSPECT_CALENDAR_SYNC_CONFIG','tmR42_testPreInspectCalendarLookup_'].forEach(marker=>{if(!postText.includes(marker))throw new Error('POST missing R4.2 marker '+marker);});
+  evidence.status='DEPLOYED_SOURCE_VERIFIED'; evidence.completedAt=new Date().toISOString(); evidence.preFileCount=preNames.length; evidence.postFileCount=postNames.length; evidence.preTargetSha256=preHashes[targetFileName]; evidence.postTargetSha256=postHashes[targetFileName]; evidence.modifiedExistingFiles=[targetFileName]; evidence.runtimeTest='R4_READ_ONLY_REGRESSION_REQUIRED_THEN_PREINSPECTION_WRITE_RETEST';
+  fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2)); console.log('=== R4.2 8/8 complete ==='); console.log('DEPLOYED_SOURCE_VERIFIED');
+}catch(err){
+  evidence.status='FAILED'; evidence.error=String(err&&err.stack?err.stack:err); evidence.failedAt=new Date().toISOString(); fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));
+  if(pushed){
+    try{console.error('Attempting automatic rollback to PRE source...'); clasp(['push','--force'],preRoot); evidence.rollback='PRE_PUSH_ATTEMPTED'; fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));}
+    catch(rb){console.error('ROLLBACK FAILED',rb); evidence.rollback='FAILED: '+String(rb&&rb.stack?rb.stack:rb); fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));}
+  }
+  throw err;
+}
