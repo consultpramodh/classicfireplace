@@ -5,7 +5,7 @@ on:
     branches:
       - task_mapping
     paths:
-      - release-candidates/task-mapping-fix-pack-r4-1.json
+      - ops/task-mapping-r4-1-trigger.txt
 
 permissions:
   contents: read
