@@ -1,116 +1,161 @@
-# Task Mapping Fix Pack R4 / R4.1 / R4.2 / R4.3 / R4.4 — Deployment & Runtime Evidence
+# Task Mapping Fix Pack R4–R4.5 — Deployment & Runtime Evidence
 
 **Base release:** `TASK_MAPPING_FIX_PACK_R4_20260915`  
-**Service lookup hotfix:** `TASK_MAPPING_FIX_PACK_R4_1_20260915`  
-**PreInspection lookup hotfix:** `TASK_MAPPING_FIX_PACK_R4_2_20260915`  
-**PreInspection datetime transport hotfix:** `TASK_MAPPING_FIX_PACK_R4_3_20260915`  
-**PreInspection lock-contention hotfix:** `TASK_MAPPING_FIX_PACK_R4_4_20260915`  
+**Current release:** `TASK_MAPPING_FIX_PACK_R4_5_20260915`  
 **Branch:** `task_mapping`  
 **Apps Script:** existing bound production project  
+**TM2 production cutover:** OFF
 
-## Deployment result
+## Deployment history
 
-- R4 source deployment: `DEPLOYED_SOURCE_VERIFIED`.
-- R4 PRE clone: 58 files; POST clone: 59 files; added `97_Task_Mapping_Fix_Pack_R4.js`.
-- Production TM2 cutover flags remained OFF.
-- R4.1 corrected Service Calendar lookup to include the live `SERVICE_CONFIG.TECH_CALENDARS` configuration and preserved compatibility fallbacks.
-- R4.1 source deployment: `DEPLOYED_SOURCE_VERIFIED`; PRE / POST 59 / 59.
-- R4.2 corrected PreInspection authoritative Calendar lookup using `preinspectR3419FindEvent_()`, `preinspectR3420AssertProductionEvent_()`, and the configured production PreInspection Calendar IDs.
-- R4.2 source deployment run `35012264500`, job `104526883130`: `DEPLOYED_SOURCE_VERIFIED`; PRE / POST 59 / 59; only `97_Task_Mapping_Fix_Pack_R4.js` changed.
-- R4.2 artifact `10413983013`, SHA256 `42c31f2e9aea4b7190394ab145f897c3016526b5617d770f60446669f90919a5`.
-- R4.3 corrected the PreInspection afternoon time transport. The previous 12-hour payload `2026-09-16 01:00:00 PM` was interpreted by Striven as 1:00 AM Eastern. R4.3 replaced it with local 24-hour ISO wall-clock transport such as `2026-09-16T13:00:00` while retaining read-before-write and authoritative read-back verification.
-- R4.3 source deployment run `35013105296`, job `104529701080`: `DEPLOYED_SOURCE_VERIFIED`; PRE / POST 59 / 59.
-- R4.3 intentionally changed only `96_Selected_Row_End_To_End_R3.js` and `97_Task_Mapping_Fix_Pack_R4.js`; every other live file was hash-preserved.
-- R4.3 artifact `10413454553`, SHA256 `04d2a328f5b24745aec1007cf75c44e51e5faf4a444ef098938e1b4c5eb84c32`.
-- R4.4 addresses transient Apps Script `ScriptLock` contention during the selected-row PreInspection sequence. Manual single-field helpers still keep their existing script locks, but the E2E path now retries only the exact safe error `Could not obtain script lock. No Striven write attempted.` with bounded backoff and re-verifies the selected Event ID / Task ID before each retry.
-- R4.4 also acquires a ScriptLock before the direct PreInspection datetime mutation so scheduled/background executions cannot interleave with the Start/Due PATCH sequence.
-- R4.4 does **not** retry arbitrary write failures; retry is permitted only when the failing helper explicitly confirms no Striven write occurred.
-- R4.4 source deployment run `35014769858`, job `104535309853`: `DEPLOYED_SOURCE_VERIFIED`.
-- R4.4 PRE / POST file count: 59 / 59.
-- R4.4 intentionally changed only `96_Selected_Row_End_To_End_R3.js` and `97_Task_Mapping_Fix_Pack_R4.js`; every other live file was hash-preserved.
-- R4.4 artifact `10415695189`, SHA256 `0b917cf950837086fed2ea3d8b7d37c36db0e02efa00d63949ae6dd70fc75103`.
+- **R4:** consolidated selected-row safety/readback/report/control-tower fix pack. PRE 58 files → POST 59 files; added `97_Task_Mapping_Fix_Pack_R4.js`; source deployment verified.
+- **R4.1:** corrected Service Calendar lookup to include live `SERVICE_CONFIG.TECH_CALENDARS`; source deployment verified. R4.1 read-only regression completed successfully with 0 business workflow writes.
+- **R4.2:** corrected authoritative PreInspection Calendar lookup using the established production PreInspection event lookup/configuration; source deployment verified.
+- **R4.3:** replaced the failed 12-hour AM/PM PreInspection datetime transport with local 24-hour ISO wall-clock transport; source deployment verified.
+- **R4.4:** added bounded retry for the exact safe ScriptLock error `Could not obtain script lock. No Striven write attempted.` and ScriptLock protection around direct PI datetime reconciliation; source deployment verified.
+- **R4.5:** quarantines known-bad PreInspection Task Type 105 afternoon schedule PATCH attempts before mutation and adds a read-only selected-row diagnostic comparing v2/v1 task date models. It does **not** invent or guess a new write endpoint.
 
-## R4.1 read-only regression — 2026-09-15
+## R4.5 deployment
+
+The first R4.5 builder run `35017386517` failed during local syntax validation **before the Apps Script push step**. No live source was changed by that failed attempt.
+
+The corrected guarded R4.5 deployment then ran successfully:
+
+- GitHub Actions run: `35017877094`
+- Job: `104545809420`
+- Result: `DEPLOYED_SOURCE_VERIFIED`
+- PRE file count: 59
+- POST file count: 59
+- Intentionally modified live files only:
+  - `02_Menu.js`
+  - `35_PreInspect_Task_Review.js`
+  - `96_Selected_Row_End_To_End_R3.js`
+  - `97_Task_Mapping_Fix_Pack_R4.js`
+- Every other live file was hash-preserved by the guarded deploy.
+- Artifact: `task-mapping-fix-pack-r4-5-35017877094`
+- Artifact ID: `10415524549`
+- Artifact SHA256: `93e4e304df33709b37e13bc63ca37271f14961173369ebee7e44c1e70ddefa67`
+- No triggers were added.
+- TM2 cutover was not changed.
+
+## R4.1 read-only regression
 
 Function: `runTaskMappingFixPackR4Regression()`  
-Execution: **Completed** in 43.229 seconds.  
-Mode: `READ_ONLY_REGRESSION`.  
-Business workflow writes: **0**.
+Mode: `READ_ONLY_REGRESSION`  
+Business workflow writes: **0**
 
-Verified from runtime evidence:
+Verified:
 
-- Report parser: **PASS** — valid empty result recognized, valid rows recognized, malformed/unrecognized result blocked.
-- TM2 connectivity audit: **PASS**.
-- TM2 diagnostics: **PASS**.
-- TM2 Install shadow: **PASS**, 45 rows; endpoint counts `DEFERRED_RETRY=4`, `SHADOW_ONLY=40`, `REVIEW_REQUIRED=1`.
-- TM2 Delivery shadow: **PASS**, 14 rows; endpoint counts `DEFERRED_RETRY=2`, `SHADOW_ONLY=11`, `REVIEW_REQUIRED=1`.
-- TM2 Service shadow: **PASS**, 81 rows; endpoint counts `DEFERRED_RETRY=5`, `SHADOW_ONLY=75`, `REVIEW_REQUIRED=1`.
-- TM2 PreInspection shadow: **PASS**, 74 rows; endpoint counts `SHADOW_ONLY=56`, `REVIEW_REQUIRED=18`.
-- TM2 all-workflow shadow run: **PASS**.
-- TM2 test suite: **PASS**.
-- All cutover flags remained false and TM2 business write attempts remained 0.
-- The prior Service missing-calendar exception did not recur.
-- Control Tower data build did not throw; visual UI acceptance remains separate.
+- Report parser PASS: legitimate zero-row result accepted; malformed/unrecognized report result rejected.
+- TM2 connectivity audit PASS.
+- TM2 diagnostics PASS.
+- Install, Delivery, Service and PreInspection shadow runs PASS at suite level.
+- All TM2 cutover flags remained false.
+- The earlier Service Calendar lookup exception did not recur.
 
-## Controlled PreInspection write attempts
+## Controlled PreInspection Task 18476 evidence
 
-### R4.1 failure — Calendar lookup
+Selected mapping row: **PreInspect Task Mapping row 11**  
+Event ID: `5ib34vdtqbe0l8bjmnj5fqd1tp@google.com`  
+Task ID: `18476`  
+Desired Calendar schedule: **2026-09-16 12:00 PM → 1:00 PM**
 
-Selected mapping row: PreInspect Task Mapping row 11, Task `18476`, Event ID `5ib34vdtqbe0l8bjmnj5fqd1tp@google.com`.
+### Confirmed healthy context
 
-The mapping row is a current production PreInspection appointment with Calendar `2026-09-16 12:00–13:00`, Task Start `12:00`, Task Due `01:00`.
+Across the controlled attempts:
 
-R4.1 failed safely before Striven mutation because the authoritative PreInspection Calendar event lookup used the wrong helper/config. R4.2 corrected that lookup.
+- Mapping consistently resolved `MATCHED` / `WOULD_PATCH_DATE_TIME` to Task `18476`.
+- Customer `62488`: `NOT_NEEDED`, already correct.
+- Location `58134`: `NOT_NEEDED`, already correct.
+- Requested By: `NOT_NEEDED`, exact Calendar organizer routing to Employee `20`, Spencer Bambek, via `CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE`.
+- Authoritative Calendar lookup now succeeds.
+- Material write read-back correctly fails closed when Striven stores the wrong value.
 
-### R4.2 runtime attempt — datetime transport failure
+### PM datetime defect — confirmed across transports
 
-R4.2 successfully passed the Calendar preflight and progressed through the existing OPEN PreInspection workflow. Runtime evidence showed:
+Task 18476 and earlier PreInspection evidence show the same material defect: afternoon schedule PATCH values are stored/read back **12 hours early** for this PreInspection task path.
 
-- Mapping remained `MATCHED`, `WOULD_PATCH_DATE_TIME`, Task `18476`.
-- Customer: `NOT_NEEDED`, already correct.
-- Location: `NOT_NEEDED`, already correct.
-- Requested By: `NOT_NEEDED`, exact organizer routing to Employee `20`, Spencer Bambek, by `CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE`.
-- Striven DueDateTime PATCH payload was `2026-09-16 01:00:00 PM`.
-- Authoritative read-back was `2026-09-16T05:00:00.000Z`, equivalent to 1:00 AM Eastern, not the desired 1:00 PM.
-- The workflow failed closed immediately at read-back verification and did not continue to later steps.
+Observed failed transports include:
 
-This isolated the defect to the 12-hour AM/PM transport representation. R4.3 replaced that transport with local 24-hour ISO (`yyyy-MM-dd'T'HH:mm:ss`).
+1. timezone-explicit offset ISO on earlier PI tests,
+2. local 12-hour string with `AM/PM`, and
+3. local 24-hour ISO wall-clock.
 
-### R4.3 runtime attempt — transient ScriptLock contention
+Latest R4.4 runtime attempt sent:
 
-The R4.3 retry reached the current production row and again confirmed:
+`DueDateTime = 2026-09-16T13:00:00`
 
-- Mapping `MATCHED`, `WOULD_PATCH_DATE_TIME`, Task `18476`.
-- Customer: `NOT_NEEDED`, already correct.
-- Location: `NOT_NEEDED`, already correct.
+but authoritative Striven read-back returned:
 
-Before Requested By or the datetime step ran, `preinspectR30RunManualPush_()` could not obtain the project ScriptLock within its existing 10-second window and returned the explicit safe error:
+`2026-09-16T05:00:00.000Z`
 
-`Could not obtain script lock. No Striven write attempted.`
+which is **1:00 AM Eastern**, not the intended **1:00 PM Eastern**.
 
-This is consistent with another scheduled/background Apps Script execution briefly owning the same project ScriptLock. The run failed before the R4.3 datetime transport could be tested, so no claim is made that R4.3 runtime datetime verification passed.
+The run failed closed immediately and did not proceed to later assignment/notes/Calendar-link steps.
 
-R4.4 adds bounded safe retry for this exact no-write lock error and protects the direct datetime mutation with a ScriptLock as well.
+Historical evidence also shows:
+
+- Service tasks successfully accept afternoon PATCH values, so this is not treated as a global generic Striven datetime formatting defect.
+- PreInspection morning task writes/creates have verified correctly in prior runtime evidence.
+- Earlier PreInspection Task `18383` showed the same exact 12-hour PM collapse using explicit offset timestamps.
+
+Therefore R4.5 stops further trial-and-error PM writes until an alternate supported Striven write contract is identified.
+
+## R4.5 safety behavior
+
+R4.5 adds `tmR45AssertPreInspectDateTimePatchSafe_()` to the known PreInspection datetime mutation paths. If an intended PreInspection `StartDateTime` or `DueDateTime` is 13:00 or later, the mutation is blocked **before** the PATCH and returns the explicit condition:
+
+`BLOCKED_STRIVEN_PI_PM_PATCH_DEFECT`
+
+This quarantine is applied to:
+
+- the selected-row sequential PreInspection datetime reconciliation,
+- the legacy PreInspection manual PATCH helper, and
+- the exact R3.4.18b PreInspection datetime PATCH path.
+
+R4.5 also adds the read-only function:
+
+`inspectSelectedPreInspectDateTimeTransportR45()`
+
+Menu location:
+
+**Pre Inspect → Diagnostics / Preview → 🕒 Diagnose Selected PI Date/Time**
+
+The diagnostic:
+
+- performs no Striven mutation,
+- performs no Calendar mutation,
+- reads the selected row and authoritative Calendar event,
+- reads the selected task's v2 date model,
+- attempts the legacy v1 task date model read if supported,
+- compares against known-correct PM reference Task `18309`, and
+- logs the evidence needed before selecting any alternate write route.
 
 ## Updated fix tracker
 
 | ID | Fix | Source status | Runtime status |
 |---|---|---|---|
-| FIX-01 | PreInspection AM/PM date-time reconciliation | **R4.4 DEPLOYED** | **CONTROLLED WRITE RETEST REQUIRED** — R4.3 24-hour ISO transport remains active; R4.4 removes transient lock contention as the next blocker |
-| FIX-02 | Shared rolling 24-hour recently-completed protection | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
-| FIX-03 | Prevent blind retry after uncertain writes | **R4.4 DEPLOYED** | **SAFE-RETRY RULE STRENGTHENED** — lock retry occurs only when helper states no Striven write occurred; uncertain-write failures still fail closed |
-| FIX-04 | Material selected-row write read-back | DEPLOYED | **PASS safety behavior observed** — bad Due read-back was detected and stopped; successful-write verification still required |
-| FIX-05 | Separate OPEN / recent completion / completed-review / recovery handling | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
-| FIX-06 | Service multi-fireplace event-level link aggregation | R4.1 DEPLOYED | **READ-ONLY PIPELINE PASS AT SUITE LEVEL** |
-| FIX-07 | Calendar freshness before selected-row consequential work | R4.2 DEPLOYED | **PreInspection authoritative lookup passed in subsequent runtime attempts** |
-| FIX-08 | Duplicate prevention immediately before CREATE/RECREATE | PRESERVED | **TARGETED RECOVERY REGRESSION REQUIRED** |
-| FIX-09 | PreInspection organizer → exact Employee Requested By | PRESERVED | **PASS in R4.2 runtime attempt** — Employee 20 Spencer Bambek from organizer email; R4.3 attempt was lock-blocked before this step |
-| FIX-10 | Valid zero-row report vs failed/malformed report | DEPLOYED | **PASS** in R4.1 read-only regression |
-| FIX-11 | Separate legacy mapping status from TM2 endpoint | DEPLOYED | **DATA-BUILD PASS**; visual review pending |
-| FIX-12 | Exception-first operational display | DEPLOYED | **DATA-BUILD PASS**; visual review pending |
-| FIX-13 | One consolidated regression suite | R4.2 DEPLOYED | **R4.1 PASS**; R4.2 added PreInspection Calendar lookup coverage |
-| FIX-14 | Recent completions cannot be automatically recreated | DEPLOYED | **RUNTIME CASE TEST REQUIRED** |
+| FIX-01 | PreInspection AM/PM date-time reconciliation | **R4.5 SAFETY FIX DEPLOYED** | **WRITE ROUTE UNRESOLVED / DIAGNOSTIC REQUIRED** — known-bad PM PATCH is now quarantined; no more format guessing |
+| FIX-02 | Shared rolling 24-hour recently-completed protection | DEPLOYED | Runtime case test required |
+| FIX-03 | Prevent blind retry after uncertain writes | DEPLOYED | **PASS safety behavior observed**; R4.4 retry limited to explicit no-write lock failures |
+| FIX-04 | Material selected-row write read-back | DEPLOYED | **PASS fail-closed behavior observed**; successful PM PI write remains blocked by FIX-01 |
+| FIX-05 | Separate OPEN / recent completion / completed-review / recovery handling | DEPLOYED | Runtime case test required |
+| FIX-06 | Service multi-fireplace event-level link aggregation | R4.1 DEPLOYED | Read-only pipeline PASS at suite level |
+| FIX-07 | Calendar freshness before consequential selected-row work | R4.2 DEPLOYED | **PASS on controlled PI attempts** |
+| FIX-08 | Duplicate prevention immediately before CREATE/RECREATE | PRESERVED | Targeted recovery regression required |
+| FIX-09 | PreInspection organizer → exact Employee Requested By | PRESERVED | **PASS repeatedly** — Task 18476 resolves Employee 20 Spencer Bambek |
+| FIX-10 | Valid zero-row report vs failed/malformed report | DEPLOYED | **PASS** in consolidated read-only regression |
+| FIX-11 | Separate legacy mapping status from TM2 endpoint | DEPLOYED | Data-build PASS; visual review pending |
+| FIX-12 | Exception-first operational display | DEPLOYED | Data-build PASS; visual review pending |
+| FIX-13 | Consolidated regression suite | DEPLOYED | R4.1 suite PASS; later Calendar source coverage added |
+| FIX-14 | Recent completions cannot be automatically recreated | DEPLOYED | Runtime case test required |
 
 ## Current next verification
 
-Refresh/reopen the spreadsheet and rerun the same PreInspect Task Mapping row 11 / Task `18476` using `🚀 Run Selected Row End-to-End`. R4.4 will safely wait/retry if a background execution briefly owns the ScriptLock, while still re-verifying Event ID / Task ID before each retry. Acceptance requires the DueDateTime transport to be `2026-09-16T13:00:00`, authoritative Striven Due read-back to equal 1:00 PM Eastern, final Start/Due to match Calendar 12:00–13:00, and the correct Calendar task link. No wider production cutover is authorized by this test.
+Do **not** run the selected-row E2E PM write again for Task `18476` yet.
+
+Refresh/reopen the spreadsheet, keep PreInspect Task Mapping row 11 / Task `18476` selected, then run:
+
+**Pre Inspect → Diagnostics / Preview → 🕒 Diagnose Selected PI Date/Time**
+
+This next step is read-only. The resulting v2/v1 evidence will determine whether a supported alternate Striven update contract exists without risking another incorrect PM mutation.
