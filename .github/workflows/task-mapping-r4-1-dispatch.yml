@@ -1,4 +1,4 @@
-name: Task Mapping Fix Pack R4.2
+name: Task Mapping Fix Pack R4.3
 
 on:
   workflow_dispatch:
@@ -12,11 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: task-mapping-fix-pack-r4-2
+  group: task-mapping-fix-pack-r4-3
   cancel-in-progress: false
 
 jobs:
-  deploy-r4-2:
+  deploy-r4-3:
     if: github.repository == 'consultpramodh/classicfireplace'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -45,27 +45,26 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
-      - name: Build R4.2 runtime manifest
+      - name: Build R4.3 runtime manifest
         shell: bash
         run: |
           node - <<'NODE'
           const fs = require('fs');
           const m = JSON.parse(fs.readFileSync('release-candidates/task-mapping-fix-pack-r4.json', 'utf8'));
-          m.release = 'TASK_MAPPING_FIX_PACK_R4_2_20260915';
+          m.release = 'TASK_MAPPING_FIX_PACK_R4_3_20260915';
           m.expectedPreFileCount = 59;
-          m.targetFile = '97_Task_Mapping_Fix_Pack_R4.js';
-          fs.writeFileSync('r4-2-runtime-manifest.json', JSON.stringify(m, null, 2));
+          fs.writeFileSync('r4-3-runtime-manifest.json', JSON.stringify(m, null, 2));
           NODE
 
-      - name: Run guarded R4.2 PreInspection Calendar fix deployment
+      - name: Run guarded R4.3 PreInspection datetime transport deployment
         shell: bash
-        run: node tools/deploy-task-mapping-fix-pack-r4-1.js r4-2-runtime-manifest.json
+        run: node tools/deploy-task-mapping-fix-pack-r4-3.js r4-3-runtime-manifest.json
 
       - name: Preserve PRE source and verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: task-mapping-fix-pack-r4-2-${{ github.run_id }}
-          path: task-mapping-r4-2-output/
+          name: task-mapping-fix-pack-r4-3-${{ github.run_id }}
+          path: task-mapping-r4-3-output/
           if-no-files-found: warn
           retention-days: 30
