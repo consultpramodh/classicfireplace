@@ -1,0 +1,33 @@
+{
+  "release": "R5_PREINSPECT_NAME_ADDRESS_NORMALIZATION_20260915",
+  "status": "DEPLOYED_SOURCE_VERIFIED",
+  "deployedAtUtc": "2026-09-15T20:25:55.586Z",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "workflowRunId": 35019527858,
+  "workflowJobId": 104551459353,
+  "triggerCommit": "dce2d190233684aef3df2465170f136d1351b199",
+  "changedFiles": [
+    "35_PreInspect_Task_Review.js"
+  ],
+  "preFileCount": 59,
+  "postFileCount": 59,
+  "preTargetSha256": "3ca1896b3d2907fee8924c71b83ba34798c06257509b80516716a34d0b16b436",
+  "postTargetSha256": "fe576d4d46b6b1fd7f175fdd15aae00b0d0e59116b4dde4681b9f4a040b923f1",
+  "regression": {
+    "calendarTitle": "Jill and Dave Crain  416 418 3807  ?H3 SO585066",
+    "cleanName": "Jill and Dave Crain",
+    "eventNameKey": "jill and dave crain",
+    "canonicalNameKey": "jill and dave crain",
+    "eventAddressKey": "11 roberts dr ajax l1t3x5",
+    "canonicalAddressKey": "11 roberts dr ajax l1t3x5",
+    "result": "PASS"
+  },
+  "businessWritesPerformedByDeployment": false,
+  "artifact": {
+    "id": 10417076903,
+    "name": "task-mapping-preinspect-match-r5-35019527858",
+    "sha256": "fefa3f58c50318245fd550d84086f6fc117b7f4a669beb6425bd64680dd8d434",
+    "expiresAt": "2026-10-15T20:25:55Z"
+  },
+  "runtimeSelectedRowVerification": "NOT_RUN"
+}
