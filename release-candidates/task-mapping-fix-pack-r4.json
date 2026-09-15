@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "release": "TASK_MAPPING_FIX_PACK_R4_20260915",
+  "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+  "sourceFile": "patches/task-mapping/97_Task_Mapping_Fix_Pack_R4.js",
+  "targetFile": "97_Task_Mapping_Fix_Pack_R4.js",
+  "expectedPreFileCount": 58,
+  "oldPublicFunction": "runSelectedTaskMappingRowEndToEndR3",
+  "newPublicFunction": "runSelectedTaskMappingRowEndToEndR4",
+  "expectedMenuReferenceCount": 8,
+  "claspVersion": "3.3.0"
+}
