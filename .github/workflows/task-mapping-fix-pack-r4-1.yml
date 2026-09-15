@@ -1,6 +1,7 @@
 name: Task Mapping Fix Pack R4.1
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - task_mapping
