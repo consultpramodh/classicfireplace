@@ -1,0 +1,2 @@
+CAPTURE_PREINSPECT_R5_2_LIVE_SOURCE_20260915
+Read-only clasp clone. No Apps Script push.
