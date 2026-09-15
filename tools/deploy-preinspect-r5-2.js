@@ -5,7 +5,7 @@ const SID='1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m';
 const CV='3.3.0';
 const RELEASE='R5_2_PREINSPECT_ASSIGNMENT_AND_FIELD854_20260915';
 const TARGET='35_PreInspect_Task_Review.js';
-const EXPECTED_PRE_SHA='2909f3bde59d03299fe52549b96cbad685dba04572b454e37d3269170b51f89c';
+const EXPECTED_PRE_SHA='4b207966e629364974d058ff93059f45e7d8a84beedf29f3e54292b973235593';
 const OUT=path.resolve('task-mapping-preinspect-r5-2-output'); fs.mkdirSync(OUT,{recursive:true});
 const evidence={release:RELEASE,status:'STARTED',scriptId:SID,targetFile:TARGET,startedAt:new Date().toISOString()};
 function run(cmd,args,cwd){const r=cp.spawnSync(cmd,args,{cwd:cwd||process.cwd(),env:process.env,encoding:'utf8',stdio:['ignore','pipe','pipe']});process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');if(r.error)throw r.error;if(r.status!==0)throw new Error(`${cmd} ${args.join(' ')} failed ${r.status}`);return r.stdout||'';}
@@ -23,7 +23,7 @@ const root=fs.mkdtempSync(path.join(os.tmpdir(),'tm-r52-')),P=path.join(root,'PR
 try{
   console.log('R5.2 authorize'); clasp(['show-authorized-user','--json']);
   console.log('R5.2 PRE'); clasp(['clone',SID,'--rootDir','src'],P); const ps=path.join(P,'src'),ns=files(ps); if(ns.length!==59)throw new Error('Expected 59 files, found '+ns.length); const tp=path.join(ps,TARGET); if(!fs.existsSync(tp))throw new Error('Missing '+TARGET); if(sha(tp)!==EXPECTED_PRE_SHA)throw new Error('Unexpected live '+TARGET+' hash: '+sha(tp)); const ph=hashes(ps,ns); fs.cpSync(P,path.join(OUT,'PRE_SOURCE'),{recursive:true});
-  let pre=fs.readFileSync(tp,'utf8'); ['preinspectR47EnsureInstallNotesCanonical_','preinspectR30PushAssignees_','preinspectR46GetCanonicalV1Schedule_'].forEach(m=>{if(!pre.includes(m))throw new Error('Missing expected marker '+m);});
+  let pre=fs.readFileSync(tp,'utf8'); ['preinspectR47EnsureInstallNotesCanonical_','preinspectR30PushAssignees_','preinspectR46GetCanonicalV1Schedule_','preinspectR48CaptureField854Contract_'].forEach(m=>{if(!pre.includes(m))throw new Error('Missing expected marker '+m);});
   console.log('R5.2 patch'); fs.cpSync(P,W,{recursive:true}); const ws=path.join(W,'src'),wp=path.join(ws,TARGET); let s=fs.readFileSync(wp,'utf8'); s=rep(s,'preinspectR30PushAssignees_',NEW_ASSIGNEES); s=rep(s,'preinspectR47EnsureInstallNotesCanonical_',NEW_FIELD854); fs.writeFileSync(wp,s); run(process.execPath,['--check',wp]);
   const ass=fr(s,'preinspectR30PushAssignees_').t, f854=fr(s,'preinspectR47EnsureInstallNotesCanonical_').t;
   ['ASSIGNEES_REMOVE_LEGACY_EMPLOYEE_','remaining legacy employees','POOL_8_PLUS_REMOVE_ONLY_LEGACY_TEMPLATE_EMPLOYEES_6_20'].forEach(x=>{if(!ass.includes(x))throw new Error('Assignee regression marker missing '+x);});
