@@ -1,0 +1,2 @@
+R5_1_PREINSPECT_CREATE_POOL8_CANONICAL_DATES_20260915
+Fix create-time Pool 8 normalization and canonical v1 date verification.
