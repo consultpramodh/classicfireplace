@@ -1,0 +1,3 @@
+R5_3_PREINSPECT_TRANSACTION_LOCK_20260916
+Triggered after Sep 16 selected-row runtime failed cleanly on global ScriptLock contention before first Striven write.
+Target live source: 96_Selected_Row_End_To_End_R3.js only.
