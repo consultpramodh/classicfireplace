@@ -1,0 +1,3 @@
+R5_4_PREINSPECT_PRIMARY_CALENDAR_20260916
+Promote CF Preinspects c_3088 calendar to primary; retain legacy c20 calendar as secondary/read-only fallback.
+Disable all PreInspect Calendar Task Link writes by operator policy.
