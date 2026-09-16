@@ -45,6 +45,26 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
+      - name: Fix R5.4 deployer worktree sequencing in runner copy
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/deploy-preinspect-r5-4-primary-calendar.js')
+          s = p.read_text()
+          old = """  fs.cpSync(F,W,{recursive:true,force:true});
+            const wsrc=path.join(W,'src');
+            fs.copyFileSync(f35,path.join(wsrc,'35_PreInspect_Task_Review.js'));
+            fs.copyFileSync(f36,path.join(wsrc,'36_PreInspect_Task_Create.js'));
+            fs.copyFileSync(f96,path.join(wsrc,'96_Selected_Row_End_To_End_R3.js'));
+          """
+          if old not in s:
+              raise SystemExit('Expected R5.4 sequencing block not found; refusing deployment.')
+          s = s.replace(old, "  // Freshness clone matched PRE; keep patched WORK tree intact for push.\n")
+          p.write_text(s)
+          PY
+          node --check tools/deploy-preinspect-r5-4-primary-calendar.js
+
       - name: Run guarded PreInspect R5.4 primary-calendar deployment
         shell: bash
         run: node tools/deploy-preinspect-r5-4-primary-calendar.js
