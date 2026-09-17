@@ -1,4 +1,4 @@
-name: Task Mapping PreInspect R5.6 Shared Calendar Only
+name: Task Mapping PreInspect R5.7 Existing Task Reroute
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: task-mapping-preinspect-r5-6-shared-calendar-only
+  group: task-mapping-preinspect-r5-7-existing-task-reroute
   cancel-in-progress: false
 
 jobs:
@@ -39,14 +39,14 @@ jobs:
           test -n "${CLASPRC_JSON:-}"
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-      - name: Guarded source deploy R5.6
+      - name: Guarded source deploy R5.7
         shell: bash
         run: node tools/deploy-preinspect-r5-5-selection-gate.js
       - name: Upload deployment evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: task-mapping-preinspect-r5-6-shared-calendar-only-${{ github.run_id }}
-          path: task-mapping-preinspect-r5-6-shared-calendar-only-output/
+          name: task-mapping-preinspect-r5-7-existing-task-reroute-${{ github.run_id }}
+          path: task-mapping-preinspect-r5-7-existing-task-reroute-output/
           if-no-files-found: warn
           retention-days: 30
