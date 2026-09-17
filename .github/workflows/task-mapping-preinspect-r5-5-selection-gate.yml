@@ -1,0 +1,52 @@
+name: Task Mapping PreInspect R5.5 Selection Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/deploy-preinspect-r5-5-selection-gate-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-preinspect-r5-5-selection-gate
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout task_mapping
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Guarded source deploy R5.5
+        shell: bash
+        run: node tools/deploy-preinspect-r5-5-selection-gate.js
+      - name: Upload deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-preinspect-r5-5-selection-gate-${{ github.run_id }}
+          path: task-mapping-preinspect-r5-5-selection-gate-output/
+          if-no-files-found: warn
+          retention-days: 30
