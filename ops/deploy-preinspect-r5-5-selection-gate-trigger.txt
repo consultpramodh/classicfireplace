@@ -1,2 +1,2 @@
-DEPLOY_PREINSPECT_R5_6_SHARED_CALENDAR_ONLY_20260917
-Disable Stephen candidate queue rebuild/push in PreInspect Calendar. Source-only deployment; no Calendar, Sheet, or Striven business writes during deployment.
+DEPLOY_PREINSPECT_R5_7_EXISTING_TASK_REROUTE_20260917
+Source-only routing fix: after a no-Task-ID PreInspect review discovers one existing OPEN task, reroute the same selected row into the hardened R5.3 transaction path. No Calendar, Sheet, or Striven business writes during deployment.
