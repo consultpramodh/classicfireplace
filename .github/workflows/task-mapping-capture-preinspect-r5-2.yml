@@ -9,7 +9,7 @@ on:
       - ops/capture-preinspect-r5-2-trigger.txt
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: task-mapping-capture-preinspect-r5-2
@@ -43,11 +43,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf live-preinspect-r5-2
           mkdir -p live-preinspect-r5-2
           cd live-preinspect-r5-2
           npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src
           sha256sum src/35_PreInspect_Task_Review.js > source-sha256.txt
           node --check src/35_PreInspect_Task_Review.js
+      - name: Commit current PreInspect source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p history/live-source-current
+          cp live-preinspect-r5-2/src/35_PreInspect_Task_Review.js history/live-source-current/35_PreInspect_Task_Review.js
+          cp live-preinspect-r5-2/source-sha256.txt history/live-source-current/35_PreInspect_Task_Review.sha256.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add history/live-source-current/35_PreInspect_Task_Review.js history/live-source-current/35_PreInspect_Task_Review.sha256.txt
+          if git diff --cached --quiet; then
+            echo "Current live source snapshot already matches repository."
+          else
+            git commit -m "Capture current live PreInspect source"
+            git push origin HEAD:task_mapping
+          fi
       - name: Upload live source evidence
         uses: actions/upload-artifact@v4
         with:
