@@ -1,2 +1,2 @@
-DEPLOY_PREINSPECT_R5_5_SELECTION_GATE_20260917_R2
-Guarded source-only deployment retry after exact whitespace guard correction. No Calendar/Striven business writes during deployment.
+DEPLOY_PREINSPECT_R5_6_SHARED_CALENDAR_ONLY_20260917
+Disable Stephen candidate queue rebuild/push in PreInspect Calendar. Source-only deployment; no Calendar, Sheet, or Striven business writes during deployment.
