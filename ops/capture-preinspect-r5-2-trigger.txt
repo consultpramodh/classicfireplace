@@ -1,2 +1,2 @@
-CAPTURE_PREINSPECT_CURRENT_LIVE_SOURCE_20260917_SELECTION_GATE
-Read-only clasp clone before adding Stephen-calendar candidate selection workflow. No Apps Script push.
+CAPTURE_PREINSPECT_CURRENT_LIVE_SOURCE_20260917_SELECTION_GATE_R2
+Persist current live 35_PreInspect_Task_Review.js before Stephen candidate selection change. No Apps Script push.
