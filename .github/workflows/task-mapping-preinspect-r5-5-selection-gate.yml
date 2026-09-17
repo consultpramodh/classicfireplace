@@ -39,6 +39,21 @@ jobs:
           test -n "${CLASPRC_JSON:-}"
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Correct deployer source-match whitespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          p='tools/deploy-preinspect-r5-5-selection-gate.js'
+          s=open(p,'r',encoding='utf-8').read()
+          old='"    const clearRows = Math.max(0, sheet.getLastRow() - 1);\\n  const clearCols = Math.max(sheet.getLastColumn(), headers.length);'
+          new='"  const clearRows = Math.max(0, sheet.getLastRow() - 1);\\n  const clearCols = Math.max(sheet.getLastColumn(), headers.length);'
+          if old not in s:
+              raise SystemExit('Expected R5.5 whitespace target not found exactly once')
+          if s.count(old) != 1:
+              raise SystemExit('R5.5 whitespace target occurrence count != 1')
+          open(p,'w',encoding='utf-8').write(s.replace(old,new,1))
+          PY
       - name: Guarded source deploy R5.5
         shell: bash
         run: node tools/deploy-preinspect-r5-5-selection-gate.js
