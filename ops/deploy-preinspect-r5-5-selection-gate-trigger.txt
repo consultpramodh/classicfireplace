@@ -1,2 +1,2 @@
-DEPLOY_PREINSPECT_R5_5_SELECTION_GATE_20260917
-Guarded source-only deployment. Adds Stephen-calendar review queue and checkbox selection gate. No Calendar/Striven business writes during deployment.
+DEPLOY_PREINSPECT_R5_5_SELECTION_GATE_20260917_R2
+Guarded source-only deployment retry after exact whitespace guard correction. No Calendar/Striven business writes during deployment.
