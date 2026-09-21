@@ -1,0 +1,45 @@
+name: Task Mapping Contact R1 Runtime Verify
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-contact-r1-runtime-trigger.txt
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          cat > .clasp.json <<'JSON'
+          {"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}
+          JSON
+      - name: Read-only shared Contact resolver runtime test
+        shell: bash
+        run: npx -y @google/clasp@3.3.0 run testTmContactR1ResolverReadOnly --dev
+      - name: Rebuild Service mapping only
+        shell: bash
+        run: npx -y @google/clasp@3.3.0 run buildServiceTaskMappingFromSheets --dev
+      - name: Rebuild Install mapping only
+        shell: bash
+        run: npx -y @google/clasp@3.3.0 run buildInstallTaskMappingFromSheets --dev
