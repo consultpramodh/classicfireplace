@@ -1,67 +1,79 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_FOUR_VERTICAL_PIPELINE_TEST_R4_REBUILD_FIRST_20260921",
+  "release": "TASK_MAPPING_ALL_ROWS_VERIFY_R1_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 66,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-four-vertical-r4-output",
+  "outputDirectory": "task-mapping-all-rows-verify-r1-output",
   "requiredPreFiles": [
-    "98_5_Four_Vertical_Pipeline_Test.js"
+    "10_Install_Workflow.js",
+    "20_Delivery_Workflow.js",
+    "30_Service_Workflow.js",
+    "35_PreInspect_Task_Review.js",
+    "92_TESTING_Striven_Task_Patch_Helper.js",
+    "95_Delivery_Calendar_Link_Test.js"
   ],
   "preContains": [
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R3_ACTIONABLE_ROWS_20260921"
-    }
-  ],
-  "overwriteFiles": [
+      "file": "20_Delivery_Workflow.js",
+      "text": "deliveryResolveSalesOrderIdByApiSearch_"
+    },
     {
-      "repoPath": "patches/task-mapping/98_5_Four_Vertical_Pipeline_Test.js",
-      "targetFile": "98_5_Four_Vertical_Pipeline_Test.js"
+      "file": "30_Service_Workflow.js",
+      "text": "serviceResolveCanonicalCustomerLocationId_"
+    },
+    {
+      "file": "93_Selected_Row_End_To_End.js",
+      "text": "tmR4_pushSelectedServiceCalendarEventTaskSet_"
     }
   ],
+  "addFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_6_All_Rows_Verification.js",
+      "targetFile": "98_6_All_Rows_Verification.js"
+    }
+  ],
+  "overwriteFiles": [],
   "replacements": [],
-  "addFiles": [],
   "workContains": [
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R4_REBUILD_FIRST_20260921"
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "function VERIFY_ALL_ROWS_ALL_VERTICALS()"
     },
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "Rebuild Delivery mapping + resolve IDs"
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "TM All Rows Verification"
     },
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "buildServiceTaskMappingFromSheets()"
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "UrlFetchApp.fetchAll"
     },
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18197"
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "NO Striven task PATCH/POST/PUT/DELETE"
     },
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18499"
-    },
-    {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18151"
-    },
-    {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18511"
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "NO Google Calendar writes"
     }
   ],
   "postContains": [
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R4_REBUILD_FIRST_20260921"
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "TM_ALL_ROWS_VERIFY_R1_20260921"
+    },
+    {
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "VERIFY_ALL_ROWS_ALL_VERTICALS"
     }
   ],
-  "runtimeVerification": "USER_RERUN_TEST_ONE_ROW_EACH_VERTICAL_PIPELINE",
+  "runtimeVerification": "USER_RUN_VERIFY_ALL_ROWS_ALL_VERTICALS",
   "safety": {
-    "testRunnerOnly": true,
-    "rebuildsMappingSheetsOnly": true,
-    "noBigDataRefresh": true
+    "strivenMutations": false,
+    "calendarMutations": false,
+    "createsVerificationReportSheet": true,
+    "refreshesOperationalSourceCaches": true,
+    "rebuildsMappingSheets": true,
+    "freshTaskReadsBatched": true
   }
 }
