@@ -14,7 +14,7 @@
  ************************************************************/
 
 const TM_CALENDAR_TASK_ACCEPTANCE_R1 = Object.freeze({
-  VERSION: 'TM_CALENDAR_TASK_ACCEPTANCE_R1_20260921',
+  VERSION: 'TM_CALENDAR_TASK_ACCEPTANCE_R2_EVENT_ID_AND_API_FALLBACK_20260921',
   START_MARKER: '<!-- TASKMAP_TASK_ACCEPTANCE_START -->',
   END_MARKER: '<!-- TASKMAP_TASK_ACCEPTANCE_END -->',
   TASK_BASE_URL: 'https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=',
@@ -497,7 +497,23 @@ function tmCalendarTaskAcceptanceEnsureEvent_(
     eventId: String(eventId || '').trim()
   };
 
-  const fresh = tmR4_readFreshCalendarEvent_(ctx);
+  let fresh = tmR4_readFreshCalendarEvent_(ctx);
+
+  if (!fresh || !fresh.event) {
+    const normalizedEventId =
+      tmCalendarTaskAcceptanceNormalizeEventId_(ctx.eventId);
+
+    if (
+      normalizedEventId &&
+      normalizedEventId !== ctx.eventId
+    ) {
+      fresh = tmR4_readFreshCalendarEvent_({
+        division: division,
+        eventId: normalizedEventId
+      });
+    }
+  }
+
   if (!fresh || !fresh.event) {
     throw new Error(
       division + ' Calendar event could not be fresh-read for Event ID ' +
@@ -531,9 +547,40 @@ function tmCalendarTaskAcceptanceEnsureEvent_(
       '<br><br>' + block
     : block;
 
-  fresh.event.setDescription(next);
+  let writeMode = 'CALENDAR_APP';
 
-  const readBack = tmR4_readFreshCalendarEvent_(ctx);
+  try {
+    fresh.event.setDescription(next);
+  } catch (calendarAppErr) {
+    const normalizedEventId =
+      tmCalendarTaskAcceptanceNormalizeEventId_(eventId);
+
+    tmCalendarTaskAcceptancePatchDescriptionViaRest_(
+      fresh.calendarId,
+      normalizedEventId,
+      next
+    );
+
+    writeMode = 'CALENDAR_REST_API_FALLBACK';
+  }
+
+  let readBack = tmR4_readFreshCalendarEvent_(ctx);
+
+  if (!readBack || !readBack.event) {
+    const normalizedEventId =
+      tmCalendarTaskAcceptanceNormalizeEventId_(ctx.eventId);
+
+    if (
+      normalizedEventId &&
+      normalizedEventId !== ctx.eventId
+    ) {
+      readBack = tmR4_readFreshCalendarEvent_({
+        division: division,
+        eventId: normalizedEventId
+      });
+    }
+  }
+
   if (!readBack || !readBack.event) {
     throw new Error(
       division + ' Calendar event disappeared after Task-link write.'
@@ -561,7 +608,69 @@ function tmCalendarTaskAcceptanceEnsureEvent_(
     status: 'WRITTEN_AND_READBACK_VERIFIED',
     writePerformed: true,
     readBackVerified: true,
-    calendarId: readBack.calendarId || fresh.calendarId || null
+    calendarId: readBack.calendarId || fresh.calendarId || null,
+    writeMode: writeMode
+  };
+}
+
+
+function tmCalendarTaskAcceptanceNormalizeEventId_(eventId) {
+  return String(eventId || '')
+    .trim()
+    .replace(/@google\.com$/i, '');
+}
+
+function tmCalendarTaskAcceptancePatchDescriptionViaRest_(
+  calendarId,
+  eventId,
+  description
+) {
+  const cleanCalendarId = String(calendarId || '').trim();
+  const cleanEventId =
+    tmCalendarTaskAcceptanceNormalizeEventId_(eventId);
+
+  if (!cleanCalendarId || !cleanEventId) {
+    throw new Error(
+      'Calendar REST fallback requires Calendar ID + normalized Event ID.'
+    );
+  }
+
+  const url =
+    'https://www.googleapis.com/calendar/v3/calendars/' +
+    encodeURIComponent(cleanCalendarId) +
+    '/events/' +
+    encodeURIComponent(cleanEventId) +
+    '?sendUpdates=none';
+
+  const response = UrlFetchApp.fetch(url, {
+    method: 'patch',
+    contentType: 'application/json',
+    headers: {
+      Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
+    },
+    payload: JSON.stringify({
+      description: String(description || '')
+    }),
+    muteHttpExceptions: true
+  });
+
+  const code = response.getResponseCode();
+  const body = response.getContentText();
+
+  if (code < 200 || code >= 300) {
+    throw new Error(
+      'Calendar REST fallback PATCH failed HTTP ' +
+      code +
+      ': ' +
+      String(body || '').slice(0, 500)
+    );
+  }
+
+  return {
+    status: 'PATCHED',
+    httpCode: code,
+    calendarId: cleanCalendarId,
+    eventId: cleanEventId
   };
 }
 
