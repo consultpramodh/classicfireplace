@@ -17,7 +17,7 @@ function REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1() {
 
   const result = {
     mode: 'RESIDUAL_CALENDAR_TASK_LINK_REPAIR_R1',
-    version: 'TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1_20260921',
+    version: 'TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_RECOVERY_GATED_20260921',
     status: 'RUNNING',
     success: false,
     installRecovery: null,
@@ -41,15 +41,51 @@ function REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1() {
   result.calendarAcceptance =
     REPAIR_VERIFY_ALL_CALENDAR_TASK_LINKS_R1();
 
+  const recoveryErrors =
+    result.installRecovery &&
+    Array.isArray(result.installRecovery.errors)
+      ? result.installRecovery.errors
+      : [];
+
+  const unresolvedRecoveryRows =
+    result.installRecovery &&
+    Array.isArray(result.installRecovery.rows)
+      ? result.installRecovery.rows.filter(function(row) {
+          const status = String(row && row.status || '').toUpperCase();
+          return status === 'ERROR' || status === 'REVIEW';
+        })
+      : [];
+
+  result.recoveryGate = {
+    pass:
+      recoveryErrors.length === 0 &&
+      unresolvedRecoveryRows.length === 0,
+    errorCount: recoveryErrors.length,
+    unresolvedRows: unresolvedRecoveryRows.map(function(row) {
+      return {
+        rowNumber: row.rowNumber || null,
+        status: row.status || '',
+        sourceTaskId: row.sourceTaskId || null,
+        newTaskId: row.newTaskId || null,
+        reason: row.reason || row.message || ''
+      };
+    })
+  };
+
   result.success =
     !!(
       result.calendarAcceptance &&
-      result.calendarAcceptance.success === true
+      result.calendarAcceptance.success === true &&
+      result.recoveryGate.pass === true
     );
 
   result.status = result.success
     ? 'SUCCESS'
-    : 'FAILED_CALENDAR_TASK_LINK_ACCEPTANCE';
+    : (
+        result.recoveryGate.pass
+          ? 'FAILED_CALENDAR_TASK_LINK_ACCEPTANCE'
+          : 'FAILED_TASK_RECOVERY_AND_CALENDAR_ACCEPTANCE'
+      );
 
   result.finishedAt = new Date().toISOString();
   result.runtimeSeconds = Math.round(
@@ -65,6 +101,7 @@ function REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1() {
     success: result.success,
     installRecoveryStatus:
       result.installRecovery && result.installRecovery.status || '',
+    recoveryGate: result.recoveryGate || null,
     calendarAcceptance: result.calendarAcceptance
       ? {
           status: result.calendarAcceptance.status,
