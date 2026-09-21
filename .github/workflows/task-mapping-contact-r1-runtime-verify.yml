@@ -19,9 +19,11 @@ jobs:
         with:
           ref: task_mapping
           fetch-depth: 1
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Configure clasp auth
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
@@ -30,37 +32,26 @@ jobs:
           set -euo pipefail
           test -n "${CLASPRC_JSON:-}"
           umask 077
-          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-          cat > .clasp.json <<'JSON'
-          {"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}
-          JSON
+          echo -n "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          echo '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
 
       - name: Read-only shared Contact resolver runtime test
         shell: bash
         run: |
-          set -euo pipefail
-          output="$(npx -y @google/clasp@3.3.0 run testTmContactR1ResolverReadOnly 2>&1)"
-          printf '%s
-' "$output"
-          if printf '%s
-' "$output" | grep -Eiq '(^|[[:space:]])error:'; then exit 1; fi
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run testTmContactR1ResolverReadOnly 2>&1 | tee /tmp/contact-test.log
+          if grep -qi "error:" /tmp/contact-test.log; then exit 1; fi
 
       - name: Rebuild Service mapping only
         shell: bash
         run: |
-          set -euo pipefail
-          output="$(npx -y @google/clasp@3.3.0 run buildServiceTaskMappingFromSheets 2>&1)"
-          printf '%s
-' "$output"
-          if printf '%s
-' "$output" | grep -Eiq '(^|[[:space:]])error:'; then exit 1; fi
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run buildServiceTaskMappingFromSheets 2>&1 | tee /tmp/service-rebuild.log
+          if grep -qi "error:" /tmp/service-rebuild.log; then exit 1; fi
 
       - name: Rebuild Install mapping only
         shell: bash
         run: |
-          set -euo pipefail
-          output="$(npx -y @google/clasp@3.3.0 run buildInstallTaskMappingFromSheets 2>&1)"
-          printf '%s
-' "$output"
-          if printf '%s
-' "$output" | grep -Eiq '(^|[[:space:]])error:'; then exit 1; fi
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run buildInstallTaskMappingFromSheets 2>&1 | tee /tmp/install-rebuild.log
+          if grep -qi "error:" /tmp/install-rebuild.log; then exit 1; fi
