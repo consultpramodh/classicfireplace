@@ -1,30 +1,29 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_GATE_20260921",
+  "release": "TASK_MAPPING_CALENDAR_ACCEPTANCE_TRUTH_R3_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 71,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-residual-calendar-link-repair-r1a-gate-output",
+  "outputDirectory": "task-mapping-calendar-acceptance-truth-r3-output",
   "requiredPreFiles": [
-    "92_Striven_Task_Patch_Helper.js",
     "98_8_Calendar_Task_Link_Acceptance_R1.js",
     "98_10_Residual_Calendar_Link_Repair_R1.js"
   ],
   "preContains": [
-    {
-      "file": "92_Striven_Task_Patch_Helper.js",
-      "text": "Alias order is authoritative."
-    },
     {
       "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
       "text": "TM_CALENDAR_TASK_ACCEPTANCE_R2_EVENT_ID_AND_API_FALLBACK_20260921"
     },
     {
       "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
-      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1_20260921"
+      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_RECOVERY_GATED_20260921"
     }
   ],
   "overwriteFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_8_Calendar_Task_Link_Acceptance_R1.js",
+      "targetFile": "98_8_Calendar_Task_Link_Acceptance_R1.js"
+    },
     {
       "repoPath": "patches/task-mapping/98_10_Residual_Calendar_Link_Repair_R1.js",
       "targetFile": "98_10_Residual_Calendar_Link_Repair_R1.js"
@@ -34,29 +33,38 @@
   "replacements": [],
   "workContains": [
     {
-      "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
-      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_RECOVERY_GATED_20260921"
+      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
+      "text": "TM_CALENDAR_TASK_ACCEPTANCE_R3_REST_READBACK_20260921"
+    },
+    {
+      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
+      "text": "function tmCalendarTaskAcceptanceReadEventViaRest_("
     },
     {
       "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
-      "text": "FAILED_TASK_RECOVERY_AND_CALENDAR_ACCEPTANCE"
+      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1B_CALENDAR_TRUTH_20260921"
     },
     {
       "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
-      "text": "recoveryGate"
+      "text": "CALENDAR_LINKS_SUCCESS_WITH_RESIDUAL_RECOVERY_REVIEW"
     }
   ],
   "postContains": [
     {
+      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
+      "text": "TM_CALENDAR_TASK_ACCEPTANCE_R3_REST_READBACK_20260921"
+    },
+    {
       "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
-      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_RECOVERY_GATED_20260921"
+      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1B_CALENDAR_TRUTH_20260921"
     }
   ],
   "runtimeVerification": "USER_RUN_REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1",
   "safety": {
     "freshLivePullBeforePatch": true,
     "exactOverwriteOnly": true,
-    "successRequiresCalendarTaskLinkReadback": true,
-    "successRequiresCleanTaskRecovery": true
+    "noBusinessRelationshipMutationChanges": true,
+    "calendarRestReadbackFallback": true,
+    "calendarLinkSuccessSeparatedFromResidualRecoveryReview": true
   }
 }
