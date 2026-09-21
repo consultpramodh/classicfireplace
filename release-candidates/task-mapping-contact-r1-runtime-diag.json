@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_CONTACT_R1_CUSTOM_FUNCTION_PROBE_20260921",
+  "release": "TASK_MAPPING_CONTACT_R1_ONE_CLICK_TEST_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 63,
+  "expectedPreFileCount": 64,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-contact-r1-runtime-diag-output",
+  "outputDirectory": "task-mapping-contact-r1-one-click-output",
   "requiredPreFiles": [
     "98_1_Contact_Resolution_R1.js",
-    "98_2_Contact_R1_Runtime_Test.js"
+    "10_Install_Workflow.js",
+    "30_Service_Workflow.js"
   ],
   "preContains": [
     {
@@ -15,33 +16,51 @@
       "text": "TM_CONTACT_RESOLUTION_R1_20260921"
     },
     {
-      "file": "98_2_Contact_R1_Runtime_Test.js",
-      "text": "testTmContactR1CoverageRemote"
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "TM_FIX_PACK_R4_10_CONTACT_R1_20260921"
     }
   ],
   "addFiles": [
     {
-      "repoPath": "patches/task-mapping/98_3_Contact_R1_Custom_Function_Test.js",
-      "targetFile": "98_3_Contact_R1_Custom_Function_Test.js"
+      "repoPath": "patches/task-mapping/98_4_Contact_R1_One_Click_Test.js",
+      "targetFile": "98_4_Contact_R1_One_Click_Test.js"
     }
   ],
   "replacements": [],
   "workContains": [
     {
-      "file": "98_3_Contact_R1_Custom_Function_Test.js",
-      "text": "function TM_CONTACT_R1_LOOKUP"
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "function TEST_CONTACT_RESOLUTION_R1_ONE_CLICK()"
+    },
+    {
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "Does NOT call syncContactsReportToSheet()"
+    },
+    {
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "expectedContactId: '36043'"
+    },
+    {
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "expectedContactId: '42852'"
     }
   ],
   "postContains": [
     {
-      "file": "98_3_Contact_R1_Custom_Function_Test.js",
-      "text": "CONTACT_RESOLUTION_R1"
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "CONTACT RESOLUTION R1 ONE-CLICK TEST: PASS"
+    },
+    {
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "TEST_CONTACT_RESOLUTION_R1_ONE_CLICK"
     }
   ],
-  "runtimeVerification": "PENDING_SPREADSHEET_CUSTOM_FUNCTION",
+  "runtimeVerification": "USER_RUN_FROM_APPS_SCRIPT_EDITOR",
   "safety": {
     "strivenWritesAdded": false,
     "calendarWritesAdded": false,
-    "spreadsheetRuntimeProbeOnly": true
+    "reportReads": true,
+    "mappingSheetRebuilds": true,
+    "callsContactsReport": false
   }
 }
