@@ -45,9 +45,13 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
+      - name: Run Contact Resolution R1 synthetic regression
+        shell: bash
+        run: node tools/test-contact-resolution-r1.js
+
       - name: Run guarded Contact Resolution R1 deployment
         shell: bash
-        run: node tools/deploy-task-mapping-contact-resolution-r1.js release-candidates/task-mapping-contact-resolution-r1.json
+        run: node tools/task-mapping-targeted-live-patch.js release-candidates/task-mapping-contact-resolution-r1.json
 
       - name: Preserve PRE source and verification evidence
         if: always()
