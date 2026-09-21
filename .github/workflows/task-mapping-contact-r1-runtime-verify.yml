@@ -35,23 +35,30 @@ jobs:
           echo -n "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           echo '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
 
-      - name: Read-only shared Contact resolver runtime test
+      - name: Shared Contact resolver against explicit live workbook
         shell: bash
         run: |
           set -o pipefail
-          npx -y @google/clasp@3.3.0 run testTmContactR1ResolverReadOnly 2>&1 | tee /tmp/contact-test.log
-          if grep -qi "error:" /tmp/contact-test.log; then exit 1; fi
+          npx -y @google/clasp@3.3.0 run testTmContactR1ResolverRemote 2>&1 | tee /tmp/contact-test.log
+          if grep -Eqi "error:|exception:" /tmp/contact-test.log; then exit 1; fi
 
-      - name: Rebuild Service mapping only
+      - name: Rebuild Service mapping against explicit live workbook
         shell: bash
         run: |
           set -o pipefail
-          npx -y @google/clasp@3.3.0 run buildServiceTaskMappingFromSheets 2>&1 | tee /tmp/service-rebuild.log
-          if grep -qi "error:" /tmp/service-rebuild.log; then exit 1; fi
+          npx -y @google/clasp@3.3.0 run testTmContactR1RebuildServiceRemote 2>&1 | tee /tmp/service-rebuild.log
+          if grep -Eqi "error:|exception:" /tmp/service-rebuild.log; then exit 1; fi
 
-      - name: Rebuild Install mapping only
+      - name: Rebuild Install mapping against explicit live workbook
         shell: bash
         run: |
           set -o pipefail
-          npx -y @google/clasp@3.3.0 run buildInstallTaskMappingFromSheets 2>&1 | tee /tmp/install-rebuild.log
-          if grep -qi "error:" /tmp/install-rebuild.log; then exit 1; fi
+          npx -y @google/clasp@3.3.0 run testTmContactR1RebuildInstallRemote 2>&1 | tee /tmp/install-rebuild.log
+          if grep -Eqi "error:|exception:" /tmp/install-rebuild.log; then exit 1; fi
+
+      - name: Read final Contact coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run testTmContactR1CoverageRemote 2>&1 | tee /tmp/coverage.log
+          if grep -Eqi "error:|exception:" /tmp/coverage.log; then exit 1; fi
