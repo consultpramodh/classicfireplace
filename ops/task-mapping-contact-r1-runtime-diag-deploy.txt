@@ -1,2 +1,3 @@
 TASK_MAPPING_CONTACT_R1_ONE_CLICK_TEST_R2_20260921
-retry=4
+retry=5
+wholeFileReplace=true
