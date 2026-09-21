@@ -1,56 +1,73 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_CONTACT_R1_ONE_CLICK_TEST_R2_20260921",
+  "release": "TASK_MAPPING_FOUR_VERTICAL_PIPELINE_TEST_R1_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 65,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-contact-r1-one-click-r2-output",
+  "outputDirectory": "task-mapping-four-vertical-pipeline-test-output",
   "requiredPreFiles": [
+    "93_Selected_Row_End_To_End.js",
+    "98_1_Contact_Resolution_R1.js",
     "98_4_Contact_R1_One_Click_Test.js"
   ],
   "preContains": [
     {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "TEST_CONTACT_RESOLUTION_R1_ONE_CLICK"
+      "file": "93_Selected_Row_End_To_End.js",
+      "text": "function runSelectedTaskMappingRowEndToEnd()"
     },
     {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "taskId: '18307'"
+      "file": "98_1_Contact_Resolution_R1.js",
+      "text": "TM_CONTACT_RESOLUTION_R1_20260921"
     }
   ],
-  "overwriteFiles": [
+  "addFiles": [
     {
-      "repoPath": "patches/task-mapping/98_4_Contact_R1_One_Click_Test.js",
-      "targetFile": "98_4_Contact_R1_One_Click_Test.js"
+      "repoPath": "patches/task-mapping/98_5_Four_Vertical_Pipeline_Test.js",
+      "targetFile": "98_5_Four_Vertical_Pipeline_Test.js"
     }
   ],
+  "overwriteFiles": [],
   "replacements": [],
-  "addFiles": [],
   "workContains": [
     {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "expectedContactId: '56295'"
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "function TEST_ONE_ROW_EACH_VERTICAL_PIPELINE()"
     },
     {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "exact Calendar phone 519-807-3240"
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "taskId: 17881"
+    },
+    {
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "taskId: 18539"
+    },
+    {
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "taskId: 18438"
+    },
+    {
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "taskId: 18511"
     }
   ],
   "postContains": [
     {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "expectedContactId: '56295'"
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "FOUR-VERTICAL PIPELINE TEST:"
     },
     {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "TEST_CONTACT_RESOLUTION_R1_ONE_CLICK"
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "TEST_ONE_ROW_EACH_VERTICAL_PIPELINE"
     }
   ],
-  "runtimeVerification": "USER_RERUN_TEST_CONTACT_RESOLUTION_R1_ONE_CLICK",
+  "runtimeVerification": "USER_RUN_TEST_ONE_ROW_EACH_VERTICAL_PIPELINE",
   "safety": {
-    "productionResolverChanged": false,
-    "strivenWritesAdded": false,
-    "calendarWritesAdded": false,
-    "testExpectationOnly": true
+    "newTestFileOnly": true,
+    "productionWorkflowFilesChanged": false,
+    "invokesExistingProductionE2E": true,
+    "selectedInstallTaskId": 17881,
+    "selectedDeliveryTaskId": 18539,
+    "selectedServiceTaskId": 18438,
+    "selectedPreInspectionTaskId": 18511
   }
 }
