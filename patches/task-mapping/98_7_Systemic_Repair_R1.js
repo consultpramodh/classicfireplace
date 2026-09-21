@@ -750,7 +750,7 @@ function tmSystemicWritePreInspectCalendarTaskLink_(eventId, taskId, taskTitle) 
   ].join('<br>');
 
   const next = cleaned
-    ? String(cleaned).replace(/(?:<br\\s*\\/?>|\\s)+$/gi, '').trim() + '<br><br>' + block
+    ? String(cleaned).replace(/(?:<br\s*\/?>|\s)+$/gi, '').trim() + '<br><br>' + block
     : block;
 
   if (original === next && original.indexOf(taskUrl) !== -1) {
@@ -794,17 +794,7 @@ function tmSystemicWritePreInspectCalendarTaskLink_(eventId, taskId, taskTitle) 
   };
 }
 
-function tmSystemicEscapeHtml_(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function tmSystemicEscapeRegex_(value) {
-  return String(value || '').replace(/[.*+?^$()|[\]{}\\]/g, '\\function tmSystemicPauseRateWindow_(reason) {');
+function tmSystemicEscapeHtml_(value) {\n  return String(value || '')\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#39;');\n}\n\nfunction tmSystemicEscapeRegex_(value) {\n  return String(value || '').replace(/[.*+?^$()|[\\]{}\\\\]/g, '\\\\$&');\n}\nfunction tmSystemicPauseRateWindow_(reason) {');
 }
 
 function tmSystemicPauseRateWindow_(reason) {
