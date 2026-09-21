@@ -1,0 +1,44 @@
+name: Task Mapping Contact R1 Runtime Diagnostic Deploy
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-contact-r1-runtime-diag-deploy.txt
+
+permissions:
+  contents: read
+
+jobs:
+  guarded-runtime-diagnostic-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Deploy diagnostic helper with guarded live-source patch
+        shell: bash
+        run: node tools/task-mapping-targeted-live-patch.js release-candidates/task-mapping-contact-r1-runtime-diag.json
+      - name: Preserve diagnostic deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-contact-r1-runtime-diag-${{ github.run_id }}
+          path: task-mapping-contact-r1-runtime-diag-output/
+          if-no-files-found: warn
+          retention-days: 30
