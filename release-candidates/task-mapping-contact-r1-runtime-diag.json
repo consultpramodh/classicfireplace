@@ -1,64 +1,100 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_PREINSPECT_AUTO_APPEND_TEST_R1_20260921",
+  "release": "TASK_MAPPING_PREINSPECT_DUAL_CALENDAR_R1_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 71,
+  "expectedPreFileCount": 72,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-preinspect-auto-append-test-r1-output",
+  "outputDirectory": "task-mapping-preinspect-dual-calendar-r1-output",
   "requiredPreFiles": [
     "35_PreInspect_Task_Review.js",
-    "98_8_Calendar_Task_Link_Acceptance_R1.js"
+    "98_11_PreInspect_Calendar_Auto_Append_Test.js"
   ],
   "preContains": [
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "calendarEventTaskLinks"
-    },
     {
       "file": "35_PreInspect_Task_Review.js",
       "text": "tmCalendarTaskAcceptanceEnsureTaskLink_("
     },
     {
-      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
-      "text": "TM_CALENDAR_TASK_ACCEPTANCE_R3_REST_READBACK_20260921"
-    }
-  ],
-  "addFiles": [
-    {
-      "repoPath": "patches/task-mapping/98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "targetFile": "98_11_PreInspect_Calendar_Auto_Append_Test.js"
-    }
-  ],
-  "overwriteFiles": [],
-  "replacements": [],
-  "workContains": [
-    {
-      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "text": "function TEST_PREINSPECT_CALENDAR_AUTO_APPEND_R1()"
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "calendarEventTaskLinks"
     },
-    {
-      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "text": "AUTO_APPEND_REGRESSION_TEST"
-    },
-    {
-      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "text": "PREINSPECT CALENDAR AUTO-APPEND TEST:"
-    }
-  ],
-  "postContains": [
     {
       "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
       "text": "TM_PREINSPECT_CALENDAR_AUTO_APPEND_TEST_R1_20260921"
     }
   ],
-  "runtimeVerification": "USER_RUN_TEST_PREINSPECT_CALENDAR_AUTO_APPEND_R1",
+  "overwriteFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "targetFile": "98_11_PreInspect_Calendar_Auto_Append_Test.js"
+    }
+  ],
+  "addFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
+      "targetFile": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js"
+    }
+  ],
+  "replacements": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Route normal PreInspection link projection through dual-calendar helper",
+      "before": "if (typeof tmCalendarTaskAcceptanceEnsureTaskLink_ === 'function') {",
+      "after": "if (typeof tmPreInspectEnsureDualCalendarTaskLink_ === 'function') {"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Write and verify PreInspection Task link on both calendars",
+      "before": "        const linkResult = tmCalendarTaskAcceptanceEnsureTaskLink_(\n          'PreInspection',\n          eventId,\n          taskId,\n          taskTitle\n        );",
+      "after": "        const linkResult = tmPreInspectEnsureDualCalendarTaskLink_(\n          eventId,\n          taskId,\n          taskTitle\n        );"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Clarify missing dual-calendar helper failure",
+      "before": "reason: 'Calendar Task-link acceptance helper is unavailable.'",
+      "after": "reason: 'PreInspection dual-calendar Task-link helper is unavailable.'"
+    }
+  ],
+  "workContains": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "tmPreInspectEnsureDualCalendarTaskLink_("
+    },
+    {
+      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "text": "TM_PREINSPECT_DUAL_CALENDAR_AUTO_APPEND_TEST_R1_20260921"
+    },
+    {
+      "file": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
+      "text": "TM_PREINSPECT_DUAL_CALENDAR_R1_20260921"
+    },
+    {
+      "file": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
+      "text": "STEPHEN_CALENDAR_ID"
+    }
+  ],
+  "postContains": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "tmPreInspectEnsureDualCalendarTaskLink_("
+    },
+    {
+      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "text": "TEST_PREINSPECT_DUAL_CALENDAR_AUTO_APPEND_R1"
+    },
+    {
+      "file": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
+      "text": "VERIFIED_BOTH_CALENDARS"
+    }
+  ],
+  "runtimeVerification": "USER_RUN_TEST_PREINSPECT_DUAL_CALENDAR_AUTO_APPEND_R1",
   "safety": {
     "freshLivePullBeforePatch": true,
-    "addOnly": true,
-    "controlledCalendarMutation": true,
-    "originalDescriptionBackedUp": true,
-    "originalDescriptionRestoredInFinally": true,
-    "normalPreInspectionSyncPathInvoked": true,
-    "calendarRestReadBackRequired": true
+    "exactAnchorPatchOnly": true,
+    "noCalendarRestApiDependency": true,
+    "groupAndStephenCalendarRequired": true,
+    "sameEventIdMatchedIndependently": true,
+    "eachCalendarDescriptionPreservedIndependently": true,
+    "bothCalendarReadBackRequired": true
   }
 }
