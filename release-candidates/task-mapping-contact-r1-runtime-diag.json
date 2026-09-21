@@ -1,51 +1,15 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_PREINSPECT_CALENDAR_APPEND_R1_20260921",
+  "release": "TASK_MAPPING_PREINSPECT_AUTO_APPEND_TEST_R1_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 71,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-preinspect-calendar-append-r1-output",
+  "outputDirectory": "task-mapping-preinspect-auto-append-test-r1-output",
   "requiredPreFiles": [
     "35_PreInspect_Task_Review.js",
     "98_8_Calendar_Task_Link_Acceptance_R1.js"
   ],
   "preContains": [
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "mode: 'PREINSPECT_R3414_SHEET_HYPERLINKS'"
-    },
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "calendarWritesPerformed: false"
-    },
-    {
-      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
-      "text": "TM_CALENDAR_TASK_ACCEPTANCE_R3_REST_READBACK_20260921"
-    }
-  ],
-  "overwriteFiles": [],
-  "addFiles": [],
-  "replacements": [
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "label": "Track real Calendar-event Task-link projection in PreInspection hyperlink pass",
-      "before": "    calendar: {\n      customerLinks: 0,\n      salesOrderLinks: 0,\n      taskLinks: 0\n    },\n    customerLinksSkippedNoVerifiedRecordUrl: 0\n  };",
-      "after": "    calendar: {\n      customerLinks: 0,\n      salesOrderLinks: 0,\n      taskLinks: 0\n    },\n    calendarEventTaskLinks: {\n      checked: 0,\n      alreadyVerified: 0,\n      writtenAndVerified: 0,\n      failed: 0,\n      failures: []\n    },\n    calendarWritesPerformed: false,\n    customerLinksSkippedNoVerifiedRecordUrl: 0\n  };"
-    },
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "label": "Append verified PreInspection Task links to actual Calendar event descriptions",
-      "before": "  try {\n    calendarSheet.setColumnWidth(calSoCol, 110);\n    calendarSheet.setColumnWidth(calTaskCol, 240);\n  } catch (err) {\n    // Presentation only.\n  }\n\n  Logger.log(JSON.stringify(result, null, 2));\n  return result;",
-      "after": "  try {\n    calendarSheet.setColumnWidth(calSoCol, 110);\n    calendarSheet.setColumnWidth(calTaskCol, 240);\n  } catch (err) {\n    // Presentation only.\n  }\n\n  /**********************************************************\n   * ACTUAL GOOGLE CALENDAR EVENT:\n   * Whenever Event ID + Task ID are resolved, append/verify\n   * the Striven Task link in the event description itself.\n   * This is the operator-facing acceptance rule used by the\n   * other verticals. The helper is idempotent and performs a\n   * fresh Calendar read-back after any write.\n   **********************************************************/\n  if (typeof tmCalendarTaskAcceptanceEnsureTaskLink_ === 'function') {\n    mappingRows.forEach(function(row) {\n      const eventId = String(row['Event ID'] || '').trim();\n      const taskId = Number(row['Task ID'] || 0);\n      const status = String(row['Status'] || '').trim().toUpperCase();\n\n      if (\n        !eventId ||\n        !(taskId > 0) ||\n        status === 'SKIP' ||\n        status === 'SKIPPED' ||\n        status === 'NOT MATCHED'\n      ) {\n        return;\n      }\n\n      const taskTitle =\n        String(row['Task Name'] || '').trim() ||\n        ('Pre-Inspection Task #' + taskId);\n\n      result.calendarEventTaskLinks.checked++;\n\n      try {\n        const linkResult = tmCalendarTaskAcceptanceEnsureTaskLink_(\n          'PreInspection',\n          eventId,\n          taskId,\n          taskTitle\n        );\n\n        if (linkResult && linkResult.readBackVerified) {\n          if (linkResult.writePerformed) {\n            result.calendarEventTaskLinks.writtenAndVerified++;\n            result.calendarWritesPerformed = true;\n            result.writesPerformed = true;\n          } else {\n            result.calendarEventTaskLinks.alreadyVerified++;\n          }\n        } else {\n          result.calendarEventTaskLinks.failed++;\n          result.calendarEventTaskLinks.failures.push({\n            eventId: eventId,\n            taskId: taskId,\n            reason: 'Calendar Task-link helper did not return readBackVerified=true.'\n          });\n        }\n      } catch (linkErr) {\n        result.calendarEventTaskLinks.failed++;\n        result.calendarEventTaskLinks.failures.push({\n          eventId: eventId,\n          taskId: taskId,\n          reason: String(\n            linkErr && linkErr.message ? linkErr.message : linkErr\n          )\n        });\n      }\n    });\n  } else {\n    result.calendarEventTaskLinks.failed++;\n    result.calendarEventTaskLinks.failures.push({\n      eventId: '',\n      taskId: '',\n      reason: 'Calendar Task-link acceptance helper is unavailable.'\n    });\n  }\n\n  if (result.calendarEventTaskLinks.failed > 0) {\n    result.status = 'COMPLETE_WITH_CALENDAR_LINK_FAILURES';\n  }\n\n  Logger.log(JSON.stringify(result, null, 2));\n  return result;"
-    },
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "label": "Expose PreInspection Calendar-event writes in mirror-plus-hyperlinks result",
-      "before": "    calendarWritesPerformed: false,\n    sheetWritesPerformed: !!(\n      (mirror && mirror.sheetWritesPerformed) ||\n      (hyperlinks && hyperlinks.writesPerformed)\n    )",
-      "after": "    calendarWritesPerformed: !!(\n      hyperlinks && hyperlinks.calendarWritesPerformed\n    ),\n    sheetWritesPerformed: !!(\n      (mirror && mirror.sheetWritesPerformed) ||\n      (hyperlinks && hyperlinks.writesPerformed)\n    )"
-    }
-  ],
-  "workContains": [
     {
       "file": "35_PreInspect_Task_Review.js",
       "text": "calendarEventTaskLinks"
@@ -55,28 +19,46 @@
       "text": "tmCalendarTaskAcceptanceEnsureTaskLink_("
     },
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "COMPLETE_WITH_CALENDAR_LINK_FAILURES"
+      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
+      "text": "TM_CALENDAR_TASK_ACCEPTANCE_R3_REST_READBACK_20260921"
+    }
+  ],
+  "addFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "targetFile": "98_11_PreInspect_Calendar_Auto_Append_Test.js"
+    }
+  ],
+  "overwriteFiles": [],
+  "replacements": [],
+  "workContains": [
+    {
+      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "text": "function TEST_PREINSPECT_CALENDAR_AUTO_APPEND_R1()"
+    },
+    {
+      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "text": "AUTO_APPEND_REGRESSION_TEST"
+    },
+    {
+      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "text": "PREINSPECT CALENDAR AUTO-APPEND TEST:"
     }
   ],
   "postContains": [
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "calendarEventTaskLinks"
-    },
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "calendarWritesPerformed: !!("
+      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
+      "text": "TM_PREINSPECT_CALENDAR_AUTO_APPEND_TEST_R1_20260921"
     }
   ],
-  "runtimeVerification": "USER_RUN_SYNC_PREINSPECT_CALENDAR_NOW_OR_NORMAL_PREINSPECT_SYNC",
+  "runtimeVerification": "USER_RUN_TEST_PREINSPECT_CALENDAR_AUTO_APPEND_R1",
   "safety": {
     "freshLivePullBeforePatch": true,
-    "exactAnchorPatchOnly": true,
-    "noNewSheetColumns": true,
-    "existingDescriptionPreserved": true,
-    "onlyRowsWithEventIdAndTaskId": true,
-    "calendarReadBackRequired": true,
-    "idempotentCalendarWrites": true
+    "addOnly": true,
+    "controlledCalendarMutation": true,
+    "originalDescriptionBackedUp": true,
+    "originalDescriptionRestoredInFinally": true,
+    "normalPreInspectionSyncPathInvoked": true,
+    "calendarRestReadBackRequired": true
   }
 }
