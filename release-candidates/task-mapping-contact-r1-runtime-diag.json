@@ -11,22 +11,21 @@
   "preContains": [
     {
       "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "taskId: '18307'"
+      "text": "TEST_CONTACT_RESOLUTION_R1_ONE_CLICK"
     },
     {
       "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "expectedIssueContains: 'multiple'"
+      "text": "taskId: '18307'"
     }
   ],
-  "addFiles": [],
-  "replacements": [
+  "overwriteFiles": [
     {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "label": "Correct MG Homes exact-phone expected Contact",
-      "before": "        tmContactR1CheckMappingTask_({\\n          division: 'SERVICE',\\n          sheetName: 'Service Task Mapping',\\n          taskId: '18307',\\n          contactHeader: 'Hidden Contact ID',\\n          expectedContactId: '',\\n          expectedBlank: true,\\n          expectedIssueContains: 'multiple',\\n          label: 'MG Homes'\\n        }),",
-      "after": "        tmContactR1CheckMappingTask_({\\n          division: 'SERVICE',\\n          sheetName: 'Service Task Mapping',\\n          taskId: '18307',\\n          contactHeader: 'Hidden Contact ID',\\n          expectedContactId: '56295',\\n          expectedBlank: false,\\n          label: 'MG Homes / Philip Mulkins - exact Calendar phone 519-807-3240'\\n        }),"
+      "repoPath": "patches/task-mapping/98_4_Contact_R1_One_Click_Test.js",
+      "targetFile": "98_4_Contact_R1_One_Click_Test.js"
     }
   ],
+  "replacements": [],
+  "addFiles": [],
   "workContains": [
     {
       "file": "98_4_Contact_R1_One_Click_Test.js",
@@ -41,6 +40,10 @@
     {
       "file": "98_4_Contact_R1_One_Click_Test.js",
       "text": "expectedContactId: '56295'"
+    },
+    {
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "TEST_CONTACT_RESOLUTION_R1_ONE_CLICK"
     }
   ],
   "runtimeVerification": "USER_RERUN_TEST_CONTACT_RESOLUTION_R1_ONE_CLICK",
