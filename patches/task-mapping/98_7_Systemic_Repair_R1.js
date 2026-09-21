@@ -804,7 +804,13 @@ function tmSystemicEscapeHtml_(value) {
 }
 
 function tmSystemicEscapeRegex_(value) {
-  return String(value || '').replace(/[.*+?^$()|[\\]{}\\\\]/g, '\\\\$&');
+  const special = '\\\\^$.*+?()[]{}|';
+  return String(value || '')
+    .split('')
+    .map(function(ch) {
+      return special.indexOf(ch) !== -1 ? '\\\\' + ch : ch;
+    })
+    .join('');
 }
 function tmSystemicPauseRateWindow_(reason) {
   Logger.log(
