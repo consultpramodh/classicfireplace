@@ -34,6 +34,7 @@ try{
  (m.preContains||[]).forEach(x=>{const t=fs.readFileSync(path.join(preSrc,x.file),'utf8');if(!t.includes(x.text))throw new Error('PRE '+x.file+' missing required marker: '+x.text)});
  console.log('=== TARGETED PATCH 3/9 build WORK ===');copy(preRoot,workRoot);const workSrc=path.join(workRoot,'src');
  const changed={};
+ (m.overwriteFiles||[]).forEach(x=>{const src=path.resolve(repoRoot,x.repoPath);const dst=path.join(workSrc,x.targetFile);if(!fs.existsSync(src))throw new Error('overwrite source missing '+x.repoPath);if(!preNames.includes(x.targetFile))throw new Error('overwrite target missing from PRE '+x.targetFile);fs.copyFileSync(src,dst);changed[x.targetFile]=true;});
  (m.replacements||[]).forEach((x,i)=>{const p=path.join(workSrc,x.file);let t=fs.readFileSync(p,'utf8');t=replaceOnce(t,x.before,x.after,(x.label||('replacement '+i))+' in '+x.file);fs.writeFileSync(p,t);changed[x.file]=true;});
  (m.addFiles||[]).forEach(x=>{const src=path.resolve(repoRoot,x.repoPath);if(!fs.existsSync(src))throw new Error('add source missing '+x.repoPath);fs.copyFileSync(src,path.join(workSrc,x.targetFile));changed[x.targetFile]=true;});
  const changedNames=Object.keys(changed).sort();changedNames.forEach(n=>run(process.execPath,['--check',path.join(workSrc,n)],repoRoot));
