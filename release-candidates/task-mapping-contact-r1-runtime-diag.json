@@ -1,14 +1,13 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_CONTACT_R1_RUNTIME_DIAGNOSTICS_20260921",
+  "release": "TASK_MAPPING_CONTACT_R1_CUSTOM_FUNCTION_PROBE_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 62,
+  "expectedPreFileCount": 63,
   "claspVersion": "3.3.0",
   "outputDirectory": "task-mapping-contact-r1-runtime-diag-output",
   "requiredPreFiles": [
     "98_1_Contact_Resolution_R1.js",
-    "30_Service_Workflow.js",
-    "10_Install_Workflow.js"
+    "98_2_Contact_R1_Runtime_Test.js"
   ],
   "preContains": [
     {
@@ -16,37 +15,33 @@
       "text": "TM_CONTACT_RESOLUTION_R1_20260921"
     },
     {
-      "file": "97_Task_Mapping_Fix_Pack_R4.js",
-      "text": "TM_FIX_PACK_R4_10_CONTACT_R1_20260921"
+      "file": "98_2_Contact_R1_Runtime_Test.js",
+      "text": "testTmContactR1CoverageRemote"
     }
   ],
   "addFiles": [
     {
-      "repoPath": "patches/task-mapping/98_2_Contact_R1_Runtime_Test.js",
-      "targetFile": "98_2_Contact_R1_Runtime_Test.js"
+      "repoPath": "patches/task-mapping/98_3_Contact_R1_Custom_Function_Test.js",
+      "targetFile": "98_3_Contact_R1_Custom_Function_Test.js"
     }
   ],
   "replacements": [],
   "workContains": [
     {
-      "file": "98_2_Contact_R1_Runtime_Test.js",
-      "text": "testTmContactR1RebuildServiceRemote"
-    },
-    {
-      "file": "98_2_Contact_R1_Runtime_Test.js",
-      "text": "SPREADSHEET_ID: '1WdDufz3A0p12Vg-_0ypYbFFNGPQZB5ra4aJcS8ACWlU'"
+      "file": "98_3_Contact_R1_Custom_Function_Test.js",
+      "text": "function TM_CONTACT_R1_LOOKUP"
     }
   ],
   "postContains": [
     {
-      "file": "98_2_Contact_R1_Runtime_Test.js",
-      "text": "testTmContactR1CoverageRemote"
+      "file": "98_3_Contact_R1_Custom_Function_Test.js",
+      "text": "CONTACT_RESOLUTION_R1"
     }
   ],
-  "runtimeVerification": "PENDING_REMOTE_EXECUTION",
+  "runtimeVerification": "PENDING_SPREADSHEET_CUSTOM_FUNCTION",
   "safety": {
     "strivenWritesAdded": false,
     "calendarWritesAdded": false,
-    "mappingSheetRebuildOnly": true
+    "spreadsheetRuntimeProbeOnly": true
   }
 }
