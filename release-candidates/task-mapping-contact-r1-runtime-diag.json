@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_SYSTEMIC_REPAIR_R1C_20260921",
+  "release": "TASK_MAPPING_SYSTEMIC_REPAIR_R1D_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 67,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-systemic-repair-r1c-output",
+  "outputDirectory": "task-mapping-systemic-repair-r1d-output",
   "requiredPreFiles": [
     "20_Delivery_Workflow.js",
     "30_Service_Workflow.js",
@@ -138,12 +138,6 @@
       "after": "  const cleaned=stlRemoveManagedLinksBlock_(original);"
     },
     {
-      "file": "97_Task_Mapping_Fix_Pack_R4.js",
-      "label": "Include PreInspection in shared all-vertical Calendar link bulk",
-      "before": "function tmR4_runAllCalendarLinkPipelines_(dryRun) {\n  const install = stlRunCalendarLinkPipelineStageForDivision_('INSTALL', !!dryRun);\n  const delivery = stlRunCalendarLinkPipelineStageForDivision_('DELIVERY', !!dryRun);\n  const service = tmR4_runServiceCalendarLinkPipeline_(!!dryRun, 0);\n\n  return {\n    mode: dryRun ? 'DRY_RUN' : 'PUSH',\n    status: 'COMPLETE',\n    install: install,\n    delivery: delivery,\n    service: service\n  };\n}",
-      "after": "function tmR4_runAllCalendarLinkPipelines_(dryRun) {\n  const install = stlRunCalendarLinkPipelineStageForDivision_('INSTALL', !!dryRun);\n  const delivery = stlRunCalendarLinkPipelineStageForDivision_('DELIVERY', !!dryRun);\n  const service = tmR4_runServiceCalendarLinkPipeline_(!!dryRun, 0);\n  const preInspection =\n    typeof tmSystemicPushAllPreInspectCalendarLinks_ === 'function'\n      ? (dryRun\n          ? {status:'DRY_RUN_NOT_MUTATED_BY_SHARED_BULK',reason:'Use the systemic verifier for PreInspection read-only link coverage.'}\n          : tmSystemicPushAllPreInspectCalendarLinks_())\n      : {status:'UNAVAILABLE'};\n\n  const result = {\n    mode: dryRun ? 'DRY_RUN' : 'PUSH',\n    status: 'COMPLETE',\n    install: install,\n    delivery: delivery,\n    service: service,\n    preInspection: preInspection\n  };\n\n  Logger.log(JSON.stringify(result, null, 2));\n  return result;\n}"
-    },
-    {
       "file": "36_PreInspect_Task_Create.js",
       "label": "Route PreInspection create Calendar link to systemic verified writer",
       "before": "calendarLinkResult = preinspectAppendTaskLinkToCalendarEvent_(",
@@ -180,10 +174,6 @@
     {
       "file": "97_Task_Mapping_Fix_Pack_R4.js",
       "text": "const cleaned=stlRemoveManagedLinksBlock_(original);"
-    },
-    {
-      "file": "97_Task_Mapping_Fix_Pack_R4.js",
-      "text": "preInspection: preInspection"
     },
     {
       "file": "98_6_All_Rows_Verification.js",
