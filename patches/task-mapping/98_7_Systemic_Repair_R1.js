@@ -573,7 +573,7 @@ function tmSystemicPushAllPreInspectCalendarLinks_() {
   const sheet = ss && ss.getSheetByName('PreInspect Task Mapping');
 
   if (!sheet) throw new Error('Missing PreInspect Task Mapping sheet.');
-  if (typeof preinspectAppendTaskLinkToCalendarEvent_ !== 'function') {
+  if (typeof tmSystemicWritePreInspectCalendarTaskLink_ !== 'function') {
     return { status: 'SKIPPED_FUNCTION_MISSING', checked: 0, rows: [] };
   }
 
@@ -619,7 +619,7 @@ function tmSystemicPushAllPreInspectCalendarLinks_() {
       ('Pre-Inspection Task #' + taskId);
 
     try {
-      const pushed = preinspectAppendTaskLinkToCalendarEvent_(
+      const pushed = tmSystemicWritePreInspectCalendarTaskLink_(
         eventId,
         taskId,
         taskTitle
@@ -657,6 +657,154 @@ function tmSystemicPushAllPreInspectCalendarLinks_() {
   }
 
   return result;
+}
+
+
+function tmSystemicPushSelectedPreInspectTaskLink_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss && ss.getActiveSheet();
+
+  if (!sheet || sheet.getName() !== 'PreInspect Task Mapping') {
+    throw new Error('Select a row on "PreInspect Task Mapping" first.');
+  }
+
+  const rowNumber = sheet.getActiveRange().getRow();
+  if (rowNumber <= 1) throw new Error('Select a PreInspect mapping data row.');
+
+  const values = sheet.getDataRange().getDisplayValues();
+  const headers = values[0].map(function(v) { return String(v || '').trim(); });
+  const row = values[rowNumber - 1] || [];
+  const idx = {};
+  headers.forEach(function(name, col) { idx[name] = col; });
+
+  const eventId = String(row[idx['Event ID']] || '').trim();
+  const taskId = tmSystemicPositive_(row[idx['Task ID']]);
+  const taskTitle =
+    String(row[idx['Task Name']] || '').trim() ||
+    ('Pre-Inspection Task #' + taskId);
+
+  return tmSystemicWritePreInspectCalendarTaskLink_(
+    eventId,
+    taskId,
+    taskTitle
+  );
+}
+
+function tmSystemicWritePreInspectCalendarTaskLink_(eventId, taskId, taskTitle) {
+  const cleanEventId = String(eventId || '').trim();
+  const cleanTaskId = tmSystemicPositive_(taskId);
+
+  if (!cleanEventId) throw new Error('PreInspection Calendar Task-link write requires Event ID.');
+  if (!cleanTaskId) throw new Error('PreInspection Calendar Task-link write requires Task ID.');
+
+  const calendarId =
+    typeof PREINSPECT_REVIEW_CONFIG !== 'undefined' &&
+    PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC
+      ? String(PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC.CALENDAR_ID || '').trim()
+      : '';
+
+  if (!calendarId) throw new Error('PreInspection Calendar ID is not configured.');
+
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  const event = calendar && calendar.getEventById(cleanEventId);
+  if (!event) {
+    throw new Error('PreInspection Calendar event could not be fresh-read: ' + cleanEventId);
+  }
+
+  const startMarker = '<!-- PREINSPECT_STRIVEN_TASK_LINK_START -->';
+  const endMarker = '<!-- PREINSPECT_STRIVEN_TASK_LINK_END -->';
+  const taskBaseUrl =
+    'https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=';
+  const taskUrl = taskBaseUrl + encodeURIComponent(cleanTaskId);
+
+  const original = String(event.getDescription() || '');
+  let cleaned = original;
+
+  if (typeof preinspectRemoveManagedTaskLinkBlock_ === 'function') {
+    cleaned = preinspectRemoveManagedTaskLinkBlock_(original);
+  } else {
+    const managedRegex = new RegExp(
+      '(?:<br\\s*\\/?>|\\r?\\n|\\s)*' +
+      tmSystemicEscapeRegex_(startMarker) +
+      '[\\s\\S]*?' +
+      tmSystemicEscapeRegex_(endMarker) +
+      '(?:<br\\s*\\/?>|\\r?\\n|\\s)*',
+      'gi'
+    );
+    cleaned = original.replace(managedRegex, '').trim();
+  }
+
+  const safeTitle = tmSystemicEscapeHtml_(
+    taskTitle || ('Pre-Inspection Task #' + cleanTaskId)
+  );
+  const safeUrl = tmSystemicEscapeHtml_(taskUrl);
+  const block = [
+    startMarker,
+    '------- Pre-Inspection Task Link -------',
+    '',
+    safeTitle,
+    '<a href="' + safeUrl + '">' + safeUrl + '</a>',
+    '',
+    '------------------------------------',
+    endMarker
+  ].join('<br>');
+
+  const next = cleaned
+    ? String(cleaned).replace(/(?:<br\\s*\\/?>|\\s)+$/gi, '').trim() + '<br><br>' + block
+    : block;
+
+  if (original === next && original.indexOf(taskUrl) !== -1) {
+    return {
+      mode: 'PREINSPECT_CALENDAR_TASK_LINK_SYSTEMIC',
+      status: 'SKIPPED_NO_CHANGE',
+      writesPerformed: false,
+      calendarWritesPerformed: false,
+      eventId: cleanEventId,
+      taskId: cleanTaskId,
+      taskUrl: taskUrl,
+      readBackVerified: true
+    };
+  }
+
+  event.setDescription(next);
+
+  const fresh = calendar.getEventById(cleanEventId);
+  if (!fresh) {
+    throw new Error('PreInspection Calendar event disappeared after Task-link write.');
+  }
+
+  const actual = String(fresh.getDescription() || '');
+  if (
+    actual.indexOf(taskUrl) === -1 ||
+    actual.indexOf(startMarker) === -1 ||
+    actual.indexOf(endMarker) === -1
+  ) {
+    throw new Error('PreInspection Calendar Task-link read-back verification failed.');
+  }
+
+  return {
+    mode: 'PREINSPECT_CALENDAR_TASK_LINK_SYSTEMIC',
+    status: 'WRITTEN',
+    writesPerformed: true,
+    calendarWritesPerformed: true,
+    eventId: cleanEventId,
+    taskId: cleanTaskId,
+    taskUrl: taskUrl,
+    readBackVerified: true
+  };
+}
+
+function tmSystemicEscapeHtml_(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function tmSystemicEscapeRegex_(value) {
+  return String(value || '').replace(/[.*+?^$()|[\]{}\\]/g, '\\function tmSystemicPauseRateWindow_(reason) {');
 }
 
 function tmSystemicPauseRateWindow_(reason) {
