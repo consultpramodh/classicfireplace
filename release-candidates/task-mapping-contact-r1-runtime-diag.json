@@ -1,78 +1,16 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_20260921",
+  "release": "TASK_MAPPING_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_GATE_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 70,
+  "expectedPreFileCount": 71,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-residual-calendar-link-repair-r1a-output",
+  "outputDirectory": "task-mapping-residual-calendar-link-repair-r1a-gate-output",
   "requiredPreFiles": [
     "92_Striven_Task_Patch_Helper.js",
     "98_8_Calendar_Task_Link_Acceptance_R1.js",
-    "98_9_Systemic_Repair_R2.js"
+    "98_10_Residual_Calendar_Link_Repair_R1.js"
   ],
   "preContains": [
-    {
-      "file": "92_Striven_Task_Patch_Helper.js",
-      "text": "function taskRecoveryFindHeaderIndex_(headers, aliases)"
-    },
-    {
-      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
-      "text": "TM_CALENDAR_TASK_ACCEPTANCE_R1_20260921"
-    },
-    {
-      "file": "98_9_Systemic_Repair_R2.js",
-      "text": "TM_SYSTEMIC_REPAIR_R2_LINK_FIRST_20260921"
-    }
-  ],
-  "overwriteFiles": [
-    {
-      "repoPath": "patches/task-mapping/98_8_Calendar_Task_Link_Acceptance_R1.js",
-      "targetFile": "98_8_Calendar_Task_Link_Acceptance_R1.js"
-    }
-  ],
-  "addFiles": [
-    {
-      "repoPath": "patches/task-mapping/98_10_Residual_Calendar_Link_Repair_R1.js",
-      "targetFile": "98_10_Residual_Calendar_Link_Repair_R1.js"
-    }
-  ],
-  "replacements": [
-    {
-      "file": "92_Striven_Task_Patch_Helper.js",
-      "label": "Honor alias priority so Desired relationship IDs win over Current IDs",
-      "before": "function taskRecoveryFindHeaderIndex_(headers, aliases) {\n  const normalizedAliases = (aliases || []).map(function(alias) {\n    return taskRecoveryNormalizeHeader_(alias);\n  });\n\n  for (let i = 0; i < headers.length; i++) {\n    if (\n      normalizedAliases.indexOf(\n        taskRecoveryNormalizeHeader_(headers[i])\n      ) !== -1\n    ) {\n      return i;\n    }\n  }\n\n  return -1;\n}",
-      "after": "function taskRecoveryFindHeaderIndex_(headers, aliases) {\n  const normalizedHeaders = (headers || []).map(function(header) {\n    return taskRecoveryNormalizeHeader_(header);\n  });\n\n  // Alias order is authoritative. When both Desired and Current columns\n  // exist, callers can explicitly prefer Desired by listing it first.\n  for (let a = 0; a < (aliases || []).length; a++) {\n    const normalizedAlias = taskRecoveryNormalizeHeader_(aliases[a]);\n    const idx = normalizedHeaders.indexOf(normalizedAlias);\n    if (idx !== -1) {\n      return idx;\n    }\n  }\n\n  return -1;\n}"
-    },
-    {
-      "file": "92_Striven_Task_Patch_Helper.js",
-      "label": "Normalize Google Calendar event IDs for task recovery fresh reads",
-      "before": "function taskRecoveryReadFreshCalendarEvent_(context) {\n  const calendarIds = taskRecoveryGetCalendarIds_(context);\n\n  if (!calendarIds.length) {\n    throw new Error('No Calendar ID could be resolved for ' + context.division + '.');\n  }\n\n  for (let i = 0; i < calendarIds.length; i++) {\n    const calendar = CalendarApp.getCalendarById(calendarIds[i]);\n    if (!calendar) continue;\n\n    try {\n      const direct = calendar.getEventById(context.eventId);\n\n      if (direct) {\n        return taskRecoveryCalendarEventSnapshot_(calendarIds[i], direct);\n      }\n    } catch (err) {\n      // Fall through to bounded scan.\n    }\n\n    const window = taskRecoveryBuildEventScanWindow_();\n    const events = calendar.getEvents(window.start, window.end);\n\n    for (let e = 0; e < events.length; e++) {\n      if (String(events[e].getId()).trim() === String(context.eventId).trim()) {\n        return taskRecoveryCalendarEventSnapshot_(calendarIds[i], events[e]);\n      }\n    }\n  }\n\n  throw new Error(\n    'Fresh Calendar event not found for Event ID ' + context.eventId +\n    '. CREATE / RECREATE blocked.'\n  );\n}",
-      "after": "function taskRecoveryReadFreshCalendarEvent_(context) {\n  const calendarIds = taskRecoveryGetCalendarIds_(context);\n  const rawEventId = String(context.eventId || '').trim();\n  const normalizedEventId = rawEventId.replace(/@google\\.com$/i, '');\n\n  if (!calendarIds.length) {\n    throw new Error('No Calendar ID could be resolved for ' + context.division + '.');\n  }\n\n  for (let i = 0; i < calendarIds.length; i++) {\n    const calendar = CalendarApp.getCalendarById(calendarIds[i]);\n    if (!calendar) continue;\n\n    const directCandidates = taskRecoveryUniqueStrings_([\n      rawEventId,\n      normalizedEventId\n    ]);\n\n    for (let d = 0; d < directCandidates.length; d++) {\n      try {\n        const direct = calendar.getEventById(directCandidates[d]);\n\n        if (direct) {\n          return taskRecoveryCalendarEventSnapshot_(calendarIds[i], direct);\n        }\n      } catch (err) {\n        // Fall through to bounded scan.\n      }\n    }\n\n    const window = taskRecoveryBuildEventScanWindow_();\n    const events = calendar.getEvents(window.start, window.end);\n\n    for (let e = 0; e < events.length; e++) {\n      const foundRaw = String(events[e].getId() || '').trim();\n      const foundNormalized = foundRaw.replace(/@google\\.com$/i, '');\n\n      if (\n        foundRaw === rawEventId ||\n        foundRaw === normalizedEventId ||\n        foundNormalized === rawEventId ||\n        foundNormalized === normalizedEventId\n      ) {\n        return taskRecoveryCalendarEventSnapshot_(calendarIds[i], events[e]);\n      }\n    }\n  }\n\n  throw new Error(\n    'Fresh Calendar event not found for Event ID ' + context.eventId +\n    '. CREATE / RECREATE blocked.'\n  );\n}"
-    }
-  ],
-  "workContains": [
-    {
-      "file": "92_Striven_Task_Patch_Helper.js",
-      "text": "Alias order is authoritative."
-    },
-    {
-      "file": "92_Striven_Task_Patch_Helper.js",
-      "text": "const normalizedEventId = rawEventId.replace("
-    },
-    {
-      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
-      "text": "TM_CALENDAR_TASK_ACCEPTANCE_R2_EVENT_ID_AND_API_FALLBACK_20260921"
-    },
-    {
-      "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
-      "text": "CALENDAR_REST_API_FALLBACK"
-    },
-    {
-      "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
-      "text": "function REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1()"
-    }
-  ],
-  "postContains": [
     {
       "file": "92_Striven_Task_Patch_Helper.js",
       "text": "Alias order is authoritative."
@@ -86,13 +24,39 @@
       "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1_20260921"
     }
   ],
+  "overwriteFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_10_Residual_Calendar_Link_Repair_R1.js",
+      "targetFile": "98_10_Residual_Calendar_Link_Repair_R1.js"
+    }
+  ],
+  "addFiles": [],
+  "replacements": [],
+  "workContains": [
+    {
+      "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
+      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_RECOVERY_GATED_20260921"
+    },
+    {
+      "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
+      "text": "FAILED_TASK_RECOVERY_AND_CALENDAR_ACCEPTANCE"
+    },
+    {
+      "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
+      "text": "recoveryGate"
+    }
+  ],
+  "postContains": [
+    {
+      "file": "98_10_Residual_Calendar_Link_Repair_R1.js",
+      "text": "TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_RECOVERY_GATED_20260921"
+    }
+  ],
   "runtimeVerification": "USER_RUN_REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1",
   "safety": {
     "freshLivePullBeforePatch": true,
-    "exactAnchorPatchOnly": true,
-    "desiredIdsBeforeCurrentIds": true,
-    "calendarEventIdNormalization": true,
-    "calendarRestPatchFallback": true,
-    "successRequiresCalendarTaskLinkReadback": true
+    "exactOverwriteOnly": true,
+    "successRequiresCalendarTaskLinkReadback": true,
+    "successRequiresCleanTaskRecovery": true
   }
 }
