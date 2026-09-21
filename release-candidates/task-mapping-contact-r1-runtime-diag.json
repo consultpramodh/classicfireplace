@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_PIPELINE_GAPS_R1_20260921",
+  "release": "TASK_MAPPING_PIPELINE_GAPS_R1A_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 66,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-pipeline-gaps-r1-output",
+  "outputDirectory": "task-mapping-pipeline-gaps-r1a-output",
   "requiredPreFiles": [
     "20_Delivery_Workflow.js",
     "30_Service_Workflow.js",
@@ -95,12 +95,6 @@
       "label": "Resolve Service customer LocationId instead of treating Work Order AddressId as LocationId",
       "before": "  const locationId = matchedWorkOrder\n    ? serviceGetFirstValue_(matchedWorkOrder, [\n        'ShipToAddressId',\n        'BillToAddressId',\n        'LocationId',\n        'Location ID'\n      ])\n    : '';",
       "after": "  const locationId = serviceResolveCanonicalCustomerLocationId_(\n    matchedWorkOrder,\n    calendarLocation,\n    customerName\n  );"
-    },
-    {
-      "file": "30_Service_Workflow.js",
-      "label": "Fix Service missing-task hidden location to canonical customer LocationId",
-      "before": "    matchedWorkOrder ? serviceGetFirstValue_(matchedWorkOrder, ['ShipToAddressId', 'BillToAddressId', 'LocationId']) : '',",
-      "after": "    serviceResolveCanonicalCustomerLocationId_(matchedWorkOrder, calendarLocation, customerName),"
     },
     {
       "file": "30_Service_Workflow.js",
