@@ -7,9 +7,9 @@
  * Runs ONE existing mapped/open task through the real selected-row
  * end-to-end production entrypoint for each vertical:
  *
- * INSTALL       Task 17982  Bruce & Elizabeth
+ * INSTALL       Task 18197  Rachel Wilson
  * DELIVERY      Task 18499  Walter Kolesnikovicz
- * SERVICE       Task 18438  Vivienne McCuaig
+ * SERVICE       Task 18151  Bill & Karen Van Evans — FP#1 / shared event
  * PREINSPECTION Task 18511  Andrew & Laura VALENTINE
  *
  * This IS a live pipeline test:
@@ -28,14 +28,14 @@
  ************************************************************/
 
 const TM_FOUR_VERTICAL_PIPELINE_TEST = Object.freeze({
-  VERSION: 'TM_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921',
+  VERSION: 'TM_FOUR_VERTICAL_PIPELINE_TEST_R3_ACTIONABLE_ROWS_20260921',
   CASES: [
     {
       division: 'Install',
       sheetName: 'Install Task Mapping',
-      taskId: 17982,
-      label: 'Bruce & Elizabeth',
-      expectedEventId: '0m9rblgrg83d3qthhaq4v2g1fu@google.com'
+      taskId: 18197,
+      label: 'Rachel Wilson',
+      expectedEventId: '5ipau87hv52sjq3c592bp4adk1@google.com'
     },
     {
       division: 'Delivery',
@@ -47,9 +47,9 @@ const TM_FOUR_VERTICAL_PIPELINE_TEST = Object.freeze({
     {
       division: 'Service',
       sheetName: 'Service Task Mapping',
-      taskId: 18438,
-      label: 'Vivienne McCuaig',
-      expectedEventId: '57uc09r4rs1bj0lv093i541g14@google.com'
+      taskId: 18151,
+      label: 'Bill & Karen Van Evans - FP#1 shared Calendar event',
+      expectedEventId: '094n42t9ar9kkrvtl7isjc02ed@google.com'
     },
     {
       division: 'PreInspection',
