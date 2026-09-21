@@ -28,7 +28,7 @@
  ************************************************************/
 
 const TM_FOUR_VERTICAL_PIPELINE_TEST = Object.freeze({
-  VERSION: 'TM_FOUR_VERTICAL_PIPELINE_TEST_R3_ACTIONABLE_ROWS_20260921',
+  VERSION: 'TM_FOUR_VERTICAL_PIPELINE_TEST_R4_REBUILD_FIRST_20260921',
   CASES: [
     {
       division: 'Install',
@@ -78,9 +78,44 @@ function TEST_ONE_ROW_EACH_VERTICAL_PIPELINE() {
     version: TM_FOUR_VERTICAL_PIPELINE_TEST.VERSION,
     status: 'RUNNING',
     startedAt: started.toISOString(),
+    preparation: [],
     cases: [],
     summary: {}
   };
+
+  function prepare(name, fn) {
+    const step = { name: name, status: 'RUNNING' };
+    report.preparation.push(step);
+    try {
+      step.result = fn();
+      step.status = 'PASS';
+    } catch (err) {
+      step.status = 'FAIL';
+      step.error = String(err && err.message ? err.message : err);
+      throw err;
+    }
+  }
+
+  // Recompute mappings from the existing report/cache sheets before selecting
+  // test rows. No full/big-data refresh is performed here.
+  prepare('Rebuild Install mapping', function() {
+    buildInstallTaskMappingFromSheets();
+    SpreadsheetApp.flush();
+    return { rebuilt: true };
+  });
+
+  prepare('Rebuild Delivery mapping + resolve IDs', function() {
+    buildDeliveryTaskMappingFromSheets();
+    const fill = fillDeliveryMappingIdsFromDeliveryApprovedOrdersFinal();
+    SpreadsheetApp.flush();
+    return { rebuilt: true, idFill: fill };
+  });
+
+  prepare('Rebuild Service mapping', function() {
+    buildServiceTaskMappingFromSheets();
+    SpreadsheetApp.flush();
+    return { rebuilt: true };
+  });
 
   TM_FOUR_VERTICAL_PIPELINE_TEST.CASES.forEach(function(testCase) {
     const caseResult = tmFourVerticalRunCase_(ss, testCase);
