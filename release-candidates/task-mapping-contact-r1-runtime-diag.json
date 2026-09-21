@@ -1,66 +1,53 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_CONTACT_R1_ONE_CLICK_TEST_20260921",
+  "release": "TASK_MAPPING_CONTACT_R1_ONE_CLICK_TEST_R2_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 64,
+  "expectedPreFileCount": 65,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-contact-r1-one-click-output",
+  "outputDirectory": "task-mapping-contact-r1-one-click-r2-output",
   "requiredPreFiles": [
-    "98_1_Contact_Resolution_R1.js",
-    "10_Install_Workflow.js",
-    "30_Service_Workflow.js"
+    "98_4_Contact_R1_One_Click_Test.js"
   ],
   "preContains": [
     {
-      "file": "98_1_Contact_Resolution_R1.js",
-      "text": "TM_CONTACT_RESOLUTION_R1_20260921"
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "taskId: '18307'"
     },
     {
-      "file": "97_Task_Mapping_Fix_Pack_R4.js",
-      "text": "TM_FIX_PACK_R4_10_CONTACT_R1_20260921"
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "text": "expectedIssueContains: 'multiple'"
     }
   ],
-  "addFiles": [
+  "addFiles": [],
+  "replacements": [
     {
-      "repoPath": "patches/task-mapping/98_4_Contact_R1_One_Click_Test.js",
-      "targetFile": "98_4_Contact_R1_One_Click_Test.js"
+      "file": "98_4_Contact_R1_One_Click_Test.js",
+      "label": "Correct MG Homes exact-phone expected Contact",
+      "before": "        tmContactR1CheckMappingTask_({\\n          division: 'SERVICE',\\n          sheetName: 'Service Task Mapping',\\n          taskId: '18307',\\n          contactHeader: 'Hidden Contact ID',\\n          expectedContactId: '',\\n          expectedBlank: true,\\n          expectedIssueContains: 'multiple',\\n          label: 'MG Homes'\\n        }),",
+      "after": "        tmContactR1CheckMappingTask_({\\n          division: 'SERVICE',\\n          sheetName: 'Service Task Mapping',\\n          taskId: '18307',\\n          contactHeader: 'Hidden Contact ID',\\n          expectedContactId: '56295',\\n          expectedBlank: false,\\n          label: 'MG Homes / Philip Mulkins - exact Calendar phone 519-807-3240'\\n        }),"
     }
   ],
-  "replacements": [],
   "workContains": [
     {
       "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "function TEST_CONTACT_RESOLUTION_R1_ONE_CLICK()"
+      "text": "expectedContactId: '56295'"
     },
     {
       "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "Does NOT call syncContactsReportToSheet()"
-    },
-    {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "expectedContactId: '36043'"
-    },
-    {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "expectedContactId: '42852'"
+      "text": "exact Calendar phone 519-807-3240"
     }
   ],
   "postContains": [
     {
       "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "CONTACT RESOLUTION R1 ONE-CLICK TEST: PASS"
-    },
-    {
-      "file": "98_4_Contact_R1_One_Click_Test.js",
-      "text": "TEST_CONTACT_RESOLUTION_R1_ONE_CLICK"
+      "text": "expectedContactId: '56295'"
     }
   ],
-  "runtimeVerification": "USER_RUN_FROM_APPS_SCRIPT_EDITOR",
+  "runtimeVerification": "USER_RERUN_TEST_CONTACT_RESOLUTION_R1_ONE_CLICK",
   "safety": {
+    "productionResolverChanged": false,
     "strivenWritesAdded": false,
     "calendarWritesAdded": false,
-    "reportReads": true,
-    "mappingSheetRebuilds": true,
-    "callsContactsReport": false
+    "testExpectationOnly": true
   }
 }
