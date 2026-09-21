@@ -1,26 +1,38 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921",
+  "release": "TASK_MAPPING_PIPELINE_GAPS_R1_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 66,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-four-vertical-pipeline-test-r2-output",
+  "outputDirectory": "task-mapping-pipeline-gaps-r1-output",
   "requiredPreFiles": [
+    "20_Delivery_Workflow.js",
+    "30_Service_Workflow.js",
     "93_Selected_Row_End_To_End.js",
+    "95_Delivery_Calendar_Link_Test.js",
+    "97_Task_Mapping_Fix_Pack_R4.js",
     "98_5_Four_Vertical_Pipeline_Test.js"
   ],
   "preContains": [
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R1_20260921"
+      "file": "93_Selected_Row_End_To_End.js",
+      "text": "TM_SELECTED_ROW_E2E_R1_20260914"
     },
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 17881"
+      "file": "95_Delivery_Calendar_Link_Test.js",
+      "text": "function stlValidateResolvedLinkData_(data)"
     },
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18539"
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "function tmR4_pushSelectedServiceCalendarEventTaskSet_(dryRun)"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "text": "function fillDeliveryMappingIdsFromDeliveryApprovedOrdersFinal()"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "function serviceMapCalendarRowToTask_("
     }
   ],
   "overwriteFiles": [
@@ -29,48 +41,146 @@
       "targetFile": "98_5_Four_Vertical_Pipeline_Test.js"
     }
   ],
-  "replacements": [],
+  "replacements": [
+    {
+      "file": "93_Selected_Row_End_To_End.js",
+      "label": "Route PreInspection existing-task E2E through R2 before R1 lock",
+      "before": "function runSelectedTaskMappingRowEndToEnd() {\n  const lock = LockService.getUserLock();\n  if (!lock.tryLock(TM_SELECTED_ROW_E2E.LOCK_WAIT_MS)) {\n    throw new Error('Selected-row End-to-End is already running for this user.');\n  }\n\n  let ctx = null;\n\n  try {\n    ctx = tmSelectedRowE2EReadContext_();\n\n    if (ctx.division === 'PreInspection') {\n      return tmSelectedRowE2ERunPreInspection_(ctx);\n    }",
+      "after": "function runSelectedTaskMappingRowEndToEnd() {\n  const initialCtx = tmSelectedRowE2EReadContext_();\n\n  // Existing OPEN PreInspection tasks use the newer R2 path. Route before\n  // acquiring the R1 lock because R2 owns its own lock and read-back gates.\n  if (\n    initialCtx.division === 'PreInspection' &&\n    typeof runSelectedTaskMappingRowEndToEndR2 === 'function'\n  ) {\n    return runSelectedTaskMappingRowEndToEndR2();\n  }\n\n  const lock = LockService.getUserLock();\n  if (!lock.tryLock(TM_SELECTED_ROW_E2E.LOCK_WAIT_MS)) {\n    throw new Error('Selected-row End-to-End is already running for this user.');\n  }\n\n  let ctx = initialCtx;\n\n  try {\n    if (ctx.division === 'PreInspection') {\n      return tmSelectedRowE2ERunPreInspection_(ctx);\n    }"
+    },
+    {
+      "file": "93_Selected_Row_End_To_End.js",
+      "label": "Use event-level Service Calendar task-set writer",
+      "before": "  if (division === 'Service') {\n    return pushStrivenTaskLinkToSelectedServiceCalendarEvent();\n  }",
+      "after": "  if (division === 'Service') {\n    if (typeof tmR4_pushSelectedServiceCalendarEventTaskSet_ === 'function') {\n      return tmR4_pushSelectedServiceCalendarEventTaskSet_(false);\n    }\n    return pushStrivenTaskLinkToSelectedServiceCalendarEvent();\n  }"
+    },
+    {
+      "file": "95_Delivery_Calendar_Link_Test.js",
+      "label": "Allow Delivery and Service task-only managed block when SO ID unavailable",
+      "before": "  /************************************************************\n   * DELIVERY / SERVICE:\n   * Push Sales Order + Task links.\n   ************************************************************/\n\n  const salesOrderAnchor = stlBuildAnchorHtml_(\n    data.salesOrderUrl,\n    data.salesOrderDisplayText\n  );\n\n  return [\n    STL_MANAGED_BLOCK_START,\n    '------- ' + stlEscapeHtml_(division) + ' Striven Links -------',\n    '',\n    'Sales Order',\n    salesOrderAnchor,\n    '',\n    stlEscapeHtml_(division) + ' Task',\n    taskAnchor,\n    '',\n    '------------------------------------',\n    STL_MANAGED_BLOCK_END\n  ].join('<br>');",
+      "after": "  /************************************************************\n   * DELIVERY / SERVICE:\n   * Prefer Sales Order + Task links.\n   * If the internal SalesOrderId is not yet resolved, still write the\n   * verified Task link rather than blocking the entire Calendar stage.\n   ************************************************************/\n\n  if (!data.salesOrderUrl) {\n    return [\n      STL_MANAGED_BLOCK_START,\n      '------- ' + stlEscapeHtml_(division) + ' Striven Links -------',\n      '',\n      stlEscapeHtml_(division) + ' Task',\n      taskAnchor,\n      '',\n      '------------------------------------',\n      STL_MANAGED_BLOCK_END\n    ].join('<br>');\n  }\n\n  const salesOrderAnchor = stlBuildAnchorHtml_(\n    data.salesOrderUrl,\n    data.salesOrderDisplayText\n  );\n\n  return [\n    STL_MANAGED_BLOCK_START,\n    '------- ' + stlEscapeHtml_(division) + ' Striven Links -------',\n    '',\n    'Sales Order',\n    salesOrderAnchor,\n    '',\n    stlEscapeHtml_(division) + ' Task',\n    taskAnchor,\n    '',\n    '------------------------------------',\n    STL_MANAGED_BLOCK_END\n  ].join('<br>');"
+    },
+    {
+      "file": "95_Delivery_Calendar_Link_Test.js",
+      "label": "Do not require Sales Order URL for a verified Delivery or Service Task link",
+      "before": "  /************************************************************\n   * DELIVERY / SERVICE:\n   * Require Sales Order link too.\n   ************************************************************/\n\n  if (!data.salesOrderNumber) {\n    throw new Error('Selected row is missing Sales Order #.');\n  }\n\n  if (!data.salesOrderUrl) {\n    throw new Error(\n      'Selected row and Calendar event are both missing a safe Sales Order URL. ' +\n      'SO #' +\n      data.salesOrderNumber +\n      ' alone is not enough because Striven URLs require the internal SalesOrderId.'\n    );\n  }",
+      "after": "  /************************************************************\n   * DELIVERY / SERVICE:\n   * Sales Order link is optional. Task ID + verified Task URL are enough\n   * to safely maintain a managed Calendar link block. If an internal\n   * SalesOrderId is later resolved, the next run upgrades the same block.\n   ************************************************************/\n\n  return;"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "label": "Build aggregated Service SO link with internal SalesOrderId and allow task-only fallback",
+      "before": "  const links=[];\n  if(model.salesOrderNumber) links.push({label:'Sales Order #'+model.salesOrderNumber,url:STL_SALES_ORDER_BASE_URL+encodeURIComponent(model.salesOrderNumber)});\n  model.taskIds.forEach(function(taskId){const row=model.taskRows[taskId]||{};links.push({label:'Task #'+taskId+(row['Task Name']?' - '+row['Task Name']:''),url:STL_TASK_BASE_URL+encodeURIComponent(taskId)});});\n  if(!links.length) return {status:'NO_LINKS',eventId:model.eventId,taskIds:model.taskIds};\n  let block='<br><br>------- Striven Links -------<br>';\n  links.forEach(function(link){block+='<a href=\"'+link.url+'\">'+String(link.label||'')+'</a><br>';});\n  block+='------------------------------------';\n  const next=String(cleaned||'').replace(/\\s+$/g,'')+block;\n  const result={status:dryRun?'WOULD_WRITE':'WRITTEN',eventId:model.eventId,calendarId:fresh.calendarId||null,taskIds:model.taskIds,salesOrderNumber:model.salesOrderNumber||null,writeCount:dryRun?0:1,previewLength:next.length};\n  if(dryRun)return result;\n  fresh.event.setDescription(next);\n  const readBack=tmR4_readFreshCalendarEvent_(ctx);\n  if(!readBack||!readBack.event)throw new Error('Service Calendar event disappeared after aggregated link write.');\n  const actual=String(readBack.event.getDescription()||'');\n  for(let i=0;i<model.taskIds.length;i++){\n    const url=STL_TASK_BASE_URL+encodeURIComponent(model.taskIds[i]);\n    if(actual.indexOf(url)===-1)throw new Error('Service Calendar read-back is missing Task #'+model.taskIds[i]+' after aggregated write.');\n  }\n  if(model.salesOrderNumber){const soUrl=STL_SALES_ORDER_BASE_URL+encodeURIComponent(model.salesOrderNumber);if(actual.indexOf(soUrl)===-1)throw new Error('Service Calendar read-back is missing Sales Order link after aggregated write.');}\n  result.readBackVerified=true;\n  return result;",
+      "after": "  const links=[];\n  const salesOrderId =\n    model.salesOrderNumber &&\n    typeof stlLookupSalesOrderIdByNumber_ === 'function'\n      ? stlLookupSalesOrderIdByNumber_(model.salesOrderNumber)\n      : '';\n\n  if(salesOrderId) {\n    links.push({\n      label:'Sales Order #'+model.salesOrderNumber,\n      url:STL_SALES_ORDER_BASE_URL+encodeURIComponent(salesOrderId)\n    });\n  }\n\n  model.taskIds.forEach(function(taskId){\n    const row=model.taskRows[taskId]||{};\n    links.push({\n      label:'Task #'+taskId+(row['Task Name']?' - '+row['Task Name']:''),\n      url:STL_TASK_BASE_URL+encodeURIComponent(taskId)\n    });\n  });\n\n  if(!links.length) return {status:'NO_LINKS',eventId:model.eventId,taskIds:model.taskIds};\n\n  let block='<br><br>------- Striven Links -------<br>';\n  links.forEach(function(link){block+='<a href=\"'+link.url+'\">'+String(link.label||'')+'</a><br>';});\n  block+='------------------------------------';\n  const next=String(cleaned||'').replace(/\\s+$/g,'')+block;\n  const result={\n    status:dryRun?'WOULD_WRITE':'WRITTEN',\n    eventId:model.eventId,\n    calendarId:fresh.calendarId||null,\n    taskIds:model.taskIds,\n    salesOrderNumber:model.salesOrderNumber||null,\n    salesOrderId:salesOrderId||null,\n    writeCount:dryRun?0:1,\n    previewLength:next.length\n  };\n\n  if(dryRun)return result;\n  fresh.event.setDescription(next);\n  const readBack=tmR4_readFreshCalendarEvent_(ctx);\n  if(!readBack||!readBack.event)throw new Error('Service Calendar event disappeared after aggregated link write.');\n  const actual=String(readBack.event.getDescription()||'');\n\n  for(let i=0;i<model.taskIds.length;i++){\n    const url=STL_TASK_BASE_URL+encodeURIComponent(model.taskIds[i]);\n    if(actual.indexOf(url)===-1)throw new Error('Service Calendar read-back is missing Task #'+model.taskIds[i]+' after aggregated write.');\n  }\n\n  if(salesOrderId){\n    const soUrl=STL_SALES_ORDER_BASE_URL+encodeURIComponent(salesOrderId);\n    if(actual.indexOf(soUrl)===-1)throw new Error('Service Calendar read-back is missing Sales Order link after aggregated write.');\n  }\n\n  result.readBackVerified=true;\n  return result;"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Delivery fall back to authoritative SO API search instead of stopping at report miss",
+      "before": "    const found = lookup.bySO[so];\n\n    if (!found || !found.salesOrderId) {\n      notFound++;\n      mappingSheet.getRange(sheetRow, needsIdPushIndex + 1).setValue('NO');\n      continue;\n    }\n\n    const currentIds = deliveryGetCurrentTaskIdsForMappingRow_(row, indexMap);",
+      "after": "    let found = lookup.bySO[so] || null;\n\n    // Approved-order reports can legitimately omit an otherwise valid current\n    // Sales Order. Fall back to the authoritative Striven search-by-number\n    // read path, but only accept one unique exact SalesOrderId.\n    if (!found || !found.salesOrderId) {\n      const apiResolved = deliveryResolveSalesOrderIdByApiSearch_(so);\n      if (apiResolved.salesOrderId) {\n        found = Object.assign({}, found || {}, {\n          so: so,\n          sourceSheet: apiResolved.source,\n          sourceRow: 'API',\n          salesOrderId: apiResolved.salesOrderId,\n          locationId: found && found.locationId ? found.locationId : '',\n          contactId: found && found.contactId ? found.contactId : '',\n          locationLookupStatus: found && found.locationLookupStatus ? found.locationLookupStatus : '',\n          locationLookupNote: found && found.locationLookupNote ? found.locationLookupNote : ''\n        });\n      }\n    }\n\n    if (!found) {\n      found = {\n        so: so,\n        sourceSheet: '',\n        sourceRow: '',\n        salesOrderId: '',\n        locationId: '',\n        contactId: '',\n        locationLookupStatus: '',\n        locationLookupNote: ''\n      };\n    }\n\n    const currentIds = deliveryGetCurrentTaskIdsForMappingRow_(row, indexMap);"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Delivery resolve missing contact from canonical customer cache evidence",
+      "before": "    const calendarLocation = deliveryGetCalendarLocationForMappingRow_(row, indexMap);\n    const customerName = tm_cleanString_(row[customerIndex]);\n\n    const actualLocationMatch = deliveryFindLocationIdByActualCalendarAddress_(",
+      "after": "    const calendarLocation = deliveryGetCalendarLocationForMappingRow_(row, indexMap);\n    const customerName = tm_cleanString_(row[customerIndex]);\n\n    if (!desiredContactId && typeof tmContactR1Resolve_ === 'function') {\n      const contactResolution = tmContactR1Resolve_({\n        customerName: customerName,\n        evidenceText: [\n          tm_cleanString_(tm_getRowValue_(row, indexMap, 'Calendar Title')),\n          customerName,\n          so\n        ].join(' ')\n      });\n\n      if (\n        contactResolution &&\n        contactResolution.status === 'CONTACT_RESOLVED' &&\n        contactResolution.contactId\n      ) {\n        desiredContactId = deliveryPositiveIdOrBlank_(contactResolution.contactId);\n      }\n    }\n\n    if (!desiredSalesOrderId) {\n      notFound++;\n    }\n\n    const actualLocationMatch = deliveryFindLocationIdByActualCalendarAddress_("
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Add Delivery authoritative Sales Order search helper",
+      "before": "function deliveryLookupApprovedSalesOrderIdsBySO_(soNumber) {",
+      "after": "function deliveryResolveSalesOrderIdByApiSearch_(soNumber) {\n  const so = deliveryNormalizeSONumberForIndex_(soNumber);\n  if (!so || typeof preinspectR32SearchSalesOrderByNumber_ !== 'function') {\n    return { salesOrderId: '', source: '', status: 'UNAVAILABLE' };\n  }\n\n  const read = preinspectR32SearchSalesOrderByNumber_(so) || {};\n  const ids = {};\n  (read.candidates || []).forEach(function(candidate) {\n    const id = deliveryPositiveIdOrBlank_(candidate && candidate.id);\n    if (id) ids[String(id)] = true;\n  });\n\n  const uniqueIds = Object.keys(ids);\n  if (uniqueIds.length !== 1) {\n    return {\n      salesOrderId: '',\n      source: read.endpoint || 'API:/v1/sales-orders/search',\n      status: uniqueIds.length > 1 ? 'AMBIGUOUS' : 'NOT_FOUND'\n    };\n  }\n\n  return {\n    salesOrderId: uniqueIds[0],\n    source: read.endpoint || 'API:/v1/sales-orders/search',\n    status: 'RESOLVED'\n  };\n}\n\nfunction deliveryLookupApprovedSalesOrderIdsBySO_(soNumber) {"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Resolve Service customer LocationId instead of treating Work Order AddressId as LocationId",
+      "before": "  const locationId = matchedWorkOrder\n    ? serviceGetFirstValue_(matchedWorkOrder, [\n        'ShipToAddressId',\n        'BillToAddressId',\n        'LocationId',\n        'Location ID'\n      ])\n    : '';",
+      "after": "  const locationId = serviceResolveCanonicalCustomerLocationId_(\n    matchedWorkOrder,\n    calendarLocation,\n    customerName\n  );"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Fix Service missing-task hidden location to canonical customer LocationId",
+      "before": "    matchedWorkOrder ? serviceGetFirstValue_(matchedWorkOrder, ['ShipToAddressId', 'BillToAddressId', 'LocationId']) : '',",
+      "after": "    serviceResolveCanonicalCustomerLocationId_(matchedWorkOrder, calendarLocation, customerName),"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Add Service canonical customer LocationId resolver",
+      "before": "function serviceMapCalendarRowToTask_(\n  calendarRow,",
+      "after": "function serviceResolveCanonicalCustomerLocationId_(\n  matchedWorkOrder,\n  calendarLocation,\n  customerName\n) {\n  if (!matchedWorkOrder) return '';\n\n  // Only fields explicitly typed as customer Location IDs are safe to use\n  // directly. BillToAddressId / ShipToAddressId are Address IDs and must not\n  // be compared to, or written as, Striven Task Location.Id values.\n  const explicitLocationId = serviceGetFirstValue_(matchedWorkOrder, [\n    'LocationId',\n    'Location ID',\n    'CustomerLocationId',\n    'Customer Location ID'\n  ]);\n\n  if (explicitLocationId) return explicitLocationId;\n\n  if (typeof deliveryFindLocationIdByActualCalendarAddress_ === 'function') {\n    const resolved = deliveryFindLocationIdByActualCalendarAddress_(\n      calendarLocation,\n      customerName\n    );\n\n    if (resolved && resolved.locationId) {\n      return resolved.locationId;\n    }\n  }\n\n  return '';\n}\n\nfunction serviceMapCalendarRowToTask_(\n  calendarRow,"
+    }
+  ],
   "addFiles": [],
   "workContains": [
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921"
+      "file": "20_Delivery_Workflow.js",
+      "text": "function deliveryResolveSalesOrderIdByApiSearch_(soNumber)"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "text": "contactResolution.status === 'CONTACT_RESOLVED'"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "function serviceResolveCanonicalCustomerLocationId_("
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "BillToAddressId / ShipToAddressId are Address IDs"
+    },
+    {
+      "file": "93_Selected_Row_End_To_End.js",
+      "text": "runSelectedTaskMappingRowEndToEndR2"
+    },
+    {
+      "file": "93_Selected_Row_End_To_End.js",
+      "text": "tmR4_pushSelectedServiceCalendarEventTaskSet_"
+    },
+    {
+      "file": "95_Delivery_Calendar_Link_Test.js",
+      "text": "Sales Order link is optional"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "salesOrderId:salesOrderId||null"
     },
     {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 17982"
-    },
-    {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18499"
-    },
-    {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18438"
-    },
-    {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "taskId: 18511"
+      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R3_ACTIONABLE_ROWS_20260921"
     }
   ],
   "postContains": [
     {
-      "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921"
+      "file": "20_Delivery_Workflow.js",
+      "text": "deliveryResolveSalesOrderIdByApiSearch_"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "serviceResolveCanonicalCustomerLocationId_"
+    },
+    {
+      "file": "93_Selected_Row_End_To_End.js",
+      "text": "tmR4_pushSelectedServiceCalendarEventTaskSet_"
+    },
+    {
+      "file": "95_Delivery_Calendar_Link_Test.js",
+      "text": "Sales Order link is optional"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "salesOrderId:salesOrderId||null"
     },
     {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "TEST_ONE_ROW_EACH_VERTICAL_PIPELINE"
+      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R3_ACTIONABLE_ROWS_20260921"
     }
   ],
-  "runtimeVerification": "USER_RUN_TEST_ONE_ROW_EACH_VERTICAL_PIPELINE",
+  "runtimeVerification": "USER_RERUN_TEST_ONE_ROW_EACH_VERTICAL_PIPELINE",
   "safety": {
-    "testRunnerOnly": true,
-    "productionWorkflowFilesChanged": false,
-    "invokesExistingProductionE2E": true,
-    "selectedInstallTaskId": 17982,
-    "selectedDeliveryTaskId": 18499,
-    "selectedServiceTaskId": 18438,
-    "selectedPreInspectionTaskId": 18511
+    "noTaskCreateRecreateAdded": true,
+    "deliverySoSearchReadOnly": true,
+    "deliveryContactResolverReadOnly": true,
+    "serviceAddressIdsNeverWrittenAsLocationIds": true,
+    "serviceCalendarSiblingTaskAggregation": true,
+    "preInspectionExistingOpenUsesR2": true
   }
 }
