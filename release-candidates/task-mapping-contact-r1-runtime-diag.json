@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_RESIDUAL_CALENDAR_LINK_REPAIR_R1_20260921",
+  "release": "TASK_MAPPING_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 70,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-residual-calendar-link-repair-r1-output",
+  "outputDirectory": "task-mapping-residual-calendar-link-repair-r1a-output",
   "requiredPreFiles": [
     "92_Striven_Task_Patch_Helper.js",
     "98_8_Calendar_Task_Link_Acceptance_R1.js",
@@ -57,7 +57,7 @@
     },
     {
       "file": "92_Striven_Task_Patch_Helper.js",
-      "text": "normalizedEventId = rawEventId.replace(/@google\\\\.com$/i, '')"
+      "text": "const normalizedEventId = rawEventId.replace("
     },
     {
       "file": "98_8_Calendar_Task_Link_Acceptance_R1.js",
