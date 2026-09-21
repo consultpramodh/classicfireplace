@@ -7,8 +7,8 @@
  * Runs ONE existing mapped/open task through the real selected-row
  * end-to-end production entrypoint for each vertical:
  *
- * INSTALL       Task 17881  Cedric & Elizabeth Stevenson
- * DELIVERY      Task 18539  Pamela McLeod
+ * INSTALL       Task 17982  Bruce & Elizabeth
+ * DELIVERY      Task 18499  Walter Kolesnikovicz
  * SERVICE       Task 18438  Vivienne McCuaig
  * PREINSPECTION Task 18511  Andrew & Laura VALENTINE
  *
@@ -28,21 +28,21 @@
  ************************************************************/
 
 const TM_FOUR_VERTICAL_PIPELINE_TEST = Object.freeze({
-  VERSION: 'TM_FOUR_VERTICAL_PIPELINE_TEST_R1_20260921',
+  VERSION: 'TM_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921',
   CASES: [
     {
       division: 'Install',
       sheetName: 'Install Task Mapping',
-      taskId: 17881,
-      label: 'Cedric & Elizabeth Stevenson',
-      expectedEventId: '0gb070f9jiuheo8pj8frh0gcba@google.com'
+      taskId: 17982,
+      label: 'Bruce & Elizabeth',
+      expectedEventId: '0m9rblgrg83d3qthhaq4v2g1fu@google.com'
     },
     {
       division: 'Delivery',
       sheetName: 'Delivery Task Mapping',
-      taskId: 18539,
-      label: 'Pamela McLeod',
-      expectedEventId: '3ohou7jkheh4jf6o940ss9qm8t@google.com'
+      taskId: 18499,
+      label: 'Walter Kolesnikovicz',
+      expectedEventId: '710bnj9s5t4cg3f1fi38kmb6ul@google.com'
     },
     {
       division: 'Service',
