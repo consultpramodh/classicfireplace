@@ -119,10 +119,9 @@ function TEST_CONTACT_RESOLUTION_R1_ONE_CLICK() {
           sheetName: 'Service Task Mapping',
           taskId: '18307',
           contactHeader: 'Hidden Contact ID',
-          expectedContactId: '',
-          expectedBlank: true,
-          expectedIssueContains: 'multiple',
-          label: 'MG Homes'
+          expectedContactId: '56295',
+          expectedBlank: false,
+          label: 'MG Homes / Philip Mulkins - exact Calendar phone 519-807-3240'
         }),
         tmContactR1CheckMappingTask_({
           division: 'INSTALL',
