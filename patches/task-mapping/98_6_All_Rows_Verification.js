@@ -25,7 +25,7 @@ const TM_ALL_ROWS_VERIFY = Object.freeze({
   VERSION: 'TM_ALL_ROWS_VERIFY_R2_RATE_SAFE_20260921',
   REPORT_SHEET: 'TM All Rows Verification',
   TIME_ZONE: 'America/Toronto',
-  TASK_FETCH_BATCH_SIZE: 90,
+  TASK_FETCH_BATCH_SIZE: 60,
   TASK_FETCH_WINDOW_SLEEP_MS: 65000,
   PROFILES: [
     { division: 'Install', mappingSheet: 'Install Task Mapping', calendarSheet: 'Install Calendar' },
@@ -805,14 +805,51 @@ function tmAllVerifyDateStage_(division, row, task) {
   }
 
   if (calStart === liveStart && calEnd === liveDue) {
-    return tmAllVerifyStage_('PASS', 'PreInspection live task date/time matches Calendar.');
+    return tmAllVerifyStage_('PASS', 'PreInspection v2 task date/time matches Calendar.');
+  }
+
+  // Striven v2 is known to render Task Type 105 PM hours 12 hours early.
+  // The project already has a canonical v1 schedule reader using
+  // DesiredStartDate / DesiredEndDate. Use it only when v2 disagrees.
+  if (
+    task &&
+    task.taskId &&
+    typeof preinspectR46GetCanonicalV1Schedule_ === 'function'
+  ) {
+    try {
+      const canonical = preinspectR46GetCanonicalV1Schedule_(task.taskId);
+      const v1Start = tmAllVerifyDateTimeKey_(canonical && canonical.startDateTime);
+      const v1Due = tmAllVerifyDateTimeKey_(canonical && canonical.dueDateTime);
+
+      if (v1Start === calStart && v1Due === calEnd) {
+        return tmAllVerifyStage_(
+          'PASS',
+          'Calendar matches canonical Striven v1 DesiredStartDate/DesiredEndDate. ' +
+          'v2 showed ' + (liveStart || 'blank') + ' → ' + (liveDue || 'blank') +
+          ' and was not used as the PM authority.'
+        );
+      }
+
+      return tmAllVerifyStage_(
+        'BLOCKED',
+        'PreInspection Calendar=' + calStart + ' → ' + calEnd +
+        '; canonical v1=' + (v1Start || 'blank') + ' → ' + (v1Due || 'blank') +
+        '; v2=' + (liveStart || 'blank') + ' → ' + (liveDue || 'blank') + '.'
+      );
+    } catch (canonicalErr) {
+      return tmAllVerifyStage_(
+        'UNVERIFIED',
+        'v2 disagreed with Calendar and canonical v1 schedule verification failed: ' +
+        String(canonicalErr && canonicalErr.message ? canonicalErr.message : canonicalErr)
+      );
+    }
   }
 
   return tmAllVerifyStage_(
     'BLOCKED',
     'PreInspection Calendar=' + calStart + ' → ' + calEnd +
-    '; live task=' + (liveStart || 'blank') + ' → ' + (liveDue || 'blank') +
-    '. Known PM PATCH quarantine remains authoritative.'
+    '; live v2 task=' + (liveStart || 'blank') + ' → ' + (liveDue || 'blank') +
+    '. Canonical v1 schedule reader was unavailable.'
   );
 }
 
