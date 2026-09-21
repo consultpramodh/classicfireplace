@@ -1,17 +1,16 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_ALL_ROWS_VERIFY_R1_20260921",
+  "release": "TASK_MAPPING_SYSTEMIC_REPAIR_R1_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 66,
+  "expectedPreFileCount": 67,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-all-rows-verify-r1-output",
+  "outputDirectory": "task-mapping-systemic-repair-r1-output",
   "requiredPreFiles": [
-    "10_Install_Workflow.js",
     "20_Delivery_Workflow.js",
     "30_Service_Workflow.js",
     "35_PreInspect_Task_Review.js",
-    "92_TESTING_Striven_Task_Patch_Helper.js",
-    "95_Delivery_Calendar_Link_Test.js"
+    "97_Task_Mapping_Fix_Pack_R4.js",
+    "98_6_All_Rows_Verification.js"
   ],
   "preContains": [
     {
@@ -20,60 +19,220 @@
     },
     {
       "file": "30_Service_Workflow.js",
-      "text": "serviceResolveCanonicalCustomerLocationId_"
+      "text": "function serviceResolveCanonicalCustomerLocationId_("
     },
     {
-      "file": "93_Selected_Row_End_To_End.js",
-      "text": "tmR4_pushSelectedServiceCalendarEventTaskSet_"
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "function preinspectR46GetCanonicalV1Schedule_(taskId)"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "function preinspectR47ReadCanonicalV1Field854_(taskId)"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "salesOrderId:salesOrderId||null"
+    },
+    {
+      "file": "98_6_All_Rows_Verification.js",
+      "text": "TM_ALL_ROWS_VERIFY_R1_20260921"
     }
   ],
-  "addFiles": [
+  "overwriteFiles": [
     {
       "repoPath": "patches/task-mapping/98_6_All_Rows_Verification.js",
       "targetFile": "98_6_All_Rows_Verification.js"
     }
   ],
-  "overwriteFiles": [],
-  "replacements": [],
+  "addFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_7_Systemic_Repair_R1.js",
+      "targetFile": "98_7_Systemic_Repair_R1.js"
+    }
+  ],
+  "replacements": [
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Index customer-owned Striven Locations by customer number",
+      "before": "function deliveryBuildCustomerLocationIndexFinal_() {\n  const sh = SpreadsheetApp.getActive().getSheetByName('Striven Customer Locations');\n  const result = { exists: !!sh, byAddress: {}, byCustomerAndAddress: {} };\n\n  if (!sh) return result;\n\n  const values = sh.getDataRange().getValues();\n  if (!values || values.length < 2) return result;\n\n  const headers = values[0].map(function(header) { return String(header || '').trim(); });\n  const indexMap = tm_buildHeaderIndexMap_(headers);\n\n  const locationIdIndex = deliveryFinalGetHeaderIndexAny_(indexMap, ['LocationId', 'Location ID', 'CustomerLocationId', 'Customer Location Id']);\n  const addressIndex = deliveryFinalGetHeaderIndexAny_(indexMap, ['AddressFullAddress', 'Address Full Address', 'CustomerAddressFullAddress', 'Customer Address Full Address']);\n  const customerIndex = deliveryFinalGetHeaderIndexAny_(indexMap, ['CustomerName', 'Customer Name', 'FullName', 'Name']);\n\n  if (locationIdIndex === -1 || addressIndex === -1) return result;\n\n  for (let r = 1; r < values.length; r++) {\n    const row = values[r];\n    const locationId = deliveryPositiveIdOrBlank_(row[locationIdIndex]);\n    const addressKey = deliveryNormalizeAddressForLocationMatchFinal_(row[addressIndex]);\n    const customerKey = customerIndex !== -1 ? deliveryNormalizeNameForLocationMatchFinal_(row[customerIndex]) : '';\n\n    if (!locationId || !addressKey) continue;\n\n    if (!result.byAddress[addressKey]) result.byAddress[addressKey] = [];\n    result.byAddress[addressKey].push({ locationId: locationId, rowNumber: r + 1, customerKey: customerKey, addressKey: addressKey });\n\n    if (customerKey) {\n      const combinedKey = customerKey + '|' + addressKey;\n      if (!result.byCustomerAndAddress[combinedKey]) result.byCustomerAndAddress[combinedKey] = [];\n      result.byCustomerAndAddress[combinedKey].push({ locationId: locationId, rowNumber: r + 1, customerKey: customerKey, addressKey: addressKey });\n    }\n  }\n\n  return result;\n}",
+      "after": "function deliveryBuildCustomerLocationIndexFinal_() {\n  const sh = SpreadsheetApp.getActive().getSheetByName('Striven Customer Locations');\n  const result = {\n    exists: !!sh,\n    byAddress: {},\n    byCustomerAndAddress: {},\n    byCustomerNumber: {},\n    byCustomerNumberAndAddress: {}\n  };\n\n  if (!sh) return result;\n\n  const values = sh.getDataRange().getValues();\n  if (!values || values.length < 2) return result;\n\n  const headers = values[0].map(function(header) { return String(header || '').trim(); });\n  const indexMap = tm_buildHeaderIndexMap_(headers);\n\n  const locationIdIndex = deliveryFinalGetHeaderIndexAny_(indexMap, ['LocationId', 'Location ID', 'CustomerLocationId', 'Customer Location Id']);\n  const addressIndex = deliveryFinalGetHeaderIndexAny_(indexMap, ['AddressFullAddress', 'Address Full Address', 'CustomerAddressFullAddress', 'Customer Address Full Address']);\n  const customerIndex = deliveryFinalGetHeaderIndexAny_(indexMap, ['CustomerName', 'Customer Name', 'FullName', 'Name']);\n  const customerNumberIndex = deliveryFinalGetHeaderIndexAny_(indexMap, ['CustomerNumber', 'Customer Number', 'Customer #', 'CustomerCustomerId', 'CustomerId', 'Customer ID']);\n\n  if (locationIdIndex === -1 || addressIndex === -1) return result;\n\n  for (let r = 1; r < values.length; r++) {\n    const row = values[r];\n    const locationId = deliveryPositiveIdOrBlank_(row[locationIdIndex]);\n    const rawAddress = row[addressIndex];\n    const addressKey = deliveryNormalizeAddressForLocationMatchFinal_(rawAddress);\n    const customerKey = customerIndex !== -1 ? deliveryNormalizeNameForLocationMatchFinal_(row[customerIndex]) : '';\n    const customerNumber = customerNumberIndex !== -1\n      ? deliveryPositiveIdOrBlank_(row[customerNumberIndex])\n      : '';\n\n    if (!locationId || !addressKey) continue;\n\n    const entry = {\n      locationId: locationId,\n      rowNumber: r + 1,\n      customerKey: customerKey,\n      customerNumber: customerNumber,\n      addressKey: addressKey,\n      streetKey: deliveryAddressStreetKeyFinal_(rawAddress),\n      postalKey: deliveryAddressPostalKeyFinal_(rawAddress)\n    };\n\n    if (!result.byAddress[addressKey]) result.byAddress[addressKey] = [];\n    result.byAddress[addressKey].push(entry);\n\n    if (customerKey) {\n      const combinedKey = customerKey + '|' + addressKey;\n      if (!result.byCustomerAndAddress[combinedKey]) result.byCustomerAndAddress[combinedKey] = [];\n      result.byCustomerAndAddress[combinedKey].push(entry);\n    }\n\n    if (customerNumber) {\n      if (!result.byCustomerNumber[customerNumber]) result.byCustomerNumber[customerNumber] = [];\n      result.byCustomerNumber[customerNumber].push(entry);\n\n      const numberAddressKey = customerNumber + '|' + addressKey;\n      if (!result.byCustomerNumberAndAddress[numberAddressKey]) {\n        result.byCustomerNumberAndAddress[numberAddressKey] = [];\n      }\n      result.byCustomerNumberAndAddress[numberAddressKey].push(entry);\n    }\n  }\n\n  return result;\n}\n\nfunction deliveryUniqueLocationEntriesFinal_(entries) {\n  const byId = {};\n  (entries || []).forEach(function(entry) {\n    const id = deliveryPositiveIdOrBlank_(entry && entry.locationId);\n    if (!id || byId[id]) return;\n    byId[id] = entry;\n  });\n  return Object.keys(byId).map(function(id) { return byId[id]; });\n}\n\nfunction deliveryAddressStreetKeyFinal_(value) {\n  const s = deliveryNormalizeAddressForLocationMatchFinal_(value)\n    .replace(/\\b(?:unit|suite|apt|apartment)\\s*[a-z0-9-]+\\b/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n\n  const m = s.match(/^(\\d+\\s*[a-z]?)\\s+(.+?)\\s+(street|st|road|rd|drive|dr|avenue|ave|boulevard|blvd|lane|ln|court|ct|crescent|cres|way|trail|terrace|terr|place|pl)\\b/i);\n  if (!m) return '';\n\n  const suffixMap = {\n    street: 'st', st: 'st',\n    road: 'rd', rd: 'rd',\n    drive: 'dr', dr: 'dr',\n    avenue: 'ave', ave: 'ave',\n    boulevard: 'blvd', blvd: 'blvd',\n    lane: 'ln', ln: 'ln',\n    court: 'ct', ct: 'ct',\n    crescent: 'cres', cres: 'cres',\n    way: 'way', trail: 'trail',\n    terrace: 'terr', terr: 'terr',\n    place: 'pl', pl: 'pl'\n  };\n\n  return [\n    String(m[1]).replace(/\\s+/g, ''),\n    String(m[2]).replace(/[^a-z0-9]+/gi, ' ').trim(),\n    suffixMap[String(m[3]).toLowerCase()] || String(m[3]).toLowerCase()\n  ].join('|');\n}\n\nfunction deliveryAddressPostalKeyFinal_(value) {\n  const m = String(value || '').toUpperCase().match(/\\b([A-Z]\\d[A-Z])\\s*(\\d[A-Z]\\d)\\b/);\n  return m ? (m[1] + m[2]) : '';\n}\n\nfunction deliveryFindCustomerNumberScopedLocationFinal_(locationIndex, customerNumber, addressValue) {\n  const customerNo = deliveryPositiveIdOrBlank_(customerNumber);\n  if (!customerNo || !locationIndex || !locationIndex.exists) {\n    return { locationId: '', status: '', note: '' };\n  }\n\n  const candidates = deliveryUniqueLocationEntriesFinal_(\n    locationIndex.byCustomerNumber[customerNo] || []\n  );\n\n  if (!candidates.length) {\n    return {\n      locationId: '',\n      status: 'NO_CUSTOMER_NUMBER_LOCATION',\n      note: 'No Striven Customer Location row was found for customer ' + customerNo + '.'\n    };\n  }\n\n  if (candidates.length === 1) {\n    return {\n      locationId: candidates[0].locationId,\n      status: 'MATCHED_CUSTOMER_NUMBER_UNIQUE_LOCATION',\n      note: 'Customer ' + customerNo + ' has one unique Striven Location.'\n    };\n  }\n\n  const addressKey = deliveryNormalizeAddressForLocationMatchFinal_(addressValue);\n  if (addressKey) {\n    const exact = candidates.filter(function(entry) {\n      return entry.addressKey === addressKey;\n    });\n    if (exact.length === 1) {\n      return {\n        locationId: exact[0].locationId,\n        status: 'MATCHED_CUSTOMER_NUMBER_EXACT_ADDRESS',\n        note: 'Matched Location by customer number + exact normalized address.'\n      };\n    }\n  }\n\n  const streetKey = deliveryAddressStreetKeyFinal_(addressValue);\n  if (streetKey) {\n    const street = candidates.filter(function(entry) {\n      return entry.streetKey && entry.streetKey === streetKey;\n    });\n    if (street.length === 1) {\n      return {\n        locationId: street[0].locationId,\n        status: 'MATCHED_CUSTOMER_NUMBER_STREET',\n        note: 'Matched Location by customer number + street identity.'\n      };\n    }\n  }\n\n  const postalKey = deliveryAddressPostalKeyFinal_(addressValue);\n  if (postalKey) {\n    const postal = candidates.filter(function(entry) {\n      return entry.postalKey && entry.postalKey === postalKey;\n    });\n    if (postal.length === 1) {\n      return {\n        locationId: postal[0].locationId,\n        status: 'MATCHED_CUSTOMER_NUMBER_POSTAL',\n        note: 'Matched Location by customer number + unique postal code.'\n      };\n    }\n  }\n\n  return {\n    locationId: '',\n    status: 'MULTIPLE_CUSTOMER_LOCATIONS_NO_SAFE_ADDRESS_MATCH',\n    note: 'Customer ' + customerNo + ' has multiple locations and Calendar/order address did not uniquely identify one.'\n  };\n}"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Resolve Calendar Location with customer ownership before text fallback",
+      "before": "function deliveryFindLocationIdByActualCalendarAddress_(calendarLocation, customerName) {\n  const cleanLocation = tm_cleanString_(calendarLocation);\n\n  if (!cleanLocation) {\n    return {\n      locationId: '',\n      status: '',\n      note: 'No calendar location available.'\n    };\n  }\n\n  const locationIndex = deliveryBuildCustomerLocationIndexFinal_();\n\n  if (!locationIndex || !locationIndex.exists) {\n    return {\n      locationId: '',\n      status: 'NO_LOCATION_SHEET',\n      note: 'Striven Customer Locations sheet not found.'\n    };\n  }\n\n  const addressKey = deliveryNormalizeAddressForLocationMatchFinal_(cleanLocation);\n  const customerKey = deliveryNormalizeNameForLocationMatchFinal_(customerName);\n\n  if (!addressKey) {\n    return {\n      locationId: '',\n      status: '',\n      note: 'Calendar location could not be normalized.'\n    };\n  }\n\n  if (customerKey) {\n    const combinedKey = customerKey + '|' + addressKey;\n    const customerAddressMatches = locationIndex.byCustomerAndAddress[combinedKey] || [];\n\n    if (customerAddressMatches.length === 1) {\n      return {\n        locationId: customerAddressMatches[0].locationId,\n        status: 'MATCHED_ACTUAL_CALENDAR_CUSTOMER_ADDRESS',\n        note: 'Matched actual calendar address by customer + address.'\n      };\n    }\n  }\n\n  const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n  if (addressMatches.length === 1) {\n    return {\n      locationId: addressMatches[0].locationId,\n      status: 'MATCHED_ACTUAL_CALENDAR_ADDRESS',\n      note: 'Matched actual calendar address.'\n    };\n  }\n\n  if (addressMatches.length > 1) {\n    return {\n      locationId: '',\n      status: 'MULTIPLE_ACTUAL_CALENDAR_ADDRESS_MATCHES',\n      note: 'Actual calendar address matched multiple locations; LocationId was not used.'\n    };\n  }\n\n  return {\n    locationId: '',\n    status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n    note: 'Actual calendar address did not match Striven Customer Locations.'\n  };\n}",
+      "after": "function deliveryFindLocationIdByActualCalendarAddress_(calendarLocation, customerName, customerNumber) {\n  const cleanLocation = tm_cleanString_(calendarLocation);\n  const locationIndex = deliveryBuildCustomerLocationIndexFinal_();\n\n  if (!locationIndex || !locationIndex.exists) {\n    return {\n      locationId: '',\n      status: 'NO_LOCATION_SHEET',\n      note: 'Striven Customer Locations sheet not found.'\n    };\n  }\n\n  // Customer ownership is stronger than free-text address/name matching.\n  const scoped = deliveryFindCustomerNumberScopedLocationFinal_(\n    locationIndex,\n    customerNumber,\n    cleanLocation\n  );\n  if (scoped.locationId) return scoped;\n\n  if (!cleanLocation) {\n    return scoped.status\n      ? scoped\n      : {\n          locationId: '',\n          status: '',\n          note: 'No calendar location available.'\n        };\n  }\n\n  const addressKey = deliveryNormalizeAddressForLocationMatchFinal_(cleanLocation);\n  const customerKey = deliveryNormalizeNameForLocationMatchFinal_(customerName);\n\n  if (!addressKey) {\n    return {\n      locationId: '',\n      status: '',\n      note: 'Calendar location could not be normalized.'\n    };\n  }\n\n  if (customerKey) {\n    const combinedKey = customerKey + '|' + addressKey;\n    const customerAddressMatches = deliveryUniqueLocationEntriesFinal_(\n      locationIndex.byCustomerAndAddress[combinedKey] || []\n    );\n\n    if (customerAddressMatches.length === 1) {\n      return {\n        locationId: customerAddressMatches[0].locationId,\n        status: 'MATCHED_ACTUAL_CALENDAR_CUSTOMER_ADDRESS',\n        note: 'Matched actual calendar address by customer + address.'\n      };\n    }\n  }\n\n  const addressMatches = deliveryUniqueLocationEntriesFinal_(\n    locationIndex.byAddress[addressKey] || []\n  );\n\n  if (addressMatches.length === 1) {\n    return {\n      locationId: addressMatches[0].locationId,\n      status: 'MATCHED_ACTUAL_CALENDAR_ADDRESS',\n      note: 'Matched actual calendar address.'\n    };\n  }\n\n  if (addressMatches.length > 1) {\n    return {\n      locationId: '',\n      status: 'MULTIPLE_ACTUAL_CALENDAR_ADDRESS_MATCHES',\n      note: 'Actual calendar address matched multiple locations; LocationId was not used.'\n    };\n  }\n\n  return scoped.status\n    ? scoped\n    : {\n        locationId: '',\n        status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n        note: 'Actual calendar address did not match Striven Customer Locations.'\n      };\n}"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Store approved-order customer identity with desired IDs",
+      "before": "    const contactId = deliveryPositiveIdOrBlank_(deliveryFinalGetRowValueAny_(row, indexMap, [\n      'ContactContactId', 'ContactId', 'Contact ID', 'RequestedByContactId', 'RequestedByContactContactId', 'Requested By Contact Id', 'Requested By Contact ID'\n    ]));\n\n    const locationLookup = deliveryFindValidatedLocationIdForApprovedOrderRowFinal_(row, indexMap, locationIndex);",
+      "after": "    const contactId = deliveryPositiveIdOrBlank_(deliveryFinalGetRowValueAny_(row, indexMap, [\n      'ContactContactId', 'ContactId', 'Contact ID', 'RequestedByContactId', 'RequestedByContactContactId', 'Requested By Contact Id', 'Requested By Contact ID'\n    ]));\n\n    const customerNumber = deliveryPositiveIdOrBlank_(deliveryFinalGetRowValueAny_(row, indexMap, [\n      'CustomerNumber', 'Customer Number', 'Customer #', 'CustomerCustomerId', 'CustomerId', 'Customer ID'\n    ]));\n\n    const locationLookup = deliveryFindValidatedLocationIdForApprovedOrderRowFinal_(row, indexMap, locationIndex);"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Persist approved-order customer number in SO lookup",
+      "before": "      salesOrderId: salesOrderId,\n      locationId: locationLookup.locationId,\n      contactId: contactId,",
+      "after": "      salesOrderId: salesOrderId,\n      customerNumber: customerNumber,\n      locationId: locationLookup.locationId,\n      contactId: contactId,"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Use customer number inside approved-order Location validation",
+      "before": "  const customerName = deliveryFinalGetRowValueAny_(approvedRow, approvedIndexMap, ['CustomerName', 'Customer Name', 'Customer']);\n  const customerKey = deliveryNormalizeNameForLocationMatchFinal_(customerName);\n\n  const addressCandidates = [",
+      "after": "  const customerName = deliveryFinalGetRowValueAny_(approvedRow, approvedIndexMap, ['CustomerName', 'Customer Name', 'Customer']);\n  const customerKey = deliveryNormalizeNameForLocationMatchFinal_(customerName);\n  const customerNumber = deliveryPositiveIdOrBlank_(deliveryFinalGetRowValueAny_(approvedRow, approvedIndexMap, [\n    'CustomerNumber', 'Customer Number', 'Customer #', 'CustomerCustomerId', 'CustomerId', 'Customer ID'\n  ]));\n\n  const addressCandidates = ["
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Check customer-owned Location before name/address fallback",
+      "before": "  for (let i = 0; i < addressCandidates.length; i++) {\n    const addressKey = deliveryNormalizeAddressForLocationMatchFinal_(addressCandidates[i]);\n\n    if (!addressKey) continue;",
+      "after": "  for (let i = 0; i < addressCandidates.length; i++) {\n    const customerScoped = deliveryFindCustomerNumberScopedLocationFinal_(\n      locationIndex,\n      customerNumber,\n      addressCandidates[i]\n    );\n    if (customerScoped.locationId) return customerScoped;\n\n    const addressKey = deliveryNormalizeAddressForLocationMatchFinal_(addressCandidates[i]);\n\n    if (!addressKey) continue;"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Pass approved-order customer number to Calendar Location resolver",
+      "before": "    const actualLocationMatch = deliveryFindLocationIdByActualCalendarAddress_(\n      calendarLocation,\n      customerName\n    );",
+      "after": "    const actualLocationMatch = deliveryFindLocationIdByActualCalendarAddress_(\n      calendarLocation,\n      customerName,\n      found && found.customerNumber ? found.customerNumber : ''\n    );"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Resolve Service Location from Work Order customer ownership",
+      "before": "function serviceResolveCanonicalCustomerLocationId_(\n  matchedWorkOrder,\n  calendarLocation,\n  customerName\n) {\n  if (!matchedWorkOrder) return '';\n\n  // Only fields explicitly typed as customer Location IDs are safe to use\n  // directly. BillToAddressId / ShipToAddressId are Address IDs and must not\n  // be compared to, or written as, Striven Task Location.Id values.\n  const explicitLocationId = serviceGetFirstValue_(matchedWorkOrder, [\n    'LocationId',\n    'Location ID',\n    'CustomerLocationId',\n    'Customer Location ID'\n  ]);\n\n  if (explicitLocationId) return explicitLocationId;\n\n  if (typeof deliveryFindLocationIdByActualCalendarAddress_ === 'function') {\n    const resolved = deliveryFindLocationIdByActualCalendarAddress_(\n      calendarLocation,\n      customerName\n    );\n\n    if (resolved && resolved.locationId) {\n      return resolved.locationId;\n    }\n  }\n\n  return '';\n}",
+      "after": "function serviceResolveCanonicalCustomerLocationId_(\n  matchedWorkOrder,\n  calendarLocation,\n  customerName\n) {\n  if (!matchedWorkOrder) return '';\n\n  // Only fields explicitly typed as customer Location IDs are safe to use\n  // directly. BillToAddressId / ShipToAddressId are Address IDs and must not\n  // be compared to, or written as, Striven Task Location.Id values.\n  const explicitLocationId = serviceGetFirstValue_(matchedWorkOrder, [\n    'LocationId',\n    'Location ID',\n    'CustomerLocationId',\n    'Customer Location ID'\n  ]);\n\n  if (explicitLocationId) return explicitLocationId;\n\n  const customerNumber = serviceGetFirstValue_(matchedWorkOrder, [\n    'CustomerNumber',\n    'Customer Number',\n    'Customer #',\n    'CustomerCustomerId'\n  ]);\n\n  if (typeof deliveryFindLocationIdByActualCalendarAddress_ === 'function') {\n    const resolved = deliveryFindLocationIdByActualCalendarAddress_(\n      calendarLocation,\n      customerName,\n      customerNumber\n    );\n\n    if (resolved && resolved.locationId) {\n      return resolved.locationId;\n    }\n  }\n\n  return '';\n}"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Never project Work Order AddressId as missing-task LocationId",
+      "before": "    matchedWorkOrder ? serviceGetFirstValue_(matchedWorkOrder, ['ShipToAddressId', 'BillToAddressId', 'LocationId']) : '',",
+      "after": "    serviceResolveCanonicalCustomerLocationId_(matchedWorkOrder, calendarLocation, customerName),"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Strip managed Task-link metadata before PreInspection identity parsing",
+      "before": "function preinspectCalendarReadableDescription_(value) {\n  if (typeof tm_cleanHtmlToText_ === 'function') {\n    return tm_cleanHtmlToText_(value || '');\n  }\n  return String(value || '').trim();\n}",
+      "after": "function preinspectCalendarReadableDescription_(value) {\n  let source = String(value || '');\n\n  // Managed Task-link blocks are transport metadata, not customer identity\n  // evidence. Remove them before Customer/SO/phone extraction so Task IDs can\n  // never be mistaken for Customer Numbers.\n  if (typeof preinspectRemoveManagedTaskLinkBlock_ === 'function') {\n    source = preinspectRemoveManagedTaskLinkBlock_(source);\n  }\n\n  if (typeof tm_cleanHtmlToText_ === 'function') {\n    return tm_cleanHtmlToText_(source);\n  }\n  return source.trim();\n}"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Prefer dedicated PreInspection mirror identity fields",
+      "before": "  const signals = preinspectExtractSignals_(event);\n  let classification = preinspectClassifyCalendarEvent_(event, signals);",
+      "after": "  const signals = preinspectExtractSignals_(event);\n\n  // The one-way Calendar mirror has dedicated identity columns. Prefer a\n  // previously resolved/carried-forward Customer # and normalized Phone over\n  // re-parsing managed description metadata.\n  const mirrorCustomerNumber = preinspectNumber_(\n    preinspectFirst_(row, ['Customer #', 'Customer Number', 'CustomerNumber'])\n  );\n  if (mirrorCustomerNumber) {\n    signals.customerNumber = mirrorCustomerNumber;\n    signals.customerNumberCandidates = [];\n  }\n\n  const mirrorPhone = preinspectPhone_(\n    preinspectFirst_(row, ['Phone', 'Phone Number', 'Customer Phone'])\n  );\n  if (mirrorPhone) {\n    signals.phones = preinspectUnique_(\n      [mirrorPhone].concat(signals.phones || [])\n    );\n  }\n\n  let classification = preinspectClassifyCalendarEvent_(event, signals);"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Restore read-back-verified PreInspection Calendar Task-link writer",
+      "before": "function pushSelectedPreInspectTaskLinkToCalendarEvent() {\n  const out={mode:'PREINSPECT_CALENDAR_TASK_LINK',status:'DISABLED_BY_POLICY',writesPerformed:false,calendarWritesPerformed:false,reason:'Calendar Task Link write disabled by operator policy on 2026-09-16.'};\n  Logger.log(JSON.stringify(out,null,2)); return out;\n}\n\nfunction preinspectAppendTaskLinkToCalendarEvent_(eventId,taskId,taskTitle) {\n  return {mode:'PREINSPECT_CALENDAR_TASK_LINK',status:'DISABLED_BY_POLICY',writesPerformed:false,calendarWritesPerformed:false,eventId:String(eventId||''),taskId:preinspectCreateNum_(taskId)||null,reason:'Calendar Task Link write disabled by operator policy on 2026-09-16.'};\n}",
+      "after": "function pushSelectedPreInspectTaskLinkToCalendarEvent() {\n  const ss = SpreadsheetApp.getActiveSpreadsheet();\n  const sheet = ss && ss.getActiveSheet();\n\n  if (!sheet || sheet.getName() !== 'PreInspect Task Mapping') {\n    throw new Error('Select a row on \"PreInspect Task Mapping\" first.');\n  }\n\n  const rowNumber = sheet.getActiveRange().getRow();\n  if (rowNumber <= 1) throw new Error('Select a PreInspect mapping data row.');\n\n  const values = sheet.getDataRange().getDisplayValues();\n  const headers = values[0].map(function(v) { return String(v || '').trim(); });\n  const row = values[rowNumber - 1] || [];\n  const idx = {};\n  headers.forEach(function(name, i) { idx[name] = i; });\n\n  const eventId = String(row[idx['Event ID']] || '').trim();\n  const taskId = preinspectCreateNum_(row[idx['Task ID']]);\n  const taskTitle =\n    String(row[idx['Task Name']] || '').trim() ||\n    ('Pre-Inspection Task #' + taskId);\n\n  const out = preinspectAppendTaskLinkToCalendarEvent_(\n    eventId,\n    taskId,\n    taskTitle\n  );\n  Logger.log(JSON.stringify(out, null, 2));\n  return out;\n}\n\nfunction preinspectAppendTaskLinkToCalendarEvent_(eventId,taskId,taskTitle) {\n  const cleanEventId = String(eventId || '').trim();\n  const cleanTaskId = preinspectCreateNum_(taskId);\n\n  if (!cleanEventId) throw new Error('PreInspection Calendar Task-link write requires Event ID.');\n  if (!cleanTaskId) throw new Error('PreInspection Calendar Task-link write requires Task ID.');\n\n  const calendarId =\n    PREINSPECT_REVIEW_CONFIG &&\n    PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC\n      ? String(PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC.CALENDAR_ID || '').trim()\n      : '';\n\n  if (!calendarId) throw new Error('PreInspection Calendar ID is not configured.');\n\n  const calendar = CalendarApp.getCalendarById(calendarId);\n  const event = calendar && calendar.getEventById(cleanEventId);\n  if (!event) {\n    throw new Error('PreInspection Calendar event could not be fresh-read: ' + cleanEventId);\n  }\n\n  const original = String(event.getDescription() || '');\n  const cleaned = preinspectRemoveManagedTaskLinkBlock_(original);\n  const block = preinspectBuildManagedTaskLinkBlock_(cleanTaskId, taskTitle);\n  const next = cleaned\n    ? cleaned.replace(/(?:<br\\s*\\/?>|\\s)+$/gi, '').trim() + '<br><br>' + block\n    : block;\n\n  const taskUrl =\n    PREINSPECT_CALENDAR_TASK_LINK.TASK_BASE_URL +\n    encodeURIComponent(cleanTaskId);\n\n  if (original === next && original.indexOf(taskUrl) !== -1) {\n    return {\n      mode: 'PREINSPECT_CALENDAR_TASK_LINK',\n      status: 'SKIPPED_NO_CHANGE',\n      writesPerformed: false,\n      calendarWritesPerformed: false,\n      eventId: cleanEventId,\n      taskId: cleanTaskId,\n      taskUrl: taskUrl,\n      readBackVerified: true\n    };\n  }\n\n  event.setDescription(next);\n\n  const fresh = calendar.getEventById(cleanEventId);\n  if (!fresh) {\n    throw new Error('PreInspection Calendar event disappeared after Task-link write.');\n  }\n\n  const actual = String(fresh.getDescription() || '');\n  if (\n    actual.indexOf(taskUrl) === -1 ||\n    actual.indexOf(PREINSPECT_CALENDAR_TASK_LINK.START_MARKER) === -1 ||\n    actual.indexOf(PREINSPECT_CALENDAR_TASK_LINK.END_MARKER) === -1\n  ) {\n    throw new Error('PreInspection Calendar Task-link read-back verification failed.');\n  }\n\n  return {\n    mode: 'PREINSPECT_CALENDAR_TASK_LINK',\n    status: 'WRITTEN',\n    writesPerformed: true,\n    calendarWritesPerformed: true,\n    eventId: cleanEventId,\n    taskId: cleanTaskId,\n    taskUrl: taskUrl,\n    readBackVerified: true\n  };\n}"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Use canonical v1 Field 854 as no-write reconciliation authority",
+      "before": "  const props = PropertiesService.getScriptProperties();\n  const uncertainKey = preinspectR47Field854UncertainKey_(id);\n  const priorUncertain = String(props.getProperty(uncertainKey) || '').trim();\n  const auth = preinspectR30ApiAuth_();",
+      "after": "  const props = PropertiesService.getScriptProperties();\n  const uncertainKey = preinspectR47Field854UncertainKey_(id);\n  const priorUncertain = String(props.getProperty(uncertainKey) || '').trim();\n\n  // Canonical v1 task customFields is the independent read surface already\n  // proven for Field 854. If it confirms the desired value, reconcile a\n  // prior uncertain HTTP-200 write without issuing another mutation.\n  let canonicalBefore = null;\n  try {\n    canonicalBefore = preinspectR47ReadCanonicalV1Field854_(id);\n  } catch (ignoredCanonicalBefore) {}\n\n  if (preinspectR47Field854CanonicalMatches_(canonicalBefore, desiredValue)) {\n    props.deleteProperty(uncertainKey);\n    const reconciled = {\n      mode: 'PREINSPECT_FIELD854_CANONICAL_V1_VERIFIED',\n      status: priorUncertain ? 'RECONCILED_PRIOR_UNCERTAIN_V1_MATCH' : 'NOT_NEEDED_V1_MATCH',\n      taskId: id,\n      fieldId: 854,\n      writesPerformed: false,\n      verificationSource: 'V1_TASK_CUSTOMFIELDS',\n      reason: priorUncertain\n        ? 'Prior uncertain Field 854 write is confirmed by canonical v1 customFields. No retry performed.'\n        : 'Canonical v1 customFields already contains the requested Install Notes. No PATCH performed.'\n    };\n    Logger.log(JSON.stringify(reconciled, null, 2));\n    return reconciled;\n  }\n\n  const auth = preinspectR30ApiAuth_();"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Use canonical v1 Field 854 after PATCH when v2 field value lags",
+      "before": "  if (afterSemantic === null || afterSemantic !== desiredSemantic) {\n    const uncertain = {\n      taskId:id, fieldId:854, at:new Date().toISOString(), patchHttpCode:patch.statusCode,\n      desiredSemanticLength:desiredSemantic.length,\n      v2SemanticLength:afterSemantic===null?null:afterSemantic.length\n    };\n    props.setProperty(uncertainKey, JSON.stringify(uncertain));\n    Logger.log(JSON.stringify({mode:'PREINSPECT_FIELD854_UNCERTAIN_WRITE',status:'UNCERTAIN_WRITE',evidence:uncertain},null,2));\n    throw new Error('UNCERTAIN_WRITE: Field 854 PATCH returned success but v2 InfoCustomFields did not confirm the requested Install Notes. No retry allowed.');\n  }\n\n  const nonTargetComparison = preinspectR345bCompareFieldMaps_(\n    preinspectR346WithoutFieldId_(beforeMap, '854'),\n    preinspectR346WithoutFieldId_(afterMap, '854')\n  );",
+      "after": "  if (afterSemantic === null || afterSemantic !== desiredSemantic) {\n    let canonicalAfter = null;\n    try {\n      canonicalAfter = preinspectR47ReadCanonicalV1Field854_(id);\n    } catch (ignoredCanonicalAfter) {}\n\n    if (preinspectR47Field854CanonicalMatches_(canonicalAfter, desiredValue)) {\n      const canonicalParity = preinspectR345bCompareFieldMaps_(\n        preinspectR346WithoutFieldId_(beforeMap, '854'),\n        preinspectR346WithoutFieldId_(afterMap, '854')\n      );\n\n      if (!canonicalParity.equal || Object.keys(beforeMap).length !== Object.keys(afterMap).length) {\n        props.setProperty(uncertainKey, JSON.stringify({taskId:id,fieldId:854,at:new Date().toISOString(),reason:'non-854 parity changed after canonical v1 confirmation'}));\n        throw new Error('CRITICAL_FIELD854_PARITY_FAILURE: Field 854 is visible in canonical v1, but a non-854 custom field changed. Manual review required.');\n      }\n\n      props.deleteProperty(uncertainKey);\n      const canonicalSuccess = {\n        mode: 'PREINSPECT_FIELD854_CANONICAL_V1_VERIFIED',\n        status: 'PUSHED_AND_VERIFIED_V1',\n        taskId: id,\n        fieldId: 854,\n        writesPerformed: true,\n        verificationSource: 'V1_TASK_CUSTOMFIELDS',\n        patchHttpCode: patch.statusCode,\n        non854FieldsPreserved: true,\n        note: 'v2 InfoCustomFields did not echo the value, but canonical v1 customFields confirmed Field 854.'\n      };\n      Logger.log(JSON.stringify(canonicalSuccess, null, 2));\n      return canonicalSuccess;\n    }\n\n    const uncertain = {\n      taskId:id, fieldId:854, at:new Date().toISOString(), patchHttpCode:patch.statusCode,\n      desiredSemanticLength:desiredSemantic.length,\n      v2SemanticLength:afterSemantic===null?null:afterSemantic.length\n    };\n    props.setProperty(uncertainKey, JSON.stringify(uncertain));\n    Logger.log(JSON.stringify({mode:'PREINSPECT_FIELD854_UNCERTAIN_WRITE',status:'UNCERTAIN_WRITE',evidence:uncertain},null,2));\n    throw new Error('UNCERTAIN_WRITE: Field 854 PATCH returned success but neither v2 InfoCustomFields nor canonical v1 customFields confirmed the requested Install Notes. No retry allowed.');\n  }\n\n  const nonTargetComparison = preinspectR345bCompareFieldMaps_(\n    preinspectR346WithoutFieldId_(beforeMap, '854'),\n    preinspectR346WithoutFieldId_(afterMap, '854')\n  );"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "label": "Fix Service Calendar managed-block cleanup helper name",
+      "before": "  const cleaned=stlRemoveManagedBlocksFromDescription_(original,'SERVICE');",
+      "after": "  const cleaned=stlRemoveManagedLinksBlock_(original);"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "label": "Include PreInspection in shared all-vertical Calendar link bulk",
+      "before": "function tmR4_runAllCalendarLinkPipelines_(dryRun) {\n  const install = stlRunCalendarLinkPipelineStageForDivision_('INSTALL', !!dryRun);\n  const delivery = stlRunCalendarLinkPipelineStageForDivision_('DELIVERY', !!dryRun);\n  const service = tmR4_runServiceCalendarLinkPipeline_(!!dryRun, 0);\n\n  return {\n    mode: dryRun ? 'DRY_RUN' : 'PUSH',\n    status: 'COMPLETE',\n    install: install,\n    delivery: delivery,\n    service: service\n  };\n}",
+      "after": "function tmR4_runAllCalendarLinkPipelines_(dryRun) {\n  const install = stlRunCalendarLinkPipelineStageForDivision_('INSTALL', !!dryRun);\n  const delivery = stlRunCalendarLinkPipelineStageForDivision_('DELIVERY', !!dryRun);\n  const service = tmR4_runServiceCalendarLinkPipeline_(!!dryRun, 0);\n  const preInspection =\n    typeof tmSystemicPushAllPreInspectCalendarLinks_ === 'function'\n      ? (dryRun\n          ? {status:'DRY_RUN_NOT_MUTATED_BY_SHARED_BULK',reason:'Use the systemic verifier for PreInspection read-only link coverage.'}\n          : tmSystemicPushAllPreInspectCalendarLinks_())\n      : {status:'UNAVAILABLE'};\n\n  const result = {\n    mode: dryRun ? 'DRY_RUN' : 'PUSH',\n    status: 'COMPLETE',\n    install: install,\n    delivery: delivery,\n    service: service,\n    preInspection: preInspection\n  };\n\n  Logger.log(JSON.stringify(result, null, 2));\n  return result;\n}"
+    }
+  ],
   "workContains": [
     {
-      "file": "98_6_All_Rows_Verification.js",
-      "text": "function VERIFY_ALL_ROWS_ALL_VERTICALS()"
+      "file": "20_Delivery_Workflow.js",
+      "text": "MATCHED_CUSTOMER_NUMBER_UNIQUE_LOCATION"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "text": "byCustomerNumberAndAddress"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "CustomerNumber"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "transport metadata, not customer identity"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "PREINSPECT_FIELD854_CANONICAL_V1_VERIFIED"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "status: 'WRITTEN'"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "const cleaned=stlRemoveManagedLinksBlock_(original);"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "preInspection: preInspection"
     },
     {
       "file": "98_6_All_Rows_Verification.js",
-      "text": "TM All Rows Verification"
+      "text": "TM_ALL_ROWS_VERIFY_R2_RATE_SAFE_20260921"
     },
     {
       "file": "98_6_All_Rows_Verification.js",
-      "text": "UrlFetchApp.fetchAll"
+      "text": "canonical Striven v1 DesiredStartDate/DesiredEndDate"
     },
     {
-      "file": "98_6_All_Rows_Verification.js",
-      "text": "NO Striven task PATCH/POST/PUT/DELETE"
-    },
-    {
-      "file": "98_6_All_Rows_Verification.js",
-      "text": "NO Google Calendar writes"
+      "file": "98_7_Systemic_Repair_R1.js",
+      "text": "function REPAIR_ALL_VERTICALS_SYSTEMIC_R1()"
     }
   ],
   "postContains": [
     {
-      "file": "98_6_All_Rows_Verification.js",
-      "text": "TM_ALL_ROWS_VERIFY_R1_20260921"
+      "file": "20_Delivery_Workflow.js",
+      "text": "MATCHED_CUSTOMER_NUMBER_UNIQUE_LOCATION"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "serviceResolveCanonicalCustomerLocationId_"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "PREINSPECT_FIELD854_CANONICAL_V1_VERIFIED"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "PreInspection Calendar Task-link read-back verification failed."
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "stlRemoveManagedLinksBlock_(original)"
     },
     {
       "file": "98_6_All_Rows_Verification.js",
-      "text": "VERIFY_ALL_ROWS_ALL_VERTICALS"
+      "text": "TM_ALL_ROWS_VERIFY_R2_RATE_SAFE_20260921"
+    },
+    {
+      "file": "98_7_Systemic_Repair_R1.js",
+      "text": "TM_SYSTEMIC_REPAIR_R1_20260921"
     }
   ],
-  "runtimeVerification": "USER_RUN_VERIFY_ALL_ROWS_ALL_VERTICALS",
+  "runtimeVerification": "USER_RUN_REPAIR_ALL_VERTICALS_SYSTEMIC_R1",
   "safety": {
-    "strivenMutations": false,
-    "calendarMutations": false,
-    "createsVerificationReportSheet": true,
-    "refreshesOperationalSourceCaches": true,
-    "rebuildsMappingSheets": true,
-    "freshTaskReadsBatched": true
+    "freshLivePullBeforePatch": true,
+    "exactAnchorPatchOnly": true,
+    "noBlindField854Retry": true,
+    "preinspectPmUsesCanonicalV1Verification": true,
+    "customerOwnedLocationResolution": true,
+    "serviceRelationshipWritesFreshReadBack": true,
+    "calendarWritesReadBackVerified": true,
+    "ambiguousRowsRemainReview": true
   }
 }
