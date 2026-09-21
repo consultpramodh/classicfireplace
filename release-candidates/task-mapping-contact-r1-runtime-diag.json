@@ -1,37 +1,18 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_FOUR_VERTICAL_PIPELINE_TEST_R1_20260921",
+  "release": "TASK_MAPPING_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 65,
+  "expectedPreFileCount": 66,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-four-vertical-pipeline-test-output",
+  "outputDirectory": "task-mapping-four-vertical-pipeline-test-r2-output",
   "requiredPreFiles": [
     "93_Selected_Row_End_To_End.js",
-    "98_1_Contact_Resolution_R1.js",
-    "98_4_Contact_R1_One_Click_Test.js"
+    "98_5_Four_Vertical_Pipeline_Test.js"
   ],
   "preContains": [
     {
-      "file": "93_Selected_Row_End_To_End.js",
-      "text": "function runSelectedTaskMappingRowEndToEnd()"
-    },
-    {
-      "file": "98_1_Contact_Resolution_R1.js",
-      "text": "TM_CONTACT_RESOLUTION_R1_20260921"
-    }
-  ],
-  "addFiles": [
-    {
-      "repoPath": "patches/task-mapping/98_5_Four_Vertical_Pipeline_Test.js",
-      "targetFile": "98_5_Four_Vertical_Pipeline_Test.js"
-    }
-  ],
-  "overwriteFiles": [],
-  "replacements": [],
-  "workContains": [
-    {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "function TEST_ONE_ROW_EACH_VERTICAL_PIPELINE()"
+      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R1_20260921"
     },
     {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
@@ -40,6 +21,28 @@
     {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
       "text": "taskId: 18539"
+    }
+  ],
+  "overwriteFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_5_Four_Vertical_Pipeline_Test.js",
+      "targetFile": "98_5_Four_Vertical_Pipeline_Test.js"
+    }
+  ],
+  "replacements": [],
+  "addFiles": [],
+  "workContains": [
+    {
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921"
+    },
+    {
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "taskId: 17982"
+    },
+    {
+      "file": "98_5_Four_Vertical_Pipeline_Test.js",
+      "text": "taskId: 18499"
     },
     {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
@@ -53,7 +56,7 @@
   "postContains": [
     {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
-      "text": "FOUR-VERTICAL PIPELINE TEST:"
+      "text": "TM_FOUR_VERTICAL_PIPELINE_TEST_R2_INCOMPLETE_ROWS_20260921"
     },
     {
       "file": "98_5_Four_Vertical_Pipeline_Test.js",
@@ -62,11 +65,11 @@
   ],
   "runtimeVerification": "USER_RUN_TEST_ONE_ROW_EACH_VERTICAL_PIPELINE",
   "safety": {
-    "newTestFileOnly": true,
+    "testRunnerOnly": true,
     "productionWorkflowFilesChanged": false,
     "invokesExistingProductionE2E": true,
-    "selectedInstallTaskId": 17881,
-    "selectedDeliveryTaskId": 18539,
+    "selectedInstallTaskId": 17982,
+    "selectedDeliveryTaskId": 18499,
     "selectedServiceTaskId": 18438,
     "selectedPreInspectionTaskId": 18511
   }
