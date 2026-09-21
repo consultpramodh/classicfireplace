@@ -14,7 +14,7 @@
  ************************************************************/
 
 const TM_CALENDAR_TASK_ACCEPTANCE_R1 = Object.freeze({
-  VERSION: 'TM_CALENDAR_TASK_ACCEPTANCE_R2_EVENT_ID_AND_API_FALLBACK_20260921',
+  VERSION: 'TM_CALENDAR_TASK_ACCEPTANCE_R3_REST_READBACK_20260921',
   START_MARKER: '<!-- TASKMAP_TASK_ACCEPTANCE_START -->',
   END_MARKER: '<!-- TASKMAP_TASK_ACCEPTANCE_END -->',
   TASK_BASE_URL: 'https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=',
@@ -488,50 +488,74 @@ function tmCalendarTaskAcceptanceEnsureEvent_(
     throw new Error('No Task IDs were supplied for Calendar-link acceptance.');
   }
 
-  if (typeof tmR4_readFreshCalendarEvent_ !== 'function') {
-    throw new Error('Fresh Calendar event reader tmR4_readFreshCalendarEvent_ is unavailable.');
-  }
-
   const ctx = {
     division: division,
     eventId: String(eventId || '').trim()
   };
 
-  let fresh = tmR4_readFreshCalendarEvent_(ctx);
+  let freshApp = null;
 
-  if (!fresh || !fresh.event) {
-    const normalizedEventId =
-      tmCalendarTaskAcceptanceNormalizeEventId_(ctx.eventId);
+  if (typeof tmR4_readFreshCalendarEvent_ === 'function') {
+    freshApp = tmR4_readFreshCalendarEvent_(ctx);
 
-    if (
-      normalizedEventId &&
-      normalizedEventId !== ctx.eventId
-    ) {
-      fresh = tmR4_readFreshCalendarEvent_({
-        division: division,
-        eventId: normalizedEventId
-      });
+    if (!freshApp || !freshApp.event) {
+      const normalizedEventId =
+        tmCalendarTaskAcceptanceNormalizeEventId_(ctx.eventId);
+
+      if (
+        normalizedEventId &&
+        normalizedEventId !== ctx.eventId
+      ) {
+        freshApp = tmR4_readFreshCalendarEvent_({
+          division: division,
+          eventId: normalizedEventId
+        });
+      }
     }
   }
 
-  if (!fresh || !fresh.event) {
+  let freshRest = null;
+
+  if (!freshApp || !freshApp.event) {
+    freshRest =
+      tmCalendarTaskAcceptanceReadEventViaRest_(
+        division,
+        ctx.eventId
+      );
+  }
+
+  if (
+    (!freshApp || !freshApp.event) &&
+    !freshRest
+  ) {
     throw new Error(
-      division + ' Calendar event could not be fresh-read for Event ID ' +
+      division + ' Calendar event could not be fresh-read through CalendarApp or Calendar REST for Event ID ' +
       String(eventId || '')
     );
   }
 
-  const before = String(fresh.event.getDescription() || '');
+  const calendarId =
+    freshApp && freshApp.calendarId
+      ? freshApp.calendarId
+      : freshRest.calendarId;
+
+  const before =
+    freshApp && freshApp.event
+      ? String(freshApp.event.getDescription() || '')
+      : String(freshRest.description || '');
 
   if (tmCalendarTaskAcceptanceContainsAll_(before, ids)) {
     return {
       division: division,
       eventId: String(eventId || '').trim(),
       taskIds: ids,
-      status: 'VERIFIED_FROM_FRESH_CALENDAR_EVENT',
+      status:
+        freshApp && freshApp.event
+          ? 'VERIFIED_FROM_FRESH_CALENDAR_EVENT'
+          : 'VERIFIED_FROM_CALENDAR_REST_READ',
       writePerformed: false,
       readBackVerified: true,
-      calendarId: fresh.calendarId || null
+      calendarId: calendarId || null
     };
   }
 
@@ -547,47 +571,74 @@ function tmCalendarTaskAcceptanceEnsureEvent_(
       '<br><br>' + block
     : block;
 
-  let writeMode = 'CALENDAR_APP';
+  let writeMode = 'CALENDAR_REST_API_FALLBACK';
 
-  try {
-    fresh.event.setDescription(next);
-  } catch (calendarAppErr) {
-    const normalizedEventId =
-      tmCalendarTaskAcceptanceNormalizeEventId_(eventId);
-
+  if (freshApp && freshApp.event) {
+    try {
+      freshApp.event.setDescription(next);
+      writeMode = 'CALENDAR_APP';
+    } catch (calendarAppErr) {
+      tmCalendarTaskAcceptancePatchDescriptionViaRest_(
+        calendarId,
+        eventId,
+        next
+      );
+    }
+  } else {
     tmCalendarTaskAcceptancePatchDescriptionViaRest_(
-      fresh.calendarId,
-      normalizedEventId,
+      calendarId,
+      eventId,
       next
     );
-
-    writeMode = 'CALENDAR_REST_API_FALLBACK';
   }
 
-  let readBack = tmR4_readFreshCalendarEvent_(ctx);
+  let readBackApp = null;
 
-  if (!readBack || !readBack.event) {
-    const normalizedEventId =
-      tmCalendarTaskAcceptanceNormalizeEventId_(ctx.eventId);
+  if (typeof tmR4_readFreshCalendarEvent_ === 'function') {
+    readBackApp = tmR4_readFreshCalendarEvent_(ctx);
 
-    if (
-      normalizedEventId &&
-      normalizedEventId !== ctx.eventId
-    ) {
-      readBack = tmR4_readFreshCalendarEvent_({
-        division: division,
-        eventId: normalizedEventId
-      });
+    if (!readBackApp || !readBackApp.event) {
+      const normalizedEventId =
+        tmCalendarTaskAcceptanceNormalizeEventId_(ctx.eventId);
+
+      if (
+        normalizedEventId &&
+        normalizedEventId !== ctx.eventId
+      ) {
+        readBackApp = tmR4_readFreshCalendarEvent_({
+          division: division,
+          eventId: normalizedEventId
+        });
+      }
     }
   }
 
-  if (!readBack || !readBack.event) {
-    throw new Error(
-      division + ' Calendar event disappeared after Task-link write.'
-    );
+  let actual = '';
+  let readBackCalendarId = calendarId;
+
+  if (readBackApp && readBackApp.event) {
+    actual = String(readBackApp.event.getDescription() || '');
+    readBackCalendarId =
+      readBackApp.calendarId || readBackCalendarId;
+  } else {
+    const readBackRest =
+      tmCalendarTaskAcceptanceReadEventViaRest_(
+        division,
+        ctx.eventId,
+        calendarId
+      );
+
+    if (!readBackRest) {
+      throw new Error(
+        division + ' Calendar event disappeared after Task-link write.'
+      );
+    }
+
+    actual = String(readBackRest.description || '');
+    readBackCalendarId =
+      readBackRest.calendarId || readBackCalendarId;
   }
 
-  const actual = String(readBack.event.getDescription() || '');
   const missing = ids.filter(function(id) {
     return actual.indexOf(
       TM_CALENDAR_TASK_ACCEPTANCE_R1.TASK_BASE_URL + id
@@ -608,11 +659,203 @@ function tmCalendarTaskAcceptanceEnsureEvent_(
     status: 'WRITTEN_AND_READBACK_VERIFIED',
     writePerformed: true,
     readBackVerified: true,
-    calendarId: readBack.calendarId || fresh.calendarId || null,
+    calendarId: readBackCalendarId || null,
     writeMode: writeMode
   };
 }
 
+
+function tmCalendarTaskAcceptanceCalendarIdsForDivision_(division) {
+  const candidates = [];
+
+  function add(value) {
+    if (!value) return;
+
+    if (typeof value === 'string') {
+      candidates.push(value);
+      return;
+    }
+
+    if (typeof value === 'object') {
+      const id =
+        value.calendarId ||
+        value.calendarID ||
+        value.id ||
+        value.CalendarId ||
+        value.CalendarID ||
+        '';
+
+      if (id) candidates.push(id);
+    }
+  }
+
+  if (
+    division === 'Install' &&
+    typeof TASKMAP_PROJECT !== 'undefined' &&
+    TASKMAP_PROJECT &&
+    TASKMAP_PROJECT.INSTALL_CALENDAR_ID
+  ) {
+    add(TASKMAP_PROJECT.INSTALL_CALENDAR_ID);
+  } else if (
+    division === 'Delivery' &&
+    typeof TASKMAP_PROJECT !== 'undefined' &&
+    TASKMAP_PROJECT &&
+    TASKMAP_PROJECT.DELIVERY_CALENDAR_ID
+  ) {
+    add(TASKMAP_PROJECT.DELIVERY_CALENDAR_ID);
+  } else if (division === 'PreInspection') {
+    if (
+      typeof PREINSPECT_R3418F_CALENDAR_ID !== 'undefined' &&
+      PREINSPECT_R3418F_CALENDAR_ID
+    ) {
+      add(PREINSPECT_R3418F_CALENDAR_ID);
+    }
+
+    if (
+      typeof PREINSPECT_REVIEW_CONFIG !== 'undefined' &&
+      PREINSPECT_REVIEW_CONFIG &&
+      PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC
+    ) {
+      add(PREINSPECT_REVIEW_CONFIG.CALENDAR_SYNC.CALENDAR_ID);
+    }
+
+    if (
+      typeof PREINSPECT_CALENDAR_SYNC_CONFIG !== 'undefined' &&
+      PREINSPECT_CALENDAR_SYNC_CONFIG
+    ) {
+      add(PREINSPECT_CALENDAR_SYNC_CONFIG.CALENDAR_ID);
+    }
+  } else if (division === 'Service') {
+    if (typeof serviceGetTechCalendarConfigs_ === 'function') {
+      try {
+        (serviceGetTechCalendarConfigs_() || []).forEach(add);
+      } catch (ignoredServiceCalendarConfigError) {}
+    }
+
+    if (
+      !candidates.length &&
+      typeof SERVICE_CONFIG !== 'undefined' &&
+      SERVICE_CONFIG &&
+      Array.isArray(SERVICE_CONFIG.TECH_CALENDARS)
+    ) {
+      SERVICE_CONFIG.TECH_CALENDARS.forEach(add);
+    }
+
+    if (
+      !candidates.length &&
+      typeof SERVICE_TECH_CALENDARS !== 'undefined' &&
+      Array.isArray(SERVICE_TECH_CALENDARS)
+    ) {
+      SERVICE_TECH_CALENDARS.forEach(add);
+    }
+
+    if (
+      !candidates.length &&
+      typeof TASKMAP_PROJECT !== 'undefined' &&
+      TASKMAP_PROJECT &&
+      TASKMAP_PROJECT.SERVICE_CALENDARS
+    ) {
+      const svc = TASKMAP_PROJECT.SERVICE_CALENDARS;
+
+      if (Array.isArray(svc)) {
+        svc.forEach(add);
+      } else {
+        Object.keys(svc).forEach(function(key) {
+          add(svc[key]);
+        });
+      }
+    }
+  }
+
+  const seen = {};
+
+  return candidates
+    .map(function(value) {
+      return String(value || '').trim();
+    })
+    .filter(function(value) {
+      if (!value || seen[value]) return false;
+      seen[value] = true;
+      return true;
+    });
+}
+
+function tmCalendarTaskAcceptanceReadEventViaRest_(
+  division,
+  eventId,
+  preferredCalendarId
+) {
+  const cleanEventId =
+    tmCalendarTaskAcceptanceNormalizeEventId_(eventId);
+
+  if (!cleanEventId) return null;
+
+  const calendarIds = [];
+
+  if (preferredCalendarId) {
+    calendarIds.push(String(preferredCalendarId).trim());
+  }
+
+  tmCalendarTaskAcceptanceCalendarIdsForDivision_(division)
+    .forEach(function(calendarId) {
+      if (calendarIds.indexOf(calendarId) === -1) {
+        calendarIds.push(calendarId);
+      }
+    });
+
+  const token = ScriptApp.getOAuthToken();
+
+  for (let i = 0; i < calendarIds.length; i++) {
+    const calendarId = String(calendarIds[i] || '').trim();
+    if (!calendarId) continue;
+
+    const url =
+      'https://www.googleapis.com/calendar/v3/calendars/' +
+      encodeURIComponent(calendarId) +
+      '/events/' +
+      encodeURIComponent(cleanEventId);
+
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/json'
+      },
+      muteHttpExceptions: true
+    });
+
+    const code = response.getResponseCode();
+
+    if (code === 404 || code === 410) {
+      continue;
+    }
+
+    if (code < 200 || code >= 300) {
+      throw new Error(
+        'Calendar REST GET failed HTTP ' +
+        code +
+        ' for Calendar ' +
+        calendarId +
+        ', Event ' +
+        cleanEventId +
+        ': ' +
+        String(response.getContentText() || '').slice(0, 500)
+      );
+    }
+
+    const obj = JSON.parse(response.getContentText() || '{}');
+
+    return {
+      calendarId: calendarId,
+      eventId: cleanEventId,
+      description: String(obj.description || ''),
+      htmlLink: String(obj.htmlLink || ''),
+      status: String(obj.status || '')
+    };
+  }
+
+  return null;
+}
 
 function tmCalendarTaskAcceptanceNormalizeEventId_(eventId) {
   return String(eventId || '')
