@@ -22,10 +22,11 @@
  ************************************************************/
 
 const TM_ALL_ROWS_VERIFY = Object.freeze({
-  VERSION: 'TM_ALL_ROWS_VERIFY_R1_20260921',
+  VERSION: 'TM_ALL_ROWS_VERIFY_R2_RATE_SAFE_20260921',
   REPORT_SHEET: 'TM All Rows Verification',
   TIME_ZONE: 'America/Toronto',
-  TASK_FETCH_BATCH_SIZE: 40,
+  TASK_FETCH_BATCH_SIZE: 90,
+  TASK_FETCH_WINDOW_SLEEP_MS: 65000,
   PROFILES: [
     { division: 'Install', mappingSheet: 'Install Task Mapping', calendarSheet: 'Install Calendar' },
     { division: 'Delivery', mappingSheet: 'Delivery Task Mapping', calendarSheet: 'Deliveries Calendar' },
@@ -371,6 +372,18 @@ function tmAllVerifyBatchReadTasks_(taskIds) {
         };
       }
     });
+
+    // Striven Standard plan permits 100 API calls/minute. Keep each wave
+    // below that ceiling and deliberately wait for the next window before
+    // issuing another wave. This turns prior HTTP 429 rows into verified rows
+    // without retrying individual failures blindly.
+    if (offset + batchSize < taskIds.length) {
+      Logger.log(
+        'ALL ROW VERIFY: completed task-read wave ' + batches +
+        ' (' + ids.length + ' tasks). Waiting for next Striven rate window.'
+      );
+      Utilities.sleep(TM_ALL_ROWS_VERIFY.TASK_FETCH_WINDOW_SLEEP_MS);
+    }
   }
 
   return {
