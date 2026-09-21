@@ -17,7 +17,7 @@ function REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1() {
 
   const result = {
     mode: 'RESIDUAL_CALENDAR_TASK_LINK_REPAIR_R1',
-    version: 'TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1A_RECOVERY_GATED_20260921',
+    version: 'TM_RESIDUAL_CALENDAR_LINK_REPAIR_R1B_CALENDAR_TRUTH_20260921',
     status: 'RUNNING',
     success: false,
     installRecovery: null,
@@ -72,20 +72,31 @@ function REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1() {
     })
   };
 
-  result.success =
+  result.calendarLinkSuccess =
     !!(
       result.calendarAcceptance &&
-      result.calendarAcceptance.success === true &&
-      result.recoveryGate.pass === true
+      result.calendarAcceptance.success === true
     );
 
-  result.status = result.success
-    ? 'SUCCESS'
-    : (
-        result.recoveryGate.pass
-          ? 'FAILED_CALENDAR_TASK_LINK_ACCEPTANCE'
-          : 'FAILED_TASK_RECOVERY_AND_CALENDAR_ACCEPTANCE'
-      );
+  result.success =
+    result.calendarLinkSuccess &&
+    result.recoveryGate.pass === true;
+
+  if (result.success) {
+    result.status = 'SUCCESS';
+  } else if (
+    result.calendarLinkSuccess &&
+    !result.recoveryGate.pass
+  ) {
+    result.status = 'CALENDAR_LINKS_SUCCESS_WITH_RESIDUAL_RECOVERY_REVIEW';
+  } else if (
+    !result.calendarLinkSuccess &&
+    result.recoveryGate.pass
+  ) {
+    result.status = 'FAILED_CALENDAR_TASK_LINK_ACCEPTANCE';
+  } else {
+    result.status = 'FAILED_TASK_RECOVERY_AND_CALENDAR_ACCEPTANCE';
+  }
 
   result.finishedAt = new Date().toISOString();
   result.runtimeSeconds = Math.round(
@@ -99,6 +110,7 @@ function REPAIR_RESIDUAL_CALENDAR_TASK_LINKS_R1() {
     version: result.version,
     status: result.status,
     success: result.success,
+    calendarLinkSuccess: result.calendarLinkSuccess,
     installRecoveryStatus:
       result.installRecovery && result.installRecovery.status || '',
     recoveryGate: result.recoveryGate || null,
