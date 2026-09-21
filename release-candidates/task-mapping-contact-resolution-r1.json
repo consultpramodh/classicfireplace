@@ -3,5 +3,152 @@
   "release": "TASK_MAPPING_CONTACT_RESOLUTION_R1_20260921",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 60,
-  "claspVersion": "3.3.0"
+  "claspVersion": "3.3.0",
+  "outputDirectory": "task-mapping-contact-r1-output",
+  "requiredPreFiles": [
+    "10_Install_Workflow.js",
+    "30_Service_Workflow.js",
+    "97_Task_Mapping_Fix_Pack_R4.js"
+  ],
+  "preContains": [
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "VERSION: 'TM_FIX_PACK_R4_9_20260917'"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "function pushServiceIdsForSelectedMappingRow() {\n  throw new Error('Service ID push is not activated yet. Need confirmed Striven payload fields before enabling this.');\n}"
+    }
+  ],
+  "addFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_1_Contact_Resolution_R1.js",
+      "targetFile": "98_1_Contact_Resolution_R1.js"
+    }
+  ],
+  "replacements": [
+    {
+      "file": "10_Install_Workflow.js",
+      "label": "Install calendar evidence handoff",
+      "before": "  const idDecision = installResolveDesiredInstallIds_(matchedTask, soNumber, customerName, calendarLocation, calendarDescription, indexes);",
+      "after": "  const idDecision = installResolveDesiredInstallIds_(matchedTask, soNumber, customerName, calendarLocation, [calendarTitle, calendarDescription].filter(Boolean).join('\\n'), indexes);"
+    },
+    {
+      "file": "10_Install_Workflow.js",
+      "label": "Install approved customer declaration",
+      "before": "  let salesOrderStatus = '';",
+      "after": "  let salesOrderStatus = '';\n  let approvedCustomerId = '';"
+    },
+    {
+      "file": "10_Install_Workflow.js",
+      "label": "Install Approved SO ContactContactId schema",
+      "before": "    const conIdFromApproved = installPositiveId_(installGetFirstValue_(approvedSO, ['RequestedByContactId', 'ContactId', 'CustomerContactId', 'BillToContactId', 'ShipToContactId']));",
+      "after": "    const conIdFromApproved = installPositiveId_(installGetFirstValue_(approvedSO, ['ContactContactId', 'RequestedByContactId', 'RequestedByContactContactId', 'ContactId', 'CustomerContactId', 'BillToContactId', 'ShipToContactId']));\n    const customerIdFromApproved = installPositiveId_(installGetFirstValue_(approvedSO, ['CustomerCustomerId', 'CustomerId', 'Customer ID']));"
+    },
+    {
+      "file": "10_Install_Workflow.js",
+      "label": "Install approved customer capture",
+      "before": "    salesOrderStatus = installGetFirstValue_(approvedSO, ['SOStatus', 'OrderStatus', 'Status']);",
+      "after": "    salesOrderStatus = installGetFirstValue_(approvedSO, ['SOStatus', 'OrderStatus', 'Status']);\n    if (customerIdFromApproved) approvedCustomerId = customerIdFromApproved;"
+    },
+    {
+      "file": "10_Install_Workflow.js",
+      "label": "Install shared customer-report contact fallback",
+      "before": "  if (!desiredContactId && calendarDescription) {\n    const emails = installExtractEmails_(calendarDescription);",
+      "after": "  if (!desiredContactId && typeof tmContactR1Resolve_ === 'function') {\n    const contactResolution = tmContactR1Resolve_({\n      customerId: approvedCustomerId,\n      customerName: customerName,\n      evidenceText: calendarDescription\n    });\n    if (contactResolution.status === 'CONTACT_RESOLVED' && contactResolution.contactId) {\n      desiredContactId = installPositiveId_(contactResolution.contactId);\n      contactIdSource = desiredContactId ? ('Striven_Customers ' + contactResolution.matchType) : '';\n    }\n  }\n\n  if (!desiredContactId && calendarDescription) {\n    const emails = installExtractEmails_(calendarDescription);"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Service customer-report contact projection",
+      "before": "  const contactId = matchedWorkOrder\n    ? serviceGetFirstValue_(matchedWorkOrder, [\n        'ContactId',\n        'Contact ID',\n        'PrimaryContactId',\n        'Primary Contact ID'\n      ])\n    : '';",
+      "after": "  let contactId = matchedWorkOrder\n    ? serviceGetFirstValue_(matchedWorkOrder, [\n        'ContactId',\n        'Contact ID',\n        'PrimaryContactId',\n        'Primary Contact ID'\n      ])\n    : '';\n\n  const customerNumber = matchedWorkOrder\n    ? serviceGetFirstValue_(matchedWorkOrder, ['CustomerNumber', 'Customer Number', 'Customer #'])\n    : '';\n\n  let contactResolution = null;\n  if (!contactId && typeof tmContactR1Resolve_ === 'function') {\n    contactResolution = tmContactR1Resolve_({\n      customerNumber: customerNumber,\n      customerName: customerName,\n      evidenceText: calendarText\n    });\n    if (contactResolution.status === 'CONTACT_RESOLVED' && contactResolution.contactId) {\n      contactId = String(contactResolution.contactId);\n    }\n  }"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Service contact-resolution observability",
+      "before": "  const issues = [];\n  let lineStatus = '';",
+      "after": "  const issues = [];\n  if (contactResolution && contactResolution.status === 'CONTACT_REVIEW_MULTIPLE') {\n    issues.push('Contact resolution found multiple customer contacts and did not guess.');\n  } else if (contactResolution && contactResolution.status === 'CONTACT_REVIEW_CUSTOMER_AMBIGUOUS') {\n    issues.push('Contact resolution could not prove one customer from the exact name.');\n  }\n  let lineStatus = '';"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Service contact-only ID push",
+      "before": "function pushServiceIdsForSelectedMappingRow() {\n  throw new Error('Service ID push is not activated yet. Need confirmed Striven payload fields before enabling this.');\n}",
+      "after": "function pushServiceIdsForSelectedMappingRow() {\n  const mappingSheet = tm_getRequiredSheet_(SERVICE_CONFIG.SHEETS.MAPPING);\n  const rowNumber = tm_getActiveRowNumber_();\n  tm_assertNotHeaderRow_(rowNumber);\n\n  const values = mappingSheet.getDataRange().getValues();\n  const headers = values[0];\n  const indexMap = tm_buildHeaderIndexMap_(headers);\n  const row = values[rowNumber - 1];\n\n  const taskId = Number(tm_getRowValue_(row, indexMap, 'Task ID')) || 0;\n  const contactId = Number(tm_getRowValue_(row, indexMap, 'Hidden Contact ID')) || 0;\n  const taskStatus = tm_getRowValue_(row, indexMap, 'Task Status');\n\n  if (!taskId) throw new Error('Service Contact push requires a valid Task ID.');\n  if (!contactId) throw new Error('Service Contact push requires a resolved Hidden Contact ID. No write attempted.');\n\n  const statusCheck = tm_checkTaskStatusAllowedToPush_(taskStatus);\n  if (!statusCheck.allowed) throw new Error('Service Contact push blocked. ' + statusCheck.blockReason);\n  if (typeof getStrivenTaskSnapshotById_ !== 'function') throw new Error('Service Contact push requires getStrivenTaskSnapshotById_.');\n\n  const before = getStrivenTaskSnapshotById_(taskId, {});\n  if (Number(before.conId || 0) === contactId) {\n    return { status: 'ALREADY_CORRECT', writesPerformed: false, taskId: taskId, contactId: contactId, readBackVerified: true };\n  }\n\n  const payload = { Id: taskId, RequestedBy: { Id: contactId, Type: 'contact' } };\n  if (typeof updateStrivenTaskById_ === 'function') {\n    updateStrivenTaskById_(taskId, payload);\n  } else if (typeof patchStrivenTaskById_ === 'function') {\n    patchStrivenTaskById_(taskId, payload);\n  } else {\n    throw new Error('Service Contact push has no proven Striven task PATCH helper.');\n  }\n\n  const delays = [500, 1200, 2500];\n  let after = null;\n  for (let i = 0; i < delays.length; i++) {\n    Utilities.sleep(delays[i]);\n    after = getStrivenTaskSnapshotById_(taskId, {});\n    if (Number(after.conId || 0) === contactId) {\n      return { status: 'PUSHED_AND_VERIFIED', writesPerformed: true, taskId: taskId, contactId: contactId, readBackVerified: true };\n    }\n  }\n\n  throw new Error('Service Contact PATCH completed but RequestedBy Contact read-back did not match. No retry attempted.');\n}"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "label": "R4 Service Hidden Contact ID alias",
+      "before": "    conId: tmR4_positiveNumber_(tmR4_pickRowValue_(row, ['Hidden Desired ContactId', 'Contact ID', 'ContactId'])),",
+      "after": "    conId: tmR4_positiveNumber_(tmR4_pickRowValue_(row, ['Hidden Desired ContactId', 'Hidden Contact ID', 'Contact ID', 'ContactId'])),"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "label": "R4 Service contact-only relationship path",
+      "before": "    if (diff.salesOrder || diff.location || diff.contact) {\n      throw new Error('BLOCKED: Service selected-row mapping requires ID relationship changes, but the current Service workflow does not expose a proven ID mutation path.');\n    }",
+      "after": "    if (diff.salesOrder || diff.location) {\n      throw new Error('BLOCKED: Service selected-row mapping requires Sales Order/Location relationship changes, but those mutation paths are not proven. Contact-only reconciliation remains allowed.');\n    }\n    if (diff.contact) {\n      if (typeof pushServiceIdsForSelectedMappingRow !== 'function') {\n        throw new Error('BLOCKED: Service Contact reconciliation helper is missing.');\n      }\n      out.parts.push({ field: 'CONTACT', result: pushServiceIdsForSelectedMappingRow() });\n      out.writesPerformed = true;\n    }"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "label": "R4 version",
+      "before": "VERSION: 'TM_FIX_PACK_R4_9_20260917'",
+      "after": "VERSION: 'TM_FIX_PACK_R4_10_CONTACT_R1_20260921'"
+    }
+  ],
+  "workContains": [
+    {
+      "file": "10_Install_Workflow.js",
+      "text": "'ContactContactId'"
+    },
+    {
+      "file": "10_Install_Workflow.js",
+      "text": "tmContactR1Resolve_({"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "['CustomerNumber', 'Customer Number', 'Customer #']"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "status: 'PUSHED_AND_VERIFIED'"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "'Hidden Contact ID'"
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "TM_FIX_PACK_R4_10_CONTACT_R1_20260921"
+    },
+    {
+      "file": "98_1_Contact_Resolution_R1.js",
+      "text": "TM_CONTACT_RESOLUTION_R1_20260921"
+    }
+  ],
+  "postContains": [
+    {
+      "file": "10_Install_Workflow.js",
+      "text": "'ContactContactId'"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "Service Contact PATCH completed but RequestedBy Contact read-back did not match. No retry attempted."
+    },
+    {
+      "file": "97_Task_Mapping_Fix_Pack_R4.js",
+      "text": "TM_FIX_PACK_R4_10_CONTACT_R1_20260921"
+    },
+    {
+      "file": "98_1_Contact_Resolution_R1.js",
+      "text": "TM_CONTACT_RESOLUTION_R1_20260921"
+    }
+  ],
+  "runtimeVerification": "PENDING_LIVE_MAPPING_REBUILD_AND_SELECTED_SERVICE_CONTACT_TEST",
+  "safety": {
+    "serviceWrites": "CONTACT_ONLY",
+    "salesOrderWritesEnabled": false,
+    "locationWritesEnabled": false,
+    "calendarWritesAdded": false,
+    "deliverySourceChanged": false,
+    "preInspectionSourceChanged": false
+  }
 }
