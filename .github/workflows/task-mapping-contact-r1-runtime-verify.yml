@@ -34,12 +34,33 @@ jobs:
           cat > .clasp.json <<'JSON'
           {"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}
           JSON
+
       - name: Read-only shared Contact resolver runtime test
         shell: bash
-        run: npx -y @google/clasp@3.3.0 run testTmContactR1ResolverReadOnly --dev
+        run: |
+          set -euo pipefail
+          output="$(npx -y @google/clasp@3.3.0 run testTmContactR1ResolverReadOnly 2>&1)"
+          printf '%s
+' "$output"
+          if printf '%s
+' "$output" | grep -Eiq '(^|[[:space:]])error:'; then exit 1; fi
+
       - name: Rebuild Service mapping only
         shell: bash
-        run: npx -y @google/clasp@3.3.0 run buildServiceTaskMappingFromSheets --dev
+        run: |
+          set -euo pipefail
+          output="$(npx -y @google/clasp@3.3.0 run buildServiceTaskMappingFromSheets 2>&1)"
+          printf '%s
+' "$output"
+          if printf '%s
+' "$output" | grep -Eiq '(^|[[:space:]])error:'; then exit 1; fi
+
       - name: Rebuild Install mapping only
         shell: bash
-        run: npx -y @google/clasp@3.3.0 run buildInstallTaskMappingFromSheets --dev
+        run: |
+          set -euo pipefail
+          output="$(npx -y @google/clasp@3.3.0 run buildInstallTaskMappingFromSheets 2>&1)"
+          printf '%s
+' "$output"
+          if printf '%s
+' "$output" | grep -Eiq '(^|[[:space:]])error:'; then exit 1; fi
