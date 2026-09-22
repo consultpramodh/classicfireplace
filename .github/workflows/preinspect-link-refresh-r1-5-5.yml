@@ -1,0 +1,106 @@
+name: PreInspection Striven Link Refresh R1.5.5
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/preinspect-link-refresh-r1-5-5-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preinspect-link-refresh-r1-5-5
+  cancel-in-progress: false
+
+jobs:
+  verify-and-run:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Verify live R1.5.5 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/tm-preinspect-link-refresh
+          mkdir -p /tmp/tm-preinspect-link-refresh
+          (cd /tmp/tm-preinspect-link-refresh && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='/tmp/tm-preinspect-link-refresh/src/99_Task_Mapping_Standardization_R1.js';
+          const s=fs.readFileSync(p,'utf8');
+          const required=[
+            'TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922',
+            'function dryRunPreInspectStrivenLinksNow()',
+            'function refreshPreInspectStrivenLinksNow()',
+            "label: 'View Sales Orders – ' + customerName + ' (#' + accountId + ')'",
+            'Recommended Standard Title Format',
+            'Missing / Needs Attention'
+          ];
+          const missing=required.filter(x=>!s.includes(x));
+          if(missing.length){console.error(JSON.stringify({status:'LIVE_SOURCE_INCOMPLETE',missing},null,2));process.exit(1);}
+          if(/MailApp|GmailApp|sendEmail\(/.test(s)){console.error('FORBIDDEN_EMAIL_SEND_SURFACE');process.exit(1);}
+          console.log(JSON.stringify({status:'LIVE_R1_5_5_VERIFIED',requiredMarkers:required.length}));
+          NODE
+
+      - name: Configure runtime target
+        shell: bash
+        run: |
+          cat > .clasp.json <<'JSON'
+          {"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}
+          JSON
+          mkdir -p preinspect-link-refresh-r1-5-5-output
+
+      - name: Dry-run PreInspection links
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run dryRunPreInspectStrivenLinksNow 2>&1 | tee preinspect-link-refresh-r1-5-5-output/dry-run.log
+          if grep -Eiq 'Exception:|storage NOT_FOUND|ScriptError|Execution failed' preinspect-link-refresh-r1-5-5-output/dry-run.log; then
+            echo "DRY_RUN_RUNTIME_ERROR"
+            exit 1
+          fi
+
+      - name: Apply PreInspection link refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run refreshPreInspectStrivenLinksNow 2>&1 | tee preinspect-link-refresh-r1-5-5-output/apply.log
+          if grep -Eiq 'Exception:|storage NOT_FOUND|ScriptError|Execution failed' preinspect-link-refresh-r1-5-5-output/apply.log; then
+            echo "APPLY_RUNTIME_ERROR"
+            exit 1
+          fi
+
+      - name: Preserve runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preinspect-link-refresh-r1-5-5-${{ github.run_id }}
+          path: preinspect-link-refresh-r1-5-5-output/
+          if-no-files-found: warn
+          retention-days: 30
