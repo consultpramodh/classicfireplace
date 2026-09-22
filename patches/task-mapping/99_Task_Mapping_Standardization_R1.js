@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_4_PREINSPECT_EMAIL_PREVIEW_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_4_PREINSPECT_EMAIL_PREVIEW_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -943,6 +943,11 @@ function tmStdPreInspectAuditPurpose_(description) {
     .replace(/&amp;/gi, '&')
     .replace(/&#x27;|&#39;/gi, "'")
     .replace(/\r/g, '')
+    .split('\n')
+    .filter(function(line) {
+      return !/^\s*Calendar title context \(preserved\):/i.test(line);
+    })
+    .join('\n')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -991,6 +996,250 @@ function tmStdPreInspectAuditEventLink_(event) {
   }
   return '';
 }
+
+
+const TM_STD_PREINSPECT_REORG = {
+  LOG_SHEET_NAME: 'PreInspect Calendar Reorganization Log',
+  CONTEXT_PREFIX: 'Calendar title context (preserved): ',
+  SAFE_STATUSES: ['CONFIRMED', 'MATCHED'],
+  LOG_HEADERS: [
+    'Timestamp','Event ID','Organizer / Creator','Original Title','New Standard Title',
+    'Context Preserved?','Preserved Context','Description Changed?','Verification','Version'
+  ]
+};
+
+function tmStdPreInspectReorgTokenize_(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function tmStdPreInspectReorgHasExtraContext_(originalTitle, standardTitle) {
+  const original = tmStdPreInspectReorgTokenize_(originalTitle);
+  const standard = tmStdPreInspectReorgTokenize_(standardTitle);
+  const counts = {};
+  standard.forEach(function(token) { counts[token] = (counts[token] || 0) + 1; });
+  for (let i = 0; i < original.length; i++) {
+    const token = original[i];
+    if (counts[token]) counts[token]--;
+    else return true;
+  }
+  return false;
+}
+
+function tmStdPreInspectReorgContextLine_(originalTitle) {
+  return TM_STD_PREINSPECT_REORG.CONTEXT_PREFIX + tmStdClean_(originalTitle);
+}
+
+function tmStdPreInspectReorgDescriptionWithContext_(description, originalTitle) {
+  const current = String(description || '');
+  const line = tmStdPreInspectReorgContextLine_(originalTitle);
+  if (current.toLowerCase().indexOf(line.toLowerCase()) >= 0) {
+    return { description: current, changed: false, line: line };
+  }
+  return {
+    description: current ? line + '\n\n' + current : line,
+    changed: true,
+    line: line
+  };
+}
+
+function tmStdPreInspectReorgMappingRows_() {
+  const out = [];
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss && ss.getSheetByName('PreInspect Task Mapping');
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const headerRow = tmStdFindMappingHeaderRow_(sheet);
+  if (!headerRow || sheet.getLastRow() <= headerRow) return out;
+  const headers = sheet.getRange(headerRow, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  const values = sheet.getRange(headerRow + 1, 1, sheet.getLastRow() - headerRow, sheet.getLastColumn()).getDisplayValues();
+  values.forEach(function(valuesRow) {
+    const row = tmStdRowObject_(headers, valuesRow);
+    const status = tmStdUpper_(row.Status);
+    if (TM_STD_PREINSPECT_REORG.SAFE_STATUSES.indexOf(status) < 0) return;
+    const eventId = tmStdClean_(row['Event ID']);
+    const customerNumber = tmStdClean_(row['Customer #']);
+    const customerName = tmStdClean_(row.Customer);
+    const phone = tmStdPreInspectAuditPhone_(row['Calendar Title'] || '');
+    if (!eventId || !customerNumber || !customerName || !phone) return;
+    out.push({
+      eventId: eventId,
+      status: status,
+      customerNumber: customerNumber,
+      customerName: customerName,
+      phone: phone,
+      standardTitle: customerNumber + ' - ' + customerName + ' - ' + phone
+    });
+  });
+  return out;
+}
+
+function tmStdPreInspectReorgEnsureLogSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(TM_STD_PREINSPECT_REORG.LOG_SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(TM_STD_PREINSPECT_REORG.LOG_SHEET_NAME);
+  if (sheet.getMaxColumns() < TM_STD_PREINSPECT_REORG.LOG_HEADERS.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), TM_STD_PREINSPECT_REORG.LOG_HEADERS.length - sheet.getMaxColumns());
+  }
+  const currentHeaders = sheet.getRange(1, 1, 1, TM_STD_PREINSPECT_REORG.LOG_HEADERS.length).getDisplayValues()[0];
+  if (currentHeaders.join('\u001f') !== TM_STD_PREINSPECT_REORG.LOG_HEADERS.join('\u001f')) {
+    sheet.getRange(1, 1, 1, TM_STD_PREINSPECT_REORG.LOG_HEADERS.length)
+      .setValues([TM_STD_PREINSPECT_REORG.LOG_HEADERS])
+      .setFontWeight('bold')
+      .setBackground('#9f2d2d')
+      .setFontColor('#ffffff')
+      .setWrap(true);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function tmStdPreInspectReorgLog_(entry) {
+  const sheet = tmStdPreInspectReorgEnsureLogSheet_();
+  sheet.appendRow([
+    new Date(),
+    entry.eventId || '',
+    entry.creator || '',
+    entry.originalTitle || '',
+    entry.newTitle || '',
+    entry.contextPreserved ? 'YES' : 'NO',
+    entry.contextLine || '',
+    entry.descriptionChanged ? 'YES' : 'NO',
+    entry.verification || '',
+    TM_STD_R1_VERSION
+  ]);
+}
+
+function tmStdReorganizePreInspectCalendarTitles_(dryRun) {
+  const candidates = tmStdPreInspectReorgMappingRows_();
+  const results = [];
+  let writeCount = 0;
+
+  candidates.forEach(function(candidate) {
+    const eventRef = tmStdFindEventOnCalendar_(TM_STD_R12_PREINSPECT.STEPHEN_CALENDAR_ID, candidate.eventId);
+    if (!eventRef || !eventRef.event) {
+      results.push({
+        eventId: candidate.eventId,
+        status: 'SKIPPED_NOT_ON_STEPHEN',
+        customerNumber: candidate.customerNumber,
+        writeCount: 0
+      });
+      return;
+    }
+
+    const event = eventRef.event;
+    const originalTitle = tmStdClean_(event.getTitle());
+    const standardTitle = candidate.standardTitle;
+
+    if (!originalTitle || originalTitle === standardTitle) {
+      results.push({
+        eventId: candidate.eventId,
+        status: originalTitle === standardTitle ? 'ALREADY_STANDARD' : 'SKIPPED_BLANK_TITLE',
+        originalTitle: originalTitle,
+        standardTitle: standardTitle,
+        writeCount: 0
+      });
+      return;
+    }
+
+    const currentDescription = String(event.getDescription() || '');
+    const preserveContext = tmStdPreInspectReorgHasExtraContext_(originalTitle, standardTitle);
+    const descriptionPlan = preserveContext
+      ? tmStdPreInspectReorgDescriptionWithContext_(currentDescription, originalTitle)
+      : { description: currentDescription, changed: false, line: '' };
+
+    if (dryRun) {
+      results.push({
+        eventId: candidate.eventId,
+        status: 'WOULD_REORGANIZE',
+        originalTitle: originalTitle,
+        standardTitle: standardTitle,
+        contextPreserved: preserveContext,
+        contextLine: descriptionPlan.line,
+        descriptionWouldChange: descriptionPlan.changed,
+        writeCount: 0
+      });
+      return;
+    }
+
+    // Zero-information-loss guard: preserve title-only context before changing the title.
+    if (descriptionPlan.changed) {
+      event.setDescription(descriptionPlan.description);
+      const descriptionReadBack = String(event.getDescription() || '');
+      if (descriptionReadBack.indexOf(descriptionPlan.line) < 0) {
+        throw new Error('PreInspection title reorganization aborted because context preservation did not read back for event ' + candidate.eventId);
+      }
+      writeCount++;
+    }
+
+    event.setTitle(standardTitle);
+    writeCount++;
+
+    const titleReadBack = tmStdClean_(event.getTitle());
+    const descriptionReadBack = String(event.getDescription() || '');
+    const titleOk = titleReadBack === standardTitle;
+    const contextOk = !preserveContext || descriptionReadBack.indexOf(descriptionPlan.line) >= 0;
+
+    if (!titleOk || !contextOk) {
+      throw new Error('PreInspection title reorganization read-back failed for event ' + candidate.eventId);
+    }
+
+    const creators = tmStdPreInspectAuditCreators_(event);
+    tmStdPreInspectReorgLog_({
+      eventId: tmStdPreInspectAuditNormalizeEventId_(candidate.eventId),
+      creator: creators.join(', '),
+      originalTitle: originalTitle,
+      newTitle: standardTitle,
+      contextPreserved: preserveContext,
+      contextLine: descriptionPlan.line,
+      descriptionChanged: descriptionPlan.changed,
+      verification: 'TITLE_AND_DESCRIPTION_READBACK_VERIFIED'
+    });
+
+    results.push({
+      eventId: candidate.eventId,
+      status: 'REORGANIZED_VERIFIED',
+      originalTitle: originalTitle,
+      standardTitle: standardTitle,
+      contextPreserved: preserveContext,
+      contextLine: descriptionPlan.line,
+      descriptionChanged: descriptionPlan.changed,
+      writeCount: (descriptionPlan.changed ? 1 : 0) + 1,
+      emailRequiredForTitle: false
+    });
+  });
+
+  return {
+    mode: dryRun ? 'DRY_RUN' : 'WRITE',
+    version: TM_STD_R1_VERSION,
+    status: 'COMPLETE',
+    candidates: candidates.length,
+    reorganized: results.filter(function(x) { return x.status === 'REORGANIZED_VERIFIED'; }).length,
+    wouldReorganize: results.filter(function(x) { return x.status === 'WOULD_REORGANIZE'; }).length,
+    writeCount: writeCount,
+    emailSendsPerformed: 0,
+    calendarWritesPerformed: writeCount > 0,
+    strivenWritesPerformed: false,
+    events: results
+  };
+}
+
+function runPreInspectCalendarReorganization() {
+  const result = tmStdReorganizePreInspectCalendarTitles_(false);
+  refreshPreInspectCalendarAudit();
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+function dryRunPreInspectCalendarReorganization() {
+  const result = tmStdReorganizePreInspectCalendarTitles_(true);
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
 
 function tmStdPreInspectAuditBuildRow_(event, mappingByEvent, mirrorByEvent) {
   const eventId = tmStdPreInspectAuditNormalizeEventId_(event.getId());
@@ -1086,6 +1335,10 @@ function tmStdRefreshPreInspectCalendarAudit_(start, end, reason) {
   const windowStart = start instanceof Date ? start : new Date();
   const windowEnd = end instanceof Date ? end : new Date(windowStart.getTime() + 45 * 24 * 60 * 60 * 1000);
 
+  // Safe auto-reorganization runs before the audit so organizers are not notified
+  // for title issues the automation can resolve with verified customer identity.
+  const reorganization = tmStdReorganizePreInspectCalendarTitles_(false);
+
   const mappingByEvent = tmStdPreInspectAuditSheetMap_('PreInspect Task Mapping');
   const mirrorByEvent = tmStdPreInspectAuditSheetMap_('PreInspect Calendar');
   const allEvents = calendar.getEvents(windowStart, windowEnd) || [];
@@ -1164,7 +1417,10 @@ function tmStdRefreshPreInspectCalendarAudit_(start, end, reason) {
     eventsRead: allEvents.length,
     auditRows: rows.length,
     counts: counts,
-    calendarWritesPerformed: false,
+    calendarWritesPerformed: !!(reorganization && reorganization.calendarWritesPerformed),
+    calendarWriteCount: reorganization ? Number(reorganization.writeCount || 0) : 0,
+    reorganization: reorganization || null,
+    emailSendsPerformed: 0,
     strivenWritesPerformed: false,
     sheetWritesPerformed: true,
     sheetName: TM_STD_PREINSPECT_AUDIT.SHEET_NAME
@@ -1461,6 +1717,7 @@ function tmStdAddPreInspectAuditMenu_() {
     .createMenu('Pre-Inspection Audit')
     .addItem('Preview notification email for selected row', 'previewPreInspectNotificationEmailForSelectedRow')
     .addSeparator()
+    .addItem('Reorganize safe calendar titles now', 'runPreInspectCalendarReorganization')
     .addItem('Refresh calendar audit', 'refreshPreInspectCalendarAudit')
     .addToUi();
 }
