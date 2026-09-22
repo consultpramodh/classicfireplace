@@ -1,11 +1,11 @@
-name: Task Mapping Standardization R1.5.1 PreInspection Calendar Reorganization
+name: Task Mapping Standardization R1.5.2 PreInspection Calendar Reorganization
 
 on:
   push:
     branches:
       - task_mapping
     paths:
-      - ops/task-mapping-standardization-r1-5-1-trigger.txt
+      - ops/task-mapping-standardization-r1-5-2-trigger.txt
 
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
-      - name: Deploy guarded Standardization R1.5.1
+      - name: Deploy guarded Standardization R1.5.2
         shell: bash
         run: node tools/deploy-task-mapping-standardization-r1-5.js
 
@@ -49,7 +49,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: task-mapping-standardization-r1-5-1-${{ github.run_id }}
-          path: task-mapping-standardization-r1-5-1-output/
+          name: task-mapping-standardization-r1-5-2-${{ github.run_id }}
+          path: task-mapping-standardization-r1-5-2-output/
           if-no-files-found: warn
           retention-days: 30
