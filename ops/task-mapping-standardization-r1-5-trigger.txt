@@ -1,0 +1,12 @@
+TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+Rules:
+- zero information loss
+- safe statuses only: CONFIRMED or MATCHED
+- standard title: Customer # - Customer Name - (###) ###-####
+- preserve title-only information in description before changing title
+- read back description before title write when context must be preserved
+- read back title + description after write
+- append immutable PreInspect Calendar Reorganization Log
+- do not change REVIEW/ambiguous rows
+- do not send notification email for title issues resolved automatically
+- no MailApp/GmailApp/sendEmail surface
