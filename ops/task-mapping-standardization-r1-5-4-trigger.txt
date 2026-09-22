@@ -1,0 +1,7 @@
+TASK_MAPPING_STANDARDIZATION_R1_5_4_PREINSPECT_LINK_LABEL_20260922
+PreInspection Striven links:
+- Sales Orders label: View Sales Orders – <Customer Name> (#<Customer #>)
+- Task link label remains unchanged
+- both links use the same shared anchor helper
+- no font-size, heading, or bold styling is added to either link
+- no email sending
