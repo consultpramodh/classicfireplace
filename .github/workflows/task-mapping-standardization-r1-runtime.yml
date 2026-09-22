@@ -1,0 +1,116 @@
+name: Task Mapping Standardization R1 Runtime Apply
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-standardization-r1-runtime-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-standardization-r1-runtime
+  cancel-in-progress: false
+
+jobs:
+  verify-and-run:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Clone and verify live Standardization R1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/tm-std-live
+          mkdir -p /tmp/tm-std-live
+          npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src /tmp/tm-std-live
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const dir = '/tmp/tm-std-live/src';
+          const files = fs.readdirSync(dir).filter(n => /\.(?:js|gs)$/i.test(n));
+          const all = files.map(n => fs.readFileSync(path.join(dir,n),'utf8')).join('\n');
+          const required = [
+            'TASK_MAPPING_STANDARDIZATION_R1_20260922',
+            'const INSTALL_OPTION_B_VISIBLE_COLUMN_COUNT = 19;',
+            'const PREINSPECT_MAP_VISIBLE_COLUMN_COUNT = 16;',
+            "const preinspection = tmStdRunPreInspectCalendarLinkPipeline_(!!dryRun);",
+            "record('CALENDAR_TASK_LINK', preinspectAppendTaskLinkToCalendarEvent_(ctx.eventId, reviewedTaskId, ''));",
+            "tmStdResolveSalesOrderUrlFromCalendarMirror_('Service', model.eventId, model.salesOrderNumber)"
+          ];
+          const missing = required.filter(m => !all.includes(m));
+          if (missing.length) {
+            console.error('LIVE_STANDARDIZATION_SOURCE_INCOMPLETE');
+            console.error(JSON.stringify({missing}, null, 2));
+            process.exit(1);
+          }
+          if (all.includes("const cleaned=stlRemoveManagedBlocksFromDescription_(original,'SERVICE');")) {
+            console.error('LIVE_STANDARDIZATION_SOURCE_STILL_HAS_BROKEN_SERVICE_CLEANER');
+            process.exit(1);
+          }
+          console.log(JSON.stringify({
+            status:'LIVE_STANDARDIZATION_SOURCE_VERIFIED',
+            fileCount:files.length,
+            requiredMarkers:required.length
+          }));
+          NODE
+
+      - name: Configure remote runtime target
+        shell: bash
+        run: |
+          cat > .clasp.json <<'JSON'
+          {"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}
+          JSON
+
+      - name: Dry-run standardization
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p task-mapping-standardization-r1-runtime-output
+          npx -y @google/clasp@3.3.0 run dryRunTaskMappingStandardizationR1 2>&1 | tee task-mapping-standardization-r1-runtime-output/dry-run.log
+
+      - name: Apply standardization
+        shell: bash
+        run: |
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run runTaskMappingStandardizationR1 2>&1 | tee task-mapping-standardization-r1-runtime-output/runtime.log
+
+      - name: Refresh live Code Audit Source
+        shell: bash
+        run: |
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run replaceCodeAuditSourceSheetFromProject 2>&1 | tee task-mapping-standardization-r1-runtime-output/code-audit-refresh.log
+
+      - name: Preserve runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-standardization-r1-runtime-${{ github.run_id }}
+          path: task-mapping-standardization-r1-runtime-output/
+          if-no-files-found: warn
+          retention-days: 30
