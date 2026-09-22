@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_EXISTING_SHEET_FIX_R2_20260922",
+  "release": "TASK_MAPPING_EXISTING_SHEET_FIX_R2B_20260922",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 74,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-existing-sheet-fix-r2-output",
+  "outputDirectory": "task-mapping-existing-sheet-fix-r2b-output",
   "requiredPreFiles": [
     "10_Install_Workflow.js",
     "20_Delivery_Workflow.js",
@@ -90,12 +90,6 @@
       "label": "Do not select first loose Service customer task when multiple match",
       "before": "function serviceFindTaskByLooseCustomerName_(possibleCustomerName, tasks) {\n  const cleanName = tm_normalizeText_(possibleCustomerName);\n  if (!cleanName) return null;\n\n  for (let i = 0; i < (tasks || []).length; i++) {\n    const taskCustomer = serviceGetFirstValue_(tasks[i], [\n      'Customer', 'CustomerName', 'Customer Name'\n    ]);\n\n    const cleanTaskCustomer = tm_normalizeText_(taskCustomer);\n    if (!cleanTaskCustomer) continue;\n\n    if (\n      cleanTaskCustomer === cleanName ||\n      cleanTaskCustomer.indexOf(cleanName) !== -1 ||\n      cleanName.indexOf(cleanTaskCustomer) !== -1\n    ) {\n      return tasks[i];\n    }\n  }\n\n  return null;\n}",
       "after": "function serviceFindTaskByLooseCustomerName_(possibleCustomerName, tasks) {\n  const cleanName = tm_normalizeText_(possibleCustomerName);\n  if (!cleanName) return null;\n\n  const matches = (tasks || []).filter(function(task) {\n    const taskCustomer = serviceGetFirstValue_(task, [\n      'Customer', 'CustomerName', 'Customer Name'\n    ]);\n\n    const cleanTaskCustomer = tm_normalizeText_(taskCustomer);\n    if (!cleanTaskCustomer) return false;\n\n    return (\n      cleanTaskCustomer === cleanName ||\n      cleanTaskCustomer.indexOf(cleanName) !== -1 ||\n      cleanName.indexOf(cleanTaskCustomer) !== -1\n    );\n  });\n\n  return matches.length === 1 ? matches[0] : null;\n}"
-    },
-    {
-      "file": "30_Service_Workflow.js",
-      "label": "Service incomplete relationship identity must remain REVIEW",
-      "before": "  } else if (matchedBy === 'Customer') {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n    issues.push('Matched by customer only. Add SO # or Task ID before pushing.');\n  } else if (needsDatePush || needsAssigneePush) {",
-      "after": "  } else if (matchedBy === 'Customer') {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n    issues.push('Matched by customer only. Add SO # or Task ID before pushing.');\n  } else if (!matchedWorkOrder || !locationId || !contactId) {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n\n    if (!matchedWorkOrder) {\n      issues.push('Verified Service Work Order is missing.');\n    }\n    if (!locationId) {\n      issues.push('Verified customer-owned Location ID is missing or ambiguous.');\n    }\n    if (!contactId) {\n      issues.push('Verified customer Contact ID is missing or ambiguous.');\n    }\n\n    issues.push('Relationship identity must be complete before Service is treated as READY/MATCHED.');\n  } else if (needsDatePush || needsAssigneePush) {"
     }
   ],
   "workContains": [
@@ -122,10 +116,6 @@
     {
       "file": "30_Service_Workflow.js",
       "text": "return tiedBest.length === 1 ? bestTask : null;"
-    },
-    {
-      "file": "30_Service_Workflow.js",
-      "text": "Relationship identity must be complete before Service is treated as READY/MATCHED."
     }
   ],
   "postContains": [
@@ -140,10 +130,6 @@
     {
       "file": "20_Delivery_Workflow.js",
       "text": "ADDRESS_OWNERSHIP_NOT_CONFIRMED"
-    },
-    {
-      "file": "30_Service_Workflow.js",
-      "text": "Relationship identity must be complete before Service is treated as READY/MATCHED."
     }
   ],
   "runtimeVerification": "BOUND_MAPPING_REBUILD_AND_EXISTING_SHEET_READBACK",
@@ -158,6 +144,6 @@
     "unicodePhoneNormalization": true,
     "noCrossCustomerLocationFallback": true,
     "noArbitraryDuplicateTieBreak": true,
-    "serviceIncompleteRelationshipsFailClosed": true
+    "serviceIncompleteRelationshipsFailClosed": "DEFERRED_TO_EXACT_CURRENT_SOURCE_PATCH"
   }
 }
