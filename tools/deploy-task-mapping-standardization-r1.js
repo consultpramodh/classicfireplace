@@ -78,16 +78,7 @@ function findUniqueFileContaining(dir, marker) {
 }
 
 function findUniqueFileDefiningFunction(dir, functionName) {
-  const escaped = functionName.replace(/[.*+?^{}()|[\]\\]/g, '\\function findUniqueFileContaining(dir, marker) {
-  const matches = sourceFiles(dir).filter(function(name) {
-    return fs.readFileSync(path.join(dir, name), 'utf8').indexOf(marker) >= 0;
-  });
-  if (matches.length !== 1) {
-    throw new Error('Expected exactly one live source file containing [' + marker + '], found ' + matches.length + ': ' + matches.join(', '));
-  }
-  return matches[0];
-}');
-  const re = new RegExp('(?:^|\\n)\\s*function\\s+' + escaped + '\\s*\\(', 'g');
+  const re = new RegExp('(?:^|\\n)\\s*function\\s+' + functionName + '\\s*\\(', 'g');
   const matches = sourceFiles(dir).filter(function(name) {
     const text = fs.readFileSync(path.join(dir, name), 'utf8');
     re.lastIndex = 0;
@@ -115,37 +106,32 @@ function replaceRegexUnique(text, regex, replacement, label) {
 }
 
 function functionRange(text, functionName) {
-  const escaped = functionName.replace(/[.*+?^{}()|[\]\\]/g, '\\function functionRange(text, functionName) {
-  const marker = 'function ' + functionName + '(';
-  const start = text.indexOf(marker);
-  if (start < 0) throw new Error('Function not found: ' + functionName);
-  if (text.indexOf(marker, start + marker.length) >= 0) throw new Error('Function marker not unique: ' + functionName);
-  const open = text.indexOf('{', start);');
-  const re = new RegExp('(?:^|\\n)(\\s*function\\s+' + escaped + '\\s*\\()', 'g');
+  const re = new RegExp('(?:^|\\n)(\\s*function\\s+' + functionName + '\\s*\\()', 'g');
   const found = [];
   let match;
   while ((match = re.exec(text)) !== null) {
-    found.push(match.index + (match[0].charAt(0) === '\n' ? 1 : 0) + match[0].indexOf('function'));
+    const offset = match[0].charAt(0) === '\n' ? 1 : 0;
+    found.push(match.index + offset + match[0].slice(offset).indexOf('function'));
   }
   if (found.length !== 1) throw new Error('Active function definition count for ' + functionName + ' is ' + found.length);
   const start = found[0];
   const open = text.indexOf('{', start);
   let depth = 0, quote = null, escaped = false, lineComment = false, blockComment = false;
   for (let i = open; i < text.length; i++) {
-    const c = text[i], n = text[i + 1];
-    if (lineComment) { if (c === '\n') lineComment = false; continue; }
-    if (blockComment) { if (c === '*' && n === '/') { blockComment = false; i++; } continue; }
+    const ch = text[i], next = text[i + 1];
+    if (lineComment) { if (ch === '\n') lineComment = false; continue; }
+    if (blockComment) { if (ch === '*' && next === '/') { blockComment = false; i++; } continue; }
     if (quote) {
       if (escaped) { escaped = false; continue; }
-      if (c === '\\') { escaped = true; continue; }
-      if (c === quote) quote = null;
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === quote) quote = null;
       continue;
     }
-    if (c === '/' && n === '/') { lineComment = true; i++; continue; }
-    if (c === '/' && n === '*') { blockComment = true; i++; continue; }
-    if (c === "'" || c === '"' || c.charCodeAt(0) === 96) { quote = c; continue; }
-    if (c === '{') depth++;
-    else if (c === '}' && --depth === 0) return { start: start, end: i + 1 };
+    if (ch === '/' && next === '/') { lineComment = true; i++; continue; }
+    if (ch === '/' && next === '*') { blockComment = true; i++; continue; }
+    if (ch === "'" || ch === '"' || ch.charCodeAt(0) === 96) { quote = ch; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}' && --depth === 0) return { start: start, end: i + 1 };
   }
   throw new Error('Function end not found: ' + functionName);
 }
