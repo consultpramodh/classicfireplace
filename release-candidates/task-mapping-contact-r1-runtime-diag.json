@@ -1,100 +1,191 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_PREINSPECT_DUAL_CALENDAR_R1_20260921",
+  "release": "TASK_MAPPING_CURRENT_SHEET_STANDARDIZATION_R1_20260922",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "expectedPreFileCount": 72,
+  "expectedPreFileCount": 73,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-preinspect-dual-calendar-r1-output",
+  "outputDirectory": "task-mapping-current-sheet-standardization-r1-output",
   "requiredPreFiles": [
     "35_PreInspect_Task_Review.js",
-    "98_11_PreInspect_Calendar_Auto_Append_Test.js"
+    "36_PreInspect_Task_Create.js",
+    "92_Striven_Task_Patch_Helper.js",
+    "98_9_Systemic_Repair_R2.js",
+    "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js"
   ],
   "preContains": [
     {
       "file": "35_PreInspect_Task_Review.js",
-      "text": "tmCalendarTaskAcceptanceEnsureTaskLink_("
+      "text": "function preinspectExtractSignals_(event)"
     },
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "calendarEventTaskLinks"
+      "file": "36_PreInspect_Task_Create.js",
+      "text": "function preinspectCreateBuildConciseTitle_(row, fresh)"
     },
     {
-      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "text": "TM_PREINSPECT_CALENDAR_AUTO_APPEND_TEST_R1_20260921"
-    }
-  ],
-  "overwriteFiles": [
-    {
-      "repoPath": "patches/task-mapping/98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "targetFile": "98_11_PreInspect_Calendar_Auto_Append_Test.js"
-    }
-  ],
-  "addFiles": [
-    {
-      "repoPath": "patches/task-mapping/98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
-      "targetFile": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js"
-    }
-  ],
-  "replacements": [
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "label": "Route normal PreInspection link projection through dual-calendar helper",
-      "before": "if (typeof tmCalendarTaskAcceptanceEnsureTaskLink_ === 'function') {",
-      "after": "if (typeof tmPreInspectEnsureDualCalendarTaskLink_ === 'function') {"
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "text": "function taskRecoveryBuildTargetSource_("
     },
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "label": "Write and verify PreInspection Task link on both calendars",
-      "before": "        const linkResult = tmCalendarTaskAcceptanceEnsureTaskLink_(\n          'PreInspection',\n          eventId,\n          taskId,\n          taskTitle\n        );",
-      "after": "        const linkResult = tmPreInspectEnsureDualCalendarTaskLink_(\n          eventId,\n          taskId,\n          taskTitle\n        );"
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "text": "preinspectAppendTaskLinkToCalendarEvent_("
     },
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "label": "Clarify missing dual-calendar helper failure",
-      "before": "reason: 'Calendar Task-link acceptance helper is unavailable.'",
-      "after": "reason: 'PreInspection dual-calendar Task-link helper is unavailable.'"
-    }
-  ],
-  "workContains": [
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "tmPreInspectEnsureDualCalendarTaskLink_("
-    },
-    {
-      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "text": "TM_PREINSPECT_DUAL_CALENDAR_AUTO_APPEND_TEST_R1_20260921"
-    },
-    {
-      "file": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
-      "text": "TM_PREINSPECT_DUAL_CALENDAR_R1_20260921"
-    },
-    {
-      "file": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
-      "text": "STEPHEN_CALENDAR_ID"
-    }
-  ],
-  "postContains": [
-    {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "tmPreInspectEnsureDualCalendarTaskLink_("
-    },
-    {
-      "file": "98_11_PreInspect_Calendar_Auto_Append_Test.js",
-      "text": "TEST_PREINSPECT_DUAL_CALENDAR_AUTO_APPEND_R1"
+      "file": "98_9_Systemic_Repair_R2.js",
+      "text": "TM_SYSTEMIC_REPAIR_R2_LINK_FIRST_20260921"
     },
     {
       "file": "98_12_PreInspect_Dual_Calendar_Task_Link_R1.js",
       "text": "VERIFIED_BOTH_CALENDARS"
     }
   ],
-  "runtimeVerification": "USER_RUN_TEST_PREINSPECT_DUAL_CALENDAR_AUTO_APPEND_R1",
+  "overwriteFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_9_Systemic_Repair_R2.js",
+      "targetFile": "98_9_Systemic_Repair_R2.js"
+    }
+  ],
+  "addFiles": [
+    {
+      "repoPath": "patches/task-mapping/98_13_Current_Mapping_Standardization_R1.js",
+      "targetFile": "98_13_Current_Mapping_Standardization_R1.js"
+    }
+  ],
+  "replacements": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Strip managed PreInspection task-link content before identity extraction",
+      "before": "function preinspectExtractSignals_(event) {\n  const combined = [event.title, event.description, event.location].join(' ');",
+      "after": "function preinspectExtractSignals_(event) {\n  event = event || {};\n\n  const authoredDescription =\n    typeof tmPreInspectIdentityAuthoredDescription_ === 'function'\n      ? tmPreInspectIdentityAuthoredDescription_(event.description)\n      : String(event.description || '');\n\n  const combined = [event.title, authoredDescription, event.location].join(' ');"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Use authored description only for PreInspection description-address fallback",
+      "before": "    : preinspectExtractAddressFromDescription_(event.description);",
+      "after": "    : preinspectExtractAddressFromDescription_(authoredDescription);"
+    },
+    {
+      "file": "36_PreInspect_Task_Create.js",
+      "label": "Standardize PreInspection task title to Customer - Address - Phone",
+      "before": "function preinspectCreateBuildConciseTitle_(row, fresh) {\n  const customer = String(row && row['Customer'] || '').trim();\n\n  const phone = preinspectCreatePhone_(\n    [\n      fresh && fresh.title ? fresh.title : '',\n      fresh && fresh.description ? fresh.description : ''\n    ].join('\\n')\n  );\n\n  return [\n    'Preinspect',\n    customer,\n    phone\n  ].filter(function(v) {\n    return String(v || '').trim() !== '';\n  }).join(' - ');\n}",
+      "after": "function preinspectCreateBuildConciseTitle_(row, fresh) {\n  const customer = String(row && row['Customer'] || '').trim();\n  const address = String(\n    row && (\n      row['Location'] ||\n      row['Calendar Location']\n    ) ||\n    fresh && fresh.location ||\n    ''\n  ).trim();\n\n  const phone = preinspectCreatePhone_(\n    [\n      fresh && fresh.title ? fresh.title : '',\n      typeof tmPreInspectIdentityAuthoredDescription_ === 'function'\n        ? tmPreInspectIdentityAuthoredDescription_(\n            fresh && fresh.description ? fresh.description : ''\n          )\n        : (fresh && fresh.description ? fresh.description : '')\n    ].join('\\n')\n  );\n\n  const title =\n    typeof tmStandardTaskTitle_ === 'function'\n      ? tmStandardTaskTitle_(customer, address, phone, '')\n      : [customer, address, phone].filter(Boolean).join(' - ');\n\n  if (!title || !customer || !address || !phone) {\n    throw new Error(\n      'PreInspect title cannot be built safely. Required: Customer Name, Address, Customer Phone Number.'\n    );\n  }\n\n  return title;\n}"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Allow PreInspection verified task snapshot refresh after Pool 8 and Field 854 reconciliation",
+      "before": "  const verifiedTask = finalizeResult && finalizeResult.verifiedTask\n    ? finalizeResult.verifiedTask\n    : getStrivenTaskById_(newTaskId);",
+      "after": "  let verifiedTask = finalizeResult && finalizeResult.verifiedTask\n    ? finalizeResult.verifiedTask\n    : getStrivenTaskById_(newTaskId);"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Do not route PreInspection Calendar notes into generic custom field 834",
+      "before": "    calendarNotes: context.freshEvent.description || '',",
+      "after": "    calendarNotes:\n      context.division === 'PreInspect'\n        ? null\n        : (context.freshEvent.description || ''),"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Keep new/recreated PreInspection Task Description blank",
+      "before": "  if (isCreate) {\n    target.description =\n      context.freshEvent.description || '';",
+      "after": "  if (isCreate) {\n    target.description =\n      context.division === 'PreInspect'\n        ? ''\n        : (context.freshEvent.description || '');"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Clear PreInspection historical custom fields and bypass generic 834 builder",
+      "before": "  target.infoCustomFields =\n    taskRecoveryBuildSafeInfoCustomFields_(\n      target.infoCustomFields || [],\n      context &&\n      context.freshEvent\n        ? context.freshEvent.description\n        : ''\n    );",
+      "after": "  if (context.division === 'PreInspect') {\n    target.infoCustomFields = [];\n    target.description = '';\n  } else {\n    target.infoCustomFields =\n      taskRecoveryBuildSafeInfoCustomFields_(\n        target.infoCustomFields || [],\n        context &&\n        context.freshEvent\n          ? context.freshEvent.description\n          : ''\n      );\n  }"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Standardize generic PreInspection recovery title",
+      "before": "  if (context.division === 'PreInspect') {\n    const customerNumber = taskRecoveryClean_(\n      relationships.customerNumber || context.customerNumber\n    );\n    const address = taskRecoveryClean_(\n      relationships.fullAddress || context.calendarLocation\n    );\n\n    if (!customerNumber || !customerName || !address || !phone) {\n      throw new Error(\n        'PreInspect title cannot be built safely. Required: Customer #, Customer Name, Full Address, Phone Number.'\n      );\n    }\n\n    return 'Preinspect: #' + customerNumber +\n      ' - ' + customerName +\n      ' - ' + address +\n      ' - ' + phone;\n  }",
+      "after": "  if (context.division === 'PreInspect') {\n    const address = taskRecoveryClean_(\n      relationships.fullAddress || context.calendarLocation\n    );\n\n    const title =\n      typeof tmStandardTaskTitle_ === 'function'\n        ? tmStandardTaskTitle_(customerName, address, phone, '')\n        : [customerName, address, phone].filter(Boolean).join(' - ');\n\n    if (!title || !customerName || !address || !phone) {\n      throw new Error(\n        'PreInspect title cannot be built safely. Required: Customer Name, Address, Customer Phone Number.'\n      );\n    }\n\n    return title;\n  }"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Track PreInspection Field 854 post-create reconciliation",
+      "before": "  let preinspectPoolAssignmentResult = null;",
+      "after": "  let preinspectPoolAssignmentResult = null;\n  let preinspectInstallNotesResult = null;"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Write PreInspection Calendar notes only to Field 854 after create/recreate",
+      "before": "    preinspectPoolAssignmentResult = preinspectEnsurePool8ByTaskId_(newTaskId);\n    verifiedTask = getReplacementTaskSourceSnapshot_(newTaskId);\n  }\n\n  taskRecoveryMarkCreatedTaskVerified_(",
+      "after": "    preinspectPoolAssignmentResult = preinspectEnsurePool8ByTaskId_(newTaskId);\n\n    const authoredCalendarNotes =\n      typeof tmPreInspectIdentityAuthoredDescription_ === 'function'\n        ? tmPreInspectIdentityAuthoredDescription_(\n            plan.context.freshEvent.description || ''\n          )\n        : String(plan.context.freshEvent.description || '').trim();\n\n    if (authoredCalendarNotes) {\n      if (\n        typeof preinspectR30MergeCalendarNotes_ !== 'function' ||\n        typeof preinspectR47EnsureInstallNotesCanonical_ !== 'function'\n      ) {\n        throw new Error(\n          'PreInspect Field 854 helpers are unavailable after task creation.'\n        );\n      }\n\n      const desiredInstallNotes =\n        preinspectR30MergeCalendarNotes_(\n          '',\n          authoredCalendarNotes\n        );\n\n      preinspectInstallNotesResult =\n        preinspectR47EnsureInstallNotesCanonical_(\n          newTaskId,\n          desiredInstallNotes\n        );\n    }\n\n    verifiedTask = getReplacementTaskSourceSnapshot_(newTaskId);\n  }\n\n  taskRecoveryMarkCreatedTaskVerified_("
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "label": "Require dual-calendar PreInspection Task-link readback after generic recovery",
+      "before": "      if (typeof preinspectAppendTaskLinkToCalendarEvent_ !== 'function') {\n        throw new Error(\n          'PreInspect Calendar task-link helper is not available after task creation.'\n        );\n      }\n\n      calendarLinkResult = preinspectAppendTaskLinkToCalendarEvent_(\n        plan.context.eventId,\n        newTaskId,\n        (verifiedTask && (verifiedTask.title || verifiedTask.Title)) ||\n          (plan.targetSource && plan.targetSource.title) ||\n          ('Pre-Inspection Task #' + newTaskId)\n      );",
+      "after": "      if (typeof tmPreInspectEnsureDualCalendarTaskLink_ !== 'function') {\n        throw new Error(\n          'PreInspection dual-calendar Task-link helper is not available after task creation.'\n        );\n      }\n\n      calendarLinkResult = tmPreInspectEnsureDualCalendarTaskLink_(\n        plan.context.eventId,\n        newTaskId,\n        (verifiedTask && (verifiedTask.title || verifiedTask.Title)) ||\n          (plan.targetSource && plan.targetSource.title) ||\n          ('Pre-Inspection Task #' + newTaskId)\n      );\n\n      if (!calendarLinkResult || calendarLinkResult.readBackVerified !== true) {\n        throw new Error(\n          'PreInspection Task link was not read-back verified on both calendars.'\n        );\n      }"
+    }
+  ],
+  "workContains": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "tmPreInspectIdentityAuthoredDescription_(event.description)"
+    },
+    {
+      "file": "36_PreInspect_Task_Create.js",
+      "text": "Customer Name, Address, Customer Phone Number"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "text": "preinspectR47EnsureInstallNotesCanonical_("
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "text": "tmPreInspectEnsureDualCalendarTaskLink_("
+    },
+    {
+      "file": "98_9_Systemic_Repair_R2.js",
+      "text": "TM_SYSTEMIC_REPAIR_R2_LINK_FIRST_DUAL_PI_20260922"
+    },
+    {
+      "file": "98_13_Current_Mapping_Standardization_R1.js",
+      "text": "TM_CURRENT_MAPPING_STANDARD_R1_20260922"
+    }
+  ],
+  "postContains": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "tmPreInspectIdentityAuthoredDescription_(event.description)"
+    },
+    {
+      "file": "36_PreInspect_Task_Create.js",
+      "text": "tmStandardTaskTitle_("
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "text": "context.division === 'PreInspect'"
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "text": "preinspectR47EnsureInstallNotesCanonical_("
+    },
+    {
+      "file": "92_Striven_Task_Patch_Helper.js",
+      "text": "tmPreInspectEnsureDualCalendarTaskLink_("
+    },
+    {
+      "file": "98_9_Systemic_Repair_R2.js",
+      "text": "TM_SYSTEMIC_REPAIR_R2_LINK_FIRST_DUAL_PI_20260922"
+    },
+    {
+      "file": "98_13_Current_Mapping_Standardization_R1.js",
+      "text": "VERIFY_REBUILD_CURRENT_TASK_MAPPING_R1"
+    }
+  ],
+  "runtimeVerification": "USER_RUN_VERIFY_REBUILD_CURRENT_TASK_MAPPING_R1",
   "safety": {
     "freshLivePullBeforePatch": true,
     "exactAnchorPatchOnly": true,
-    "noCalendarRestApiDependency": true,
-    "groupAndStephenCalendarRequired": true,
-    "sameEventIdMatchedIndependently": true,
-    "eachCalendarDescriptionPreservedIndependently": true,
-    "bothCalendarReadBackRequired": true
+    "existingGeneratedSheetRowsNotHandEdited": true,
+    "noBlindCustomerNumberGuess": true,
+    "preinspectManagedBlocksExcludedFromIdentity": true,
+    "preinspectDescriptionBlankAtCreate": true,
+    "preinspectGenericCalendarNotesField834Disabled": true,
+    "preinspectField854CanonicalWriterOnly": true,
+    "preinspectDualCalendarReadbackRequired": true,
+    "taskTitleRequiresVerifiedNameAddressPhone": true,
+    "noDuplicateTaskCancellationInThisRelease": true
   }
 }
