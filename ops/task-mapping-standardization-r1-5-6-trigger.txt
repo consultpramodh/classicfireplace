@@ -11,3 +11,4 @@ Native Calendar rich-link repair:
 - atomic rich-link runtime immediately after verified source push
 - execute rich-link repair through temporary one-time web gateway
 - clone verified live source inside the same job before temporary web execution
+- run authenticated temporary web gateway repair now
