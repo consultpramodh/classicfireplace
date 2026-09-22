@@ -1,0 +1,45 @@
+name: Task Mapping Title Runtime Probe
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-title-runtime-probe.txt
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          echo -n "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          echo '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
+      - name: Run Striven-only probe
+        shell: bash
+        run: |
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run TEST_TASK_TITLE_STRIVEN_REMOTE_GET_R1 2>&1 | tee /tmp/title-probe.log
+          if grep -Eqi "Exception:|Error:" /tmp/title-probe.log; then exit 1; fi
+          if ! grep -q '"taskId":18510' /tmp/title-probe.log; then
+            echo "Expected Task 18510 evidence was not returned."
+            cat /tmp/title-probe.log
+            exit 1
+          fi
