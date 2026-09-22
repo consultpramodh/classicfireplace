@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -943,11 +943,7 @@ function tmStdPreInspectAuditPurpose_(description) {
     .replace(/&amp;/gi, '&')
     .replace(/&#x27;|&#39;/gi, "'")
     .replace(/\r/g, '')
-    .split('\n')
-    .filter(function(line) {
-      return !/^\s*Calendar title context \(preserved\):/i.test(line);
-    })
-    .join('\n')
+    .replace(/^\s*Calendar title context \(preserved\):[\s\S]*?(?:\n\s*\n|$)/i, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -1034,10 +1030,26 @@ function tmStdPreInspectReorgContextLine_(originalTitle) {
   return TM_STD_PREINSPECT_REORG.CONTEXT_PREFIX + tmStdClean_(originalTitle);
 }
 
+function tmStdPreInspectReorgNormalizeReadBack_(value) {
+  return String(value || '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#x27;|&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function tmStdPreInspectReorgContextPresent_(description, contextLine) {
+  const haystack = tmStdPreInspectReorgNormalizeReadBack_(description);
+  const needle = tmStdPreInspectReorgNormalizeReadBack_(contextLine);
+  return !!needle && haystack.indexOf(needle) >= 0;
+}
+
 function tmStdPreInspectReorgDescriptionWithContext_(description, originalTitle) {
   const current = String(description || '');
   const line = tmStdPreInspectReorgContextLine_(originalTitle);
-  if (current.toLowerCase().indexOf(line.toLowerCase()) >= 0) {
+  if (tmStdPreInspectReorgContextPresent_(current, line)) {
     return { description: current, changed: false, line: line };
   }
   return {
@@ -1169,7 +1181,7 @@ function tmStdReorganizePreInspectCalendarTitles_(dryRun) {
     if (descriptionPlan.changed) {
       event.setDescription(descriptionPlan.description);
       const descriptionReadBack = String(event.getDescription() || '');
-      if (descriptionReadBack.indexOf(descriptionPlan.line) < 0) {
+      if (!tmStdPreInspectReorgContextPresent_(descriptionReadBack, descriptionPlan.line)) {
         throw new Error('PreInspection title reorganization aborted because context preservation did not read back for event ' + candidate.eventId);
       }
       writeCount++;
@@ -1181,7 +1193,7 @@ function tmStdReorganizePreInspectCalendarTitles_(dryRun) {
     const titleReadBack = tmStdClean_(event.getTitle());
     const descriptionReadBack = String(event.getDescription() || '');
     const titleOk = titleReadBack === standardTitle;
-    const contextOk = !preserveContext || descriptionReadBack.indexOf(descriptionPlan.line) >= 0;
+    const contextOk = !preserveContext || tmStdPreInspectReorgContextPresent_(descriptionReadBack, descriptionPlan.line);
 
     if (!titleOk || !contextOk) {
       throw new Error('PreInspection title reorganization read-back failed for event ' + candidate.eventId);
