@@ -10,3 +10,7 @@ Rules:
 - do not change REVIEW/ambiguous rows
 - do not send notification email for title issues resolved automatically
 - no MailApp/GmailApp/sendEmail surface
+R1.5.1:
+- Calendar readback verification normalizes whitespace/HTML entities
+- wrapped preserved-title context is recognized correctly
+- audit purpose excludes the full preserved-title paragraph
