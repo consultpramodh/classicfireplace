@@ -1,0 +1,50 @@
+name: Task Mapping Apps Script Deployment Diagnostic
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-deployment-diagnostic-trigger.txt
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
+      - name: Capture deployments and versions
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p task-mapping-deployment-diagnostic-output
+          npx -y @google/clasp@3.3.0 deployments --json 2>&1 | tee task-mapping-deployment-diagnostic-output/deployments.log
+          npx -y @google/clasp@3.3.0 versions --json 2>&1 | tee task-mapping-deployment-diagnostic-output/versions.log
+          npx -y @google/clasp@3.3.0 run --help 2>&1 | tee task-mapping-deployment-diagnostic-output/run-help.log
+          npx -y @google/clasp@3.3.0 deploy --help 2>&1 | tee task-mapping-deployment-diagnostic-output/deploy-help.log
+      - name: Upload diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-deployment-diagnostic-${{ github.run_id }}
+          path: task-mapping-deployment-diagnostic-output/
+          retention-days: 7
