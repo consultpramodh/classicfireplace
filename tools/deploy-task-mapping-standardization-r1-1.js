@@ -5,11 +5,11 @@ const fs=require('fs'), os=require('os'), path=require('path'), crypto=require('
 
 const SCRIPT_ID='1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m';
 const CLASP_VERSION='3.3.0';
-const RELEASE='TASK_MAPPING_STANDARDIZATION_R1_1_PREINSPECT_LINKS_20260922';
+const RELEASE='TASK_MAPPING_STANDARDIZATION_R1_2_PREINSPECT_LINKS_ATTENDEE_20260922';
 const MODULE_SOURCE='patches/task-mapping/99_Task_Mapping_Standardization_R1.js';
 const MODULE_TARGET='99_Task_Mapping_Standardization_R1.js';
 const EXPECTED_PRE_FILE_COUNT=76;
-const OUTPUT=path.resolve('task-mapping-standardization-r1-1-output');
+const OUTPUT=path.resolve('task-mapping-standardization-r1-2-output');
 fs.mkdirSync(OUTPUT,{recursive:true});
 
 function run(cmd,args,cwd){
@@ -61,22 +61,26 @@ const FN_PI_APPEND=[
 "function preinspectAppendTaskLinkToCalendarEvent_(eventId, taskId, taskTitle) {",
 "  const id = tmStdPositiveNumber_(taskId);",
 "  if (!id) return { mode: 'PREINSPECT_CALENDAR_TASK_LINK', status: 'REVIEW', writesPerformed: false, calendarWritesPerformed: false, reason: 'Task ID is blank.' };",
-"  const accountId = tmStdPreInspectAccountIdForEvent_(eventId, id);",
+"  const context = tmStdPreInspectContextForEvent_(eventId, id);",
+"  const accountId = context.accountId;",
 "  if (!accountId) return { mode: 'PREINSPECT_CALENDAR_TASK_LINK', status: 'REVIEW', writesPerformed: false, calendarWritesPerformed: false, eventId: String(eventId || ''), taskId: id, reason: 'Customer/Account ID is required for the Sales Orders list link.' };",
+"  const customerName = context.customerName || ('Customer ' + accountId);",
+"  const resolvedTaskName = String(taskTitle || context.taskName || '').replace(new RegExp('^' + id + '\\\\s*[-–—:]\\\\s*', 'i'), '').trim();",
 "  const stephen = tmStdEnsurePreInspectStephenPresence_(eventId, false);",
 "  const result = tmStdWriteCanonicalCalendarLinks_(",
 "    'PreInspection',",
 "    eventId,",
-"    [{ id: id }],",
+"    [{ id: id, name: resolvedTaskName }],",
 "    null,",
 "    false,",
-"    { accountId: accountId, url: tmStdSalesOrdersListUrl_(accountId) }",
+"    { accountId: accountId, url: tmStdSalesOrdersListUrl_(accountId), label: customerName + \"'s Sales Orders Dashboard\" }",
 "  );",
 "  result.mode = 'PREINSPECT_CALENDAR_TASK_LINK';",
 "  result.writesPerformed = Number(result.writeCount || 0) > 0 || Number(stephen.writeCount || 0) > 0;",
 "  result.calendarWritesPerformed = result.writesPerformed;",
 "  result.stephenCalendar = stephen;",
 "  result.salesOrdersAccountId = accountId;",
+"  result.salesOrdersDashboardLabel = customerName + \"'s Sales Orders Dashboard\";",
 "  return result;",
 "}"
 ].join('\n');
@@ -89,18 +93,18 @@ const evidencePath=path.join(OUTPUT,'evidence.json');
 let pushed=false;
 
 try{
-  console.log('=== R1.1 1/9 authorize ==='); clasp(['show-authorized-user','--json'],process.cwd());
-  console.log('=== R1.1 2/9 PRE clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],preRoot);
+  console.log('=== R1.2 1/9 authorize ==='); clasp(['show-authorized-user','--json'],process.cwd());
+  console.log('=== R1.2 2/9 PRE clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],preRoot);
   const preSrc=path.join(preRoot,'src'), preNames=names(preSrc);
   if(preNames.length!==EXPECTED_PRE_FILE_COUNT) throw new Error('Expected '+EXPECTED_PRE_FILE_COUNT+' live files, found '+preNames.length);
   if(!preNames.includes(MODULE_TARGET)) throw new Error('Live Standardization module missing: '+MODULE_TARGET);
   const preHashes=hashes(preSrc,preNames); copy(preRoot,path.join(OUTPUT,'PRE_SOURCE'));
 
   const preModule=fs.readFileSync(path.join(preSrc,MODULE_TARGET),'utf8');
-  if(!preModule.includes('TASK_MAPPING_STANDARDIZATION_R1_20260922')) throw new Error('Unexpected PRE standardization version.');
+  if(!preModule.includes('TASK_MAPPING_STANDARDIZATION_R1_1_20260922')) throw new Error('Unexpected PRE standardization version.');
   if(!preModule.includes('function tmStdRunPreInspectCalendarLinkPipeline_')) throw new Error('PRE PreInspection standardization pipeline missing.');
 
-  console.log('=== R1.1 3/9 build WORK ==='); copy(preRoot,workRoot);
+  console.log('=== R1.2 3/9 build WORK ==='); copy(preRoot,workRoot);
   const workSrc=path.join(workRoot,'src'), changed={};
   const candidate=path.resolve(MODULE_SOURCE);
   run(process.execPath,['--check',candidate],process.cwd());
@@ -111,7 +115,9 @@ try{
   changedNames.forEach(n=>run(process.execPath,['--check',path.join(workSrc,n)],process.cwd()));
   const workModule=fs.readFileSync(path.join(workSrc,MODULE_TARGET),'utf8');
   [
-    'TASK_MAPPING_STANDARDIZATION_R1_1_20260922',
+    'TASK_MAPPING_STANDARDIZATION_R1_2_20260922',
+    'STEPHEN_PERSONAL_EMAIL',
+    "Sales Orders Dashboard",
     'SALES_ORDERS_LIST_BASE_URL',
     'tmStdEnsurePreInspectStephenPresence_',
     'tmStdSalesOrdersListUrl_',
@@ -123,35 +129,35 @@ try{
   const untouched=preNames.filter(n=>!changed[n]);
   assertHashes(preHashes,hashes(workSrc,untouched),untouched,'WORK untouched preservation');
 
-  console.log('=== R1.1 4/9 freshness clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],freshRoot);
+  console.log('=== R1.2 4/9 freshness clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],freshRoot);
   const freshSrc=path.join(freshRoot,'src'), freshNames=names(freshSrc);
   if(JSON.stringify(freshNames)!==JSON.stringify(preNames)) throw new Error('Freshness file set changed.');
   assertHashes(preHashes,hashes(freshSrc,preNames),preNames,'freshness guard');
 
-  console.log('=== R1.1 5/9 push ==='); clasp(['push','--force'],workRoot); pushed=true;
-  console.log('=== R1.1 6/9 POST clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],postRoot);
+  console.log('=== R1.2 5/9 push ==='); clasp(['push','--force'],workRoot); pushed=true;
+  console.log('=== R1.2 6/9 POST clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],postRoot);
   const postSrc=path.join(postRoot,'src'), postNames=names(postSrc);
   if(JSON.stringify(postNames)!==JSON.stringify(preNames)) throw new Error('POST file set changed.');
 
-  console.log('=== R1.1 7/9 verify hashes/markers ===');
+  console.log('=== R1.2 7/9 verify hashes/markers ===');
   const postHashes=hashes(postSrc,postNames);
   assertHashes(preHashes,postHashes,untouched,'POST untouched preservation');
   const workHashes=hashes(workSrc,changedNames);
   assertHashes(workHashes,postHashes,changedNames,'POST changed parity');
   changedNames.forEach(n=>run(process.execPath,['--check',path.join(postSrc,n)],process.cwd()));
   const postModule=fs.readFileSync(path.join(postSrc,MODULE_TARGET),'utf8');
-  if(!postModule.includes('TASK_MAPPING_STANDARDIZATION_R1_1_20260922')) throw new Error('POST R1.1 marker missing.');
+  if(!postModule.includes('TASK_MAPPING_STANDARDIZATION_R1_2_20260922')) throw new Error('POST R1.2 marker missing.');
   if(!postModule.includes('tmStdEnsurePreInspectStephenPresence_')) throw new Error('POST Stephen guard missing.');
   const postAppend=fs.readFileSync(path.join(postSrc,appendFile),'utf8');
-  if(!postAppend.includes('tmStdSalesOrdersListUrl_(accountId)')) throw new Error('POST selected-row Sales Orders link patch missing.');
+  if(!postAppend.includes('salesOrdersDashboardLabel') || !postAppend.includes('tmStdPreInspectContextForEvent_')) throw new Error('POST selected-row named Sales Orders/Task link patch missing.');
 
-  console.log('=== R1.1 8/9 evidence ===');
+  console.log('=== R1.2 8/9 evidence ===');
   evidence.status='DEPLOYED_SOURCE_VERIFIED'; evidence.completedAt=new Date().toISOString();
   evidence.preFileCount=preNames.length; evidence.postFileCount=postNames.length; evidence.changedFiles=changedNames;
   evidence.untouchedFileCount=untouched.length; evidence.rollback='NOT_REQUIRED';
   evidence.runtimeVerification='CURRENT_EVENTS_VERIFIED_VIA_CALENDAR_CONNECTOR; Apps Script Execution API remains unavailable for new HEAD functions.';
   fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));
-  console.log('=== R1.1 9/9 complete ==='); console.log('DEPLOYED_SOURCE_VERIFIED');
+  console.log('=== R1.2 9/9 complete ==='); console.log('DEPLOYED_SOURCE_VERIFIED');
 }catch(err){
   evidence.status='FAILED'; evidence.failedAt=new Date().toISOString(); evidence.error=String(err&&err.stack?err.stack:err);
   if(pushed){
