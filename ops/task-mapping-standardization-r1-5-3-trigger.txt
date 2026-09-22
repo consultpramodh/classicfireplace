@@ -5,3 +5,4 @@ Visible description rule:
 - internal HTML comments may be used only as non-visible bookkeeping
 - keep zero-information-loss verification
 - do not send notification email
+- trigger refresh after workflow retarget
