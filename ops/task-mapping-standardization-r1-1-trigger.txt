@@ -5,3 +5,4 @@ Rules:
 - Sales Orders list link exactly once using ?accountId=<Customer ID>
 - prefer Stephen - calendar as authoritative event
 - if missing from Stephen, add Stephen calendar as guest instead of creating a duplicate event
+RERUN: verified-76-file-baseline
