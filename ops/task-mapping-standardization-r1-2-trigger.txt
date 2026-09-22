@@ -1,0 +1,7 @@
+TASK_MAPPING_STANDARDIZATION_R1_2_PREINSPECT_LINKS_ATTENDEE_20260922
+- any event on both CF Preinspects and Stephen - shared calendar requires stephen@classicfireplace.ca as personal attendee
+- one blank line before Striven Links
+- <Customer Name>'s Sales Orders Dashboard first
+- blank line
+- Task #<id> - <Task Name>
+- exactly one managed footer
