@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_2_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_3_PREINSPECT_CALENDAR_REORGANIZATION_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_2_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_3_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -1000,7 +1000,7 @@ function tmStdPreInspectAuditEventLink_(event) {
 
 const TM_STD_PREINSPECT_REORG = {
   LOG_SHEET_NAME: 'PreInspect Calendar Reorganization Log',
-  CONTEXT_PREFIX: 'Calendar title context (preserved): ',
+  CONTEXT_PREFIX: '',
   CONTEXT_START: '<!-- PREINSPECT_TITLE_CONTEXT_START -->',
   CONTEXT_END: '<!-- PREINSPECT_TITLE_CONTEXT_END -->',
   SAFE_STATUSES: ['CONFIRMED', 'MATCHED'],
@@ -1033,7 +1033,8 @@ function tmStdPreInspectReorgHasExtraContext_(originalTitle, standardTitle) {
 }
 
 function tmStdPreInspectReorgContextLine_(originalTitle) {
-  return TM_STD_PREINSPECT_REORG.CONTEXT_PREFIX + tmStdClean_(originalTitle);
+  // User-visible description gets only the prior title. Internal markers remain HTML comments only.
+  return tmStdClean_(originalTitle);
 }
 
 function tmStdPreInspectReorgNormalizeReadBack_(value) {
