@@ -62,9 +62,9 @@ try{
     'PREINSPECT_TITLE_CONTEXT_START',
     'tmStdPreInspectReorgContextBlock_',
     "'View Sales Orders – '",
-    "'Pre-Inspection Update Required'",
-    "'Recommended Standard Title Format'",
-    "'Missing / Needs Attention'",
+    'Pre-Inspection Update Required',
+    'Recommended Standard Title Format',
+    'Missing / Needs Attention',
     'emailSendsPerformed: 0',
     "SAFE_STATUSES: ['CONFIRMED', 'MATCHED']"
   ].forEach(marker=>{if(!workModule.includes(marker))throw new Error('Candidate missing marker: '+marker)});
