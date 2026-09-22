@@ -1,0 +1,14 @@
+TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922
+Email preview:
+- compact, direct internal notification
+- Classic Fireplace brand-red / warm-neutral palette
+- no black header/footer blocks
+- section label: Missing / Needs Attention
+- title guidance: Recommended Standard Title Format
+- recommended title shown when available
+- no Kevin story
+- no long explanatory copy
+- preview only; no MailApp/GmailApp/sendEmail surface
+Striven links:
+- View Sales Orders – <Customer Name> (#<Customer #>)
+- Task link remains same font size and same shared anchor styling
