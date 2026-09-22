@@ -875,6 +875,19 @@ function tmStdRunPreInspectCalendarLinkPipeline_(dryRun) {
 }
 
 
+function dryRunPreInspectStrivenLinksNow() {
+  const result = tmStdRunPreInspectCalendarLinkPipeline_(true);
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+function refreshPreInspectStrivenLinksNow() {
+  const result = tmStdRunPreInspectCalendarLinkPipeline_(false);
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+
 const TM_STD_PREINSPECT_AUDIT = {
   SHEET_NAME: 'PreInspect Calendar Audit',
   COLUMN_COUNT: 24,
@@ -1730,6 +1743,7 @@ function tmStdAddPreInspectAuditMenu_() {
     .addItem('Preview notification email for selected row', 'previewPreInspectNotificationEmailForSelectedRow')
     .addSeparator()
     .addItem('Reorganize safe calendar titles now', 'runPreInspectCalendarReorganization')
+    .addItem('Refresh Pre-Inspection Striven links', 'refreshPreInspectStrivenLinksNow')
     .addItem('Refresh calendar audit', 'refreshPreInspectCalendarAudit')
     .addToUi();
 }
