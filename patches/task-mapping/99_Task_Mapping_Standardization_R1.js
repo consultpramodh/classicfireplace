@@ -280,7 +280,7 @@ function tmStdRemoveManagedCalendarLinks_(description) {
     text = text.replace(re, '');
   });
 
-  const legacy = /(?:<br\s*\/?>|\r?\n|\s)*-{5,}\s*(?:(?:Install|Delivery|Service|Pre[- ]?Inspection)\s+)?(?:Striven\s+)?(?:Task\s+)?Links?\s*-{5,}[\s\S]*?-{10,}/gi;
+  const legacy = /(?:<br\s*\/?>|\r?\n|\s)*(?:<p[^>]*>\s*)?-{5,}\s*(?:(?:Install|Delivery|Service|Pre[- ]?Inspection)\s+)?(?:Striven\s+)?(?:Task\s+)?Links?\s*-{5,}[\s\S]*?(?:-{10,}|<hr\b[^>]*>)(?:\s*<\/p>)?/gi;
   text = text.replace(legacy, '');
 
   return text
