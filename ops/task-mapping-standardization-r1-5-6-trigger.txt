@@ -1,0 +1,9 @@
+TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922
+Native Calendar rich-link repair:
+- CalendarApp only; no SpreadsheetApp dependency
+- six verified PreInspection events
+- clickable named Sales Orders link
+- clickable named Task link
+- exactly one managed Striven Links block
+- same link font size / no custom anchor styling
+- no MailApp/GmailApp/sendEmail surface
