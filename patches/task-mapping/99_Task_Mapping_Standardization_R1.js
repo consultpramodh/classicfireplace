@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_4_PREINSPECT_LINK_LABEL_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_4_PREINSPECT_LINK_LABEL_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -1559,36 +1559,36 @@ function tmStdPreInspectPreviewMissingItems_(row) {
       key: 'CUSTOMER_NUMBER',
       label: 'Customer number',
       detail: customerNumber
-        ? 'Customer #' + customerNumber + ' is known, but it is not at the beginning of the calendar title.'
-        : 'The customer number is missing from the calendar title.'
+        ? 'Customer #' + customerNumber + ' is not in the standard title position.'
+        : 'Customer number could not be identified.'
     });
   }
   if (tmStdUpper_(row['Purpose Present?']) !== 'YES') {
     items.push({
       key: 'PURPOSE',
-      label: 'Description',
-      detail: 'The description does not explain what the Pre-Inspection is for.'
+      label: 'Description / purpose',
+      detail: 'Missing.'
     });
   }
   if (!tmStdClean_(row['Sales Order'])) {
     items.push({
       key: 'SALES_ORDER',
       label: 'Sales Order',
-      detail: 'No Sales Order could be identified from the appointment.'
+      detail: 'Not identified (if applicable).'
     });
   }
   if (tmStdUpper_(row['CF Preinspects Guest?']) !== 'YES') {
     items.push({
       key: 'CF_PREINSPECTS',
       label: 'CF Preinspects',
-      detail: 'The CF Preinspects shared calendar has not been added as a guest.'
+      detail: 'Not added.'
     });
   }
   if (tmStdUpper_(row['Stephen Guest?']) !== 'YES') {
     items.push({
       key: 'STEPHEN',
-      label: 'Stephen',
-      detail: 'stephen@classicfireplace.ca has not been added as a guest.'
+      label: 'stephen@classicfireplace.ca',
+      detail: 'Not added.'
     });
   }
 
@@ -1600,10 +1600,10 @@ function tmStdPreInspectPreviewMissingItems_(row) {
 
 function tmStdPreInspectPreviewMissingItemsHtml_(items) {
   return (items || []).map(function(item) {
-    return '<div style="font-size:14px;line-height:22px;margin:7px 0;color:#3d2526;">' +
-      '<span style="color:#b42b2f;font-weight:700;">&#10006;</span>&nbsp; ' +
-      '<strong>' + tmStdEscapeHtml_(item.label) + ':</strong> ' +
-      tmStdEscapeHtml_(item.detail) +
+    return '<div style="font-size:14px;line-height:21px;margin:6px 0;color:#4a2f2a;">' +
+      '<span style="color:#9f2d2d;font-weight:700;">&#10006;</span>&nbsp; ' +
+      '<strong>' + tmStdEscapeHtml_(item.label) + '</strong>' +
+      (item.detail ? ' — ' + tmStdEscapeHtml_(item.detail) : '') +
       '</div>';
   }).join('');
 }
@@ -1616,72 +1616,57 @@ function tmStdBuildPreInspectNotificationPreview_(row) {
   const date = tmStdClean_(row.Date);
   const time = tmStdClean_(row.Time);
   const missing = tmStdPreInspectPreviewMissingItems_(row);
-  const subject = 'Action needed: Pre-Inspection calendar appointment';
+  const subject = 'Pre-Inspection Update Required';
   const firstName = tmStdPreInspectPreviewFirstName_(recipient);
   const missingHtml = tmStdPreInspectPreviewMissingItemsHtml_(missing.items);
 
-  const whyCustomerNumber = missing.missingCustomerNumber
-    ? '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:18px;background:#fffaf0;border:1px solid #eadfc7;">' +
-        '<tr><td style="padding:20px 22px;">' +
-          '<div style="font-size:14px;line-height:20px;font-weight:700;color:#6c5120;margin-bottom:8px;">Why the customer number is important</div>' +
-          '<div style="font-size:14px;line-height:22px;color:#554a37;">We recently had an example where Kevin created a new customer because the existing customer could not be confidently identified from the information in the calendar appointment at the store.</div>' +
-          '<div style="font-size:14px;line-height:22px;color:#554a37;margin-top:9px;">Including the <strong>Striven customer number</strong> lets the workflow identify the correct customer immediately and helps prevent duplicate customer records.</div>' +
-        '</td></tr></table>'
-    : '';
-
   const body = [
-    '<!doctype html><html><body style="margin:0;padding:0;background:#f4f3f1;font-family:Arial,Helvetica,sans-serif;color:#242424;">',
-    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f3f1;"><tr><td align="center" style="padding:24px 12px;">',
-    '<table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;background:#ffffff;border-collapse:collapse;">',
-    '<tr><td style="background:#202020;padding:25px 32px 22px;border-top:5px solid #b42b2f;">',
-      '<div style="font-size:11px;line-height:16px;letter-spacing:1.6px;text-transform:uppercase;color:#d9d9d9;margin-bottom:8px;">Classic Fireplace &amp; BBQ Store</div>',
-      '<div style="font-size:24px;line-height:30px;font-weight:700;color:#ffffff;">Pre-Inspection Calendar Notice</div>',
-      '<div style="font-size:14px;line-height:21px;color:#cccccc;margin-top:7px;">A calendar appointment needs a quick update before it can move cleanly through the Pre-Inspection workflow.</div>',
+    '<!doctype html><html><body style="margin:0;padding:0;background:#f5f1eb;font-family:Arial,Helvetica,sans-serif;color:#332f2b;">',
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f5f1eb;"><tr><td align="center" style="padding:22px 12px;">',
+    '<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-collapse:collapse;border:1px solid #e5ddd3;">',
+
+    '<tr><td style="background:#9f2d2d;padding:20px 26px;">',
+      '<div style="font-size:20px;line-height:26px;font-weight:700;color:#ffffff;">Pre-Inspection Update Required</div>',
+      '<div style="font-size:12px;line-height:18px;color:#f2deda;margin-top:3px;">Classic Fireplace &amp; BBQ Store</div>',
     '</td></tr>',
-    '<tr><td style="padding:28px 32px 12px;">',
-      '<p style="margin:0;font-size:16px;line-height:25px;">Hi <strong>', tmStdEscapeHtml_(firstName), '</strong>,</p>',
-      '<p style="margin:13px 0 0;font-size:15px;line-height:24px;color:#444444;">We reviewed a Pre-Inspection appointment you created and found some information that needs to be completed or corrected.</p>',
+
+    '<tr><td style="padding:22px 26px 10px;">',
+      '<div style="font-size:15px;line-height:22px;">Hi <strong>', tmStdEscapeHtml_(firstName), '</strong>,</div>',
+      '<div style="font-size:14px;line-height:21px;margin-top:9px;">Please update this Pre-Inspection appointment:</div>',
     '</td></tr>',
-    '<tr><td style="padding:12px 32px 8px;">',
-      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f7f6f4;border:1px solid #e2e0dc;"><tr><td style="padding:18px 20px;">',
-        '<div style="font-size:11px;line-height:16px;letter-spacing:1px;text-transform:uppercase;color:#777;font-weight:700;margin-bottom:10px;">Appointment being reviewed</div>',
-        '<div style="font-size:18px;line-height:25px;font-weight:700;color:#222;margin-bottom:9px;">', tmStdEscapeHtml_(currentTitle), '</div>',
-        '<div style="font-size:13px;line-height:20px;color:#555;"><strong>Date:</strong> ', tmStdEscapeHtml_(date), '&nbsp;&nbsp; <strong>Time:</strong> ', tmStdEscapeHtml_(time), '</div>',
+
+    '<tr><td style="padding:0 26px 14px;">',
+      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3eee7;border:1px solid #e3d9cd;"><tr><td style="padding:14px 16px;">',
+        '<div style="font-size:16px;line-height:22px;font-weight:700;color:#3a332e;">', tmStdEscapeHtml_(currentTitle), '</div>',
+        '<div style="font-size:12px;line-height:18px;color:#776f68;margin-top:5px;">', tmStdEscapeHtml_(date), ' &nbsp;&middot;&nbsp; ', tmStdEscapeHtml_(time), '</div>',
       '</td></tr></table>',
     '</td></tr>',
-    '<tr><td style="padding:17px 32px 8px;">',
-      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff5f5;border-left:4px solid #b42b2f;"><tr><td style="padding:19px 21px;">',
-        '<div style="font-size:14px;line-height:20px;font-weight:700;color:#8f2024;margin-bottom:10px;">What needs attention</div>',
-        missingHtml || '<div style="font-size:14px;line-height:22px;color:#456b48;">No organizer-owned items are currently missing.</div>',
+
+    '<tr><td style="padding:0 26px 15px;">',
+      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff4f2;border-left:4px solid #9f2d2d;"><tr><td style="padding:15px 17px;">',
+        '<div style="font-size:13px;line-height:19px;font-weight:700;color:#8b2626;margin-bottom:7px;">Missing / Needs Attention</div>',
+        missingHtml || '<div style="font-size:14px;line-height:21px;color:#4f704f;">No organizer action is currently required.</div>',
       '</td></tr></table>',
     '</td></tr>',
-    '<tr><td style="padding:18px 32px 8px;">',
-      '<div style="font-size:17px;line-height:24px;font-weight:700;color:#222;margin-bottom:10px;">Please use our standard calendar title</div>',
-      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#202020;"><tr><td align="center" style="padding:17px 15px;">',
-        '<div style="font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1px;color:#bdbdbd;margin-bottom:7px;">Required format</div>',
-        '<div style="font-size:17px;line-height:25px;color:#fff;font-weight:700;">Customer # - Customer Name - Phone Number</div>',
-      '</td></tr></table>',
-      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:10px;"><tr><td style="font-size:11px;text-transform:uppercase;color:#888;padding:0 0 5px;">Current title</td></tr>',
-      '<tr><td style="background:#fff5f5;border:1px solid #edd4d5;padding:12px 15px;font-size:14px;line-height:21px;color:#6d2528;">', tmStdEscapeHtml_(currentTitle), '</td></tr>',
-      '<tr><td style="font-size:11px;text-transform:uppercase;color:#888;padding:14px 0 5px;">Expected title</td></tr>',
-      '<tr><td style="background:#f2f7f2;border:1px solid #d6e4d6;padding:12px 15px;font-size:14px;line-height:21px;color:#254f2a;font-weight:700;">', tmStdEscapeHtml_(expectedTitle), '</td></tr></table>',
-      whyCustomerNumber,
+
+    '<tr><td style="padding:0 26px 8px;">',
+      '<div style="font-size:13px;line-height:19px;font-weight:700;color:#4a4038;margin-bottom:7px;">Recommended Standard Title Format</div>',
+      '<div style="border:1px solid #9f2d2d;background:#fbf4f0;color:#7f2828;padding:11px 14px;font-size:14px;line-height:20px;font-weight:700;text-align:center;">Customer # - Customer Name - Phone Number</div>',
     '</td></tr>',
-    '<tr><td style="padding:20px 32px 8px;">',
-      '<div style="font-size:17px;line-height:24px;font-weight:700;color:#222;margin-bottom:10px;">A complete Pre-Inspection appointment should include</div>',
-      '<div style="font-size:14px;line-height:23px;color:#444;">&#10003;&nbsp; <strong>Customer # - Customer Name - Phone Number</strong> in the title<br>',
-      '&#10003;&nbsp; A short description explaining <strong>what the Pre-Inspection is for</strong><br>',
-      '&#10003;&nbsp; The applicable <strong>Sales Order</strong>, when one exists<br>',
-      '&#10003;&nbsp; <strong>CF Preinspects</strong> added to the appointment<br>',
-      '&#10003;&nbsp; <strong>stephen@classicfireplace.ca</strong> added as a guest</div>',
+
+    '<tr><td style="padding:5px 26px 20px;">',
+      '<div style="font-size:12px;line-height:18px;color:#7c746d;margin-bottom:5px;">Recommended title</div>',
+      '<div style="background:#f1f6ef;border:1px solid #d8e2d4;padding:11px 14px;font-size:14px;line-height:20px;font-weight:700;color:#3f6042;">', tmStdEscapeHtml_(expectedTitle), '</div>',
     '</td></tr>',
-    '<tr><td style="padding:18px 32px 28px;">',
-      '<div style="border-top:1px solid #e5e2de;padding-top:18px;font-size:13px;line-height:21px;color:#686868;">Once the appointment is corrected, the Pre-Inspection workflow can continue processing it. You do <strong>not</strong> need to add Striven task links manually; those are handled by the automation.</div>',
+
+    '<tr><td style="padding:0 26px 24px;">',
+      '<div style="font-size:14px;line-height:21px;color:#4a4540;">Please update the items above. Thank you.</div>',
     '</td></tr>',
-    '<tr><td style="background:#202020;padding:20px 32px;text-align:center;">',
-      '<div style="color:#fff;font-size:13px;line-height:19px;font-weight:700;">Classic Fireplace &amp; BBQ Store</div>',
-      '<div style="color:#aaa;font-size:11px;line-height:18px;margin-top:4px;">Proudly Canadian. Family-owned.<br>Serving Homes Across the GTA Since 1989.</div>',
+
+    '<tr><td style="background:#eee6dc;padding:13px 26px;text-align:center;border-top:1px solid #ded4c8;">',
+      '<div style="font-size:12px;line-height:18px;font-weight:700;color:#6f5d51;">Classic Fireplace &amp; BBQ Store</div>',
     '</td></tr>',
+
     '</table></td></tr></table></body></html>'
   ].join('');
 
@@ -1701,7 +1686,7 @@ function tmStdPreInspectPreviewChrome_(preview) {
   const subject = tmStdEscapeHtml_(preview.subject || '');
   return [
     '<!doctype html><html><body style="margin:0;background:#e9e8e6;font-family:Arial,Helvetica,sans-serif;">',
-    '<div style="position:sticky;top:0;z-index:10;background:#8f2024;color:#fff;padding:10px 16px;font-size:12px;font-weight:700;letter-spacing:.5px;text-align:center;">PREVIEW ONLY — NO EMAIL WILL BE SENT</div>',
+    '<div style="position:sticky;top:0;z-index:10;background:#9f2d2d;color:#fff;padding:10px 16px;font-size:12px;font-weight:700;letter-spacing:.5px;text-align:center;">PREVIEW ONLY — NO EMAIL WILL BE SENT</div>',
     '<div style="max-width:760px;margin:16px auto;padding:0 12px 24px;">',
       '<div style="background:#fff;border:1px solid #d8d6d2;padding:12px 16px;margin-bottom:12px;font-size:12px;line-height:19px;color:#444;">',
         '<div><strong>To:</strong> ', recipient, '</div>',
