@@ -1,23 +1,33 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_IDENTITY_DUPLICATE_GUARDS_R1_20260922",
+  "release": "TASK_MAPPING_EXISTING_SHEET_FIX_R2_20260922",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 74,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-identity-duplicate-guards-r1-output",
+  "outputDirectory": "task-mapping-existing-sheet-fix-r2-output",
   "requiredPreFiles": [
     "10_Install_Workflow.js",
     "20_Delivery_Workflow.js",
-    "30_Service_Workflow.js"
+    "30_Service_Workflow.js",
+    "35_PreInspect_Task_Review.js",
+    "98_13_Current_Mapping_Standardization_R1.js"
   ],
   "preContains": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "function preinspectExtractCustomerNumber_"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "Historical labelled pattern"
+    },
     {
       "file": "10_Install_Workflow.js",
       "text": "function installChooseBestTaskForCalendarSO_"
     },
     {
       "file": "20_Delivery_Workflow.js",
-      "text": "function deliveryFindValidatedLocationIdForApprovedOrderRowFinal_"
+      "text": "function deliveryFindLocationIdByActualCalendarAddress_"
     },
     {
       "file": "30_Service_Workflow.js",
@@ -27,6 +37,18 @@
   "overwriteFiles": [],
   "addFiles": [],
   "replacements": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Treat bare hash numbers as candidates, not authoritative Customer Numbers",
+      "before": "  // Historical labelled pattern: \"Name phone #62208 SO#584502\".\n  value = value\n    .replace(/\\b(?:SO|S\\/O|Sales\\s*Order|Order)\\s*[#:\\-]?\\s*\\d{4,8}(?:\\s*[\\/,;&+]\\s*(?:(?:SO|S\\/O|Sales\\s*Order|Order)\\s*[#:\\-]?\\s*)?#?\\d{4,8})*/gi, ' ')\n    .replace(/(?:\\+?1[\\s\\-.]?)?(?:\\(?\\d{3}\\)?[\\s\\-.]?\\d{3}[\\s\\-.]?\\d{4})/g, ' ');\n\n  const found = [];\n  const re = /(?:^|\\s)#\\s*(\\d{4,8})\\b/g;\n  let match;\n\n  while ((match = re.exec(value)) !== null) {\n    if (!soNumber || match[1] !== String(soNumber)) found.push(match[1]);\n  }\n\n  const unique = preinspectUnique_(found);\n  return unique.length === 1 ? unique[0] : '';",
+      "after": "  // Bare \"#12345\" values are legacy candidates, not explicit Customer Numbers.\n  // preinspectExtractSignals_ already collects them in customerNumberCandidates,\n  // where Striven phone/address/name/SO evidence must corroborate them.\n  return '';"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Normalize Unicode phone punctuation before NANP extraction",
+      "before": "function preinspectExtractPhones_(text) {\n  // Capture only standalone NANP phone shapes. Do not take a 10-digit slice\n  // out of a longer compound numeric run; those are handled separately.\n  const value = String(text || '');",
+      "after": "function preinspectExtractPhones_(text) {\n  // Capture only standalone NANP phone shapes. Do not take a 10-digit slice\n  // out of a longer compound numeric run; those are handled separately.\n  // Normalize common Unicode parentheses/dashes used by pasted phone numbers.\n  const value = String(text || '')\n    .replace(/[（﹙﴾]/g, '(')\n    .replace(/[）﹚﴿]/g, ')')\n    .replace(/[‐‑‒–—−]/g, '-');"
+    },
     {
       "file": "10_Install_Workflow.js",
       "label": "Require unique top Install task when same SO has multiple candidates",
@@ -48,14 +70,14 @@
     {
       "file": "20_Delivery_Workflow.js",
       "label": "Do not use Delivery calendar address without customer ownership",
-      "before": "  const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n  if (addressMatches.length === 1) {\n    return {\n      locationId: addressMatches[0].locationId,\n      status: 'MATCHED_ACTUAL_CALENDAR_ADDRESS',\n      note: 'Matched actual calendar address.'\n    };\n  }\n\n  if (addressMatches.length > 1) {\n    return {\n      locationId: '',\n      status: 'MULTIPLE_ACTUAL_CALENDAR_ADDRESS_MATCHES',\n      note: 'Actual calendar address matched multiple locations; LocationId was not used.'\n    };\n  }\n\n  return {\n    locationId: '',\n    status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n    note: 'Actual calendar address did not match Striven Customer Locations.'\n  };",
-      "after": "  const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n  if (addressMatches.length) {\n    return {\n      locationId: '',\n      status: 'ADDRESS_OWNERSHIP_NOT_CONFIRMED',\n      note: 'Calendar address exists in Striven, but customer + address ownership was not uniquely proven. LocationId was not used.'\n    };\n  }\n\n  return {\n    locationId: '',\n    status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n    note: 'Actual calendar address did not match a customer-owned Striven Location.'\n  };"
+      "before": "  const addressMatches = deliveryUniqueLocationEntriesFinal_(\n    locationIndex.byAddress[addressKey] || []\n  );\n\n  if (addressMatches.length === 1) {\n    return {\n      locationId: addressMatches[0].locationId,\n      status: 'MATCHED_ACTUAL_CALENDAR_ADDRESS',\n      note: 'Matched actual calendar address.'\n    };\n  }\n\n  if (addressMatches.length > 1) {\n    return {\n      locationId: '',\n      status: 'MULTIPLE_ACTUAL_CALENDAR_ADDRESS_MATCHES',\n      note: 'Actual calendar address matched multiple locations; LocationId was not used.'\n    };\n  }\n\n  return scoped.status\n    ? scoped\n    : {\n        locationId: '',\n        status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n        note: 'Actual calendar address did not match Striven Customer Locations.'\n      };",
+      "after": "  const addressMatches = deliveryUniqueLocationEntriesFinal_(\n    locationIndex.byAddress[addressKey] || []\n  );\n\n  if (addressMatches.length) {\n    return {\n      locationId: '',\n      status: 'ADDRESS_OWNERSHIP_NOT_CONFIRMED',\n      note: 'Calendar address exists in Striven, but customer ownership was not uniquely proven. LocationId was not used.'\n    };\n  }\n\n  return scoped.status\n    ? scoped\n    : {\n        locationId: '',\n        status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n        note: 'Actual calendar address did not match a customer-owned Striven Location.'\n      };"
     },
     {
       "file": "20_Delivery_Workflow.js",
       "label": "Do not use Delivery approved-order address without customer ownership",
       "before": "    const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n    if (addressMatches.length === 1) {\n      return { locationId: addressMatches[0].locationId, status: 'MATCHED_ADDRESS', note: 'Matched location by unique address.' };\n    }\n\n    if (addressMatches.length > 1) {\n      return { locationId: '', status: 'MULTIPLE_ADDRESS_MATCHES', note: 'Multiple customer locations matched the address; LocationId was not used.' };\n    }",
-      "after": "    const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n    if (addressMatches.length) {\n      return {\n        locationId: '',\n        status: 'ADDRESS_OWNERSHIP_NOT_CONFIRMED',\n        note: 'Approved-order address exists in Striven, but customer + address ownership was not uniquely proven. LocationId was not used.'\n      };\n    }"
+      "after": "    const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n    if (addressMatches.length) {\n      return {\n        locationId: '',\n        status: 'ADDRESS_OWNERSHIP_NOT_CONFIRMED',\n        note: 'Approved-order address exists in Striven, but customer ownership was not uniquely proven. LocationId was not used.'\n      };\n    }"
     },
     {
       "file": "30_Service_Workflow.js",
@@ -71,12 +93,20 @@
     },
     {
       "file": "30_Service_Workflow.js",
-      "label": "Service cannot be MATCHED or READY without verified Work Order Location and Contact",
+      "label": "Service incomplete relationship identity must remain REVIEW",
       "before": "  } else if (matchedBy === 'Customer') {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n    issues.push('Matched by customer only. Add SO # or Task ID before pushing.');\n  } else if (needsDatePush || needsAssigneePush) {",
       "after": "  } else if (matchedBy === 'Customer') {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n    issues.push('Matched by customer only. Add SO # or Task ID before pushing.');\n  } else if (!matchedWorkOrder || !locationId || !contactId) {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n\n    if (!matchedWorkOrder) {\n      issues.push('Verified Service Work Order is missing.');\n    }\n    if (!locationId) {\n      issues.push('Verified customer-owned Location ID is missing or ambiguous.');\n    }\n    if (!contactId) {\n      issues.push('Verified customer Contact ID is missing or ambiguous.');\n    }\n\n    issues.push('Relationship identity must be complete before Service is treated as READY/MATCHED.');\n  } else if (needsDatePush || needsAssigneePush) {"
     }
   ],
   "workContains": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "Bare \"#12345\" values are legacy candidates"
+    },
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "replace(/[（﹙﴾]/g, '(')"
+    },
     {
       "file": "10_Install_Workflow.js",
       "text": "tiedBest.length !== 1"
@@ -91,14 +121,18 @@
     },
     {
       "file": "30_Service_Workflow.js",
-      "text": "Relationship identity must be complete before Service is treated as READY/MATCHED."
+      "text": "return tiedBest.length === 1 ? bestTask : null;"
     },
     {
       "file": "30_Service_Workflow.js",
-      "text": "return matches.length === 1 ? matches[0] : null;"
+      "text": "Relationship identity must be complete before Service is treated as READY/MATCHED."
     }
   ],
   "postContains": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "Bare \"#12345\" values are legacy candidates"
+    },
     {
       "file": "10_Install_Workflow.js",
       "text": "tiedBest.length !== 1"
@@ -116,8 +150,12 @@
   "safety": {
     "freshLivePullBeforePatch": true,
     "exactAnchorPatchOnly": true,
+    "noNewFiles": true,
     "noStrivenWriteAdded": true,
     "noCalendarWriteAdded": true,
+    "preinspectBareNumberDemotedToCandidate": true,
+    "preinspectExplicitCustomerLabelsRemainAuthoritative": true,
+    "unicodePhoneNormalization": true,
     "noCrossCustomerLocationFallback": true,
     "noArbitraryDuplicateTieBreak": true,
     "serviceIncompleteRelationshipsFailClosed": true
