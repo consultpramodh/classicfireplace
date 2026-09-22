@@ -58,6 +58,9 @@ jobs:
               ("35_PreInspect_Task_Review.js", "function preinspectResolveCustomer_"),
               ("92_Striven_Task_Patch_Helper.js", "function taskRecoveryBuildTargetSource_"),
               ("92_Striven_Task_Patch_Helper.js", "function taskRecoveryBuildTargetTitle_"),
+              ("98_Web_Operations_Gateway.js", "function doGet"),
+              ("98_Web_Operations_Gateway.js", "function doPost"),
+              ("98_Web_Operations_Gateway.js", "buildPreInspectTaskMapping"),
           ]
 
           for filename, marker in targets:
