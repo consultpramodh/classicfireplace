@@ -1,0 +1,55 @@
+name: Task Mapping Standardization R1.3 PreInspection Calendar Audit
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-standardization-r1-3-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-standardization-r1-3
+  cancel-in-progress: false
+
+jobs:
+  guarded-deploy:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Deploy guarded Standardization R1.3
+        shell: bash
+        run: node tools/deploy-task-mapping-standardization-r1-3.js
+
+      - name: Preserve deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-standardization-r1-3-${{ github.run_id }}
+          path: task-mapping-standardization-r1-3-output/
+          if-no-files-found: warn
+          retention-days: 30
