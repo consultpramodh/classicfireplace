@@ -1,0 +1,7 @@
+TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+Hardening:
+- normalized Calendar description readback verification
+- wrapped preserved-title context accepted
+- audit purpose excludes the entire preserved-title paragraph
+- zero information loss remains mandatory
+- no notification email sending
