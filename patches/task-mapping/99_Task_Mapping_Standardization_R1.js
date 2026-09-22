@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_3_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_4_PREINSPECT_LINK_LABEL_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_3_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_4_PREINSPECT_LINK_LABEL_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -300,7 +300,7 @@ function tmStdBuildCanonicalCalendarLinksBlock_(data) {
     if (salesOrdersList && tmStdClean_(salesOrdersList.url)) {
       lines.push(tmStdBuildAnchor_(
         tmStdClean_(salesOrdersList.url),
-        tmStdClean_(salesOrdersList.label) || 'Sales Orders Dashboard'
+        tmStdClean_(salesOrdersList.label) || 'View Sales Orders'
       ));
     }
 
@@ -850,7 +850,7 @@ function tmStdRunPreInspectCalendarLinkPipeline_(dryRun) {
         {
           accountId: accountId,
           url: tmStdSalesOrdersListUrl_(accountId),
-          label: customerName + "'s Sales Orders Dashboard"
+          label: 'View Sales Orders – ' + customerName + ' (#' + accountId + ')'
         }
       );
       linkResult.stephenCalendar = stephen;
