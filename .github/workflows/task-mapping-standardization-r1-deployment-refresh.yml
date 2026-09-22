@@ -57,19 +57,17 @@ jobs:
           const files=fs.readdirSync(dir).filter(n=>/\.(?:js|gs)$/i.test(n));
           const all=files.map(n=>fs.readFileSync(path.join(dir,n),'utf8')).join('\n');
           const required=[
-            'TASK_MAPPING_STANDARDIZATION_R1_20260922',
-            'const INSTALL_OPTION_B_VISIBLE_COLUMN_COUNT = 19;',
-            'const PREINSPECT_MAP_VISIBLE_COLUMN_COUNT = 16;',
-            "const preinspection = tmStdRunPreInspectCalendarLinkPipeline_(!!dryRun);",
-            "record('CALENDAR_TASK_LINK', preinspectAppendTaskLinkToCalendarEvent_(ctx.eventId, reviewedTaskId, ''));",
-            "tmStdResolveSalesOrderUrlFromCalendarMirror_('Service', model.eventId, model.salesOrderNumber)"
+            'TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922',
+            'function applyPreInspectRichLinksR1_5_6()',
+            'TM_STD_PREINSPECT_RICH_LINK_FIX_R156',
+            'RICH_LINKS_VERIFIED'
           ];
           const missing=required.filter(m=>!all.includes(m));
-          if(missing.length) throw new Error('Live source missing Standardization R1 markers: '+JSON.stringify(missing));
-          if(all.includes("const cleaned=stlRemoveManagedBlocksFromDescription_(original,'SERVICE');")) {
-            throw new Error('Broken Service cleaner call still present.');
+          if(missing.length) throw new Error('Live source missing R1.5.6 rich-link markers: '+JSON.stringify(missing));
+          if(/MailApp|GmailApp|sendEmail\(/.test(all)) {
+            throw new Error('Forbidden email-send surface detected.');
           }
-          console.log(JSON.stringify({status:'LIVE_SOURCE_VERIFIED',fileCount:files.length}));
+          console.log(JSON.stringify({status:'LIVE_R1_5_6_SOURCE_VERIFIED',fileCount:files.length}));
           NODE
 
       - name: Refresh existing API deployment and run Standardization R1
@@ -103,7 +101,7 @@ jobs:
           if(Number(target.versionNumber)!==20) throw new Error('Production deployment moved from expected version 20 before refresh: '+JSON.stringify(target));
           NODE
 
-          npx -y @google/clasp@3.3.0 version 'Task Mapping Standardization R1 - canonical checklist and Calendar links'
+          npx -y @google/clasp@3.3.0 version 'PreInspection R1.5.6 rich-link runtime'
           npx -y @google/clasp@3.3.0 versions --json | tee task-mapping-standardization-r1-deployment-output/versions-after-create.json
           NEW_VERSION=$(node - <<'NODE'
           const fs=require('fs');
@@ -116,7 +114,7 @@ jobs:
           test "$NEW_VERSION" -gt "$PREVIOUS_VERSION"
           echo "NEW_VERSION=$NEW_VERSION" | tee task-mapping-standardization-r1-deployment-output/new-version.txt
 
-          npx -y @google/clasp@3.3.0 deploy -i "$TARGET_DEPLOYMENT" -V "$NEW_VERSION" -d 'Task Mapping Standardization R1 - canonical checklist and Calendar links'
+          npx -y @google/clasp@3.3.0 deploy -i "$TARGET_DEPLOYMENT" -V "$NEW_VERSION" -d 'PreInspection R1.5.6 rich-link runtime'
           UPDATED=1
           npx -y @google/clasp@3.3.0 deployments --json | tee task-mapping-standardization-r1-deployment-output/post-deployments.json
 
@@ -134,11 +132,25 @@ jobs:
             fi
           }
 
-          run_checked dryRunTaskMappingStandardizationR1 task-mapping-standardization-r1-deployment-output/dry-run.log
-          run_checked runTaskMappingStandardizationR1 task-mapping-standardization-r1-deployment-output/runtime.log
-          run_checked replaceCodeAuditSourceSheetFromProject task-mapping-standardization-r1-deployment-output/code-audit-refresh.log
+          run_checked applyPreInspectRichLinksR1_5_6 task-mapping-standardization-r1-deployment-output/rich-links-runtime.log
+          grep -q 'RICH_LINKS_VERIFIED' task-mapping-standardization-r1-deployment-output/rich-links-runtime.log
 
-          echo "STANDARDIZATION_R1_DEPLOYMENT_AND_RUNTIME_VERIFIED" | tee task-mapping-standardization-r1-deployment-output/result.txt
+          echo "Rich-link runtime succeeded; restoring production API deployment to version $PREVIOUS_VERSION"
+          npx -y @google/clasp@3.3.0 deploy -i "$TARGET_DEPLOYMENT" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION"
+          UPDATED=0
+
+          npx -y @google/clasp@3.3.0 deployments --json | tee task-mapping-standardization-r1-deployment-output/post-restore-deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const raw=fs.readFileSync('task-mapping-standardization-r1-deployment-output/post-restore-deployments.json','utf8');
+          const start=raw.indexOf('[');
+          const arr=JSON.parse(raw.slice(start));
+          const target=arr.find(x=>x.deploymentId==='AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBuy');
+          if(!target) throw new Error('Production API deployment not found after restore.');
+          if(Number(target.versionNumber)!==20) throw new Error('Production API deployment not restored to version 20: '+JSON.stringify(target));
+          NODE
+
+          echo "PREINSPECT_R1_5_6_RICH_LINKS_RUNTIME_VERIFIED_AND_DEPLOYMENT_RESTORED" | tee task-mapping-standardization-r1-deployment-output/result.txt
           trap - EXIT
 
       - name: Preserve deployment evidence
