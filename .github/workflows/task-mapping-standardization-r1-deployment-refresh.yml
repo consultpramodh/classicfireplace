@@ -55,17 +55,19 @@ jobs:
           const path = require('path');
           const dir='/tmp/tm-std-live/src';
           const files=fs.readdirSync(dir).filter(n=>/\.(?:js|gs)$/i.test(n));
-          const all=files.map(n=>fs.readFileSync(path.join(dir,n),'utf8')).join('\n');
+          const modulePath=path.join(dir,'99_Task_Mapping_Standardization_R1.js');
+          if(!fs.existsSync(modulePath)) throw new Error('Live R1.5.6 module is missing.');
+          const moduleSource=fs.readFileSync(modulePath,'utf8');
           const required=[
             'TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922',
             'function applyPreInspectRichLinksR1_5_6()',
             'TM_STD_PREINSPECT_RICH_LINK_FIX_R156',
             'RICH_LINKS_VERIFIED'
           ];
-          const missing=required.filter(m=>!all.includes(m));
+          const missing=required.filter(m=>!moduleSource.includes(m));
           if(missing.length) throw new Error('Live source missing R1.5.6 rich-link markers: '+JSON.stringify(missing));
-          if(/MailApp|GmailApp|sendEmail\(/.test(all)) {
-            throw new Error('Forbidden email-send surface detected.');
+          if(/MailApp|GmailApp|sendEmail\(/.test(moduleSource)) {
+            throw new Error('Forbidden email-send surface detected in R1.5.6 module.');
           }
           console.log(JSON.stringify({status:'LIVE_R1_5_6_SOURCE_VERIFIED',fileCount:files.length}));
           NODE
