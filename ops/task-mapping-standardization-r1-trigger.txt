@@ -1,0 +1,4 @@
+TASK_MAPPING_STANDARDIZATION_R1_20260922
+Target Script ID: 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m
+Target workbook: CF Installs
+Purpose: Standardize four-vertical Data checklist + Calendar Task Link presentation/acceptance.
