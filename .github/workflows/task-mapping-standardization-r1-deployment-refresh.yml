@@ -1,0 +1,151 @@
+name: Task Mapping Standardization R1 Deployment Refresh
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-standardization-r1-deployment-refresh-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-standardization-r1-deployment-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-and-run:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
+
+      - name: Verify live source before deployment refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/tm-std-live
+          mkdir -p /tmp/tm-std-live
+          (cd /tmp/tm-std-live && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const dir='/tmp/tm-std-live/src';
+          const files=fs.readdirSync(dir).filter(n=>/\.(?:js|gs)$/i.test(n));
+          const all=files.map(n=>fs.readFileSync(path.join(dir,n),'utf8')).join('\n');
+          const required=[
+            'TASK_MAPPING_STANDARDIZATION_R1_20260922',
+            'const INSTALL_OPTION_B_VISIBLE_COLUMN_COUNT = 19;',
+            'const PREINSPECT_MAP_VISIBLE_COLUMN_COUNT = 16;',
+            "const preinspection = tmStdRunPreInspectCalendarLinkPipeline_(!!dryRun);",
+            "record('CALENDAR_TASK_LINK', preinspectAppendTaskLinkToCalendarEvent_(ctx.eventId, reviewedTaskId, ''));",
+            "tmStdResolveSalesOrderUrlFromCalendarMirror_('Service', model.eventId, model.salesOrderNumber)"
+          ];
+          const missing=required.filter(m=>!all.includes(m));
+          if(missing.length) throw new Error('Live source missing Standardization R1 markers: '+JSON.stringify(missing));
+          if(all.includes("const cleaned=stlRemoveManagedBlocksFromDescription_(original,'SERVICE');")) {
+            throw new Error('Broken Service cleaner call still present.');
+          }
+          console.log(JSON.stringify({status:'LIVE_SOURCE_VERIFIED',fileCount:files.length}));
+          NODE
+
+      - name: Refresh existing API deployment and run Standardization R1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p task-mapping-standardization-r1-deployment-output
+          TARGET_DEPLOYMENT='AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBuy'
+          PREVIOUS_VERSION='20'
+          PREVIOUS_DESCRIPTION='Website operations v3 - unified task links for Service, Inspection, Delivery, and Install'
+          UPDATED=0
+
+          rollback() {
+            code=$?
+            if [ "$code" -ne 0 ] && [ "$UPDATED" -eq 1 ]; then
+              echo "Runtime/deployment verification failed; restoring deployment to version $PREVIOUS_VERSION"
+              npx -y @google/clasp@3.3.0 deploy -i "$TARGET_DEPLOYMENT" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION" || true
+            fi
+            exit "$code"
+          }
+          trap rollback EXIT
+
+          npx -y @google/clasp@3.3.0 deployments --json | tee task-mapping-standardization-r1-deployment-output/pre-deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const raw=fs.readFileSync('task-mapping-standardization-r1-deployment-output/pre-deployments.json','utf8');
+          const start=raw.indexOf('[');
+          const arr=JSON.parse(raw.slice(start));
+          const target=arr.find(x=>x.deploymentId==='AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBuy');
+          if(!target) throw new Error('Expected production API deployment not found.');
+          if(Number(target.versionNumber)!==20) throw new Error('Production deployment moved from expected version 20 before refresh: '+JSON.stringify(target));
+          NODE
+
+          npx -y @google/clasp@3.3.0 version 'Task Mapping Standardization R1 - canonical checklist and Calendar links'
+          npx -y @google/clasp@3.3.0 versions --json | tee task-mapping-standardization-r1-deployment-output/versions-after-create.json
+          NEW_VERSION=$(node - <<'NODE'
+          const fs=require('fs');
+          const raw=fs.readFileSync('task-mapping-standardization-r1-deployment-output/versions-after-create.json','utf8');
+          const start=raw.indexOf('[');
+          const arr=JSON.parse(raw.slice(start));
+          process.stdout.write(String(Math.max(...arr.map(x=>Number(x.versionNumber)||0))));
+          NODE
+          )
+          test "$NEW_VERSION" -gt "$PREVIOUS_VERSION"
+          echo "NEW_VERSION=$NEW_VERSION" | tee task-mapping-standardization-r1-deployment-output/new-version.txt
+
+          npx -y @google/clasp@3.3.0 deploy -i "$TARGET_DEPLOYMENT" -V "$NEW_VERSION" -d 'Task Mapping Standardization R1 - canonical checklist and Calendar links'
+          UPDATED=1
+          npx -y @google/clasp@3.3.0 deployments --json | tee task-mapping-standardization-r1-deployment-output/post-deployments.json
+
+          run_checked() {
+            name="$1"
+            log="$2"
+            set +e
+            npx -y @google/clasp@3.3.0 run --nondev "$name" 2>&1 | tee "$log"
+            rc=${PIPESTATUS[0]}
+            set -e
+            if [ "$rc" -ne 0 ]; then return "$rc"; fi
+            if grep -Eqi 'Exception:|(^|[^A-Za-z])Error:' "$log"; then
+              echo "Detected Apps Script runtime error in $name"
+              return 1
+            fi
+          }
+
+          run_checked dryRunTaskMappingStandardizationR1 task-mapping-standardization-r1-deployment-output/dry-run.log
+          run_checked runTaskMappingStandardizationR1 task-mapping-standardization-r1-deployment-output/runtime.log
+          run_checked replaceCodeAuditSourceSheetFromProject task-mapping-standardization-r1-deployment-output/code-audit-refresh.log
+
+          echo "STANDARDIZATION_R1_DEPLOYMENT_AND_RUNTIME_VERIFIED" | tee task-mapping-standardization-r1-deployment-output/result.txt
+          trap - EXIT
+
+      - name: Preserve deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-standardization-r1-deployment-${{ github.run_id }}
+          path: task-mapping-standardization-r1-deployment-output/
+          if-no-files-found: warn
+          retention-days: 30
