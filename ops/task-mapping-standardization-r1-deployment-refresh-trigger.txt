@@ -1,0 +1,2 @@
+TASK_MAPPING_STANDARDIZATION_R1_DEPLOYMENT_REFRESH_20260922
+Refresh existing production API deployment from version 20 to the current Standardization R1 source, then dry-run/apply/verify. Roll back deployment on failure.
