@@ -56,11 +56,13 @@ jobs:
           ]
 
           for filename, marker in targets:
-              p = Path("src") / filename
+              candidates = list(Path(".").rglob(filename))
               print("\n===== " + filename + " :: " + marker + " =====")
-              if not p.exists():
+              if not candidates:
                   print("FILE_NOT_FOUND")
                   continue
+              p = candidates[0]
+              print("PATH=" + str(p))
               text = p.read_text(encoding="utf-8")
               i = text.find(marker)
               if i < 0:
