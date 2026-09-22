@@ -77,6 +77,28 @@ function findUniqueFileContaining(dir, marker) {
   return matches[0];
 }
 
+function findUniqueFileDefiningFunction(dir, functionName) {
+  const escaped = functionName.replace(/[.*+?^{}()|[\]\\]/g, '\\function findUniqueFileContaining(dir, marker) {
+  const matches = sourceFiles(dir).filter(function(name) {
+    return fs.readFileSync(path.join(dir, name), 'utf8').indexOf(marker) >= 0;
+  });
+  if (matches.length !== 1) {
+    throw new Error('Expected exactly one live source file containing [' + marker + '], found ' + matches.length + ': ' + matches.join(', '));
+  }
+  return matches[0];
+}');
+  const re = new RegExp('(?:^|\\n)\\s*function\\s+' + escaped + '\\s*\\(', 'g');
+  const matches = sourceFiles(dir).filter(function(name) {
+    const text = fs.readFileSync(path.join(dir, name), 'utf8');
+    re.lastIndex = 0;
+    return re.test(text);
+  });
+  if (matches.length !== 1) {
+    throw new Error('Expected exactly one active function definition for [' + functionName + '], found ' + matches.length + ': ' + matches.join(', '));
+  }
+  return matches[0];
+}
+
 function replaceUnique(text, before, after, label) {
   const first = text.indexOf(before);
   if (first < 0) throw new Error(label + ': anchor not found');
@@ -93,10 +115,20 @@ function replaceRegexUnique(text, regex, replacement, label) {
 }
 
 function functionRange(text, functionName) {
+  const escaped = functionName.replace(/[.*+?^{}()|[\]\\]/g, '\\function functionRange(text, functionName) {
   const marker = 'function ' + functionName + '(';
   const start = text.indexOf(marker);
   if (start < 0) throw new Error('Function not found: ' + functionName);
   if (text.indexOf(marker, start + marker.length) >= 0) throw new Error('Function marker not unique: ' + functionName);
+  const open = text.indexOf('{', start);');
+  const re = new RegExp('(?:^|\\n)(\\s*function\\s+' + escaped + '\\s*\\()', 'g');
+  const found = [];
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    found.push(match.index + (match[0].charAt(0) === '\n' ? 1 : 0) + match[0].indexOf('function'));
+  }
+  if (found.length !== 1) throw new Error('Active function definition count for ' + functionName + ' is ' + found.length);
+  const start = found[0];
   const open = text.indexOf('{', start);
   let depth = 0, quote = null, escaped = false, lineComment = false, blockComment = false;
   for (let i = open; i < text.length; i++) {
@@ -119,7 +151,7 @@ function functionRange(text, functionName) {
 }
 
 function patchFunctionInFile(dir, functionName, patcher, changed) {
-  const file = findUniqueFileContaining(dir, 'function ' + functionName + '(');
+  const file = findUniqueFileDefiningFunction(dir, functionName);
   const full = path.join(dir, file);
   let text = fs.readFileSync(full, 'utf8');
   const range = functionRange(text, functionName);
