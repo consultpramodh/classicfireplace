@@ -10,3 +10,4 @@ Native Calendar rich-link repair:
 - restore missing Standardization module if live HEAD has reverted to 75 files
 - atomic rich-link runtime immediately after verified source push
 - execute rich-link repair through temporary one-time web gateway
+- clone verified live source inside the same job before temporary web execution
