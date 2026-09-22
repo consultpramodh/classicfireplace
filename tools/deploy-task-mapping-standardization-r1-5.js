@@ -8,7 +8,7 @@ const CLASP_VERSION='3.3.0';
 const RELEASE='TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922';
 const MODULE_SOURCE='patches/task-mapping/99_Task_Mapping_Standardization_R1.js';
 const MODULE_TARGET='99_Task_Mapping_Standardization_R1.js';
-const EXPECTED_PRE_FILE_COUNT=76;
+const EXPECTED_PRE_FILE_COUNTS=[75,76];
 const OUTPUT=path.resolve('task-mapping-standardization-r1-5-6-output');
 fs.mkdirSync(OUTPUT,{recursive:true});
 
@@ -38,12 +38,19 @@ try{
 
   console.log('=== R1.5 2/8 PRE clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],preRoot);
   const preSrc=path.join(preRoot,'src'), preNames=names(preSrc);
-  if(preNames.length!==EXPECTED_PRE_FILE_COUNT) throw new Error('Expected '+EXPECTED_PRE_FILE_COUNT+' live files, found '+preNames.length);
-  if(!preNames.includes(MODULE_TARGET)) throw new Error('Live Standardization module missing.');
+  if(!EXPECTED_PRE_FILE_COUNTS.includes(preNames.length)) throw new Error('Expected 75 or 76 live files, found '+preNames.length);
+  const moduleWasPresent=preNames.includes(MODULE_TARGET);
+  if(moduleWasPresent && preNames.length!==76) throw new Error('Standardization module present with unexpected live file count '+preNames.length);
+  if(!moduleWasPresent && preNames.length!==75) throw new Error('Standardization module missing with unexpected live file count '+preNames.length);
   const preHashes=hashes(preSrc,preNames); copy(preRoot,path.join(OUTPUT,'PRE_SOURCE'));
-  const preModule=fs.readFileSync(path.join(preSrc,MODULE_TARGET),'utf8');
-  if(!preModule.includes('TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922')) throw new Error('Unexpected PRE standardization version.');
-  if(!preModule.includes('previewPreInspectNotificationEmailForSelectedRow')) throw new Error('Expected R1.4 preview helper missing.');
+  if(moduleWasPresent){
+    const preModule=fs.readFileSync(path.join(preSrc,MODULE_TARGET),'utf8');
+    if(!preModule.includes('TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922') &&
+       !preModule.includes('TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922')) {
+      throw new Error('Unexpected PRE standardization version.');
+    }
+    if(!preModule.includes('previewPreInspectNotificationEmailForSelectedRow')) throw new Error('Expected preview helper missing.');
+  }
 
   console.log('=== R1.5 3/8 build WORK ==='); copy(preRoot,workRoot);
   const workSrc=path.join(workRoot,'src');
@@ -78,6 +85,9 @@ try{
     if(workModule.includes(marker)) throw new Error('R1.5 contains forbidden email-send surface: '+marker);
   });
 
+  const workNames=names(workSrc);
+  const expectedWorkNames=Array.from(new Set(preNames.concat([MODULE_TARGET]))).sort();
+  if(JSON.stringify(workNames)!==JSON.stringify(expectedWorkNames)) throw new Error('WORK file set is not PRE plus Standardization module.');
   const untouched=preNames.filter(n=>n!==MODULE_TARGET);
   assertHashes(preHashes,hashes(workSrc,untouched),untouched,'WORK untouched preservation');
 
@@ -90,7 +100,7 @@ try{
 
   console.log('=== R1.5 6/8 POST clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],postRoot);
   const postSrc=path.join(postRoot,'src'), postNames=names(postSrc);
-  if(JSON.stringify(postNames)!==JSON.stringify(preNames)) throw new Error('POST file set changed.');
+  if(JSON.stringify(postNames)!==JSON.stringify(workNames)) throw new Error('POST file set differs from WORK.');
 
   console.log('=== R1.5 7/8 verify ===');
   const postHashes=hashes(postSrc,postNames);
@@ -108,6 +118,8 @@ try{
   evidence.untouchedFileCount=untouched.length;
   evidence.preFileCount=preNames.length;
   evidence.postFileCount=postNames.length;
+  evidence.moduleWasPresentBefore=moduleWasPresent;
+  evidence.moduleRestoredFromMissing=!moduleWasPresent;
   evidence.rollback='NOT_REQUIRED';
   evidence.zeroInformationLossGuard=true;
   evidence.safeStatuses=['CONFIRMED','MATCHED'];
