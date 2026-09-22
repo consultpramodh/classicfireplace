@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_1_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_1_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -72,6 +72,100 @@ function tmStdEscapeRegex_(value) {
 function tmStdTaskUrl_(taskId) {
   const id = tmStdPositiveNumber_(taskId);
   return id ? 'https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=' + encodeURIComponent(id) : '';
+}
+
+const TM_STD_R11_PREINSPECT = {
+  STEPHEN_CALENDAR_ID: 'classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com',
+  CF_PREINSPECT_CALENDAR_ID: 'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com',
+  SALES_ORDERS_LIST_BASE_URL: 'https://classicfireplace.striven.com/next/crm#/sales-orders?accountId='
+};
+
+function tmStdSalesOrdersListUrl_(accountId) {
+  const id = tmStdPositiveNumber_(accountId);
+  return id ? TM_STD_R11_PREINSPECT.SALES_ORDERS_LIST_BASE_URL + encodeURIComponent(id) : '';
+}
+
+function tmStdSalesOrdersListUrlFromText_(text) {
+  const m = String(text || '').match(/https:\/\/classicfireplace\.striven\.com\/next\/crm#\/sales-orders\?accountId=(\d+)/i);
+  return m ? m[0] : '';
+}
+
+function tmStdPreInspectEventIdCandidates_(eventId) {
+  const raw = tmStdClean_(eventId);
+  if (!raw) return [];
+  const base = raw.replace(/@google\.com$/i, '');
+  return raw === base ? [raw, raw + '@google.com'] : [raw, base];
+}
+
+function tmStdFindEventOnCalendar_(calendarId, eventId) {
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  if (!calendar) return null;
+  const candidates = tmStdPreInspectEventIdCandidates_(eventId);
+  for (let i = 0; i < candidates.length; i++) {
+    try {
+      const event = calendar.getEventById(candidates[i]);
+      if (event) return { event: event, calendarId: calendarId };
+    } catch (err) {}
+  }
+  return null;
+}
+
+function tmStdReadPreInspectAuthoritativeEvent_(eventId) {
+  return tmStdFindEventOnCalendar_(TM_STD_R11_PREINSPECT.STEPHEN_CALENDAR_ID, eventId) ||
+    tmStdFindEventOnCalendar_(TM_STD_R11_PREINSPECT.CF_PREINSPECT_CALENDAR_ID, eventId);
+}
+
+function tmStdEnsurePreInspectStephenPresence_(eventId, dryRun) {
+  const onStephen = tmStdFindEventOnCalendar_(TM_STD_R11_PREINSPECT.STEPHEN_CALENDAR_ID, eventId);
+  if (onStephen && onStephen.event) {
+    return { status: 'ALREADY_ON_STEPHEN', eventId: tmStdClean_(eventId), writeCount: 0 };
+  }
+
+  const onPreInspect = tmStdFindEventOnCalendar_(TM_STD_R11_PREINSPECT.CF_PREINSPECT_CALENDAR_ID, eventId);
+  if (!onPreInspect || !onPreInspect.event) {
+    return { status: 'REVIEW', eventId: tmStdClean_(eventId), writeCount: 0, reason: 'PreInspection event was not found on CF Preinspects or Stephen calendar.' };
+  }
+
+  if (dryRun) {
+    return { status: 'WOULD_ADD_STEPHEN_CALENDAR', eventId: tmStdClean_(eventId), writeCount: 0 };
+  }
+
+  const guestEmails = (onPreInspect.event.getGuestList() || []).map(function(g) {
+    return g && typeof g.getEmail === 'function' ? tmStdClean_(g.getEmail()).toLowerCase() : '';
+  }).filter(Boolean);
+
+  if (guestEmails.indexOf(TM_STD_R11_PREINSPECT.STEPHEN_CALENDAR_ID.toLowerCase()) < 0) {
+    onPreInspect.event.addGuest(TM_STD_R11_PREINSPECT.STEPHEN_CALENDAR_ID);
+  }
+
+  return { status: 'STEPHEN_CALENDAR_ADDED', eventId: tmStdClean_(eventId), writeCount: 1 };
+}
+
+function tmStdPreInspectAccountIdForEvent_(eventId, taskId) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss && ss.getSheetByName('PreInspect Task Mapping');
+  if (!sheet || sheet.getLastRow() < 2) return 0;
+
+  const headerRow = tmStdFindMappingHeaderRow_(sheet);
+  if (!headerRow) return 0;
+  const headers = sheet.getRange(headerRow, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  const eventIdx = tmStdFindHeaderIndex_(headers, ['Event ID']);
+  const taskIdx = tmStdFindHeaderIndex_(headers, ['Task ID']);
+  const accountIdx = tmStdFindHeaderIndex_(headers, ['Customer ID', 'Customer #']);
+  if (eventIdx < 0 || accountIdx < 0) return 0;
+
+  const values = sheet.getRange(headerRow + 1, 1, sheet.getLastRow() - headerRow, sheet.getLastColumn()).getDisplayValues();
+  const wantedEvent = tmStdClean_(eventId).replace(/@google\.com$/i, '');
+  const wantedTask = tmStdPositiveNumber_(taskId);
+
+  for (let r = 0; r < values.length; r++) {
+    const rowEvent = tmStdClean_(values[r][eventIdx]).replace(/@google\.com$/i, '');
+    const rowTask = taskIdx >= 0 ? tmStdPositiveNumber_(values[r][taskIdx]) : 0;
+    if (rowEvent === wantedEvent && (!wantedTask || !rowTask || rowTask === wantedTask)) {
+      return tmStdPositiveNumber_(values[r][accountIdx]);
+    }
+  }
+  return 0;
 }
 
 function tmStdTaskIdFromUrl_(url) {
@@ -149,6 +243,11 @@ function tmStdBuildCanonicalCalendarLinksBlock_(data) {
     ));
   }
 
+  const salesOrdersList = data.salesOrdersList || null;
+  if (salesOrdersList && tmStdClean_(salesOrdersList.url)) {
+    lines.push(tmStdBuildAnchor_(tmStdClean_(salesOrdersList.url), 'Sales Orders'));
+  }
+
   lines.push('');
   lines.push('------------------------------------');
   lines.push(end);
@@ -202,7 +301,7 @@ function tmStdCount_(text, needle) {
   return String(text || '').split(String(needle)).length - 1;
 }
 
-function tmStdWriteCanonicalCalendarLinks_(division, eventId, tasks, salesOrder, dryRun) {
+function tmStdWriteCanonicalCalendarLinks_(division, eventId, tasks, salesOrder, dryRun, salesOrdersList) {
   const d = tmStdNormalizeDivision_(division);
   const id = tmStdClean_(eventId);
   if (!id) return { status: 'REVIEW', division: d, reason: 'Event ID is blank.', writeCount: 0 };
@@ -216,7 +315,9 @@ function tmStdWriteCanonicalCalendarLinks_(division, eventId, tasks, salesOrder,
     return { status: 'REVIEW', division: d, eventId: id, reason: 'No valid Task ID was supplied.', writeCount: 0 };
   }
 
-  const fresh = tmR4_readFreshCalendarEvent_({ division: d, eventId: id });
+  const fresh = d === 'PreInspection'
+    ? tmStdReadPreInspectAuthoritativeEvent_(id)
+    : tmR4_readFreshCalendarEvent_({ division: d, eventId: id });
   if (!fresh || !fresh.event) {
     return { status: 'REVIEW', division: d, eventId: id, reason: 'Authoritative Calendar event was not found.', writeCount: 0 };
   }
@@ -226,7 +327,8 @@ function tmStdWriteCanonicalCalendarLinks_(division, eventId, tasks, salesOrder,
   const block = tmStdBuildCanonicalCalendarLinksBlock_({
     division: d,
     tasks: normalizedTasks,
-    salesOrder: salesOrder || null
+    salesOrder: salesOrder || null,
+    salesOrdersList: salesOrdersList || null
   });
   const next = tmStdAppendBlock_(cleaned, block);
   const same = current.trim() === next.trim();
@@ -238,6 +340,7 @@ function tmStdWriteCanonicalCalendarLinks_(division, eventId, tasks, salesOrder,
     calendarId: fresh.calendarId || null,
     taskIds: normalizedTasks.map(function(x) { return x.id; }),
     salesOrderNumber: salesOrder && salesOrder.number ? String(salesOrder.number) : '',
+    salesOrdersAccountId: salesOrdersList && salesOrdersList.accountId ? String(salesOrdersList.accountId) : '',
     writeCount: 0
   };
 
@@ -251,7 +354,9 @@ function tmStdWriteCanonicalCalendarLinks_(division, eventId, tasks, salesOrder,
     base.writeCount = 1;
   }
 
-  const readBack = tmR4_readFreshCalendarEvent_({ division: d, eventId: id });
+  const readBack = d === 'PreInspection'
+    ? tmStdReadPreInspectAuthoritativeEvent_(id)
+    : tmR4_readFreshCalendarEvent_({ division: d, eventId: id });
   if (!readBack || !readBack.event) {
     throw new Error(d + ' Calendar event disappeared during Calendar-link read-back.');
   }
@@ -277,6 +382,12 @@ function tmStdWriteCanonicalCalendarLinks_(division, eventId, tasks, salesOrder,
   if (salesOrder && tmStdClean_(salesOrder.url)) {
     if (tmStdCount_(actual, tmStdClean_(salesOrder.url)) !== 1) {
       throw new Error(d + ' Calendar read-back expected the Sales Order URL exactly once.');
+    }
+  }
+
+  if (salesOrdersList && tmStdClean_(salesOrdersList.url)) {
+    if (tmStdCount_(actual, tmStdClean_(salesOrdersList.url)) !== 1) {
+      throw new Error(d + ' Calendar read-back expected the Sales Orders list URL exactly once.');
     }
   }
 
@@ -343,7 +454,8 @@ function tmStdMirrorEvidenceMap_(division) {
       rowNumber: r + 2,
       text: text,
       taskIds: tmStdTaskIdsFromText_(text),
-      salesOrderUrl: soUrl
+      salesOrderUrl: soUrl,
+      salesOrdersListUrl: tmStdSalesOrdersListUrlFromText_(text)
     };
   });
   return out;
@@ -535,6 +647,12 @@ function tmStdChecklistForRow_(division, row, mirror) {
     let soLinkSymbol = '⏳';
     if (soNumber && evidence) soLinkSymbol = tmStdClean_(evidence.salesOrderUrl) ? '✅' : '❌';
     lines.push(tmStdLine_(soLinkSymbol, 'Calendar SO Link'));
+  } else if (d === 'PreInspection') {
+    const accountId = tmStdPositiveNumber_(row['Customer ID'] || row['Customer #']);
+    const expectedListUrl = tmStdSalesOrdersListUrl_(accountId);
+    let listLinkSymbol = '⏳';
+    if (accountId && evidence) listLinkSymbol = String(evidence.text || '').indexOf(expectedListUrl) >= 0 ? '✅' : '❌';
+    lines.push(tmStdLine_(listLinkSymbol, 'Calendar SO Link'));
   } else {
     lines.push(tmStdLine_('—', 'Calendar SO Link'));
   }
@@ -604,11 +722,12 @@ function tmStdRunPreInspectCalendarLinkPipeline_(dryRun) {
     const taskId = tmStdPositiveNumber_(row['Task ID']);
     const status = tmStdUpper_(row.Status);
     const taskStatus = tmStdUpper_(row['Task Status']);
+    const accountId = tmStdPositiveNumber_(row['Customer ID'] || row['Customer #']);
     if (!eventId || !taskId || seen[eventId]) return;
     seen[eventId] = true;
 
-    if (status !== 'MATCHED') {
-      results.push({ eventId: eventId, taskId: taskId, status: 'SKIPPED_NOT_MATCHED' });
+    if (status !== 'MATCHED' && status !== 'CONFIRMED') {
+      results.push({ eventId: eventId, taskId: taskId, status: 'SKIPPED_STATUS', mappingStatus: status });
       return;
     }
     if (!(taskStatus === 'OPEN' || /\bOPEN\b/.test(taskStatus))) {
@@ -616,8 +735,23 @@ function tmStdRunPreInspectCalendarLinkPipeline_(dryRun) {
       return;
     }
 
+    if (!accountId) {
+      results.push({ eventId: eventId, taskId: taskId, status: 'REVIEW', reason: 'Customer/Account ID is required for the PreInspection Sales Orders list link.' });
+      return;
+    }
+
     try {
-      results.push(tmStdWriteCanonicalCalendarLinks_('PreInspection', eventId, [{ id: taskId }], null, !!dryRun));
+      const stephen = tmStdEnsurePreInspectStephenPresence_(eventId, !!dryRun);
+      const linkResult = tmStdWriteCanonicalCalendarLinks_(
+        'PreInspection',
+        eventId,
+        [{ id: taskId }],
+        null,
+        !!dryRun,
+        { accountId: accountId, url: tmStdSalesOrdersListUrl_(accountId) }
+      );
+      linkResult.stephenCalendar = stephen;
+      results.push(linkResult);
     } catch (err) {
       results.push({
         eventId: eventId,
