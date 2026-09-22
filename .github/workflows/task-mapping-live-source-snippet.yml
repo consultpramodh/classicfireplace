@@ -1,0 +1,73 @@
+name: Task Mapping Live Source Snippet
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-live-source-snippet.txt
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-live-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Clone live source and print relevant functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/tm-live
+          mkdir -p /tmp/tm-live
+          cd /tmp/tm-live
+          npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m >/dev/null
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          targets = [
+              ("20_Delivery_Workflow.js", "function deliveryFindLocationIdByActualCalendarAddress_"),
+              ("20_Delivery_Workflow.js", "function deliveryFindValidatedLocationIdForApprovedOrderRowFinal_"),
+              ("10_Install_Workflow.js", "function installChooseBestTaskForCalendarSO_"),
+              ("10_Install_Workflow.js", "function installFindBestLocationByActualAddress_"),
+              ("30_Service_Workflow.js", "function serviceChooseBestTaskForCalendar_"),
+              ("30_Service_Workflow.js", "function serviceFindTaskByLooseCustomerName_"),
+          ]
+
+          for filename, marker in targets:
+              p = Path("src") / filename
+              print("\n===== " + filename + " :: " + marker + " =====")
+              if not p.exists():
+                  print("FILE_NOT_FOUND")
+                  continue
+              text = p.read_text(encoding="utf-8")
+              i = text.find(marker)
+              if i < 0:
+                  print("MARKER_NOT_FOUND")
+                  continue
+              j = text.find("\nfunction ", i + len(marker))
+              if j < 0:
+                  j = min(len(text), i + 7000)
+              print(text[i:j][:7000])
+          PY
