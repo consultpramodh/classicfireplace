@@ -372,3 +372,22 @@ function tmCurrentMappingValue_(row, idx, aliases) {
 
   return '';
 }
+
+
+/************************************************************
+ * REMOTE EXECUTION WRAPPER
+ *
+ * Apps Script Execution API / clasp run has no bound-sheet
+ * active context. Reuse the proven explicit-workbook wrapper.
+ ************************************************************/
+function VERIFY_REBUILD_CURRENT_TASK_MAPPING_REMOTE_R1() {
+  if (typeof tmContactR1RuntimeWithWorkbook_ !== 'function') {
+    throw new Error(
+      'Explicit-workbook runtime wrapper is unavailable.'
+    );
+  }
+
+  return tmContactR1RuntimeWithWorkbook_(function() {
+    return VERIFY_REBUILD_CURRENT_TASK_MAPPING_R1();
+  });
+}
