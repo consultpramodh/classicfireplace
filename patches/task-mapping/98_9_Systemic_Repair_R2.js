@@ -18,7 +18,7 @@
  ************************************************************/
 
 const TM_SYSTEMIC_REPAIR_R2 = Object.freeze({
-  VERSION: 'TM_SYSTEMIC_REPAIR_R2_LINK_FIRST_20260921'
+  VERSION: 'TM_SYSTEMIC_REPAIR_R2_LINK_FIRST_DUAL_PI_20260922'
 });
 
 function REPAIR_ALL_VERTICALS_SYSTEMIC_R2() {
@@ -371,19 +371,36 @@ function tmSystemicR2RecoveryAndImmediateLinks_(report) {
       if (!newTaskId || !eventId) return;
 
       try {
-        if (typeof tmCalendarTaskAcceptanceEnsureTaskLink_ !== 'function') {
-          throw new Error(
-            'Calendar Task-link acceptance helper is unavailable after task creation.'
-          );
-        }
+        let acceptance;
 
-        const acceptance =
-          tmCalendarTaskAcceptanceEnsureTaskLink_(
-            acceptanceDivision,
-            eventId,
-            newTaskId,
-            ''
-          );
+        if (division === 'PreInspect') {
+          if (typeof tmPreInspectEnsureDualCalendarTaskLink_ !== 'function') {
+            throw new Error(
+              'PreInspection dual-calendar Task-link helper is unavailable after task creation.'
+            );
+          }
+
+          acceptance =
+            tmPreInspectEnsureDualCalendarTaskLink_(
+              eventId,
+              newTaskId,
+              ''
+            );
+        } else {
+          if (typeof tmCalendarTaskAcceptanceEnsureTaskLink_ !== 'function') {
+            throw new Error(
+              'Calendar Task-link acceptance helper is unavailable after task creation.'
+            );
+          }
+
+          acceptance =
+            tmCalendarTaskAcceptanceEnsureTaskLink_(
+              acceptanceDivision,
+              eventId,
+              newTaskId,
+              ''
+            );
+        }
 
         rowResult.calendarAcceptance = acceptance;
         if (raw) raw.calendarLinkResult = acceptance;
