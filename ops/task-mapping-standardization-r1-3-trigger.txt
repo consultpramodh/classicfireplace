@@ -1,0 +1,12 @@
+TASK_MAPPING_STANDARDIZATION_R1_3_PREINSPECT_AUDIT_20260922
+Purpose:
+- populate PreInspect Calendar Audit from Stephen - calendar
+- include events created by other @classicfireplace.ca employees
+- preserve non-customer blocks as IGNORE
+- check standard title: Customer # - Customer Name - Phone
+- check purpose/description
+- check Sales Order
+- check CF Preinspects guest
+- check stephen@classicfireplace.ca guest
+- check Striven links
+- hook refresh into existing PreInspect mirror sync
