@@ -120,7 +120,68 @@ jobs:
           npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$NEW_VERSION" -d 'PreInspection R1.5.6 temporary web rich-link runtime'
           DEPLOYMENT_UPDATED=1
 
-          curl -L --fail --silent --show-error --retry 3             "https://script.google.com/macros/s/$TARGET/exec?__r156=$NONCE"             -o "$OUT/web-runtime-response.json"
+          node - "$HOME/.clasprc.json" "/tmp/r156-access-token" <<'NODE'
+          const fs=require('fs');
+          const [configFile,outFile]=process.argv.slice(2);
+          const cfg=JSON.parse(fs.readFileSync(configFile,'utf8'));
+
+          function walk(value, found) {
+            if (!value || typeof value !== 'object') return;
+            if (Array.isArray(value)) {
+              value.forEach(v=>walk(v,found));
+              return;
+            }
+            Object.entries(value).forEach(([k,v])=>{
+              const key=k.replace(/[_-]/g,'').toLowerCase();
+              if (typeof v === 'string' && v) {
+                if (key === 'accesstoken' && !found.accessToken) found.accessToken=v;
+                if (key === 'refreshtoken' && !found.refreshToken) found.refreshToken=v;
+                if (key === 'clientid' && !found.clientId) found.clientId=v;
+                if (key === 'clientsecret' && !found.clientSecret) found.clientSecret=v;
+              }
+              walk(v,found);
+            });
+          }
+
+          (async()=>{
+            const found={};
+            walk(cfg,found);
+            let accessToken=found.accessToken || '';
+
+            if (found.refreshToken && found.clientId && found.clientSecret) {
+              const body=new URLSearchParams({
+                client_id:found.clientId,
+                client_secret:found.clientSecret,
+                refresh_token:found.refreshToken,
+                grant_type:'refresh_token'
+              });
+              const response=await fetch('https://oauth2.googleapis.com/token',{
+                method:'POST',
+                headers:{'content-type':'application/x-www-form-urlencoded'},
+                body
+              });
+              if(!response.ok) throw new Error('OAuth token refresh failed with HTTP '+response.status);
+              const json=await response.json();
+              accessToken=String(json.access_token || '');
+            }
+
+            if(!accessToken) throw new Error('No usable OAuth access token was available in clasp credentials.');
+            fs.writeFileSync(outFile,accessToken,{mode:0o600});
+            console.log('OAUTH_ACCESS_TOKEN_READY');
+          })().catch(err=>{ console.error(err.message); process.exit(1); });
+          NODE
+
+          ACCESS_TOKEN="$(cat /tmp/r156-access-token)"
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          curl --location-trusted --fail-with-body --silent --show-error --retry 3 \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Accept: application/json" \
+            "https://script.google.com/macros/s/$TARGET/exec?__r156=$NONCE" \
+            -o "$OUT/web-runtime-response.json"
+
+          rm -f /tmp/r156-access-token
+          unset ACCESS_TOKEN
 
           node - "$OUT/web-runtime-response.json" <<'NODE'
           const fs=require('fs');
