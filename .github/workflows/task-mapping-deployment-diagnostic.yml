@@ -32,6 +32,16 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
+      - name: Inspect live Website Operations gateway source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/tm-gateway-live
+          mkdir -p /tmp/tm-gateway-live
+          (cd /tmp/tm-gateway-live && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
+          echo '===== 98_Web_Operations_Gateway.js ====='
+          sed -n '1,360p' /tmp/tm-gateway-live/src/98_Web_Operations_Gateway.js
+
       - name: Capture deployments and versions
         shell: bash
         run: |
