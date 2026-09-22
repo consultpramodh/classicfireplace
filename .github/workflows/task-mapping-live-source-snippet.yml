@@ -53,6 +53,11 @@ jobs:
               ("10_Install_Workflow.js", "function installFindBestLocationByActualAddress_"),
               ("30_Service_Workflow.js", "function serviceChooseBestTaskForCalendar_"),
               ("30_Service_Workflow.js", "function serviceFindTaskByLooseCustomerName_"),
+              ("35_PreInspect_Task_Review.js", "function preinspectExtractSignals_"),
+              ("35_PreInspect_Task_Review.js", "function preinspectExtractCustomerNumber_"),
+              ("35_PreInspect_Task_Review.js", "function preinspectResolveCustomer_"),
+              ("92_Striven_Task_Patch_Helper.js", "function taskRecoveryBuildTargetSource_"),
+              ("92_Striven_Task_Patch_Helper.js", "function taskRecoveryBuildTargetTitle_"),
           ]
 
           for filename, marker in targets:
