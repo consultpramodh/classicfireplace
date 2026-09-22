@@ -1,0 +1,8 @@
+TASK_MAPPING_STANDARDIZATION_R1_5_2_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+Hardening:
+- HTML-safe preserved-title context block
+- escape title text before inserting it into Calendar HTML
+- keep preserved title context visually separated from authored purpose
+- audit strips the managed context block before evaluating purpose
+- zero information loss remains mandatory
+- no notification email sending
