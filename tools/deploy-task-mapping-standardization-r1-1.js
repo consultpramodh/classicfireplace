@@ -8,7 +8,7 @@ const CLASP_VERSION='3.3.0';
 const RELEASE='TASK_MAPPING_STANDARDIZATION_R1_1_PREINSPECT_LINKS_20260922';
 const MODULE_SOURCE='patches/task-mapping/99_Task_Mapping_Standardization_R1.js';
 const MODULE_TARGET='99_Task_Mapping_Standardization_R1.js';
-const EXPECTED_PRE_FILE_COUNT=75;
+const EXPECTED_PRE_FILE_COUNT=76;
 const OUTPUT=path.resolve('task-mapping-standardization-r1-1-output');
 fs.mkdirSync(OUTPUT,{recursive:true});
 
