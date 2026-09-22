@@ -1,0 +1,48 @@
+name: Task Mapping Current Sheet Standardization Verify
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/task-mapping-current-sheet-standardization-verify.txt
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live-current-sheet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          echo -n "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          echo '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
+
+      - name: Rebuild and verify current production workbook
+        shell: bash
+        run: |
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run VERIFY_REBUILD_CURRENT_TASK_MAPPING_R1 2>&1 | tee /tmp/current-sheet-standardization.log
+          if grep -Eqi "error:|exception:" /tmp/current-sheet-standardization.log; then exit 1; fi
+          if ! grep -Eq '"status"[[:space:]]*:[[:space:]]*"PASS"|status.*PASS' /tmp/current-sheet-standardization.log; then
+            echo "Verifier did not report PASS; preserving output as a failed verification."
+            cat /tmp/current-sheet-standardization.log
+            exit 1
+          fi
