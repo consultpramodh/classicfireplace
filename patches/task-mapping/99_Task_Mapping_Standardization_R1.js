@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_2_PREINSPECT_CALENDAR_REORGANIZATION_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_2_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -935,6 +935,10 @@ function tmStdPreInspectAuditSalesOrders_(value) {
 
 function tmStdPreInspectAuditPurpose_(description) {
   let text = tmStdRemoveManagedCalendarLinks_(String(description || ''));
+  text = text.replace(
+    /<!--\s*PREINSPECT_TITLE_CONTEXT_START\s*-->[\s\S]*?<!--\s*PREINSPECT_TITLE_CONTEXT_END\s*-->/gi,
+    ''
+  );
   text = text
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
@@ -997,6 +1001,8 @@ function tmStdPreInspectAuditEventLink_(event) {
 const TM_STD_PREINSPECT_REORG = {
   LOG_SHEET_NAME: 'PreInspect Calendar Reorganization Log',
   CONTEXT_PREFIX: 'Calendar title context (preserved): ',
+  CONTEXT_START: '<!-- PREINSPECT_TITLE_CONTEXT_START -->',
+  CONTEXT_END: '<!-- PREINSPECT_TITLE_CONTEXT_END -->',
   SAFE_STATUSES: ['CONFIRMED', 'MATCHED'],
   LOG_HEADERS: [
     'Timestamp','Event ID','Organizer / Creator','Original Title','New Standard Title',
@@ -1046,14 +1052,22 @@ function tmStdPreInspectReorgContextPresent_(description, contextLine) {
   return !!needle && haystack.indexOf(needle) >= 0;
 }
 
+function tmStdPreInspectReorgContextBlock_(originalTitle) {
+  const line = tmStdPreInspectReorgContextLine_(originalTitle);
+  return TM_STD_PREINSPECT_REORG.CONTEXT_START +
+    '<p>' + tmStdEscapeHtml_(line) + '</p>' +
+    TM_STD_PREINSPECT_REORG.CONTEXT_END;
+}
+
 function tmStdPreInspectReorgDescriptionWithContext_(description, originalTitle) {
   const current = String(description || '');
   const line = tmStdPreInspectReorgContextLine_(originalTitle);
   if (tmStdPreInspectReorgContextPresent_(current, line)) {
     return { description: current, changed: false, line: line };
   }
+  const block = tmStdPreInspectReorgContextBlock_(originalTitle);
   return {
-    description: current ? line + '\n\n' + current : line,
+    description: current ? block + '<br>' + current : block,
     changed: true,
     line: line
   };
