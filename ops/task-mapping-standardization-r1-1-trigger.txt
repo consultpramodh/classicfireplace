@@ -1,0 +1,7 @@
+TASK_MAPPING_STANDARDIZATION_R1_1_PREINSPECT_LINKS_20260922
+Rules:
+- exactly one managed PreInspection Striven links block
+- Task link exactly once
+- Sales Orders list link exactly once using ?accountId=<Customer ID>
+- prefer Stephen - calendar as authoritative event
+- if missing from Stephen, add Stephen calendar as guest instead of creating a duplicate event
