@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           OUT="task-mapping-standardization-r1-5-6-output"
-          BASE="$OUT/POST_SOURCE"
+          BASE=$(mktemp -d)
           TARGET='AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBuy'
           PREVIOUS_VERSION='20'
           PREVIOUS_DESCRIPTION='Website operations v3 - unified task links for Service, Inspection, Delivery, and Install'
@@ -59,6 +59,7 @@ jobs:
           SOURCE_TRANSIENT=0
           DEPLOYMENT_UPDATED=0
 
+          (cd "$BASE" && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
           test -f "$BASE/src/99_Task_Mapping_Standardization_R1.js"
           test -f "$BASE/src/98_Web_Operations_Gateway.js"
           grep -q 'TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922' "$BASE/src/99_Task_Mapping_Standardization_R1.js"
