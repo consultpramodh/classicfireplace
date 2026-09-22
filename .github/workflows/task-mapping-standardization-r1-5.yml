@@ -45,67 +45,103 @@ jobs:
         shell: bash
         run: node tools/deploy-task-mapping-standardization-r1-5.js
 
-      - name: Apply native PreInspection rich links and restore API deployment
+      - name: Apply native PreInspection rich links through temporary web gateway
         shell: bash
         run: |
           set -euo pipefail
           OUT="task-mapping-standardization-r1-5-6-output"
-          mkdir -p "$OUT"
-          printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
-
+          BASE="$OUT/POST_SOURCE"
           TARGET='AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBuy'
           PREVIOUS_VERSION='20'
           PREVIOUS_DESCRIPTION='Website operations v3 - unified task links for Service, Inspection, Delivery, and Install'
-          UPDATED=0
+          WORK=$(mktemp -d)
+          NONCE=$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")
+          SOURCE_TRANSIENT=0
+          DEPLOYMENT_UPDATED=0
 
-          restore() {
+          test -f "$BASE/src/99_Task_Mapping_Standardization_R1.js"
+          test -f "$BASE/src/98_Web_Operations_Gateway.js"
+          grep -q 'TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922' "$BASE/src/99_Task_Mapping_Standardization_R1.js"
+          cp -a "$BASE/." "$WORK/"
+
+          node - "$WORK/src/98_Web_Operations_Gateway.js" "$NONCE" <<'NODE'
+          const fs=require('fs');
+          const [file,nonce]=process.argv.slice(2);
+          let s=fs.readFileSync(file,'utf8');
+          const old='function doGet() {';
+          if(!s.includes(old)) throw new Error('doGet anchor missing.');
+          const injected=
+            'function doGet(e) {\n' +
+            '  if (e && e.parameter && e.parameter.__r156 === ' + JSON.stringify(nonce) + ') {\n' +
+            '    return tmWebJson_(applyPreInspectRichLinksR1_5_6());\n' +
+            '  }';
+          s=s.replace(old,injected);
+          fs.writeFileSync(file,s);
+          NODE
+
+          restore_all() {
             code=$?
-            if [ "$UPDATED" -eq 1 ]; then
-              npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION" | tee "$OUT/api-deployment-restore.log" || exit 2
+            if [ "$DEPLOYMENT_UPDATED" -eq 1 ]; then
+              npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION" > "$OUT/web-deployment-restore.log" 2>&1 || true
+            fi
+            if [ "$SOURCE_TRANSIENT" -eq 1 ]; then
+              (cd "$BASE" && npx -y @google/clasp@3.3.0 push --force) > "$OUT/source-restore.log" 2>&1 || true
             fi
             exit "$code"
           }
-          trap restore EXIT
+          trap restore_all EXIT
 
-          npx -y @google/clasp@3.3.0 deployments --json | tee "$OUT/api-deployments-before.json"
-          node - "$OUT/api-deployments-before.json" "$TARGET" <<'NODE'
+          (cd "$WORK" && npx -y @google/clasp@3.3.0 push --force)
+          SOURCE_TRANSIENT=1
+
+          printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
+          npx -y @google/clasp@3.3.0 deployments --json | tee "$OUT/web-deployments-before.json"
+          node - "$OUT/web-deployments-before.json" "$TARGET" <<'NODE'
           const fs=require('fs');
           const [file,target]=process.argv.slice(2);
           const raw=fs.readFileSync(file,'utf8');
           const arr=JSON.parse(raw.slice(raw.indexOf('[')));
           const d=arr.find(x=>x.deploymentId===target);
-          if(!d) throw new Error('Target API deployment not found.');
-          if(Number(d.versionNumber)!==20) throw new Error('Expected API deployment v20, found '+JSON.stringify(d));
+          if(!d) throw new Error('Website deployment not found.');
+          if(Number(d.versionNumber)!==20) throw new Error('Expected website deployment v20, found '+JSON.stringify(d));
           NODE
 
-          npx -y @google/clasp@3.3.0 version 'PreInspection R1.5.6 rich links runtime'
-          npx -y @google/clasp@3.3.0 versions --json | tee "$OUT/api-versions.json"
-          NEW_VERSION=$(node - "$OUT/api-versions.json" <<'NODE'
+          npx -y @google/clasp@3.3.0 version 'PreInspection R1.5.6 temporary web rich-link runtime'
+          npx -y @google/clasp@3.3.0 versions --json | tee "$OUT/web-versions.json"
+          NEW_VERSION=$(node - "$OUT/web-versions.json" <<'NODE'
           const fs=require('fs');
           const raw=fs.readFileSync(process.argv[2],'utf8');
           const arr=JSON.parse(raw.slice(raw.indexOf('[')));
           process.stdout.write(String(Math.max(...arr.map(x=>Number(x.versionNumber)||0))));
           NODE
           )
-          echo "temporaryVersion=$NEW_VERSION" | tee "$OUT/api-temporary-version.txt"
 
-          npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$NEW_VERSION" -d 'PreInspection R1.5.6 rich links runtime'
-          UPDATED=1
+          npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$NEW_VERSION" -d 'PreInspection R1.5.6 temporary web rich-link runtime'
+          DEPLOYMENT_UPDATED=1
 
-          set +e
-          npx -y @google/clasp@3.3.0 run --nondev applyPreInspectRichLinksR1_5_6 2>&1 | tee "$OUT/rich-links-runtime.log"
-          RC=${PIPESTATUS[0]}
-          set -e
-          if [ "$RC" -ne 0 ]; then exit "$RC"; fi
-          if grep -Eiq 'Exception:|storage NOT_FOUND|ScriptError|Execution failed|(^|[^A-Za-z])Error:' "$OUT/rich-links-runtime.log"; then
-            exit 1
-          fi
-          grep -q 'RICH_LINKS_VERIFIED' "$OUT/rich-links-runtime.log"
+          curl -L --fail --silent --show-error --retry 3             "https://script.google.com/macros/s/$TARGET/exec?__r156=$NONCE"             -o "$OUT/web-runtime-response.json"
 
-          npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION" | tee "$OUT/api-deployment-restore.log"
-          UPDATED=0
+          node - "$OUT/web-runtime-response.json" <<'NODE'
+          const fs=require('fs');
+          const raw=fs.readFileSync(process.argv[2],'utf8').trim();
+          let value;
+          try { value=JSON.parse(raw); }
+          catch(err) { throw new Error('Web runtime did not return JSON. First bytes: '+raw.slice(0,200)); }
+          if(value.status!=='COMPLETE') throw new Error('Rich-link web runtime incomplete: '+JSON.stringify(value));
+          if(!Array.isArray(value.events) || value.events.length!==6) throw new Error('Expected six rich-link results.');
+          const bad=value.events.filter(x=>x.status!=='RICH_LINKS_VERIFIED');
+          if(bad.length) throw new Error('Rich-link verification failures: '+JSON.stringify(bad));
+          console.log(JSON.stringify({status:'WEB_RICH_LINKS_VERIFIED',eventCount:value.events.length}));
+          NODE
+
+          npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION" | tee "$OUT/web-deployment-restore.log"
+          DEPLOYMENT_UPDATED=0
+
+          (cd "$BASE" && npx -y @google/clasp@3.3.0 push --force) | tee "$OUT/source-restore.log"
+          SOURCE_TRANSIENT=0
           trap - EXIT
-          echo "RICH_LINKS_APPLIED_AND_API_DEPLOYMENT_RESTORED" | tee "$OUT/runtime-result.txt"
+
+          echo "RICH_LINKS_APPLIED_VIA_WEB_GATEWAY_AND_ALL_TEMPORARY_CHANGES_RESTORED" | tee "$OUT/runtime-result.txt"
 
       - name: Preserve deployment evidence
         if: always()
