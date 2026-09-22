@@ -65,6 +65,8 @@ try{
     'Pre-Inspection Update Required',
     'Recommended Standard Title Format',
     'Missing / Needs Attention',
+    'refreshPreInspectStrivenLinksNow',
+    'dryRunPreInspectStrivenLinksNow',
     'emailSendsPerformed: 0',
     "SAFE_STATUSES: ['CONFIRMED', 'MATCHED']"
   ].forEach(marker=>{if(!workModule.includes(marker))throw new Error('Candidate missing marker: '+marker)});
