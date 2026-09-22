@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_2_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_3_PREINSPECT_AUDIT_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_2_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_3_PREINSPECT_AUDIT_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -873,6 +873,318 @@ function tmStdRunPreInspectCalendarLinkPipeline_(dryRun) {
     events: results
   };
 }
+
+
+const TM_STD_PREINSPECT_AUDIT = {
+  SHEET_NAME: 'PreInspect Calendar Audit',
+  COLUMN_COUNT: 24,
+  EMPLOYEE_DOMAIN: '@classicfireplace.ca',
+  HEADERS: [
+    'Date','Time','Audit Status','Checklist','Current Title','Expected Standard Title',
+    'Customer #','Customer Name','Phone','Description / Purpose','Sales Order',
+    'CF Preinspects Guest?','Stephen Guest?','Striven Links?','Task ID','Task Name',
+    'Created By','Guests','Location','Event ID','Event Link','Source Calendar',
+    'Title Standard?','Purpose Present?'
+  ]
+};
+
+function tmStdPreInspectAuditNormalizeEventId_(value) {
+  return tmStdClean_(value).replace(/@google\.com$/i, '');
+}
+
+function tmStdPreInspectAuditSheetMap_(sheetName) {
+  const out = {};
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss && ss.getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  const eventIdx = tmStdFindHeaderIndex_(headers, ['Event ID']);
+  if (eventIdx < 0) return out;
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getDisplayValues();
+  values.forEach(function(row) {
+    const id = tmStdPreInspectAuditNormalizeEventId_(row[eventIdx]);
+    if (!id) return;
+    const obj = {};
+    headers.forEach(function(h, i) {
+      h = tmStdClean_(h);
+      if (h) obj[h] = row[i];
+    });
+    out[id] = obj;
+  });
+  return out;
+}
+
+function tmStdPreInspectAuditPhone_(value) {
+  const m = String(value || '').match(/(?:\+?1[\s.\-]?)?\(?(\d{3})\)?[\s.\-]?(\d{3})[\s.\-]?(\d{4})/);
+  return m ? '(' + m[1] + ') ' + m[2] + '-' + m[3] : '';
+}
+
+function tmStdPreInspectAuditSalesOrders_(value) {
+  const out = [];
+  const seen = {};
+  const re = /\b(?:SO\s*#?|sales\s+order\s*#?)\s*(\d{6})\b/gi;
+  let m;
+  while ((m = re.exec(String(value || ''))) !== null) {
+    if (!seen[m[1]]) {
+      seen[m[1]] = true;
+      out.push(m[1]);
+    }
+  }
+  return out;
+}
+
+function tmStdPreInspectAuditPurpose_(description) {
+  let text = tmStdRemoveManagedCalendarLinks_(String(description || ''));
+  text = text
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#x27;|&#39;/gi, "'")
+    .replace(/\r/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return text;
+}
+
+function tmStdPreInspectAuditIsBlock_(title) {
+  const text = tmStdClean_(title);
+  if (typeof PREINSPECT_REVIEW_CONFIG !== 'undefined' &&
+      PREINSPECT_REVIEW_CONFIG &&
+      Array.isArray(PREINSPECT_REVIEW_CONFIG.NON_CUSTOMER_TITLE_PATTERNS)) {
+    for (let i = 0; i < PREINSPECT_REVIEW_CONFIG.NON_CUSTOMER_TITLE_PATTERNS.length; i++) {
+      const re = PREINSPECT_REVIEW_CONFIG.NON_CUSTOMER_TITLE_PATTERNS[i];
+      if (re && typeof re.test === 'function') {
+        re.lastIndex = 0;
+        if (re.test(text)) return true;
+      }
+    }
+  }
+  return /\bout of office\b/i.test(text);
+}
+
+function tmStdPreInspectAuditTitleStandard_(title) {
+  return /^\s*\d{4,5}\s*-\s*.+?\s*-\s*(?:\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\s*$/.test(String(title || ''));
+}
+
+function tmStdPreInspectAuditTaskParts_(label) {
+  const m = tmStdClean_(label).match(/^(\d+)\s*[-–—:]\s*(.+)$/);
+  return m ? { id: m[1], name: m[2] } : { id: '', name: '' };
+}
+
+function tmStdPreInspectAuditCreators_(event) {
+  try {
+    const creators = typeof event.getCreators === 'function' ? (event.getCreators() || []) : [];
+    return creators.map(function(x) { return tmStdClean_(x).toLowerCase(); }).filter(Boolean);
+  } catch (err) {
+    return [];
+  }
+}
+
+function tmStdPreInspectAuditEventLink_(event) {
+  if (typeof preinspectBuildNativeCalendarEventLink_ === 'function') {
+    try {
+      return preinspectBuildNativeCalendarEventLink_(event, TM_STD_R12_PREINSPECT.STEPHEN_CALENDAR_ID);
+    } catch (err) {}
+  }
+  return '';
+}
+
+function tmStdPreInspectAuditBuildRow_(event, mappingByEvent, mirrorByEvent) {
+  const eventId = tmStdPreInspectAuditNormalizeEventId_(event.getId());
+  const mapping = mappingByEvent[eventId] || {};
+  const mirror = mirrorByEvent[eventId] || {};
+  const title = tmStdClean_(event.getTitle());
+  const rawDescription = String(event.getDescription() || '');
+  const purpose = tmStdPreInspectAuditPurpose_(rawDescription);
+  const customerNumber = tmStdClean_(mapping['Customer #'] || mirror['Customer #']);
+  const customerName = tmStdClean_(mapping.Customer || '');
+  const phone = tmStdPreInspectAuditPhone_(title || mirror.Phone || '');
+  const expectedTitle = customerNumber && customerName && phone
+    ? customerNumber + ' - ' + customerName + ' - ' + phone
+    : '';
+
+  const salesOrders = tmStdPreInspectAuditSalesOrders_(title + ' ' + purpose);
+  const mirrorSo = tmStdClean_(mirror['Sales Order']);
+  if (mirrorSo && salesOrders.indexOf(mirrorSo) < 0) salesOrders.push(mirrorSo);
+
+  const guests = tmStdPreInspectGuestEmails_(event);
+  const hasCfPreInspect = guests.indexOf(TM_STD_R12_PREINSPECT.CF_PREINSPECT_CALENDAR_ID.toLowerCase()) >= 0;
+  const hasStephen = guests.indexOf(TM_STD_R12_PREINSPECT.STEPHEN_PERSONAL_EMAIL.toLowerCase()) >= 0;
+
+  const mirrorHtml = String(mirror['Description HTML Source'] || '');
+  const evidenceText = rawDescription + '\n' + mirrorHtml;
+  const hasDashboard = /classicfireplace\.striven\.com\/next\/crm#\/sales-orders\?accountId=/i.test(evidenceText);
+  const hasTaskLink = /classicfireplace\.striven\.com\/Tasks\/TaskInfo\.aspx\?TaskID=/i.test(evidenceText);
+  const strivenLinks = hasDashboard && hasTaskLink ? 'YES' : ((hasDashboard || hasTaskLink) ? 'PARTIAL' : 'NO');
+
+  const task = tmStdPreInspectAuditTaskParts_(mirror.Task || mirror['Striven Task Link']);
+  const titleStandard = tmStdPreInspectAuditTitleStandard_(title);
+  const purposePresent = !!purpose;
+  const isBlock = tmStdPreInspectAuditIsBlock_(title);
+
+  const checklist = isBlock
+    ? '— Non-customer calendar block'
+    : [
+        (titleStandard ? '✅' : '❌') + ' Title: Customer # - Customer Name - Phone',
+        (purposePresent ? '✅' : '❌') + ' Purpose / Description',
+        (salesOrders.length ? '✅' : '❌') + ' Sales Order' + (salesOrders.length ? ': ' + salesOrders.join(', ') : ''),
+        (hasCfPreInspect ? '✅' : '❌') + ' CF Preinspects Guest',
+        (hasStephen ? '✅' : '❌') + ' Stephen Guest',
+        (strivenLinks === 'YES' ? '✅' : (strivenLinks === 'PARTIAL' ? '🔎' : '❌')) +
+          ' Striven Links' + (strivenLinks === 'PARTIAL' ? ' (partial)' : '')
+      ].join('\n');
+
+  const auditStatus = isBlock
+    ? 'IGNORE'
+    : (titleStandard && purposePresent && salesOrders.length && hasCfPreInspect && hasStephen && strivenLinks === 'YES'
+        ? 'PASS'
+        : 'ACTION REQUIRED');
+
+  const tz = 'America/Toronto';
+  const start = event.getStartTime();
+  const date = Utilities.formatDate(start, tz, 'yyyy-MM-dd');
+  const time = event.isAllDayEvent() ? 'All day' : Utilities.formatDate(start, tz, 'HH:mm');
+
+  return [
+    date,
+    time,
+    auditStatus,
+    checklist,
+    title,
+    expectedTitle,
+    customerNumber,
+    customerName,
+    phone,
+    purpose,
+    salesOrders.join(', '),
+    hasCfPreInspect ? 'YES' : 'NO',
+    hasStephen ? 'YES' : 'NO',
+    strivenLinks,
+    task.id,
+    task.name,
+    tmStdPreInspectAuditCreators_(event).join(', '),
+    guests.join(', '),
+    tmStdClean_(event.getLocation()),
+    eventId,
+    tmStdPreInspectAuditEventLink_(event),
+    'Stephen -',
+    titleStandard ? 'YES' : 'NO',
+    purposePresent ? 'YES' : 'NO'
+  ];
+}
+
+function tmStdRefreshPreInspectCalendarAudit_(start, end, reason) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Active spreadsheet is unavailable.');
+
+  const calendar = CalendarApp.getCalendarById(TM_STD_R12_PREINSPECT.STEPHEN_CALENDAR_ID);
+  if (!calendar) throw new Error('Stephen calendar is unavailable.');
+
+  const windowStart = start instanceof Date ? start : new Date();
+  const windowEnd = end instanceof Date ? end : new Date(windowStart.getTime() + 45 * 24 * 60 * 60 * 1000);
+
+  const mappingByEvent = tmStdPreInspectAuditSheetMap_('PreInspect Task Mapping');
+  const mirrorByEvent = tmStdPreInspectAuditSheetMap_('PreInspect Calendar');
+  const allEvents = calendar.getEvents(windowStart, windowEnd) || [];
+  const rows = [];
+
+  allEvents.forEach(function(event) {
+    const creators = tmStdPreInspectAuditCreators_(event);
+    const otherEmployees = creators.filter(function(email) {
+      return email.slice(-TM_STD_PREINSPECT_AUDIT.EMPLOYEE_DOMAIN.length) === TM_STD_PREINSPECT_AUDIT.EMPLOYEE_DOMAIN &&
+        email !== TM_STD_R12_PREINSPECT.STEPHEN_PERSONAL_EMAIL.toLowerCase();
+    });
+    if (!otherEmployees.length) return;
+    rows.push(tmStdPreInspectAuditBuildRow_(event, mappingByEvent, mirrorByEvent));
+  });
+
+  rows.sort(function(a, b) {
+    const ka = String(a[0] || '') + ' ' + String(a[1] || '');
+    const kb = String(b[0] || '') + ' ' + String(b[1] || '');
+    return ka.localeCompare(kb);
+  });
+
+  let sheet = ss.getSheetByName(TM_STD_PREINSPECT_AUDIT.SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(TM_STD_PREINSPECT_AUDIT.SHEET_NAME);
+  if (sheet.getMaxColumns() < TM_STD_PREINSPECT_AUDIT.COLUMN_COUNT) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), TM_STD_PREINSPECT_AUDIT.COLUMN_COUNT - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < rows.length + 1) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), rows.length + 1 - sheet.getMaxRows());
+  }
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, TM_STD_PREINSPECT_AUDIT.COLUMN_COUNT)
+    .setValues([TM_STD_PREINSPECT_AUDIT.HEADERS])
+    .setFontWeight('bold')
+    .setFontColor('#ffffff')
+    .setBackground('#1f4e78')
+    .setWrap(true)
+    .setVerticalAlignment('middle');
+
+  if (rows.length) {
+    sheet.getRange(2, 1, rows.length, TM_STD_PREINSPECT_AUDIT.COLUMN_COUNT)
+      .setValues(rows)
+      .setVerticalAlignment('top');
+    sheet.getRange(2, 4, rows.length, 1).setWrap(true);
+    sheet.getRange(2, 5, rows.length, 2).setWrap(true);
+    sheet.getRange(2, 10, rows.length, 1).setWrap(true);
+    sheet.getRange(2, 18, rows.length, 2).setWrap(true);
+  }
+
+  sheet.setFrozenRows(1);
+  const widths = [90,80,130,230,300,300,100,180,140,340,120,130,120,115,90,300,190,280,260,240,240,110,110,120];
+  widths.forEach(function(width, i) { sheet.setColumnWidth(i + 1, width); });
+
+  const existingFilter = sheet.getFilter();
+  if (existingFilter) existingFilter.remove();
+  if (rows.length) sheet.getRange(1, 1, rows.length + 1, TM_STD_PREINSPECT_AUDIT.COLUMN_COUNT).createFilter();
+
+  const counts = { PASS: 0, ACTION_REQUIRED: 0, IGNORE: 0 };
+  rows.forEach(function(row) {
+    if (row[2] === 'PASS') counts.PASS++;
+    else if (row[2] === 'ACTION REQUIRED') counts.ACTION_REQUIRED++;
+    else if (row[2] === 'IGNORE') counts.IGNORE++;
+  });
+
+  const result = {
+    mode: 'PREINSPECT_CALENDAR_AUDIT',
+    version: TM_STD_R1_VERSION,
+    status: 'COMPLETE',
+    reason: reason || '',
+    sourceCalendar: 'Stephen -',
+    sourceCalendarId: TM_STD_R12_PREINSPECT.STEPHEN_CALENDAR_ID,
+    filter: 'CREATED_BY_OTHER_CLASSIC_FIREPLACE_EMPLOYEE',
+    windowStart: Utilities.formatDate(windowStart, 'America/Toronto', "yyyy-MM-dd'T'HH:mm:ss"),
+    windowEnd: Utilities.formatDate(windowEnd, 'America/Toronto', "yyyy-MM-dd'T'HH:mm:ss"),
+    eventsRead: allEvents.length,
+    auditRows: rows.length,
+    counts: counts,
+    calendarWritesPerformed: false,
+    strivenWritesPerformed: false,
+    sheetWritesPerformed: true,
+    sheetName: TM_STD_PREINSPECT_AUDIT.SHEET_NAME
+  };
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+function refreshPreInspectCalendarAudit() {
+  let window = null;
+  if (typeof preinspectCalendarMirrorWindow_ === 'function') {
+    window = preinspectCalendarMirrorWindow_();
+  }
+  const now = new Date();
+  return tmStdRefreshPreInspectCalendarAudit_(
+    window && window.start ? window.start : now,
+    window && window.end ? window.end : new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000),
+    'MANUAL_AUDIT_REFRESH'
+  );
+}
+
 
 function runTaskMappingStandardizationR1() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
