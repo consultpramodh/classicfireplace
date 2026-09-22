@@ -1,0 +1,7 @@
+TASK_MAPPING_STANDARDIZATION_R1_5_3_PREINSPECT_CALENDAR_REORGANIZATION_20260922
+Visible description rule:
+- preserve only the previous Calendar title
+- do not add "Calendar title context (preserved):" or any other visible label
+- internal HTML comments may be used only as non-visible bookkeeping
+- keep zero-information-loss verification
+- do not send notification email
