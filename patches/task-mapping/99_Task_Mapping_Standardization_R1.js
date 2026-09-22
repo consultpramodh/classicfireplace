@@ -1,6 +1,6 @@
 /*
  * FILE: 99_Task_Mapping_Standardization_R1.js
- * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922
+ * RELEASE: TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922
  *
  * Shared presentation + Calendar-link contract for:
  * Install, Delivery, Service, PreInspection.
@@ -9,7 +9,7 @@
  * Calendar writes are performed only by explicit link-pipeline entrypoints.
  */
 
-const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_5_PREINSPECT_EMAIL_COMPACT_20260922';
+const TM_STD_R1_VERSION = 'TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922';
 
 function tmStdNormalizeDivision_(division) {
   const v = String(division || '').trim().toUpperCase();
@@ -885,6 +885,114 @@ function refreshPreInspectStrivenLinksNow() {
   const result = tmStdRunPreInspectCalendarLinkPipeline_(false);
   Logger.log(JSON.stringify(result, null, 2));
   return result;
+}
+
+
+const TM_STD_PREINSPECT_RICH_LINK_FIX_R156 = [
+  { eventId:'18qddj4uqv4ku87vqfes96p6gc', accountId:'62533', customerName:'Connie Paines', taskId:'18557', taskLabel:'Task #18557 - Preinspect - Connie Paines - (905) 683-3582' },
+  { eventId:'78vq4bl9ic80n9hq7v6t88t72v', accountId:'49042', customerName:'Rocco Taglioni', taskId:'18556', taskLabel:'Task #18556 - Preinspect - Rocco Taglioni - (416) 565-0578' },
+  { eventId:'248hcoelfe1qvvio48spjbocn3', accountId:'62537', customerName:'Wayne Johnson', taskId:'18558', taskLabel:'Task #18558 - Preinspect - Wayne Johnson - (647) 401-0827' },
+  { eventId:'2cngj8oc8ebbp0g44irk4cn2pb', accountId:'62508', customerName:'Paul MORRIS', taskId:'18510', taskLabel:'Task #18510 - Preinspect - Paul MORRIS - (416) 230-0025' },
+  { eventId:'2i6bfn13m01tjr7ab189i6jtp3', accountId:'62506', customerName:'Andrew & Laura VALENTINE', taskId:'18511', taskLabel:'Task #18511 - Preinspect - Andrew & Laura VALENTINE - (416) 595-2980' },
+  { eventId:'0b96ljlhd9diqmlvfkf3ujo9gl', accountId:'62525', customerName:'Darryl Law & Cindy Hum', taskId:'18534', taskLabel:'Task #18534 - Preinspect - Darryl Law & Cindy Hum - (647) 808-0897' }
+];
+
+function tmStdR156StripTemporaryPlainFooter_(description) {
+  let text = String(description || '');
+
+  // Remove any native managed block first, if present.
+  text = tmStdRemoveManagedCalendarLinks_(text);
+
+  // Remove the temporary plain-text footer used during connector recovery.
+  text = text.replace(
+    /(?:\r?\n){1,3}Striven Links\s*(?:\r?\n)[\s\S]*$/i,
+    ''
+  );
+
+  return text
+    .replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>')
+    .replace(/(?:\r?\n\s*){3,}/g, '\n\n')
+    .replace(/(?:<br\s*\/?>|\s)+$/gi, '')
+    .trim();
+}
+
+function tmStdR156RichFooter_(spec) {
+  return [
+    '<!-- TASKMAP_STRIVEN_LINKS_START -->',
+    '------- Striven Links -------',
+    tmStdBuildAnchor_(
+      tmStdSalesOrdersListUrl_(spec.accountId),
+      'View Sales Orders – ' + spec.customerName + ' (#' + spec.accountId + ')'
+    ),
+    tmStdBuildAnchor_(
+      tmStdTaskUrl_(spec.taskId),
+      spec.taskLabel
+    ),
+    '------------------------------------',
+    '<!-- TASKMAP_STRIVEN_LINKS_END -->'
+  ].join('<br>');
+}
+
+function applyPreInspectRichLinksR1_5_6() {
+  const calendarId = TM_STD_R12_PREINSPECT.STEPHEN_CALENDAR_ID;
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  if (!calendar) throw new Error('Stephen shared calendar is unavailable.');
+
+  const results = [];
+
+  TM_STD_PREINSPECT_RICH_LINK_FIX_R156.forEach(function(spec) {
+    const event = calendar.getEventById(spec.eventId);
+    if (!event) {
+      results.push({ eventId:spec.eventId, status:'NOT_FOUND' });
+      return;
+    }
+
+    const before = String(event.getDescription() || '');
+    const clean = tmStdR156StripTemporaryPlainFooter_(before);
+    const block = tmStdR156RichFooter_(spec);
+    const next = clean ? clean + '<br><br>' + block : block;
+
+    event.setDescription(next);
+
+    const actual = String(event.getDescription() || '');
+    const salesUrl = tmStdSalesOrdersListUrl_(spec.accountId);
+    const taskUrl = tmStdTaskUrl_(spec.taskId);
+    const expectedSalesLabel = 'View Sales Orders – ' + spec.customerName + ' (#' + spec.accountId + ')';
+
+    const ok =
+      tmStdCount_(actual, salesUrl) === 1 &&
+      tmStdCount_(actual, taskUrl) === 1 &&
+      tmStdCount_(actual, '<!-- TASKMAP_STRIVEN_LINKS_START -->') === 1 &&
+      tmStdCount_(actual, '<!-- TASKMAP_STRIVEN_LINKS_END -->') === 1 &&
+      actual.indexOf(expectedSalesLabel) >= 0 &&
+      !/Sales\s+Orders\s+Dashboard/i.test(actual);
+
+    if (!ok) {
+      throw new Error('R1.5.6 rich-link read-back verification failed for event ' + spec.eventId);
+    }
+
+    results.push({
+      eventId: spec.eventId,
+      status: 'RICH_LINKS_VERIFIED',
+      accountId: spec.accountId,
+      taskId: spec.taskId,
+      salesLabel: expectedSalesLabel,
+      writeCount: before === next ? 0 : 1
+    });
+  });
+
+  const out = {
+    version: TM_STD_R1_VERSION,
+    status: results.every(function(x){ return x.status === 'RICH_LINKS_VERIFIED'; }) ? 'COMPLETE' : 'PARTIAL',
+    calendarId: calendarId,
+    eventCount: results.length,
+    emailSendsPerformed: 0,
+    spreadsheetReadsPerformed: 0,
+    spreadsheetWritesPerformed: 0,
+    events: results
+  };
+  Logger.log(JSON.stringify(out, null, 2));
+  return out;
 }
 
 
