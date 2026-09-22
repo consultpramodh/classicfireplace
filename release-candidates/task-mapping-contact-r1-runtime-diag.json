@@ -1,56 +1,125 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_PREINSPECT_READY_PHONE_GUARD_R1_20260922",
+  "release": "TASK_MAPPING_IDENTITY_DUPLICATE_GUARDS_R1_20260922",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 74,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-preinspect-ready-phone-guard-r1-output",
+  "outputDirectory": "task-mapping-identity-duplicate-guards-r1-output",
   "requiredPreFiles": [
-    "35_PreInspect_Task_Review.js",
-    "98_13_Current_Mapping_Standardization_R1.js"
+    "10_Install_Workflow.js",
+    "20_Delivery_Workflow.js",
+    "30_Service_Workflow.js"
   ],
   "preContains": [
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "if(lookup.action==='READY_CREATE')"
+      "file": "10_Install_Workflow.js",
+      "text": "function installChooseBestTaskForCalendarSO_"
     },
     {
-      "file": "98_13_Current_Mapping_Standardization_R1.js",
-      "text": "TM_CURRENT_MAPPING_STANDARD_R1_20260922"
+      "file": "20_Delivery_Workflow.js",
+      "text": "function deliveryFindValidatedLocationIdForApprovedOrderRowFinal_"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "function serviceChooseBestTaskForCalendar_"
     }
   ],
   "overwriteFiles": [],
   "addFiles": [],
   "replacements": [
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "label": "Do not mark PreInspection READY CREATE without one verified Calendar phone",
-      "before": "  if(lookup.action==='READY_CREATE'){\n    obj['Task ID']='';obj['Task Status']='';obj['Patch Preview']='';\n    if(tm_cleanString_(obj['Classification'])==='LIKELY_PREINSPECT_JOB'){\n      obj['Status']='REVIEW';obj['Task Action']='REVIEW_BEFORE_CREATE';\n      obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+'Location makes this likely task-worthy, but stronger PreInspect evidence is required before CREATE.';\n    }else{\n      obj['Status']='READY CREATE';obj['Task Action']='WOULD_CREATE';\n    }\n    return;\n  }",
-      "after": "  if(lookup.action==='READY_CREATE'){\n    obj['Task ID']='';obj['Task Status']='';obj['Patch Preview']='';\n\n    const readySignals = preinspectExtractSignals_({\n      title: obj['Calendar Title'] || '',\n      description: obj['Calendar Description'] || '',\n      location: obj['Calendar Location'] || obj['Location'] || ''\n    });\n\n    if (!readySignals.phones || readySignals.phones.length !== 1) {\n      obj['Status']='REVIEW';\n      obj['Task Action']='REVIEW_MISSING_PHONE';\n      obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+\n        'CREATE blocked: exactly one verified phone is required for the standard Task Name (Customer Name - Address - Customer Phone Number).';\n      return;\n    }\n\n    if(tm_cleanString_(obj['Classification'])==='LIKELY_PREINSPECT_JOB'){\n      obj['Status']='REVIEW';obj['Task Action']='REVIEW_BEFORE_CREATE';\n      obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+'Location makes this likely task-worthy, but stronger PreInspect evidence is required before CREATE.';\n    }else{\n      obj['Status']='READY CREATE';obj['Task Action']='WOULD_CREATE';\n    }\n    return;\n  }"
+      "file": "10_Install_Workflow.js",
+      "label": "Require unique top Install task when same SO has multiple candidates",
+      "before": "  const best = candidates[0];\n\n  if (!best || !best.open || best.score < 100) {\n    return null;\n  }\n\n  return best.task;",
+      "after": "  const best = candidates[0];\n\n  if (!best || !best.open || best.score < 100) {\n    return null;\n  }\n\n  const tiedBest = candidates.filter(function(candidate) {\n    return candidate.open && Number(candidate.score) === Number(best.score);\n  });\n\n  if (tiedBest.length !== 1) {\n    return null;\n  }\n\n  return best.task;"
+    },
+    {
+      "file": "10_Install_Workflow.js",
+      "label": "Require customer ownership for Install address-to-location resolution",
+      "before": "  const matches = locationIndex.byNormalizedAddress[addressKey] || [];\n\n  if (matches.length === 1) {\n    return matches[0];\n  }\n\n  if (matches.length > 1 && customerName) {\n    const customerKey = tm_normalizeText_(customerName);\n\n    const customerMatches = matches.filter(function(locationRow) {\n      const locationCustomer = tm_normalizeText_(\n        installGetFirstValue_(locationRow, [\n          'CustomerName',\n          'Customer Name',\n          'Customer',\n          'CompanyName'\n        ])\n      );\n\n      return (\n        customerKey &&\n        locationCustomer &&\n        (\n          customerKey === locationCustomer ||\n          customerKey.indexOf(locationCustomer) !== -1 ||\n          locationCustomer.indexOf(customerKey) !== -1\n        )\n      );\n    });\n\n    if (customerMatches.length === 1) {\n      return customerMatches[0];\n    }\n  }\n\n  return null;",
+      "after": "  const matches = locationIndex.byNormalizedAddress[addressKey] || [];\n  const customerKey = tm_normalizeText_(customerName);\n\n  if (!customerKey) {\n    return null;\n  }\n\n  const customerMatches = matches.filter(function(locationRow) {\n    const locationCustomer = tm_normalizeText_(\n      installGetFirstValue_(locationRow, [\n        'CustomerName',\n        'Customer Name',\n        'Customer',\n        'CompanyName'\n      ])\n    );\n\n    return (\n      locationCustomer &&\n      (\n        customerKey === locationCustomer ||\n        customerKey.indexOf(locationCustomer) !== -1 ||\n        locationCustomer.indexOf(customerKey) !== -1\n      )\n    );\n  });\n\n  return customerMatches.length === 1\n    ? customerMatches[0]\n    : null;"
+    },
+    {
+      "file": "10_Install_Workflow.js",
+      "label": "Require Install email-matched Contact to belong to resolved customer",
+      "before": "      const matches = indexes.contacts.byEmail[tm_normalizeText_(emails[i])] || [];\n      if (matches.length === 1) {\n        desiredContactId = installPositiveId_(installGetFirstValue_(matches[0], ['ContactId', 'CustomerContactId', 'Id']));\n        contactIdSource = desiredContactId ? 'Contacts email match' : '';\n        matchedContactName = installGetFirstValue_(matches[0], ['ContactName', 'Name', 'FullName']);\n        matchedContactEmail = emails[i];\n        break;\n      }",
+      "after": "      const matches = indexes.contacts.byEmail[tm_normalizeText_(emails[i])] || [];\n      const desiredCustomerKey = tm_normalizeText_(customerName);\n      const contactCustomerKey = matches.length === 1\n        ? tm_normalizeText_(installGetFirstValue_(matches[0], [\n            'CustomerName', 'Customer Name', 'Customer', 'CompanyName'\n          ]))\n        : '';\n\n      const ownershipProven =\n        desiredCustomerKey &&\n        contactCustomerKey &&\n        (\n          desiredCustomerKey === contactCustomerKey ||\n          desiredCustomerKey.indexOf(contactCustomerKey) !== -1 ||\n          contactCustomerKey.indexOf(desiredCustomerKey) !== -1\n        );\n\n      if (matches.length === 1 && ownershipProven) {\n        desiredContactId = installPositiveId_(installGetFirstValue_(matches[0], ['ContactId', 'CustomerContactId', 'Id']));\n        contactIdSource = desiredContactId ? 'Contacts email + customer ownership match' : '';\n        matchedContactName = installGetFirstValue_(matches[0], ['ContactName', 'Name', 'FullName']);\n        matchedContactEmail = emails[i];\n        break;\n      }"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Do not use Delivery calendar address without customer ownership",
+      "before": "  const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n  if (addressMatches.length === 1) {\n    return {\n      locationId: addressMatches[0].locationId,\n      status: 'MATCHED_ACTUAL_CALENDAR_ADDRESS',\n      note: 'Matched actual calendar address.'\n    };\n  }\n\n  if (addressMatches.length > 1) {\n    return {\n      locationId: '',\n      status: 'MULTIPLE_ACTUAL_CALENDAR_ADDRESS_MATCHES',\n      note: 'Actual calendar address matched multiple locations; LocationId was not used.'\n    };\n  }\n\n  return {\n    locationId: '',\n    status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n    note: 'Actual calendar address did not match Striven Customer Locations.'\n  };",
+      "after": "  const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n  if (addressMatches.length) {\n    return {\n      locationId: '',\n      status: 'ADDRESS_OWNERSHIP_NOT_CONFIRMED',\n      note: 'Calendar address exists in Striven, but customer + address ownership was not uniquely proven. LocationId was not used.'\n    };\n  }\n\n  return {\n    locationId: '',\n    status: 'NO_ACTUAL_CALENDAR_ADDRESS_MATCH',\n    note: 'Actual calendar address did not match a customer-owned Striven Location.'\n  };"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "label": "Do not use Delivery approved-order address without customer ownership",
+      "before": "    const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n    if (addressMatches.length === 1) {\n      return { locationId: addressMatches[0].locationId, status: 'MATCHED_ADDRESS', note: 'Matched location by unique address.' };\n    }\n\n    if (addressMatches.length > 1) {\n      return { locationId: '', status: 'MULTIPLE_ADDRESS_MATCHES', note: 'Multiple customer locations matched the address; LocationId was not used.' };\n    }",
+      "after": "    const addressMatches = locationIndex.byAddress[addressKey] || [];\n\n    if (addressMatches.length) {\n      return {\n        locationId: '',\n        status: 'ADDRESS_OWNERSHIP_NOT_CONFIRMED',\n        note: 'Approved-order address exists in Striven, but customer + address ownership was not uniquely proven. LocationId was not used.'\n      };\n    }"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Remove Task ID as arbitrary Service duplicate tiebreaker and require unique top score",
+      "before": "    const taskId = Number(\n      serviceGetFirstValue_(task, [\n        'TaskId',\n        'Task ID',\n        'Id',\n        'ServiceTaskId',\n        'Service Task ID'\n      ])\n    );\n\n    if (!isNaN(taskId)) {\n      score += taskId / 1000000;\n    }\n\n    if (score > bestScore) {\n      bestScore = score;\n      bestTask = task;\n    }\n  });\n\n  return bestTask;",
+      "after": "    if (score > bestScore) {\n      bestScore = score;\n      bestTask = task;\n    }\n  });\n\n  const tiedBest = taskMatches.filter(function(task) {\n    let score = 0;\n    const taskStatus = serviceGetFirstValue_(task, [\n      'Status', 'TaskStatus', 'Task Status'\n    ]);\n    const statusCheck = tm_checkTaskStatusAllowedToPush_(taskStatus);\n    score += statusCheck.allowed ? 100 : -100;\n\n    const assignedTo = serviceGetTaskAssignedTextForMatch_(task);\n    if (calendarTech && assignedTo && assignedTo.indexOf(calendarTech) !== -1) score += 50;\n    if (calendarTech && assignedTo && assignedTo.indexOf('to be assigned') !== -1) score += 25;\n\n    const taskDate = serviceGetTaskDateForMatch_(task);\n    if (calendarDate && taskDate && calendarDate === taskDate) score += 40;\n\n    return Number(score) === Number(bestScore);\n  });\n\n  return tiedBest.length === 1 ? bestTask : null;"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Do not select first loose Service customer task when multiple match",
+      "before": "function serviceFindTaskByLooseCustomerName_(possibleCustomerName, tasks) {\n  const cleanName = tm_normalizeText_(possibleCustomerName);\n  if (!cleanName) return null;\n\n  for (let i = 0; i < (tasks || []).length; i++) {\n    const taskCustomer = serviceGetFirstValue_(tasks[i], [\n      'Customer', 'CustomerName', 'Customer Name'\n    ]);\n\n    const cleanTaskCustomer = tm_normalizeText_(taskCustomer);\n    if (!cleanTaskCustomer) continue;\n\n    if (\n      cleanTaskCustomer === cleanName ||\n      cleanTaskCustomer.indexOf(cleanName) !== -1 ||\n      cleanName.indexOf(cleanTaskCustomer) !== -1\n    ) {\n      return tasks[i];\n    }\n  }\n\n  return null;\n}",
+      "after": "function serviceFindTaskByLooseCustomerName_(possibleCustomerName, tasks) {\n  const cleanName = tm_normalizeText_(possibleCustomerName);\n  if (!cleanName) return null;\n\n  const matches = (tasks || []).filter(function(task) {\n    const taskCustomer = serviceGetFirstValue_(task, [\n      'Customer', 'CustomerName', 'Customer Name'\n    ]);\n\n    const cleanTaskCustomer = tm_normalizeText_(taskCustomer);\n    if (!cleanTaskCustomer) return false;\n\n    return (\n      cleanTaskCustomer === cleanName ||\n      cleanTaskCustomer.indexOf(cleanName) !== -1 ||\n      cleanName.indexOf(cleanTaskCustomer) !== -1\n    );\n  });\n\n  return matches.length === 1 ? matches[0] : null;\n}"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "label": "Service cannot be MATCHED or READY without verified Work Order Location and Contact",
+      "before": "  } else if (matchedBy === 'Customer') {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n    issues.push('Matched by customer only. Add SO # or Task ID before pushing.');\n  } else if (needsDatePush || needsAssigneePush) {",
+      "after": "  } else if (matchedBy === 'Customer') {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n    issues.push('Matched by customer only. Add SO # or Task ID before pushing.');\n  } else if (!matchedWorkOrder || !locationId || !contactId) {\n    lineStatus = 'REVIEW';\n    pushStatus = 'NO';\n\n    if (!matchedWorkOrder) {\n      issues.push('Verified Service Work Order is missing.');\n    }\n    if (!locationId) {\n      issues.push('Verified customer-owned Location ID is missing or ambiguous.');\n    }\n    if (!contactId) {\n      issues.push('Verified customer Contact ID is missing or ambiguous.');\n    }\n\n    issues.push('Relationship identity must be complete before Service is treated as READY/MATCHED.');\n  } else if (needsDatePush || needsAssigneePush) {"
     }
   ],
   "workContains": [
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "REVIEW_MISSING_PHONE"
+      "file": "10_Install_Workflow.js",
+      "text": "tiedBest.length !== 1"
     },
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "Customer Name - Address - Customer Phone Number"
+      "file": "10_Install_Workflow.js",
+      "text": "Contacts email + customer ownership match"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "text": "ADDRESS_OWNERSHIP_NOT_CONFIRMED"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "Relationship identity must be complete before Service is treated as READY/MATCHED."
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "return matches.length === 1 ? matches[0] : null;"
     }
   ],
   "postContains": [
     {
-      "file": "35_PreInspect_Task_Review.js",
-      "text": "REVIEW_MISSING_PHONE"
+      "file": "10_Install_Workflow.js",
+      "text": "tiedBest.length !== 1"
+    },
+    {
+      "file": "20_Delivery_Workflow.js",
+      "text": "ADDRESS_OWNERSHIP_NOT_CONFIRMED"
+    },
+    {
+      "file": "30_Service_Workflow.js",
+      "text": "Relationship identity must be complete before Service is treated as READY/MATCHED."
     }
   ],
-  "runtimeVerification": "EXISTING_SHEET_READBACK_PLUS_NEXT_BOUND_REBUILD",
+  "runtimeVerification": "BOUND_MAPPING_REBUILD_AND_EXISTING_SHEET_READBACK",
   "safety": {
     "freshLivePullBeforePatch": true,
     "exactAnchorPatchOnly": true,
-    "noStrivenWrite": true,
-    "noCalendarWrite": true,
-    "failClosedOnMissingOrMultiplePhone": true
+    "noStrivenWriteAdded": true,
+    "noCalendarWriteAdded": true,
+    "noCrossCustomerLocationFallback": true,
+    "noArbitraryDuplicateTieBreak": true,
+    "serviceIncompleteRelationshipsFailClosed": true
   }
 }
