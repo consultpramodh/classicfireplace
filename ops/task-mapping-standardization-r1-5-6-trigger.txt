@@ -7,3 +7,4 @@ Native Calendar rich-link repair:
 - exactly one managed Striven Links block
 - same link font size / no custom anchor styling
 - no MailApp/GmailApp/sendEmail surface
+- restore missing Standardization module if live HEAD has reverted to 75 files
