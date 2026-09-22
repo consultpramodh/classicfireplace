@@ -1,0 +1,94 @@
+name: PreInspection Rich Links R1.5.6
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/preinspect-rich-links-r1-5-6-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preinspect-rich-links-r1-5-6
+  cancel-in-progress: false
+
+jobs:
+  verify-and-run:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Verify live R1.5.6 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/tm-preinspect-rich-links
+          mkdir -p /tmp/tm-preinspect-rich-links
+          (cd /tmp/tm-preinspect-rich-links && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='/tmp/tm-preinspect-rich-links/src/99_Task_Mapping_Standardization_R1.js';
+          const s=fs.readFileSync(p,'utf8');
+          const required=[
+            'TASK_MAPPING_STANDARDIZATION_R1_5_6_PREINSPECT_RICH_LINKS_20260922',
+            'function applyPreInspectRichLinksR1_5_6()',
+            'TM_STD_PREINSPECT_RICH_LINK_FIX_R156',
+            'RICH_LINKS_VERIFIED'
+          ];
+          const missing=required.filter(x=>!s.includes(x));
+          if(missing.length){console.error(JSON.stringify({status:'LIVE_SOURCE_INCOMPLETE',missing},null,2));process.exit(1);}
+          if(/MailApp|GmailApp|sendEmail\(/.test(s)){console.error('FORBIDDEN_EMAIL_SEND_SURFACE');process.exit(1);}
+          console.log(JSON.stringify({status:'LIVE_R1_5_6_VERIFIED',requiredMarkers:required.length}));
+          NODE
+
+      - name: Configure runtime target
+        shell: bash
+        run: |
+          cat > .clasp.json <<'JSON'
+          {"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}
+          JSON
+          mkdir -p preinspect-rich-links-r1-5-6-output
+
+      - name: Apply native rich links
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          npx -y @google/clasp@3.3.0 run applyPreInspectRichLinksR1_5_6 2>&1 | tee preinspect-rich-links-r1-5-6-output/runtime.log
+          if grep -Eiq 'Exception:|storage NOT_FOUND|ScriptError|Execution failed' preinspect-rich-links-r1-5-6-output/runtime.log; then
+            echo "RUNTIME_ERROR"
+            exit 1
+          fi
+          grep -q 'RICH_LINKS_VERIFIED' preinspect-rich-links-r1-5-6-output/runtime.log
+
+      - name: Preserve runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preinspect-rich-links-r1-5-6-${{ github.run_id }}
+          path: preinspect-rich-links-r1-5-6-output/
+          if-no-files-found: warn
+          retention-days: 30
