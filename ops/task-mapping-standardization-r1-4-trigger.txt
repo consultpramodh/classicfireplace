@@ -1,0 +1,11 @@
+TASK_MAPPING_STANDARDIZATION_R1_4_PREINSPECT_EMAIL_PREVIEW_20260922
+Preview-only requirements:
+- selected-row preview from PreInspect Calendar Audit, PreInspect Calendar, or PreInspect Task Mapping
+- branded Classic Fireplace HTML
+- dynamic missing-items list
+- conditional Kevin explanation only when customer number is missing from title
+- show recipient + subject in preview chrome
+- modal clearly marked PREVIEW ONLY — NO EMAIL WILL BE SENT
+- absolutely no MailApp/GmailApp/sendEmail surface
+- add Pre-Inspection Audit menu with preview + audit refresh
+- keep PreInspect Calendar Audit visible
