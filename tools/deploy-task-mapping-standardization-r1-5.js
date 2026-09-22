@@ -5,11 +5,11 @@ const fs=require('fs'), os=require('os'), path=require('path'), crypto=require('
 
 const SCRIPT_ID='1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m';
 const CLASP_VERSION='3.3.0';
-const RELEASE='TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
+const RELEASE='TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922';
 const MODULE_SOURCE='patches/task-mapping/99_Task_Mapping_Standardization_R1.js';
 const MODULE_TARGET='99_Task_Mapping_Standardization_R1.js';
 const EXPECTED_PRE_FILE_COUNT=76;
-const OUTPUT=path.resolve('task-mapping-standardization-r1-5-output');
+const OUTPUT=path.resolve('task-mapping-standardization-r1-5-1-output');
 fs.mkdirSync(OUTPUT,{recursive:true});
 
 function run(cmd,args,cwd){
@@ -34,7 +34,7 @@ const evidencePath=path.join(OUTPUT,'evidence.json');
 let pushed=false;
 
 try{
-  console.log('=== R1.5 1/8 authorize ==='); clasp(['show-authorized-user','--json'],process.cwd());
+  console.log('=== R1.5.1 1/8 authorize ==='); clasp(['show-authorized-user','--json'],process.cwd());
 
   console.log('=== R1.5 2/8 PRE clone ==='); clasp(['clone',SCRIPT_ID,'--rootDir','src'],preRoot);
   const preSrc=path.join(preRoot,'src'), preNames=names(preSrc);
@@ -42,7 +42,7 @@ try{
   if(!preNames.includes(MODULE_TARGET)) throw new Error('Live Standardization module missing.');
   const preHashes=hashes(preSrc,preNames); copy(preRoot,path.join(OUTPUT,'PRE_SOURCE'));
   const preModule=fs.readFileSync(path.join(preSrc,MODULE_TARGET),'utf8');
-  if(!preModule.includes('TASK_MAPPING_STANDARDIZATION_R1_4_PREINSPECT_EMAIL_PREVIEW_20260922')) throw new Error('Unexpected PRE standardization version.');
+  if(!preModule.includes('TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922')) throw new Error('Unexpected PRE standardization version.');
   if(!preModule.includes('previewPreInspectNotificationEmailForSelectedRow')) throw new Error('Expected R1.4 preview helper missing.');
 
   console.log('=== R1.5 3/8 build WORK ==='); copy(preRoot,workRoot);
@@ -53,12 +53,13 @@ try{
 
   const workModule=fs.readFileSync(path.join(workSrc,MODULE_TARGET),'utf8');
   [
-    'TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922',
+    'TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922',
     'tmStdReorganizePreInspectCalendarTitles_',
     'runPreInspectCalendarReorganization',
     'Calendar title context (preserved): ',
     'PreInspect Calendar Reorganization Log',
     'TITLE_AND_DESCRIPTION_READBACK_VERIFIED',
+    'tmStdPreInspectReorgContextPresent_',
     'emailSendsPerformed: 0',
     "SAFE_STATUSES: ['CONFIRMED', 'MATCHED']"
   ].forEach(marker=>{if(!workModule.includes(marker))throw new Error('Candidate missing marker: '+marker)});
@@ -87,7 +88,7 @@ try{
   if(sha(path.join(postSrc,MODULE_TARGET))!==sha(path.join(workSrc,MODULE_TARGET))) throw new Error('POST module hash differs from WORK.');
   run(process.execPath,['--check',path.join(postSrc,MODULE_TARGET)],process.cwd());
   const postModule=fs.readFileSync(path.join(postSrc,MODULE_TARGET),'utf8');
-  if(!postModule.includes('TASK_MAPPING_STANDARDIZATION_R1_5_PREINSPECT_CALENDAR_REORGANIZATION_20260922')) throw new Error('POST R1.5 marker missing.');
+  if(!postModule.includes('TASK_MAPPING_STANDARDIZATION_R1_5_1_PREINSPECT_CALENDAR_REORGANIZATION_20260922')) throw new Error('POST R1.5.1 marker missing.');
   if(!postModule.includes('tmStdReorganizePreInspectCalendarTitles_')) throw new Error('POST reorganization helper missing.');
 
   console.log('=== R1.5 8/8 evidence ===');
