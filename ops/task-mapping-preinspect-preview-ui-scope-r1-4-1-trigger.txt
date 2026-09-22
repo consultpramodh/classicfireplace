@@ -1,0 +1,7 @@
+TASK_MAPPING_PREINSPECT_PREVIEW_UI_SCOPE_R1_4_1_20260922
+Purpose:
+- add https://www.googleapis.com/auth/script.container.ui to existing explicit oauthScopes
+- preserve every existing scope unchanged
+- change appsscript.json only
+- enable selected-row HTML modal preview
+- do not add or enable any email sending
