@@ -1,54 +1,56 @@
 {
   "schemaVersion": 1,
-  "release": "TASK_MAPPING_CURRENT_SHEET_REMOTE_WRAPPER_R1_20260922",
+  "release": "TASK_MAPPING_PREINSPECT_READY_PHONE_GUARD_R1_20260922",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "expectedPreFileCount": 74,
   "claspVersion": "3.3.0",
-  "outputDirectory": "task-mapping-current-sheet-remote-wrapper-r1-output",
+  "outputDirectory": "task-mapping-preinspect-ready-phone-guard-r1-output",
   "requiredPreFiles": [
-    "98_13_Current_Mapping_Standardization_R1.js",
-    "98_2_Contact_R1_Runtime_Test.js"
+    "35_PreInspect_Task_Review.js",
+    "98_13_Current_Mapping_Standardization_R1.js"
   ],
   "preContains": [
     {
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "if(lookup.action==='READY_CREATE')"
+    },
+    {
       "file": "98_13_Current_Mapping_Standardization_R1.js",
       "text": "TM_CURRENT_MAPPING_STANDARD_R1_20260922"
-    },
-    {
-      "file": "98_2_Contact_R1_Runtime_Test.js",
-      "text": "function tmContactR1RuntimeWithWorkbook_"
     }
   ],
-  "overwriteFiles": [
-    {
-      "repoPath": "patches/task-mapping/98_13_Current_Mapping_Standardization_R1.js",
-      "targetFile": "98_13_Current_Mapping_Standardization_R1.js"
-    }
-  ],
+  "overwriteFiles": [],
   "addFiles": [],
-  "replacements": [],
+  "replacements": [
+    {
+      "file": "35_PreInspect_Task_Review.js",
+      "label": "Do not mark PreInspection READY CREATE without one verified Calendar phone",
+      "before": "  if(lookup.action==='READY_CREATE'){\n    obj['Task ID']='';obj['Task Status']='';obj['Patch Preview']='';\n    if(tm_cleanString_(obj['Classification'])==='LIKELY_PREINSPECT_JOB'){\n      obj['Status']='REVIEW';obj['Task Action']='REVIEW_BEFORE_CREATE';\n      obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+'Location makes this likely task-worthy, but stronger PreInspect evidence is required before CREATE.';\n    }else{\n      obj['Status']='READY CREATE';obj['Task Action']='WOULD_CREATE';\n    }\n    return;\n  }",
+      "after": "  if(lookup.action==='READY_CREATE'){\n    obj['Task ID']='';obj['Task Status']='';obj['Patch Preview']='';\n\n    const readySignals = preinspectExtractSignals_({\n      title: obj['Calendar Title'] || '',\n      description: obj['Calendar Description'] || '',\n      location: obj['Calendar Location'] || obj['Location'] || ''\n    });\n\n    if (!readySignals.phones || readySignals.phones.length !== 1) {\n      obj['Status']='REVIEW';\n      obj['Task Action']='REVIEW_MISSING_PHONE';\n      obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+\n        'CREATE blocked: exactly one verified phone is required for the standard Task Name (Customer Name - Address - Customer Phone Number).';\n      return;\n    }\n\n    if(tm_cleanString_(obj['Classification'])==='LIKELY_PREINSPECT_JOB'){\n      obj['Status']='REVIEW';obj['Task Action']='REVIEW_BEFORE_CREATE';\n      obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+'Location makes this likely task-worthy, but stronger PreInspect evidence is required before CREATE.';\n    }else{\n      obj['Status']='READY CREATE';obj['Task Action']='WOULD_CREATE';\n    }\n    return;\n  }"
+    }
+  ],
   "workContains": [
     {
-      "file": "98_13_Current_Mapping_Standardization_R1.js",
-      "text": "function VERIFY_REBUILD_CURRENT_TASK_MAPPING_REMOTE_R1()"
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "REVIEW_MISSING_PHONE"
     },
     {
-      "file": "98_13_Current_Mapping_Standardization_R1.js",
-      "text": "tmContactR1RuntimeWithWorkbook_"
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "Customer Name - Address - Customer Phone Number"
     }
   ],
   "postContains": [
     {
-      "file": "98_13_Current_Mapping_Standardization_R1.js",
-      "text": "function VERIFY_REBUILD_CURRENT_TASK_MAPPING_REMOTE_R1()"
+      "file": "35_PreInspect_Task_Review.js",
+      "text": "REVIEW_MISSING_PHONE"
     }
   ],
-  "runtimeVerification": "CLASP_RUN_VERIFY_REBUILD_CURRENT_TASK_MAPPING_REMOTE_R1",
+  "runtimeVerification": "EXISTING_SHEET_READBACK_PLUS_NEXT_BOUND_REBUILD",
   "safety": {
     "freshLivePullBeforePatch": true,
-    "exactOverwriteOnly": true,
-    "noBusinessRecordWriteAdded": true,
-    "explicitWorkbookOpen": true,
-    "sameSpreadsheetId": true
+    "exactAnchorPatchOnly": true,
+    "noStrivenWrite": true,
+    "noCalendarWrite": true,
+    "failClosedOnMissingOrMultiplePhone": true
   }
 }
