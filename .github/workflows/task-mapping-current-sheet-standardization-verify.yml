@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx -y @google/clasp@3.3.0 run VERIFY_REBUILD_CURRENT_TASK_MAPPING_R1 2>&1 | tee /tmp/current-sheet-standardization.log
+          npx -y @google/clasp@3.3.0 run VERIFY_REBUILD_CURRENT_TASK_MAPPING_REMOTE_R1 2>&1 | tee /tmp/current-sheet-standardization.log
           if grep -Eqi "error:|exception:" /tmp/current-sheet-standardization.log; then exit 1; fi
           if ! grep -Eq '"status"[[:space:]]*:[[:space:]]*"PASS"|status.*PASS' /tmp/current-sheet-standardization.log; then
             echo "Verifier did not report PASS; preserving output as a failed verification."
