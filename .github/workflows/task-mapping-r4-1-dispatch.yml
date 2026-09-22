@@ -1,5 +1,5 @@
-# R4.8 Field 854 read-only API contract capture
-name: Task Mapping Fix Pack R4.8
+# Task Mapping Standardization R1
+name: Task Mapping Standardization R1
 
 on:
   workflow_dispatch:
@@ -13,11 +13,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: task-mapping-fix-pack-r4-8
+  group: task-mapping-standardization-r1
   cancel-in-progress: false
 
 jobs:
-  deploy-r4-8:
+  deploy-standardization-r1:
     if: github.repository == 'consultpramodh/classicfireplace'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -46,26 +46,15 @@ jobs:
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
-      - name: Build R4.8 runtime manifest
+      - name: Run guarded Task Mapping Standardization R1 deployment
         shell: bash
-        run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const m = JSON.parse(fs.readFileSync('release-candidates/task-mapping-fix-pack-r4.json', 'utf8'));
-          m.release = 'TASK_MAPPING_FIX_PACK_R4_8_20260915';
-          m.expectedPreFileCount = 59;
-          fs.writeFileSync('r4-8-runtime-manifest.json', JSON.stringify(m, null, 2));
-          NODE
-
-      - name: Run guarded R4.8 Field 854 read-only contract capture deployment
-        shell: bash
-        run: node tools/deploy-task-mapping-fix-pack-r4-8.js r4-8-runtime-manifest.json
+        run: node tools/deploy-task-mapping-standardization-r1.js
 
       - name: Preserve PRE source and verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: task-mapping-fix-pack-r4-8-${{ github.run_id }}
-          path: task-mapping-r4-8-output/
+          name: task-mapping-standardization-r1-${{ github.run_id }}
+          path: task-mapping-standardization-r1-output/
           if-no-files-found: warn
           retention-days: 30
