@@ -32,6 +32,11 @@ function tmv3_shadowRun() {
     resolved
   );
 
+  const regression =
+    tmv3_updateRegression_(
+      resolved
+    );
+
   tmv3_audit_(
     'SYSTEM',
     '',
@@ -54,7 +59,9 @@ function tmv3_shadowRun() {
     counts:
       tmv3_statusCounts_(
         resolved
-      )
+      ),
+    regression:
+      regression
   };
 }
 
