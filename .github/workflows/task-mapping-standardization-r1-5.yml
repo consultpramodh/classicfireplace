@@ -1,11 +1,7 @@
 name: Task Mapping Standardization R1.5.6 PreInspection Calendar Reorganization
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - ops/task-mapping-standardization-r1-5-6-trigger.txt
+  workflow_dispatch:
 
 permissions:
   contents: read
