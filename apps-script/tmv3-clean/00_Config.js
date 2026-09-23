@@ -31,7 +31,6 @@ const TMV3 = Object.freeze({
     CLIENT_SECRET: ['CLIENT_SECRET'],
     CUSTOMERS: ['Striven_Customers_ReportAPI', 'STRIVEN_CUSTOMER_REPORT_API_KEY'],
     LOCATIONS: ['Striven_CustomerLocations_ReportAPI'],
-    CONTACTS: ['Striven_Contacts_ReportAPI'],
     APPROVED_ORDERS: ['Striven_ApprovedSalesOrders_ReportAPI', 'Striven_CF_Approved_Sales_Orders_ReportAPI'],
     DELIVERY_APPROVED_ORDERS: ['Striven_DeliveryApprovedOrders_ReportAPI', 'Striven_CF_Delivery_Approved_Orders_ReportAPI'],
     INSTALL_TASKS: ['Striven_InstallTasks_ReportAPI', 'Striven_Tasks_ReportAPI', 'Striven_CF_Installation_Tasks_ReportAPI'],
