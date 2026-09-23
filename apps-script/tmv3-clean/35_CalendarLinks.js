@@ -101,7 +101,7 @@ function tmv3_requiredCalendarCopies_(vertical) {
 }
 
 function tmv3_managedCalendarDescription_(existingDescription, plan) {
-  const authored = tmv3_stripV3ManagedBlock_(existingDescription);
+  const authored = tmv3_stripManagedLinkBlocks_(existingDescription);
 
   const lines = [
     TMV3_LINK_BLOCK_START,
@@ -121,6 +121,40 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
       ? authored.replace(/\s+$/, '') + '\n\n'
       : ''
   ) + lines.join('\n');
+}
+
+function tmv3_stripManagedLinkBlocks_(description) {
+  let text = tmv3_stripV3ManagedBlock_(description);
+
+  // Older comment-managed PreInspection footer.
+  text = text.replace(
+    /<!--\s*PREINSPECT_STRIVEN_TASK_LINK_START\s*-->[\s\S]*?<!--\s*PREINSPECT_STRIVEN_TASK_LINK_END\s*-->/gi,
+    ''
+  );
+
+  // Known automation-owned dashed link blocks from the old engine.
+  const legacyHeadings = [
+    'Install Striven Task Link',
+    'Delivery Striven Links',
+    'Service Striven Links',
+    'Delivery Task Link',
+    'Pre-Inspection Task Link',
+    'Pre Inspection Task Link'
+  ];
+
+  legacyHeadings.forEach(function(heading) {
+    const rx = new RegExp(
+      '(?:\\r?\\n|\\s)*-{5,}\\s*' +
+      tmv3_regexEscape_(heading) +
+      '\\s*-{5,}[\\s\\S]*?-{10,}',
+      'gi'
+    );
+    text = text.replace(rx, '');
+  });
+
+  return text
+    .replace(/(?:\r?\n\s*){3,}/g, '\n\n')
+    .replace(/^\s+|\s+$/g, '');
 }
 
 function tmv3_stripV3ManagedBlock_(description) {
