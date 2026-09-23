@@ -34,7 +34,8 @@ function tmv3_refreshMorningOps() {
     let blocked = 0;
     let oldestMinutes = null;
 
-    rows.forEach(function(row) {
+    rows.forEach(function(row, rowIndex) {
+      row.__operatorRow = rowIndex + 2;
       const eventId = tmv3_clean_(row['Event ID']);
       if (eventId) eventIds[eventId] = true;
 
@@ -222,7 +223,8 @@ function tmv3_morningExceptionRecord_(vertical, row, state) {
           )
         : 'Not acknowledged',
     eventId: eventId,
-    source: vertical
+    source: vertical,
+    operatorRow: Number(row.__operatorRow || 0)
   };
 }
 
@@ -568,7 +570,7 @@ function tmv3_writeMorningExceptions_(sh, exceptions) {
       x.vertical,
       x.date,
       x.time,
-      x.appointment,
+      tmv3_operatorLinkFormula_(x),
       x.customer,
       x.status,
       x.issue,
@@ -949,4 +951,21 @@ function tmv3_latestAuditAction_(auditRows, action) {
   });
 
   return latest;
+}
+
+
+function tmv3_operatorLinkFormula_(exceptionRecord) {
+  const vertical = tmv3_clean_(exceptionRecord && exceptionRecord.vertical);
+  const row = Number(exceptionRecord && exceptionRecord.operatorRow || 0);
+  const label = tmv3_clean_(exceptionRecord && exceptionRecord.appointment) || 'Open record';
+
+  if (!vertical || !row || !TMV3.VERTICALS[vertical]) {
+    return label;
+  }
+
+  const sheet = tmv3_sheet_(TMV3.VERTICALS[vertical].sheet);
+  const gid = sheet.getSheetId();
+  const safeLabel = label.replace(/"/g, '""');
+
+  return '=HYPERLINK("#gid=' + gid + '&range=A' + row + '","' + safeLabel + '")';
 }
