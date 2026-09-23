@@ -1147,217 +1147,154 @@ function tmv3_result_(
 ) {
   x = x || {};
 
-  const customer =
-    x.customer ||
-    null;
+  const customer = x.customer || null;
+  const location = x.location || null;
+  const order = x.order || null;
+  const task = x.task || null;
+  const contact = x.contact || null;
+  const cfg = TMV3.VERTICALS[e.vertical];
 
-  const location =
-    x.location ||
-    null;
-
-  const order =
-    x.order ||
-    null;
-
-  const task =
-    x.task ||
-    null;
-
-  const contact =
-    x.contact ||
-    null;
-
-  return {
-    vertical:
-      e.vertical,
-    calendarId:
-      e.calendarId,
-    eventId:
-      e.eventId,
-    fingerprint:
-      e.fingerprint,
-    calendarUpdatedAt:
-      e.calendarUpdatedAt,
-    status:
-      x.status ||
-      'REVIEW',
-    nextAction:
-      x.nextAction ||
-      'REVIEW',
-    date:
-      tmv3_date_(
-        e.start
-      ),
-    time:
-      tmv3_time_(
-        e.start
-      ),
-    title:
-      e.title,
-    customer:
-      customer
-        ? tmv3_clean_(
-            customer[
-              'Name'
-            ]
-          )
-        : '',
-    customerId:
-      customer
-        ? tmv3_clean_(
-            customer[
-              'Customer ID'
-            ]
-          )
-        : '',
-    location:
-      location
-        ? [
-            location[
-              'Address 1'
-            ],
-            location[
-              'City'
-            ]
-          ]
-            .map(
-              tmv3_clean_
-            )
-            .filter(
-              Boolean
-            )
-            .join(', ')
-        : e.location,
-    locationId:
-      location
-        ? tmv3_clean_(
-            location[
-              'Location ID'
-            ]
-          )
-        : '',
-    contactId:
-      contact
-        ? tmv3_clean_(contact['Contact ID'])
+  const result = {
+    vertical: e.vertical,
+    calendarId: e.calendarId,
+    eventId: e.eventId,
+    fingerprint: e.fingerprint,
+    calendarUpdatedAt: e.calendarUpdatedAt,
+    status: x.status || 'REVIEW',
+    nextAction: x.nextAction || 'REVIEW',
+    date: tmv3_date_(e.start),
+    time: tmv3_time_(e.start),
+    title: e.title,
+    customer: customer ? tmv3_clean_(customer['Name']) : '',
+    customerId: customer ? tmv3_clean_(customer['Customer ID']) : '',
+    location: location
+      ? [location['Address 1'], location['City']].map(tmv3_clean_).filter(Boolean).join(', ')
+      : e.location,
+    locationId: location ? tmv3_clean_(location['Location ID']) : '',
+    contactId: contact
+      ? tmv3_clean_(contact['Contact ID'])
+      : (order ? tmv3_clean_(order['Contact ID']) : ''),
+    order: order
+      ? (
+          tmv3_clean_(order['Order Number']) +
+          (tmv3_clean_(order['Name']) ? ' - ' + tmv3_clean_(order['Name']) : '')
+        )
+      : '',
+    orderId: order ? tmv3_clean_(order['Order ID']) : '',
+    task: task
+      ? (
+          tmv3_clean_(task['Task Number']) +
+          (tmv3_clean_(task['Name']) ? ' - ' + tmv3_clean_(task['Name']) : '')
+        )
+      : '',
+    taskId: task ? tmv3_clean_(task['Task ID']) : '',
+    taskStatus: task ? tmv3_clean_(task['Status']) : '',
+    assignedTo: task ? tmv3_clean_(task['Assignees']) : (e.technician || ''),
+    matchEvidence: (x.evidence || []).join(' + '),
+    verification: x.verification || (
+      x.status === 'MATCHED'
+        ? 'CALENDAR ↔ STRIVEN PASS'
         : (
-            order
-              ? tmv3_clean_(order['Contact ID'])
-              : ''
-          ),
-    order:
-      order
-        ? (
-            tmv3_clean_(
-              order[
-                'Order Number'
-              ]
-            ) +
-            (
-              tmv3_clean_(
-                order[
-                  'Name'
-                ]
-              )
-                ? ' - ' +
-                  tmv3_clean_(
-                    order[
-                      'Name'
-                    ]
-                  )
-                : ''
-            )
+            x.status === 'READY CREATE' || x.status === 'READY RECREATE'
+              ? 'IDENTITY VERIFIED · TASK ACTION PENDING'
+              : 'NOT V3 VERIFIED'
           )
-        : '',
-    orderId:
-      order
-        ? tmv3_clean_(
-            order[
-              'Order ID'
-            ]
-          )
-        : '',
-    task:
-      task
-        ? (
-            tmv3_clean_(
-              task[
-                'Task Number'
-              ]
-            ) +
-            (
-              tmv3_clean_(
-                task[
-                  'Name'
-                ]
-              )
-                ? ' - ' +
-                  tmv3_clean_(
-                    task[
-                      'Name'
-                    ]
-                  )
-                : ''
-            )
-          )
-        : '',
-    taskId:
-      task
-        ? tmv3_clean_(
-            task[
-              'Task ID'
-            ]
-          )
-        : '',
-    taskStatus:
-      task
-        ? tmv3_clean_(
-            task[
-              'Status'
-            ]
-          )
-        : '',
-    assignedTo:
-      task
-        ? tmv3_clean_(
-            task[
-              'Assignees'
-            ]
-          )
-        : (
-            e.technician ||
-            ''
-          ),
-    matchEvidence:
-      (
-        x.evidence ||
-        []
-      ).join(' + '),
-    verification:
-      x.verification ||
-      (
-        x.status === 'MATCHED'
-          ? 'CALENDAR ↔ STRIVEN PASS'
-          : (
-              x.status === 'READY CREATE' ||
-              x.status === 'READY RECREATE'
-                ? 'IDENTITY VERIFIED · TASK ACTION PENDING'
-                : 'NOT V3 VERIFIED'
-            )
-      ),
-    issue:
-      x.issue ||
-      '',
-    calendarLinks:
-      tmv3_calendarLinkSummary_(
-        e
-      ),
-    lastVerified:
-      x.lastVerified ||
-      '',
-    errorCode:
-      x.errorCode ||
-      ''
+    ),
+    issue: x.issue || '',
+    calendarLinks: tmv3_calendarLinkSummary_(e),
+    lastVerified: x.lastVerified || '',
+    errorCode: x.errorCode || ''
   };
+
+  result.dataChecklist = tmv3_buildDataChecklist_(
+    e,
+    cfg,
+    customer,
+    location,
+    order,
+    contact,
+    task,
+    result
+  );
+
+  return result;
+}
+
+function tmv3_buildDataChecklist_(eventRecord, cfg, customer, location, order, contact, task, result) {
+  const lines = [];
+  const issue = tmv3_clean_(result && result.issue);
+  const verification = tmv3_clean_(result && result.verification);
+  const hasTask = !!(task && tmv3_clean_(task['Task ID']));
+  const hasContact = !!(
+    (contact && tmv3_clean_(contact['Contact ID'])) ||
+    (order && tmv3_clean_(order['Contact ID']))
+  );
+
+  lines.push(eventRecord && eventRecord.eventId ? '✅ Calendar' : '❌ Calendar');
+
+  if (!hasTask) {
+    lines.push('⚪ Time');
+  } else if (/start date\/time differs|due date\/time differs/i.test(issue)) {
+    lines.push('❌ Time');
+  } else {
+    lines.push('✅ Time');
+  }
+
+  lines.push(customer && tmv3_clean_(customer['Customer ID']) ? '✅ Customer' : '❌ Customer');
+
+  if (cfg && cfg.orderRequired) {
+    const orderLabel = eventRecord.vertical === 'Service' ? 'WO' : 'SO';
+    lines.push(order && tmv3_clean_(order['Order ID']) ? '✅ ' + orderLabel : '❌ ' + orderLabel);
+  }
+
+  lines.push(hasContact ? '✅ Contact' : '⚪ Contact');
+  lines.push(location && tmv3_clean_(location['Location ID']) ? '✅ Location' : '❌ Location');
+
+  if (hasTask) {
+    lines.push('✅ Task');
+    lines.push(tmv3_taskIsOpen_(task['Status']) ? '✅ Open Task' : '❌ Open Task');
+  } else {
+    const plannedCreate = /READY CREATE/i.test(tmv3_clean_(result && result.status));
+    lines.push(plannedCreate ? '⚪ Task' : '❌ Task');
+    lines.push('⚪ Open Task');
+  }
+
+  lines.push(tmv3_assignmentChecklistLine_(eventRecord, task, verification, issue));
+
+  if (!hasTask) {
+    lines.push('⚪ Calendar Link');
+  } else {
+    lines.push(eventRecord && eventRecord.existingTaskUrl ? '✅ Calendar Link' : '❌ Calendar Link');
+  }
+
+  return lines.join('\n');
+}
+
+function tmv3_assignmentChecklistLine_(eventRecord, task, verification, issue) {
+  if (!task) return '⚪ Assignee';
+
+  if (/technician assignment differs|pool 8 missing|assignment differs/i.test(issue)) {
+    return '❌ Assignee';
+  }
+
+  if (/ASSIGN\s*✓/i.test(verification)) {
+    return '✅ Assignee';
+  }
+
+  if (/ASSIGN\s*[△✕]/i.test(verification)) {
+    return '❌ Assignee';
+  }
+
+  if (
+    eventRecord &&
+    eventRecord.vertical === 'PreInspection' &&
+    /POOL 8\s*✓/i.test(verification) &&
+    !/INSPECTOR CHECK PENDING/i.test(verification)
+  ) {
+    return '✅ Assignee';
+  }
+
+  return '⚪ Assignee';
 }
 
 function tmv3_calendarLinkSummary_(
@@ -1433,18 +1370,19 @@ function tmv3_writeOperatorViews_(
             function(r) {
               return [
                 r.status,
-                r.nextAction,
+                r.dataChecklist,
                 r.date,
                 r.time,
-                r.title,
                 r.customer,
+                r.task,
+                r.issue,
+                r.nextAction,
+                r.title,
                 r.order,
                 r.location,
-                r.task,
                 r.taskStatus,
                 r.assignedTo,
                 r.verification,
-                r.issue,
                 r.calendarLinks,
                 r.lastVerified,
                 r.eventId
@@ -1452,18 +1390,58 @@ function tmv3_writeOperatorViews_(
             }
           );
 
-      tmv3_replaceRows_(
+      const sheetName =
         TMV3
           .VERTICALS[
             vertical
           ]
-          .sheet,
+          .sheet;
+
+      tmv3_replaceRows_(
+        sheetName,
         TMV3_OPERATOR_HEADERS
           .slice(),
         rows
       );
+
+      tmv3_formatOperatorView_(
+        sheetName
+      );
     }
   );
+}
+
+function tmv3_formatOperatorView_(sheetName) {
+  const sh = tmv3_sheet_(sheetName);
+  const visible = Number(TMV3_OPERATOR_VISIBLE_COLUMN_COUNT || 8);
+  const lastRow = sh.getLastRow();
+  const maxColumns = sh.getMaxColumns();
+
+  sh.showColumns(1, Math.min(visible, maxColumns));
+
+  if (maxColumns > visible) {
+    sh.hideColumns(visible + 1, maxColumns - visible);
+  }
+
+  const widths = [110, 185, 95, 85, 180, 220, 320, 145];
+  widths.forEach(function(width, index) {
+    if (index + 1 <= maxColumns) {
+      sh.setColumnWidth(index + 1, width);
+    }
+  });
+
+  if (lastRow >= 1) {
+    sh.getRange(1, 1, lastRow, Math.min(visible, maxColumns))
+      .setWrap(true)
+      .setVerticalAlignment('middle');
+  }
+
+  sh.getRange(1, 1, 1, Math.min(visible, maxColumns))
+    .setFontWeight('bold');
+
+  if (lastRow > 1) {
+    sh.autoResizeRows(2, lastRow - 1);
+  }
 }
 
 function tmv3_statusCounts_(

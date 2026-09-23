@@ -210,11 +210,13 @@ function tmv3_morningExceptionRecord_(vertical, row, state) {
     time: tmv3_clean_(row['Time']),
     appointment: tmv3_clean_(row['Calendar Title']),
     customer: tmv3_clean_(row['Customer']),
+    task: tmv3_clean_(row['Task']),
+    data: tmv3_clean_(row['Data']),
     status: status,
     issue: issue || verification || 'Needs review.',
     ageMinutes: ageMinutes,
     attempts: Number(state['Attempt Count'] || 0),
-    nextAction: tmv3_clean_(row['Next Action']) || 'REVIEW',
+    nextAction: tmv3_clean_(row['Action'] || row['Next Action']) || 'REVIEW',
     acknowledged:
       acknowledgedBy
         ? (
@@ -515,11 +517,14 @@ function tmv3_morningReadiness_(input) {
 function tmv3_writeMorningHeader_(sh, readiness, lastRun) {
   sh.getRange('A1').setValue('TASK MAPPING — MORNING OPERATIONS');
   sh.getRange('A3').setValue(readiness.overallStatus);
-  sh.getRange('I3').setValue(TMV3.MODE);
-  sh.getRange('L3').setValue(
-    lastRun
-      ? 'Last verified ' + tmv3_compactDateTime_(lastRun)
-      : 'No successful V3 run yet'
+  sh.getRange('A4').setValue(
+    TMV3.MODE +
+    ' · ' +
+    (
+      lastRun
+        ? 'Last verified ' + tmv3_compactDateTime_(lastRun)
+        : 'No successful V3 run yet'
+    )
   );
 }
 
@@ -549,41 +554,75 @@ function tmv3_writeMorningWorkflowHealth_(sh, summaries) {
 
 function tmv3_writeMorningExceptions_(sh, exceptions) {
   const headers = [
-    'Priority','Vertical','Date','Time','Appointment','Customer',
-    'Status','Problem','Age','Attempts','Next Action',
-    'Acknowledged / Owner','Event ID','Source'
+    'Status','Data','Date','Time','Customer','Task','Issue','Action',
+    'Vertical','Event ID','Priority','Age','Attempts',
+    'Acknowledged / Owner','Calendar Title'
   ];
 
-  sh.getRange(16, 1, 1, headers.length).setValues([headers]);
-  sh.getRange(17, 1, 15, headers.length).clearContent();
+  const headerRow = 16;
+  const firstRow = 17;
+  const maxRows = 15;
+  const visible = 8;
+
+  sh.getRange(headerRow, 1, 1, headers.length).setValues([headers]);
+  sh.getRange(firstRow, 1, maxRows, headers.length).clearContent();
 
   if (!exceptions.length) {
-    sh.getRange(17, 1, 1, 12).setValues([[
-      '','','','','No operator intervention required.','','','','','','',''
+    sh.getRange(firstRow, 1, 1, visible).setValues([[
+      'MATCHED',
+      '✅ No operator action required',
+      '',
+      '',
+      '',
+      '',
+      '',
+      'NONE'
     ]]);
-    return;
+  } else {
+    const values = exceptions.map(function(x) {
+      return [
+        x.status,
+        x.data,
+        x.date,
+        x.time,
+        x.customer,
+        x.task,
+        x.issue,
+        x.nextAction,
+        x.vertical,
+        x.eventId,
+        x.priority,
+        x.ageMinutes === null ? 'Baseline' : tmv3_ageLabel_(x.ageMinutes),
+        x.attempts || '',
+        x.acknowledged,
+        x.appointment
+      ];
+    });
+
+    sh.getRange(firstRow, 1, values.length, headers.length).setValues(values);
   }
 
-  const values = exceptions.map(function(x) {
-    return [
-      x.priority,
-      x.vertical,
-      x.date,
-      x.time,
-      tmv3_operatorLinkFormula_(x),
-      x.customer,
-      x.status,
-      x.issue,
-      x.ageMinutes === null ? 'Baseline' : tmv3_ageLabel_(x.ageMinutes),
-      x.attempts || '',
-      x.nextAction,
-      x.acknowledged,
-      x.eventId,
-      x.source
-    ];
+  const maxColumns = sh.getMaxColumns();
+  sh.showColumns(1, Math.min(visible, maxColumns));
+  if (maxColumns > visible) {
+    sh.hideColumns(visible + 1, maxColumns - visible);
+  }
+
+  const widths = [110, 185, 95, 85, 180, 220, 320, 145];
+  widths.forEach(function(width, index) {
+    if (index + 1 <= maxColumns) sh.setColumnWidth(index + 1, width);
   });
 
-  sh.getRange(17, 1, values.length, headers.length).setValues(values);
+  const visibleRows = Math.max(1, exceptions.length);
+  sh.getRange(headerRow, 1, visibleRows + 1, visible)
+    .setWrap(true)
+    .setVerticalAlignment('middle');
+  sh.getRange(headerRow, 1, 1, visible).setFontWeight('bold');
+  sh.autoResizeRows(firstRow, visibleRows);
+
+  if (sh.getMaxRows() >= 35) {
+    sh.hideRows(35, sh.getMaxRows() - 34);
+  }
 }
 
 function tmv3_writeMorningAutomation_(sh, input) {
@@ -721,8 +760,8 @@ function tmv3_acknowledgeSelectedMorningOps() {
     throw new Error('Select one of the visible exception rows.');
   }
 
-  const vertical = tmv3_clean_(sh.getRange(row, 2).getValue());
-  const eventId = tmv3_clean_(sh.getRange(row, 13).getValue());
+  const vertical = tmv3_clean_(sh.getRange(row, 9).getValue());
+  const eventId = tmv3_clean_(sh.getRange(row, 10).getValue());
 
   if (!vertical || !eventId) {
     throw new Error('Selected row has no V3 Event identity.');
@@ -804,8 +843,8 @@ function tmv3_clearAcknowledgementSelectedMorningOps() {
     throw new Error('Select one of the visible exception rows.');
   }
 
-  const vertical = tmv3_clean_(sh.getRange(row, 2).getValue());
-  const eventId = tmv3_clean_(sh.getRange(row, 13).getValue());
+  const vertical = tmv3_clean_(sh.getRange(row, 9).getValue());
+  const eventId = tmv3_clean_(sh.getRange(row, 10).getValue());
 
   const stateSheet = tmv3_sheet_(TMV3.SHEETS.STATE);
   const values = stateSheet.getDataRange().getValues();

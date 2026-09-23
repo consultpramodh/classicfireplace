@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.0.0-shadow-r1';
+const TMV3_VERSION = '3.0.1-shadow-r4-compact-checklist';
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
@@ -131,8 +131,13 @@ const TMV3 = Object.freeze({
   })
 });
 
+const TMV3_OPERATOR_VISIBLE_COLUMN_COUNT = 8;
+
 const TMV3_OPERATOR_HEADERS = Object.freeze([
-  'Status','Next Action','Date','Time','Calendar Title','Customer',
-  'Order / Work Order','Location','Task','Task Status','Assigned To',
-  'Verification','Issue','Calendar Links','Last Verified','Event ID'
+  // Visible operator columns
+  'Status','Data','Date','Time','Customer','Task','Issue','Action',
+
+  // Hidden evidence / drill-down columns
+  'Calendar Title','Order / Work Order','Location','Task Status','Assigned To',
+  'Verification','Calendar Links','Last Verified','Event ID'
 ]);
