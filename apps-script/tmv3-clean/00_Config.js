@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.0.1-shadow-r4-compact-checklist';
+const TMV3_VERSION = '3.1.0-parity-r1-manual-live-auto-gated';
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
@@ -12,6 +12,12 @@ const TMV3 = Object.freeze({
   CUSTOMER_ORDERS_PAGE_BASE: 'https://classicfireplace.striven.com/next/crm#/sales-orders?accountId=',
   PAGE_SIZE: 10000,
   MAX_PAGES: 50,
+  OPERATIONS: Object.freeze({
+    manualWritesEnabled: true,
+    automationWritesEnabled: false,
+    autoMaxWritesPerRun: 10,
+    installRemindersEnabled: true
+  }),
   SHEETS: Object.freeze({
     MORNING: 'Morning Ops',
     OVERVIEW: 'Overview',
@@ -123,7 +129,7 @@ const TMV3 = Object.freeze({
       defaultPoolName: 'Pre-Inspection Pool',
       requestedByFromOrganizer: true,
       descriptionMustBeBlankAtCreate: true,
-      field854Policy: 'NO_WRITE',
+      field854Policy: 'MANAGED_WRITE_PRESERVE_OTHER_FIELDS',
       knownInspectors: [
         { employeeId: 15, name: 'Stephen Foley', patterns: ['stephen', 'stephen foley'] }
       ]

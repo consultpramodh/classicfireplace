@@ -350,12 +350,18 @@ function tmv3_triggerHealth_() {
 
   const expectedCounts = {
     tmv3_dailySourceRefresh: 1,
-    tmv3_scheduledShadow: 5,
-    tmv3_installReminderCheck: 1
+    tmv3_scheduledOperations: 5,
+    tmv3_refreshLinksSlot_0800: 1,
+    tmv3_refreshLinksSlot_1000: 1,
+    tmv3_refreshLinksSlot_1200: 1,
+    tmv3_refreshLinksSlot_1400: 1,
+    tmv3_refreshLinksSlot_1600: 1,
+    tmv3_refreshLinksSlot_1800: 1,
+    tmv3_installReminderCheck: 1,
+    tmv3_calendarEventUpdated: 4
   };
 
   const actualCounts = {};
-
   installed.forEach(function(t) {
     const handler = tmv3_clean_(t.handler);
     actualCounts[handler] = (actualCounts[handler] || 0) + 1;
@@ -367,7 +373,6 @@ function tmv3_triggerHealth_() {
   Object.keys(expectedCounts).forEach(function(handler) {
     const expected = expectedCounts[handler];
     const actual = actualCounts[handler] || 0;
-
     if (actual < expected) {
       missing.push(handler + ' ' + actual + '/' + expected);
     } else if (actual > expected) {
@@ -379,11 +384,14 @@ function tmv3_triggerHealth_() {
     installed: installed.length,
     missing: missing,
     duplicates: extra,
-    enabled:
-      Object.keys(actualCounts).some(function(handler) {
-        return expectedCounts[handler] !== undefined;
-      }),
-    expectedCount: 7
+    enabled: Object.keys(actualCounts).some(function(handler) {
+      return expectedCounts[handler] !== undefined;
+    }),
+    expectedCount: 17,
+    manualWritesEnabled:
+      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.manualWritesEnabled),
+    automationWritesEnabled:
+      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.automationWritesEnabled)
   };
 }
 
