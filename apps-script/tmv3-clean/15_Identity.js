@@ -57,7 +57,7 @@ function tmv3_identityIndex_(refs) {
 
 function tmv3_resolveIdentity_(eventRecord, cfg, refs, order) {
   const ix = tmv3_identityIndex_(refs);
-  const evidence = [];
+  let evidence = [];
 
   let customer = null;
   let location = null;
