@@ -1,0 +1,168 @@
+name: Task Mapping V3 Clean Bootstrap
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - 'release-candidates/tmv3-clean-bootstrap.json'
+      - 'apps-script/tmv3-clean/**'
+      - '.github/workflows/tmv3-clean-bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout task_mapping
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASPRC_JSON:-}" ]; then
+            echo "CLASPRC_JSON is not configured."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          npx -y @google/clasp@3.3.0 show-authorized-user --json
+
+      - name: Create or update clean V3 bound project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MANIFEST="$GITHUB_WORKSPACE/release-candidates/tmv3-clean-bootstrap.json"
+          RELEASE="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.release||''))" "$MANIFEST")"
+          TITLE="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.title||''))" "$MANIFEST")"
+          SPREADSHEET_ID="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.spreadsheetId||''))" "$MANIFEST")"
+          SCRIPT_ID="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.scriptId||''))" "$MANIFEST")"
+          SOURCE_DIR="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.sourceDirectory||''))" "$MANIFEST")"
+          CLASP_VERSION="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.claspVersion||'3.3.0'))" "$MANIFEST")"
+
+          if [ -z "$SPREADSHEET_ID" ] || [ -z "$SOURCE_DIR" ]; then
+            echo "Manifest is incomplete."
+            exit 1
+          fi
+
+          for f in "$GITHUB_WORKSPACE/$SOURCE_DIR"/*.js; do
+            node --check "$f"
+          done
+
+          TMP="$(mktemp -d)"
+          WORK="$TMP/work"
+          PRE="$TMP/pre"
+          VERIFY="$TMP/verify"
+          OUT="$GITHUB_WORKSPACE/autopatch-output-v3"
+
+          mkdir -p "$WORK" "$VERIFY" "$OUT"
+
+          PUSHED=0
+          HAD_PRE=0
+
+          rollback() {
+            if [ "$PUSHED" = "1" ] && [ "$HAD_PRE" = "1" ] && [ -d "$PRE/src" ]; then
+              echo "Verification failed; restoring PRE V3 source."
+              (cd "$PRE" && npx -y "@google/clasp@$CLASP_VERSION" push --force) || true
+            fi
+          }
+
+          trap 'status=$?; if [ "$status" -ne 0 ]; then rollback; fi; exit "$status"' EXIT
+
+          if [ -z "$SCRIPT_ID" ]; then
+            echo "Creating a new bound Apps Script project for V3."
+            cd "$WORK"
+            npx -y "@google/clasp@$CLASP_VERSION" create-script               --title "$TITLE"               --parentId "$SPREADSHEET_ID"               --rootDir src
+            SCRIPT_ID="$(node -e "const m=require('./.clasp.json'); process.stdout.write(String(m.scriptId||''))")"
+            if [ -z "$SCRIPT_ID" ]; then
+              echo "Could not determine new Script ID."
+              exit 1
+            fi
+          else
+            echo "Updating existing clean V3 Script ID: $SCRIPT_ID"
+            mkdir -p "$PRE"
+            (cd "$PRE" && npx -y "@google/clasp@$CLASP_VERSION" clone "$SCRIPT_ID" --rootDir src)
+            HAD_PRE=1
+            printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID" > "$WORK/.clasp.json"
+          fi
+
+          mkdir -p "$WORK/src"
+          find "$WORK/src" -mindepth 1 -maxdepth 1 -type f -delete
+          cp "$GITHUB_WORKSPACE/$SOURCE_DIR/"* "$WORK/src/"
+
+          echo "Pushing only clean V3 source."
+          (cd "$WORK" && npx -y "@google/clasp@$CLASP_VERSION" push --force)
+          PUSHED=1
+
+          echo "Creating immutable V3 source version."
+          (cd "$WORK" && npx -y "@google/clasp@$CLASP_VERSION" create-version "$RELEASE") || true
+
+          echo "Re-cloning V3 for remote parity verification."
+          (cd "$VERIFY" && npx -y "@google/clasp@$CLASP_VERSION" clone "$SCRIPT_ID" --rootDir src)
+
+          find "$GITHUB_WORKSPACE/$SOURCE_DIR" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/expected-files.txt"
+          find "$VERIFY/src" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/actual-files.txt"
+          diff -u "$TMP/expected-files.txt" "$TMP/actual-files.txt"
+
+          while IFS= read -r file; do
+            EXPECTED="$(sha256sum "$GITHUB_WORKSPACE/$SOURCE_DIR/$file" | awk '{print $1}')"
+            ACTUAL="$(sha256sum "$VERIFY/src/$file" | awk '{print $1}')"
+            if [ "$EXPECTED" != "$ACTUAL" ]; then
+              echo "Hash mismatch: $file"
+              exit 1
+            fi
+          done < "$TMP/expected-files.txt"
+
+          FILE_COUNT="$(wc -l < "$TMP/expected-files.txt" | tr -d ' ')"
+
+          node - "$OUT/evidence.json" "$SCRIPT_ID" "$SPREADSHEET_ID" "$RELEASE" "$FILE_COUNT" <<'NODE'
+          const fs = require('fs');
+          const [out, scriptId, spreadsheetId, release, fileCount] = process.argv.slice(2);
+          fs.writeFileSync(out, JSON.stringify({
+            status: 'CLEAN_V3_SOURCE_VERIFIED',
+            scriptId,
+            spreadsheetId,
+            release,
+            fileCount: Number(fileCount),
+            verifiedAt: new Date().toISOString()
+          }, null, 2));
+          NODE
+
+          cp "$TMP/expected-files.txt" "$OUT/source-files.txt"
+
+          if [ "$HAD_PRE" = "1" ]; then
+            cp -R "$PRE" "$OUT/PRE_SOURCE"
+          fi
+
+          trap - EXIT
+          echo "CLEAN_V3_SOURCE_VERIFIED"
+          echo "V3 Script ID: $SCRIPT_ID"
+
+      - name: Preserve V3 bootstrap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: task-mapping-v3-clean-${{ github.run_id }}
+          path: autopatch-output-v3/
+          if-no-files-found: warn
+          retention-days: 30
