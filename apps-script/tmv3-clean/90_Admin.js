@@ -29,8 +29,8 @@ function tmv3_importConfigBundle(bundle) {
   if (!bundle || typeof bundle !== 'object') throw new Error('Configuration bundle required.');
   const allowed = [
     'CLIENT_ID','CLIENT_SECRET','Striven_Customers_ReportAPI','Striven_CustomerLocations_ReportAPI',
-    'Striven_Contacts_ReportAPI','Striven_ApprovedSalesOrders_ReportAPI','Striven_InstallTasks_ReportAPI',
-    'Striven_DeliveryTasks_ReportAPI','Striven_ServiceTasks_ReportAPI','Striven_ServiceWorkOrders_ReportAPI'
+    'Striven_Contacts_ReportAPI','Striven_ApprovedSalesOrders_ReportAPI','Striven_DeliveryApprovedOrders_ReportAPI',
+    'Striven_InstallTasks_ReportAPI','Striven_DeliveryTasks_ReportAPI','Striven_ServiceTasks_ReportAPI','Striven_ServiceWorkOrders_ReportAPI'
   ];
   const safe = {};
   allowed.forEach(function(k) {
