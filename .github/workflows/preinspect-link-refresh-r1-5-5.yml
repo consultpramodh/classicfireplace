@@ -1,11 +1,7 @@
 name: PreInspection Striven Link Refresh R1.5.5
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - ops/preinspect-link-refresh-r1-5-5-trigger.txt
+  workflow_dispatch:
 
 permissions:
   contents: read
