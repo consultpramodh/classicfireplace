@@ -967,6 +967,18 @@ function tmv3_resolveEvent_(
       0 &&
     links.ok;
 
+  const verification =
+    tmv3_verificationSummary_(
+      e,
+      cfg,
+      task,
+      order,
+      customer,
+      location,
+      differences,
+      links
+    );
+
   return tmv3_result_(
     e,
     {
@@ -996,6 +1008,8 @@ function tmv3_resolveEvent_(
         task,
       evidence:
         evidence,
+      verification:
+        verification,
       lastVerified:
         allGood
           ? tmv3_now_()
@@ -1550,6 +1564,18 @@ function tmv3_result_(
         x.evidence ||
         []
       ).join(' + '),
+    verification:
+      x.verification ||
+      (
+        x.status === 'MATCHED'
+          ? 'CALENDAR ↔ STRIVEN PASS'
+          : (
+              x.status === 'READY CREATE' ||
+              x.status === 'READY RECREATE'
+                ? 'IDENTITY VERIFIED · TASK ACTION PENDING'
+                : 'NOT V3 VERIFIED'
+            )
+      ),
     issue:
       x.issue ||
       '',
@@ -1649,7 +1675,7 @@ function tmv3_writeOperatorViews_(
                 r.task,
                 r.taskStatus,
                 r.assignedTo,
-                r.matchEvidence,
+                r.verification,
                 r.issue,
                 r.calendarLinks,
                 r.lastVerified,
@@ -1967,4 +1993,49 @@ function tmv3_allPhones_(text) {
     out.push(m[1] + m[2] + m[3]);
   }
   return tmv3_unique_(out);
+}
+
+
+function tmv3_verificationSummary_(
+  eventRecord,
+  cfg,
+  task,
+  order,
+  customer,
+  location,
+  differences,
+  links
+) {
+  const diff = (differences || []).join(' | ');
+  const parts = [];
+
+  parts.push('CUSTOMER ✓');
+  parts.push('LOCATION ✓');
+
+  if (cfg.orderRequired) {
+    parts.push(order ? (cfg.orderLabel.toUpperCase() + ' ✓') : (cfg.orderLabel.toUpperCase() + ' ✕'));
+  }
+
+  parts.push(tmv3_taskIsOpen_(task && task['Status']) ? 'TASK OPEN ✓' : 'TASK OPEN ✕');
+
+  const scheduleOk =
+    !/start date\/time differs|due date\/time differs/i.test(diff);
+  parts.push(scheduleOk ? 'TIME ✓' : 'TIME △');
+
+  if (eventRecord.vertical === 'Service') {
+    parts.push(/technician assignment differs/i.test(diff) ? 'ASSIGN △' : 'ASSIGN ✓');
+  } else if (eventRecord.vertical === 'PreInspection') {
+    parts.push(/pool 8 missing/i.test(diff) ? 'POOL 8 △' : 'POOL 8 ✓');
+    parts.push('INSPECTOR CHECK PENDING');
+  } else {
+    parts.push('ASSIGN CHECK PENDING');
+  }
+
+  parts.push(links && links.ok ? 'LINKS ✓' : 'LINKS △');
+
+  return (
+    ((differences || []).length === 0 && links && links.ok)
+      ? 'CALENDAR ↔ STRIVEN PASS · ' + parts.join(' · ')
+      : 'CALENDAR ↔ STRIVEN CHECK · ' + parts.join(' · ')
+  );
 }
