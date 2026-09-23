@@ -121,6 +121,7 @@ function tmv3_refreshMorningOps() {
   });
   tmv3_writeMorningReadiness_(sh, readiness);
   tmv3_writeMorningSinceRun_(sh, stateRows, lastRun, summaries, failures);
+  tmv3_writeMorningPipeline_(sh, auditRows, lastRun);
 
   return {
     status: readiness.overallStatus,
@@ -869,4 +870,70 @@ function tmv3_compactDateTime_(value) {
     'America/Toronto',
     'MMM d, h:mm a'
   );
+}
+
+
+function tmv3_writeMorningPipeline_(sh, auditRows, lastRun) {
+  const refresh = tmv3_latestAuditAction_(auditRows, 'REFRESH_SOURCES');
+  const regression = tmv3_latestAuditAction_(auditRows, 'REGRESSION_COMPARE');
+
+  const rows = [
+    ['Stage','Last success','Freshness','Status'],
+    [
+      'Calendar read',
+      lastRun ? tmv3_compactDateTime_(lastRun) : 'Not run',
+      lastRun ? tmv3_ageLabel_(tmv3_minutesSince_(lastRun)) : 'Pending',
+      lastRun ? 'PASS' : 'PENDING'
+    ],
+    [
+      'Striven source refresh',
+      refresh ? tmv3_compactDateTime_(refresh.date) : 'Not run',
+      refresh ? tmv3_ageLabel_(tmv3_minutesSince_(refresh.date)) : 'Pending',
+      refresh ? 'PASS' : 'PENDING'
+    ],
+    [
+      'Mapping + identity resolution',
+      lastRun ? tmv3_compactDateTime_(lastRun) : 'Not run',
+      lastRun ? tmv3_ageLabel_(tmv3_minutesSince_(lastRun)) : 'Pending',
+      lastRun ? 'PASS' : 'PENDING'
+    ],
+    [
+      'Regression comparison',
+      regression ? tmv3_compactDateTime_(regression.date) : 'Not run',
+      regression ? tmv3_ageLabel_(tmv3_minutesSince_(regression.date)) : 'Pending',
+      regression
+        ? (tmv3_clean_(regression.row['Result']).toUpperCase() === 'PASS' ? 'PASS' : 'ATTENTION')
+        : 'PENDING'
+    ],
+    [
+      'Calendar link writeback',
+      tmv3_writesEnabled_() ? 'Production/canary runs' : 'Disabled in shadow',
+      tmv3_writesEnabled_() ? 'Guarded' : 'N/A',
+      tmv3_writesEnabled_() ? 'CHECK' : 'SAFE'
+    ]
+  ];
+
+  sh.getRange('A66').setValue('PIPELINE FRESHNESS');
+  sh.getRange(67, 1, 6, 4).clearContent();
+  sh.getRange(67, 1, rows.length, 4).setValues(rows);
+}
+
+function tmv3_latestAuditAction_(auditRows, action) {
+  let latest = null;
+
+  (auditRows || []).forEach(function(row) {
+    if (tmv3_clean_(row['Action']) !== action) return;
+
+    const d = tmv3_parseDate_(row['Timestamp']);
+    if (!d) return;
+
+    if (!latest || d > latest.date) {
+      latest = {
+        date: d,
+        row: row
+      };
+    }
+  });
+
+  return latest;
 }
