@@ -1,11 +1,7 @@
 name: Task Mapping Contact R1 Runtime Verify
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - ops/task-mapping-contact-r1-runtime-trigger.txt
+  workflow_dispatch:
 
 permissions:
   contents: read
