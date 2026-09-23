@@ -131,17 +131,20 @@ function tmv3_refreshSources() {
         return tmv3_normalizeOrder_(r, 'SALES_ORDER');
       });
 
+  const deliveryApproved =
+    tmv3_reportRows_(TMV3.PROPERTIES.DELIVERY_APPROVED_ORDERS)
+      .map(function(r) {
+        return tmv3_normalizeOrder_(r, 'DELIVERY_APPROVED');
+      });
+
   const serviceOrders =
     tmv3_reportRows_(TMV3.PROPERTIES.SERVICE_WORK_ORDERS)
       .map(function(r) {
         return tmv3_normalizeOrder_(r, 'WORK_ORDER');
       });
 
-  const orders = tmv3_dedupeObjects_(
-    approved.concat(serviceOrders),
-    function(r) {
-      return r[0] || r[1];
-    }
+  const orders = tmv3_mergeOrderRows_(
+    approved.concat(deliveryApproved, serviceOrders)
   );
 
   const installTasks =
@@ -710,4 +713,35 @@ function tmv3_dedupeObjects_(rows, keyFn) {
   return Object.keys(map).map(function(k) {
     return map[k];
   });
+}
+
+
+function tmv3_mergeOrderRows_(rows) {
+  const map = {};
+
+  (rows || []).forEach(function(r) {
+    const key = tmv3_clean_(r[0] || r[1]);
+    if (!key) return;
+
+    if (!map[key]) {
+      map[key] = r.slice();
+      return;
+    }
+
+    const existing = map[key];
+
+    // Preserve the richest nonblank relationship data from any approved-order feed.
+    [0,1,2,3,4,5,6,8].forEach(function(i) {
+      if (!tmv3_clean_(existing[i]) && tmv3_clean_(r[i])) existing[i] = r[i];
+    });
+
+    const types = tmv3_unique_(
+      tmv3_clean_(existing[7]).split('|').concat(tmv3_clean_(r[7]).split('|'))
+    );
+    existing[7] = types.join('|');
+
+    existing[9] = tmv3_hash_(existing.slice(0, 9).join('|'));
+  });
+
+  return Object.keys(map).map(function(k) { return map[k]; });
 }
