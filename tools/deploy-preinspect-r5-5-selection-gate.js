@@ -1,214 +1,147 @@
 #!/usr/bin/env node
 'use strict';
 const fs=require('fs'),os=require('os'),path=require('path'),crypto=require('crypto'),cp=require('child_process');
-const SID='1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m';
-const CV='3.3.0';
-const REL='R5_7_PREINSPECT_EXISTING_TASK_REROUTE_20260917';
-const FILE='97_Task_Mapping_Fix_Pack_R4.js';
-const PRE_SHA='aac9ffb382de9fa46fed2f652ffbe835e3efcb2d150dfabbe7201ff2484fde85';
-const COUNT=60;
-const OUT=path.resolve('task-mapping-preinspect-r5-7-existing-task-reroute-output');
-fs.mkdirSync(OUT,{recursive:true});
-const ev={release:REL,status:'STARTED',scriptId:SID,startedAt:new Date().toISOString(),businessWritesPerformed:false,calendarWritesPerformed:false,strivenWritesPerformed:false,sheetWritesPerformed:false};
-function run(c,a,d){const r=cp.spawnSync(c,a,{cwd:d||process.cwd(),env:process.env,encoding:'utf8',stdio:['ignore','pipe','pipe']});process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');if(r.error)throw r.error;if(r.status)throw new Error(`${c} ${a.join(' ')} failed ${r.status}`);return r.stdout||'';}
-function clasp(a,d){return run('npx',['-y',`@google/clasp@${CV}`,...a],d);}
-function sha(f){return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');}
-function names(d){return fs.readdirSync(d,{withFileTypes:true}).filter(x=>x.isFile()).map(x=>x.name).sort();}
-function hs(d,ns){const o={};ns.forEach(n=>o[n]=sha(path.join(d,n)));return o;}
-function rf(s,n,r){const m=`function ${n}(`,a=s.indexOf(m);if(a<0||s.indexOf(m,a+m.length)>=0)throw new Error(`Function guard failed ${n}`);const b=s.indexOf('{',a);let dep=0,q=null,esc=false,lc=false,bc=false,e=-1;for(let i=b;i<s.length;i++){const c=s[i],x=s[i+1];if(lc){if(c==='\n')lc=false;continue;}if(bc){if(c==='*'&&x==='/'){bc=false;i++;}continue;}if(q){if(esc){esc=false;continue;}if(c==='\\'){esc=true;continue;}if(c===q)q=null;continue;}if(c==='/'&&x==='/'){lc=true;i++;continue;}if(c==='/'&&x==='*'){bc=true;i++;continue;}if(c==='\''||c==='"'||c==='`'){q=c;continue;}if(c==='{')dep++;else if(c==='}'&&--dep===0){e=i+1;break;}}if(e<0)throw new Error(`End guard failed ${n}`);return s.slice(0,a)+r.trim()+s.slice(e);}
-const replacement=String.raw`function runSelectedTaskMappingRowEndToEndR4() {
-  let ctx = tmSelectedRowE2EReadContext_();
-  const calendarPreflight = tmR4_assertSelectedCalendarFresh_(ctx);
-
-  // R5.7: A PreInspection row can begin this manual run with no mapped Task ID,
-  // then the fresh read-only review can discover exactly one existing OPEN task.
-  // Re-read the same selected row after review and route that task immediately
-  // into the hardened R5.3 transaction path instead of continuing through the
-  // legacy push-all path with its separate 10-second ScriptLock.
-  if (!ctx.taskId && ctx.division === 'PreInspection') {
-    const discoveryReview = reviewSelectedPreInspectMappingRow();
-    SpreadsheetApp.flush();
-
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss && ss.getSheetByName(ctx.sheetName);
-    if (!sheet) throw new Error('Missing PreInspect Task Mapping sheet after discovery review.');
-    ss.setActiveSheet(sheet);
-    sheet.setActiveRange(sheet.getRange(ctx.rowNumber, 1, 1, 1));
-    SpreadsheetApp.flush();
-
-    const refreshedCtx = tmSelectedRowE2EReadContext_();
-    if (
-      refreshedCtx.division !== 'PreInspection' ||
-      Number(refreshedCtx.rowNumber) !== Number(ctx.rowNumber) ||
-      String(refreshedCtx.eventId || '').trim() !== String(ctx.eventId || '').trim()
-    ) {
-      throw new Error(
-        'BLOCKED: Selected PreInspection row identity changed during existing-task discovery. No Striven write attempted.'
-      );
-    }
-
-    if (refreshedCtx.taskId) {
-      const discoveredFresh = tmSelectedRowE2EReadFreshTaskState_(
-        refreshedCtx.taskId,
-        refreshedCtx.taskStatus
-      );
-      const discoveredStatus = discoveredFresh.status ||
-        tmSelectedRowE2ENormalize_(refreshedCtx.taskStatus);
-
-      if (discoveredStatus === 'OPEN') {
-        Logger.log(JSON.stringify({
-          mode: 'PREINSPECT_R57_EXISTING_TASK_REROUTE',
-          status: 'ROUTING_TO_HARDENED_EXISTING_OPEN_TRANSACTION',
-          mappingRow: refreshedCtx.rowNumber,
-          eventId: refreshedCtx.eventId,
-          taskId: refreshedCtx.taskId,
-          discoveryReview: discoveryReview,
-          calendarPreflight: calendarPreflight,
-          writesPerformed: false,
-          strivenWritesPerformed: false,
-          calendarWritesPerformed: false
-        }, null, 2));
-        return tmSelectedRowE2ER3RunExistingOpenPreInspection_(refreshedCtx);
-      }
-    }
-
-    ctx = refreshedCtx;
-  }
-
-  const fresh = tmSelectedRowE2EReadFreshTaskState_(ctx.taskId, ctx.taskStatus);
-  const freshStatus = fresh.status || tmSelectedRowE2ENormalize_(ctx.taskStatus);
-
-  if (!ctx.taskId) {
-    if (ctx.division === 'PreInspection') {
-      return tmSelectedRowE2ERunPreInspection_(ctx);
-    }
-
-    return tmSelectedRowE2EStop_(
-      ctx,
-      'NO_SAFE_TASK_FOUND',
-      'No mapped Task ID is available. No external write was attempted. Use the guarded Task Recovery workflow after the mapping is reviewed.',
-      { calendarPreflight: calendarPreflight }
-    );
-  }
-
-  if (freshStatus !== 'OPEN') {
-    const completion = tmSelectedRowE2ECompletionWindow_(fresh.rawTask, freshStatus);
-
-    if (completion.recent) {
-      return tmSelectedRowE2EStop_(
-        ctx,
-        'RECENTLY_COMPLETED_NO_RECREATE',
-        'Task was completed/changed to completed within the last ' +
-          TM_FIX_PACK_R4.RECENT_COMPLETION_HOURS +
-          ' hours. No recreation or Striven mutation was attempted.',
-        {
-          freshTaskStatus: freshStatus,
-          completion: completion,
-          calendarPreflight: calendarPreflight
-        }
-      );
-    }
-
-    if (tmSelectedRowE2EIsCompletedStatus_(freshStatus) && !completion.proven) {
-      return tmSelectedRowE2EStop_(
-        ctx,
-        'REVIEW_COMPLETION_TIME_UNKNOWN',
-        'Task is completed, but the completion/status-change timestamp cannot be proven. No recreation was attempted.',
-        {
-          freshTaskStatus: freshStatus,
-          completion: completion,
-          calendarPreflight: calendarPreflight
-        }
-      );
-    }
-
-    if (ctx.division === 'PreInspection') {
-      return tmSelectedRowE2ERunPreInspection_(ctx);
-    }
-
-    return tmSelectedRowE2EStop_(
-      ctx,
-      'NON_OPEN_TASK_NOT_MUTATED',
-      'Task is not OPEN (' + (freshStatus || 'UNKNOWN') + '). No automatic Install/Delivery/Service recreation was attempted from this selected-row command.',
-      {
-        freshTaskStatus: freshStatus,
-        completion: completion,
-        calendarPreflight: calendarPreflight
-      }
-    );
-  }
-
-  if (ctx.division === 'PreInspection') {
-    try {
-      return tmSelectedRowE2ER3RunExistingOpenPreInspection_(ctx);
-    } catch (err) {
-      const message = String(err && err.message ? err.message : err);
-      if (message.indexOf('BLOCKED_STRIVEN_PI_PM_PATCH_DEFECT') >= 0) {
-        return tmSelectedRowE2EStop_(
-          ctx,
-          'BLOCKED_STRIVEN_PI_PM_PATCH_DEFECT',
-          message,
-          { nextDiagnostic: 'inspectSelectedPreInspectDateTimeTransportR45' }
-        );
-      }
-      throw err;
-    }
-  }
-
-  const mapping = tmR4_readSelectedMapping_(ctx);
-  const before = getStrivenTaskSnapshotById_(ctx.taskId, {});
-  const diff = tmR4_computeSelectedTaskDiff_(ctx, mapping, before);
-  const strivenResult = tmR4_applySelectedTaskDiff_(ctx, mapping, diff);
-  const verification = tmR4_verifySelectedTaskReadBack_(ctx, mapping);
-
-  let calendarResult;
-  if (ctx.division === 'Service') {
-    calendarResult = tmR4_pushSelectedServiceCalendarEventTaskSet_(false);
-  } else {
-    calendarResult = tmSelectedRowE2ERunCalendarLink_(ctx.division);
-  }
-
-  const calendarVerification = tmR4_verifySelectedCalendarLink_(ctx);
-
-  const result = {
-    mode: 'SELECTED_ROW_END_TO_END_R4',
-    version: TM_FIX_PACK_R4.VERSION,
-    status: 'COMPLETE_AND_VERIFIED',
-    division: ctx.division,
-    mappingRow: ctx.rowNumber,
-    eventId: ctx.eventId,
-    taskId: ctx.taskId,
-    calendarPreflight: calendarPreflight,
-    freshTaskStatus: freshStatus,
-    freshDiff: diff,
-    striven: strivenResult,
-    verification: verification,
-    calendar: calendarResult,
-    calendarVerification: calendarVerification
-  };
-
-  Logger.log(JSON.stringify(result, null, 2));
-  return result;
-}`;
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'tm-r57-')),P=path.join(root,'PRE'),W=path.join(root,'WORK'),F=path.join(root,'FRESH'),O=path.join(root,'POST');[P,W,F,O].forEach(d=>fs.mkdirSync(d,{recursive:true}));let pushed=false;
+const SID='1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m',CV='3.3.0',FILE='35_PreInspect_Task_Review.js';
+const OUT=path.resolve('task-mapping-preinspect-r5-7-existing-task-reroute-output');fs.mkdirSync(OUT,{recursive:true});
+function run(c,a,d){const r=cp.spawnSync(c,a,{cwd:d||process.cwd(),env:process.env,encoding:'utf8',stdio:['ignore','pipe','pipe']});process.stdout.write(r.stdout||'');process.stderr.write(r.stderr||'');if(r.error)throw r.error;if(r.status)throw new Error(c+' '+a.join(' ')+' failed '+r.status);return r.stdout||'';}
+function clasp(a,d){return run('npx',['-y','@google/clasp@'+CV,...a],d)}
+function sha(f){return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')}
+function names(d){return fs.readdirSync(d,{withFileTypes:true}).filter(x=>x.isFile()).map(x=>x.name).sort()}
+function hashes(d,ns){const o={};for(const n of ns)o[n]=sha(path.join(d,n));return o}
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'tm-michael-hook-')),P=path.join(root,'PRE'),F=path.join(root,'FRESH'),W=path.join(root,'WORK'),O=path.join(root,'POST');
+[P,F,W,O].forEach(d=>fs.mkdirSync(d,{recursive:true}));
+let pushed=false;
 try{
   clasp(['show-authorized-user','--json']);
   clasp(['clone',SID,'--rootDir','src'],P);
-  const ps=path.join(P,'src'),ns=names(ps);if(ns.length!==COUNT)throw new Error(`Expected ${COUNT} PRE files, found ${ns.length}`);
-  const ph=hs(ps,ns);if(ph[FILE]!==PRE_SHA)throw new Error(`Unexpected PRE ${FILE} SHA ${ph[FILE]}`);
+  const ps=path.join(P,'src'),ns=names(ps),ph=hashes(ps,ns);
   fs.cpSync(P,path.join(OUT,'PRE_SOURCE'),{recursive:true});
   fs.cpSync(P,W,{recursive:true});
   const ws=path.join(W,'src'),tf=path.join(ws,FILE);let s=fs.readFileSync(tf,'utf8');
-  if(!s.includes("VERSION: 'TM_FIX_PACK_R4_8_20260915'"))throw new Error('Expected R4.8 version marker missing');
-  s=s.replace("VERSION: 'TM_FIX_PACK_R4_8_20260915'","VERSION: 'TM_FIX_PACK_R4_9_20260917'");
-  s=rf(s,'runSelectedTaskMappingRowEndToEndR4',replacement);
+  if(s.includes('TM_MICHAEL_BIELEY_ONE_EVENT_R1')) throw new Error('Michael one-event hook already exists in live source.');
+
+  const oldTrigger="function preinspectOnCalendarEventUpdated(e) {\n  return preinspectR3415SyncMirrorAndHyperlinks_('CALENDAR_EVENT_UPDATED');\n}";
+  const newTrigger="function preinspectOnCalendarEventUpdated(e) {\n  const sync = preinspectR3415SyncMirrorAndHyperlinks_('CALENDAR_EVENT_UPDATED');\n  let michael = null;\n  try { michael = tmMichaelBieleyOneEventR1_(); }\n  catch (err) { michael = {status:'ERROR',error:String(err && err.message ? err.message : err)}; Logger.log(JSON.stringify({mode:'TM_MICHAEL_BIELEY_ONE_EVENT_R1',result:michael},null,2)); }\n  return {sync:sync,michael:michael};\n}";
+  if(!s.includes(oldTrigger)) throw new Error('Expected PreInspect Calendar trigger function not found.');
+  s=s.replace(oldTrigger,newTrigger);
+
+  const installSig="function preinspectR30PushInstallNotes_(ctx, preparedPlan) {";
+  if(!s.includes(installSig)) throw new Error('Install Notes function signature not found.');
+  s=s.replace(installSig,installSig+"\n  if (tmMichaelBieleyIsContext_(ctx)) {\n    return {status:'PAUSED_BY_POLICY',writesPerformed:false,field:'Install Notes',customFieldId:854,reason:'Calendar description to Field 854 is paused for the Michael Bieley one-event test.'};\n  }");
+
+  const assignAnchor="  const verified = preinspectR30ReadTask_(ctx.taskId);\n  const after = preinspectR30NormalizeAssignments_(verified);";
+  if(!s.includes(assignAnchor)) throw new Error('Assignee verification anchor not found.');
+  const assignInject="  if (tmMichaelBieleyIsContext_(ctx)) {\n    const currentForMichael = preinspectR30NormalizeAssignments_(preinspectR30ReadTask_(ctx.taskId));\n    const hasStephen = currentForMichael.some(function(a){ return String(a.type||'').toLowerCase()==='employee' && Number(a.id)===15; });\n    if (!hasStephen) {\n      const authMichael = preinspectR30ApiAuth_();\n      const urlMichael = authMichael.apiBaseUrl + '/v2/tasks/' + encodeURIComponent(ctx.taskId) + '/assignments';\n      preinspectR30Request_('post', urlMichael, {Id:15,Name:'Stephen Foley',Type:'employee'}, 'MICHAEL_ADD_STEPPHEN_EMPLOYEE_15');\n      writesPerformed = true;\n    }\n  }\n\n"+assignAnchor;
+  s=s.replace(assignAnchor,assignInject);
+
+  s += `
+\n/************************************************************
+ * TM_MICHAEL_BIELEY_ONE_EVENT_R1
+ * Temporary, exact-event execution hook. Remove after verification.
+ ************************************************************/
+const TM_MICHAEL_BIELEY_ONE_EVENT_R1 = Object.freeze({
+  EVENT_ID:'3r5dliuq3m2p477lasvdru0lnu',
+  CUSTOMER_ID:61116,
+  LOCATION_ID:56991,
+  DONE_PROPERTY:'TM_MICHAEL_BIELEY_ONE_EVENT_R1_DONE',
+  RUNNING_PROPERTY:'TM_MICHAEL_BIELEY_ONE_EVENT_R1_RUNNING'
+});
+
+function tmMichaelBieleyNormalizeEventId_(v){return String(v||'').trim().replace(/@google\\.com$/i,'');}
+
+function tmMichaelBieleyIsContext_(ctx){
+  const direct=tmMichaelBieleyNormalizeEventId_(ctx&&ctx.eventId);
+  if(direct===TM_MICHAEL_BIELEY_ONE_EVENT_R1.EVENT_ID)return true;
+  const rowId=tmMichaelBieleyNormalizeEventId_(ctx&&ctx.row&&ctx.row['Event ID']);
+  if(rowId===TM_MICHAEL_BIELEY_ONE_EVENT_R1.EVENT_ID)return true;
+  try{
+    const sh=SpreadsheetApp.getActiveSheet(),r=sh&&sh.getActiveRange();
+    if(sh&&sh.getName()==='PreInspect Task Mapping'&&r&&r.getRow()>1){
+      const headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
+      const i=headers.indexOf('Event ID');
+      if(i>=0)return tmMichaelBieleyNormalizeEventId_(sh.getRange(r.getRow(),i+1).getDisplayValue())===TM_MICHAEL_BIELEY_ONE_EVENT_R1.EVENT_ID;
+    }
+  }catch(ignored){}
+  return false;
+}
+
+function tmMichaelBieleyFindRow_(){
+  const ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('PreInspect Task Mapping');
+  if(!sh)throw new Error('Missing PreInspect Task Mapping.');
+  const data=sh.getDataRange().getDisplayValues(),h=data[0]||[],i=h.indexOf('Event ID');
+  if(i<0)throw new Error('Event ID column missing.');
+  for(let r=1;r<data.length;r++){
+    if(tmMichaelBieleyNormalizeEventId_(data[r][i])===TM_MICHAEL_BIELEY_ONE_EVENT_R1.EVENT_ID){
+      ss.setActiveSheet(sh);sh.setActiveRange(sh.getRange(r+1,1,1,Math.max(1,h.length)));SpreadsheetApp.flush();
+      return {ss:ss,sheet:sh,rowNumber:r+1,headers:h};
+    }
+  }
+  throw new Error('Michael Bieley mapping row not found.');
+}
+
+function tmMichaelBieleyRow_(sh,row){
+  const h=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0],v=sh.getRange(row,1,1,sh.getLastColumn()).getDisplayValues()[0],o={};
+  h.forEach(function(x,i){x=String(x||'').trim();if(x)o[x]=v[i];});return o;
+}
+
+function tmMichaelBieleyOneEventR1_(){
+  const props=PropertiesService.getScriptProperties();
+  const done=String(props.getProperty(TM_MICHAEL_BIELEY_ONE_EVENT_R1.DONE_PROPERTY)||'');
+  if(done)return {status:'ALREADY_DONE',taskId:Number(done)||0};
+  if(String(props.getProperty(TM_MICHAEL_BIELEY_ONE_EVENT_R1.RUNNING_PROPERTY)||'')==='TRUE')return {status:'ALREADY_RUNNING'};
+  const lock=LockService.getScriptLock();if(!lock.tryLock(1000))return {status:'LOCK_BUSY'};
+  props.setProperty(TM_MICHAEL_BIELEY_ONE_EVENT_R1.RUNNING_PROPERTY,'TRUE');
+  let success=false;
+  try{
+    let ref=tmMichaelBieleyFindRow_();
+    const result=runSelectedTaskMappingRowEndToEndR4();
+    SpreadsheetApp.flush();
+    ref=tmMichaelBieleyFindRow_();
+    const row=tmMichaelBieleyRow_(ref.sheet,ref.rowNumber);
+    const taskId=Number(String(row['Task ID']||'').trim())||0;
+    if(!taskId)throw new Error('Michael workflow completed without a Task ID. Status='+String(row['Status']||'')+' Action='+String(row['Task Action']||'')+' Issue='+String(row['Issue']||''));
+    const task=preinspectR30ReadTask_(taskId);
+    const type=preinspectR30Entity_(preinspectR30Pick_(task,['type','Type']));
+    const cust=preinspectR30Entity_(preinspectR30Pick_(task,['customer','Customer']));
+    const loc=preinspectR30Entity_(preinspectR30Pick_(task,['location','Location']));
+    const so=preinspectR30Entity_(preinspectR30Pick_(task,['salesOrder','SalesOrder']));
+    if(Number(type.id||0)!==105)throw new Error('Task '+taskId+' is not Type 105.');
+    if(Number(cust.id||0)!==61116)throw new Error('Task '+taskId+' customer mismatch.');
+    if(Number(loc.id||0)!==56991)throw new Error('Task '+taskId+' location mismatch.');
+    if(Number(so.id||0)>0)throw new Error('Task '+taskId+' unexpectedly has a Sales Order.');
+    const assignments=preinspectR30NormalizeAssignments_(task);
+    const pool8=assignments.some(function(a){return String(a.type||'').toLowerCase()==='pool'&&Number(a.id)===8;});
+    const stephen=assignments.some(function(a){return String(a.type||'').toLowerCase()==='employee'&&Number(a.id)===15;});
+    if(!pool8||!stephen)throw new Error('Assignment verification failed. Pool8='+pool8+' Stephen='+stephen);
+    const fields=preinspectR30NormalizeCustomFields_(task),f854=fields.filter(function(f){return Number(f.id)===854;})[0]||null;
+    const field854=f854?String(f854.value||''):'';
+    if(field854.trim())throw new Error('Field 854 was populated during paused test.');
+    const desc=String(preinspectR30Pick_(task,['description','Description'])||'');
+    if(desc.trim())throw new Error('Task Description is not blank.');
+    const audit={taskId:taskId,title:String(preinspectR30Pick_(task,['title','Title'])||''),pool8:pool8,stephenEmployee15:stephen,field854Blank:true,descriptionBlank:true,requestedBy:preinspectR30Pick_(task,['requestedBy','RequestedBy'])||null,status:preinspectR30Pick_(task,['status','Status'])||null,resultStatus:result&&result.status?result.status:''};
+    const notesIdx=ref.headers.indexOf('Notes');
+    if(notesIdx>=0)ref.sheet.getRange(ref.rowNumber,notesIdx+1).setValue('MICHAEL_TEST_R1 '+JSON.stringify(audit));
+    props.setProperty(TM_MICHAEL_BIELEY_ONE_EVENT_R1.DONE_PROPERTY,String(taskId));
+    success=true;
+    Logger.log(JSON.stringify({mode:'TM_MICHAEL_BIELEY_ONE_EVENT_R1',status:'EXECUTED_VERIFIED',audit:audit},null,2));
+    return {status:'EXECUTED_VERIFIED',audit:audit};
+  } finally {
+    props.deleteProperty(TM_MICHAEL_BIELEY_ONE_EVENT_R1.RUNNING_PROPERTY);
+    if(!success)Logger.log(JSON.stringify({mode:'TM_MICHAEL_BIELEY_ONE_EVENT_R1',status:'NOT_VERIFIED'},null,2));
+    lock.releaseLock();
+  }
+}
+`;
+
   fs.writeFileSync(tf,s);run('node',['--check',tf]);
-  if(!s.includes('PREINSPECT_R57_EXISTING_TASK_REROUTE'))throw new Error('R5.7 marker missing');
-  if(!s.includes('tmSelectedRowE2ER3RunExistingOpenPreInspection_(refreshedCtx)'))throw new Error('Hardened reroute missing');
-  const wh=hs(ws,ns),chg=ns.filter(n=>wh[n]!==ph[n]);if(JSON.stringify(chg)!==JSON.stringify([FILE]))throw new Error('Changed-file guard '+chg.join(','));
-  clasp(['clone',SID,'--rootDir','src'],F);const fsr=path.join(F,'src'),fn=names(fsr),fh=hs(fsr,fn);if(JSON.stringify(fn)!==JSON.stringify(ns))throw new Error('Fresh file set changed');ns.forEach(n=>{if(fh[n]!==ph[n])throw new Error(`Freshness guard ${n}`)});
+  const wh=hashes(ws,ns),changed=ns.filter(n=>wh[n]!==ph[n]);if(JSON.stringify(changed)!==JSON.stringify([FILE]))throw new Error('Changed-file guard: '+changed.join(','));
+  clasp(['clone',SID,'--rootDir','src'],F);const fsrc=path.join(F,'src'),fn=names(fsrc),fh=hashes(fsrc,fn);if(JSON.stringify(fn)!==JSON.stringify(ns))throw new Error('Fresh file set changed');for(const n of ns)if(fh[n]!==ph[n])throw new Error('Freshness guard '+n);
   clasp(['push','--force'],W);pushed=true;
-  clasp(['clone',SID,'--rootDir','src'],O);const osrc=path.join(O,'src'),on=names(osrc),oh=hs(osrc,on);if(JSON.stringify(on)!==JSON.stringify(ns))throw new Error('POST file set changed');ns.forEach(n=>{const exp=n===FILE?wh[n]:ph[n];if(oh[n]!==exp)throw new Error(`POST verify ${n}`)});
-  Object.assign(ev,{status:'DEPLOYED_SOURCE_VERIFIED',changedFiles:[FILE],preFileCount:ns.length,postFileCount:on.length,pre97R4Sha:ph[FILE],post97R4Sha:oh[FILE],completedAt:new Date().toISOString(),runtimeNext:'Manual rerun of one selected PreInspect mapping row only. Expect discovered existing OPEN task to route to R5.3 transaction-safe path.'});
+  clasp(['clone',SID,'--rootDir','src'],O);const osrc=path.join(O,'src'),on=names(osrc),oh=hashes(osrc,on);if(JSON.stringify(on)!==JSON.stringify(ns))throw new Error('POST file set changed');for(const n of ns){const exp=n===FILE?wh[n]:ph[n];if(oh[n]!==exp)throw new Error('POST verify '+n)}
+  const ev={status:'DEPLOYED_MICHAEL_ONE_EVENT_HOOK_VERIFIED',scriptId:SID,changedFiles:[FILE],preFileCount:ns.length,postFileCount:on.length,preSha:ph[FILE],postSha:oh[FILE],businessWritesPerformed:false,completedAt:new Date().toISOString()};
   fs.writeFileSync(path.join(OUT,'evidence.json'),JSON.stringify(ev,null,2));console.log(JSON.stringify(ev,null,2));
-}catch(err){Object.assign(ev,{status:'FAILED',error:String(err&&err.stack||err),completedAt:new Date().toISOString()});if(pushed){try{clasp(['push','--force'],P);ev.rollback='ROLLBACK_PUSH_COMPLETED';}catch(rb){ev.rollback='ROLLBACK_FAILED';ev.rollbackError=String(rb&&rb.stack||rb);}}else ev.rollback='NOT_NEEDED_NO_PUSH_COMPLETED';fs.writeFileSync(path.join(OUT,'evidence.json'),JSON.stringify(ev,null,2));throw err;}
+}catch(err){
+  if(pushed){try{clasp(['push','--force'],P)}catch(rb){console.error('ROLLBACK_FAILED',rb)}}
+  fs.writeFileSync(path.join(OUT,'evidence.json'),JSON.stringify({status:'FAILED',error:String(err&&err.stack||err)},null,2));
+  throw err;
+}
