@@ -1,11 +1,7 @@
 name: PreInspection Rich Links R1.5.6
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - ops/preinspect-rich-links-r1-5-6-trigger.txt
+  workflow_dispatch:
 
 permissions:
   contents: read
