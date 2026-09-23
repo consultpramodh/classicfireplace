@@ -1,11 +1,7 @@
 name: Task Mapping Current Sheet Standardization Verify
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - ops/task-mapping-current-sheet-standardization-verify.txt
+  workflow_dispatch:
 
 permissions:
   contents: read
