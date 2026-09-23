@@ -147,3 +147,5 @@ const TMV3_OPERATOR_HEADERS = Object.freeze([
   'Calendar Title','Order / Work Order','Location','Task Status','Assigned To',
   'Verification','Calendar Links','Last Verified','Event ID'
 ]);
+
+// TMV3 parity R1 verification trigger — 2026-09-23
