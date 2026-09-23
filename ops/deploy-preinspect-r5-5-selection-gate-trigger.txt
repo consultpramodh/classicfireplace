@@ -1,2 +1,4 @@
 DEPLOY_PREINSPECT_R5_7_EXISTING_TASK_REROUTE_20260917
 Source-only routing fix: after a no-Task-ID PreInspect review discovers one existing OPEN task, reroute the same selected row into the hardened R5.3 transaction path. No Calendar, Sheet, or Striven business writes during deployment.
+
+TEMP_MICHAEL_ONE_EVENT_HOOK_DEPLOY_20260923
