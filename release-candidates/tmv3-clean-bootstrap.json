@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "release": "TMV3_CLEAN_SHADOW_R1",
+  "title": "CF Task Mapping V3",
+  "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
+  "scriptId": "",
+  "sourceDirectory": "apps-script/tmv3-clean",
+  "claspVersion": "3.3.0",
+  "mode": "SHADOW_READ_ONLY"
+}
