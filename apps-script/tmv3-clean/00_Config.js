@@ -134,5 +134,5 @@ const TMV3 = Object.freeze({
 const TMV3_OPERATOR_HEADERS = Object.freeze([
   'Status','Next Action','Date','Time','Calendar Title','Customer',
   'Order / Work Order','Location','Task','Task Status','Assigned To',
-  'Match Evidence','Issue','Calendar Links','Last Verified','Event ID'
+  'Verification','Issue','Calendar Links','Last Verified','Event ID'
 ]);
