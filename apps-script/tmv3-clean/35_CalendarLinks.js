@@ -7,10 +7,13 @@ const TMV3_LINK_BLOCK_END = '<!-- TMV3_STRIVEN_LINKS_END -->';
 
 function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
   const cfg = TMV3.VERTICALS[eventRecord.vertical];
+  const records = Array.isArray(resolved) ? resolved : [resolved];
   const links = [];
 
+  const first = records[0] || {};
+
   if (eventRecord.vertical === 'PreInspection') {
-    if (!resolved.customerId) {
+    if (!first.customerId) {
       throw new Error('PreInspection Calendar links require Customer ID.');
     }
 
@@ -18,14 +21,14 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
       key: 'CUSTOMER_SALES_ORDERS_PAGE',
       label:
         'View Sales Orders – ' +
-        (resolved.customer || 'Customer') +
-        ' (#' + resolved.customerId + ')',
+        (first.customer || 'Customer') +
+        ' (#' + first.customerId + ')',
       url:
         TMV3.CUSTOMER_ORDERS_PAGE_BASE +
-        encodeURIComponent(resolved.customerId)
+        encodeURIComponent(first.customerId)
     });
   } else if (cfg.calendarOrderLinkRequired) {
-    if (!resolved.orderId) {
+    if (!first.orderId) {
       throw new Error(cfg.orderLabel + ' Calendar link requires internal Order ID.');
     }
 
@@ -33,27 +36,43 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
       key: 'ORDER',
       label:
         cfg.orderLabel +
-        (resolved.order ? ' – ' + resolved.order : ''),
+        (first.order ? ' – ' + first.order : ''),
       url:
         TMV3.ORDER_URL_BASE +
-        encodeURIComponent(resolved.orderId)
+        encodeURIComponent(first.orderId)
     });
   }
 
-  if (cfg.calendarTaskLinkRequired) {
-    if (!resolved.taskId) {
-      throw new Error('Calendar Task link requires verified Task ID.');
-    }
+  const taskSeen = {};
 
-    links.push({
-      key: 'TASK',
-      label:
-        'Task #' +
-        resolved.taskId +
-        (resolved.task ? ' – ' + resolved.task : ''),
-      url:
-        TMV3.TASK_URL_BASE +
-        encodeURIComponent(resolved.taskId)
+  if (cfg.calendarTaskLinkRequired) {
+    records.forEach(function(record) {
+      if (!record || !record.taskId) {
+        throw new Error('Calendar Task link requires verified Task ID for every mapped task.');
+      }
+
+      const taskId = String(record.taskId);
+      if (taskSeen[taskId]) return;
+      taskSeen[taskId] = true;
+
+      links.push({
+        key:
+          record.serviceFireplaceNumber
+            ? 'TASK_FP_' + record.serviceFireplaceNumber
+            : 'TASK_' + taskId,
+        label:
+          (
+            record.serviceFireplaceNumber
+              ? 'FP#' + record.serviceFireplaceNumber + ' – '
+              : ''
+          ) +
+          'Task #' +
+          taskId +
+          (record.task ? ' – ' + record.task : ''),
+        url:
+          TMV3.TASK_URL_BASE +
+          encodeURIComponent(taskId)
+      });
     });
   }
 
@@ -145,9 +164,18 @@ function tmv3_previewCalendarLinks_(eventRecord, resolved) {
 }
 
 function tmv3_writeCalendarLinks_(eventRecord, resolved) {
+  return tmv3_writeCalendarLinksForEvent_(eventRecord, [resolved]);
+}
+
+
+function tmv3_writeCalendarLinksForEvent_(eventRecord, resolvedRecords) {
   tmv3_assertBusinessWritesEnabled_();
 
-  const plan = tmv3_buildCalendarLinkPlan_(eventRecord, resolved);
+  const records = Array.isArray(resolvedRecords)
+    ? resolvedRecords
+    : [resolvedRecords];
+
+  const plan = tmv3_buildCalendarLinkPlan_(eventRecord, records);
   const copies = tmv3_findEventCopies_(plan.eventId, plan.calendarIds);
 
   if (!copies.length) {
@@ -160,9 +188,7 @@ function tmv3_writeCalendarLinks_(eventRecord, resolved) {
     const before = String(copy.event.getDescription() || '');
     const desired = tmv3_managedCalendarDescription_(before, plan);
 
-    if (before !== desired) {
-      copy.event.setDescription(desired);
-    }
+    if (before !== desired) copy.event.setDescription(desired);
 
     const after = String(copy.event.getDescription() || '');
     const missing = (plan.links || []).filter(function(link) {
@@ -181,10 +207,7 @@ function tmv3_writeCalendarLinks_(eventRecord, resolved) {
     results.push({
       calendarId: copy.calendarId,
       calendarName: copy.calendarName,
-      status:
-        before === desired
-          ? 'ALREADY_CORRECT'
-          : 'WRITTEN_AND_VERIFIED'
+      status: before === desired ? 'ALREADY_CORRECT' : 'WRITTEN_AND_VERIFIED'
     });
   });
 
