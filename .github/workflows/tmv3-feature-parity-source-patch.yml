@@ -32,114 +32,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import base64, gzip, json, pathlib, re
-
-          root = pathlib.Path('.')
-          payload = json.loads((root/'ops/tmv3-parity-payload.json').read_text())
-          src = root/'apps-script/tmv3-clean'
-
-          for name in ('58_Operations.js','60_Automation.js'):
-              data = gzip.decompress(base64.b64decode(payload[name]))
-              (src/name).write_bytes(data)
-
-          config = (src/'00_Config.js').read_text()
-          config = re.sub(
-              r"const TMV3_VERSION = '[^']+';",
-              "const TMV3_VERSION = '3.1.0-parity-r1-manual-live-auto-gated';",
-              config,
-              count=1
-          )
-          if 'OPERATIONS: Object.freeze({' not in config:
-              config = config.replace(
-                  "  MAX_PAGES: 50,\n",
-                  "  MAX_PAGES: 50,\n"
-                  "  OPERATIONS: Object.freeze({\n"
-                  "    manualWritesEnabled: true,\n"
-                  "    automationWritesEnabled: false,\n"
-                  "    autoMaxWritesPerRun: 10,\n"
-                  "    installRemindersEnabled: true\n"
-                  "  }),\n"
-              )
-          config = config.replace(
-              "field854Policy: 'NO_WRITE'",
-              "field854Policy: 'MANAGED_WRITE_PRESERVE_OTHER_FIELDS'"
-          )
-          (src/'00_Config.js').write_text(config)
-
-          morning_path = src/'80_MorningOps.js'
-          morning = morning_path.read_text()
-          replacement = r'''function tmv3_triggerHealth_() {
-  const installed = tmv3_listTriggers();
-
-  const expectedCounts = {
-    tmv3_dailySourceRefresh: 1,
-    tmv3_scheduledOperations: 5,
-    tmv3_refreshLinksSlot_0800: 1,
-    tmv3_refreshLinksSlot_1000: 1,
-    tmv3_refreshLinksSlot_1200: 1,
-    tmv3_refreshLinksSlot_1400: 1,
-    tmv3_refreshLinksSlot_1600: 1,
-    tmv3_refreshLinksSlot_1800: 1,
-    tmv3_installReminderCheck: 1,
-    tmv3_calendarEventUpdated: 4
-  };
-
-  const actualCounts = {};
-  installed.forEach(function(t) {
-    const handler = tmv3_clean_(t.handler);
-    actualCounts[handler] = (actualCounts[handler] || 0) + 1;
-  });
-
-  const missing = [];
-  const extra = [];
-
-  Object.keys(expectedCounts).forEach(function(handler) {
-    const expected = expectedCounts[handler];
-    const actual = actualCounts[handler] || 0;
-    if (actual < expected) {
-      missing.push(handler + ' ' + actual + '/' + expected);
-    } else if (actual > expected) {
-      extra.push(handler + ' ' + actual + '/' + expected);
-    }
-  });
-
-  return {
-    installed: installed.length,
-    missing: missing,
-    duplicates: extra,
-    enabled: Object.keys(actualCounts).some(function(handler) {
-      return expectedCounts[handler] !== undefined;
-    }),
-    expectedCount: 17,
-    manualWritesEnabled:
-      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.manualWritesEnabled),
-    automationWritesEnabled:
-      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.automationWritesEnabled)
-  };
-}
-
-'''
-          pattern = re.compile(
-              r'function tmv3_triggerHealth_\(\) \{[\s\S]*?\n\}\n\nfunction tmv3_morningReadiness_',
-              re.M
-          )
-          m = pattern.search(morning)
-          if not m:
-              raise SystemExit('tmv3_triggerHealth_ anchor not found')
-          morning = morning[:m.start()] + replacement + 'function tmv3_morningReadiness_' + morning[m.end():]
-          morning_path.write_text(morning)
-
-          manifest_path = root/'release-candidates/tmv3-clean-bootstrap.json'
-          manifest = json.loads(manifest_path.read_text())
-          manifest['release'] = 'TMV3_FEATURE_PARITY_R1_MANUAL_LIVE_AUTO_GATED'
-          manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
-          PY
-
+          printf '%s' 'aW1wb3J0IGJhc2U2NCwgZ3ppcCwganNvbiwgcGF0aGxpYiwgcmUKcm9vdD1wYXRobGliLlBhdGgoJy4nKQpwYXlsb2FkPWpzb24ubG9hZHMoKHJvb3QvJ29wcy90bXYzLXBhcml0eS1wYXlsb2FkLmpzb24nKS5yZWFkX3RleHQoKSkKc3JjPXJvb3QvJ2FwcHMtc2NyaXB0L3RtdjMtY2xlYW4nCmZvciBuYW1lIGluICgnNThfT3BlcmF0aW9ucy5qcycsJzYwX0F1dG9tYXRpb24uanMnKToKICAgIChzcmMvbmFtZSkud3JpdGVfYnl0ZXMoZ3ppcC5kZWNvbXByZXNzKGJhc2U2NC5iNjRkZWNvZGUocGF5bG9hZFtuYW1lXSkpKQpjb25maWc9KHNyYy8nMDBfQ29uZmlnLmpzJykucmVhZF90ZXh0KCkKY29uZmlnPXJlLnN1YihyImNvbnN0IFRNVjNfVkVSU0lPTiA9ICdbXiddKyc7IiwgImNvbnN0IFRNVjNfVkVSU0lPTiA9ICczLjEuMC1wYXJpdHktcjEtbWFudWFsLWxpdmUtYXV0by1nYXRlZCc7IiwgY29uZmlnLCBjb3VudD0xKQppZiAnT1BFUkFUSU9OUzogT2JqZWN0LmZyZWV6ZSh7JyBub3QgaW4gY29uZmlnOgogICAgY29uZmlnPWNvbmZpZy5yZXBsYWNlKAogICAgICAgICIgIE1BWF9QQUdFUzogNTAsXG4iLAogICAgICAgICIgIE1BWF9QQUdFUzogNTAsXG4iCiAgICAgICAgIiAgT1BFUkFUSU9OUzogT2JqZWN0LmZyZWV6ZSh7XG4iCiAgICAgICAgIiAgICBtYW51YWxXcml0ZXNFbmFibGVkOiB0cnVlLFxuIgogICAgICAgICIgICAgYXV0b21hdGlvbldyaXRlc0VuYWJsZWQ6IGZhbHNlLFxuIgogICAgICAgICIgICAgYXV0b01heFdyaXRlc1BlclJ1bjogMTAsXG4iCiAgICAgICAgIiAgICBpbnN0YWxsUmVtaW5kZXJzRW5hYmxlZDogdHJ1ZVxuIgogICAgICAgICIgIH0pLFxuIgogICAgKQpjb25maWc9Y29uZmlnLnJlcGxhY2UoImZpZWxkODU0UG9saWN5OiAnTk9fV1JJVEUnIiwgImZpZWxkODU0UG9saWN5OiAnTUFOQUdFRF9XUklURV9QUkVTRVJWRV9PVEhFUl9GSUVMRFMnIikKKHNyYy8nMDBfQ29uZmlnLmpzJykud3JpdGVfdGV4dChjb25maWcpCgptb3JuaW5nX3BhdGg9c3JjLyc4MF9Nb3JuaW5nT3BzLmpzJwptb3JuaW5nPW1vcm5pbmdfcGF0aC5yZWFkX3RleHQoKQpyZXBsYWNlbWVudD0iIiJmdW5jdGlvbiB0bXYzX3RyaWdnZXJIZWFsdGhfKCkgewogIGNvbnN0IGluc3RhbGxlZCA9IHRtdjNfbGlzdFRyaWdnZXJzKCk7CgogIGNvbnN0IGV4cGVjdGVkQ291bnRzID0gewogICAgdG12M19kYWlseVNvdXJjZVJlZnJlc2g6IDEsCiAgICB0bXYzX3NjaGVkdWxlZE9wZXJhdGlvbnM6IDUsCiAgICB0bXYzX3JlZnJlc2hMaW5rc1Nsb3RfMDgwMDogMSwKICAgIHRtdjNfcmVmcmVzaExpbmtzU2xvdF8xMDAwOiAxLAogICAgdG12M19yZWZyZXNoTGlua3NTbG90XzEyMDA6IDEsCiAgICB0bXYzX3JlZnJlc2hMaW5rc1Nsb3RfMTQwMDogMSwKICAgIHRtdjNfcmVmcmVzaExpbmtzU2xvdF8xNjAwOiAxLAogICAgdG12M19yZWZyZXNoTGlua3NTbG90XzE4MDA6IDEsCiAgICB0bXYzX2luc3RhbGxSZW1pbmRlckNoZWNrOiAxLAogICAgdG12M19jYWxlbmRhckV2ZW50VXBkYXRlZDogNAogIH07CgogIGNvbnN0IGFjdHVhbENvdW50cyA9IHt9OwogIGluc3RhbGxlZC5mb3JFYWNoKGZ1bmN0aW9uKHQpIHsKICAgIGNvbnN0IGhhbmRsZXIgPSB0bXYzX2NsZWFuXyh0LmhhbmRsZXIpOwogICAgYWN0dWFsQ291bnRzW2hhbmRsZXJdID0gKGFjdHVhbENvdW50c1toYW5kbGVyXSB8fCAwKSArIDE7CiAgfSk7CgogIGNvbnN0IG1pc3NpbmcgPSBbXTsKICBjb25zdCBleHRyYSA9IFtdOwoKICBPYmplY3Qua2V5cyhleHBlY3RlZENvdW50cykuZm9yRWFjaChmdW5jdGlvbihoYW5kbGVyKSB7CiAgICBjb25zdCBleHBlY3RlZCA9IGV4cGVjdGVkQ291bnRzW2hhbmRsZXJdOwogICAgY29uc3QgYWN0dWFsID0gYWN0dWFsQ291bnRzW2hhbmRsZXJdIHx8IDA7CiAgICBpZiAoYWN0dWFsIDwgZXhwZWN0ZWQpIHsKICAgICAgbWlzc2luZy5wdXNoKGhhbmRsZXIgKyAnICcgKyBhY3R1YWwgKyAnLycgKyBleHBlY3RlZCk7CiAgICB9IGVsc2UgaWYgKGFjdHVhbCA+IGV4cGVjdGVkKSB7CiAgICAgIGV4dHJhLnB1c2goaGFuZGxlciArICcgJyArIGFjdHVhbCArICcvJyArIGV4cGVjdGVkKTsKICAgIH0KICB9KTsKCiAgcmV0dXJuIHsKICAgIGluc3RhbGxlZDogaW5zdGFsbGVkLmxlbmd0aCwKICAgIG1pc3Npbmc6IG1pc3NpbmcsCiAgICBkdXBsaWNhdGVzOiBleHRyYSwKICAgIGVuYWJsZWQ6IE9iamVjdC5rZXlzKGFjdHVhbENvdW50cykuc29tZShmdW5jdGlvbihoYW5kbGVyKSB7CiAgICAgIHJldHVybiBleHBlY3RlZENvdW50c1toYW5kbGVyXSAhPT0gdW5kZWZpbmVkOwogICAgfSksCiAgICBleHBlY3RlZENvdW50OiAxNywKICAgIG1hbnVhbFdyaXRlc0VuYWJsZWQ6ICEhKFRNVjMuT1BFUkFUSU9OUyAmJiBUTVYzLk9QRVJBVElPTlMubWFudWFsV3JpdGVzRW5hYmxlZCksCiAgICBhdXRvbWF0aW9uV3JpdGVzRW5hYmxlZDogISEoVE1WMy5PUEVSQVRJT05TICYmIFRNVjMuT1BFUkFUSU9OUy5hdXRvbWF0aW9uV3JpdGVzRW5hYmxlZCkKICB9Owp9CgoiIiIKcGF0dGVybj1yZS5jb21waWxlKHInZnVuY3Rpb24gdG12M190cmlnZ2VySGVhbHRoX1woXCkgXHtbXHNcU10qP1xuXH1cblxuZnVuY3Rpb24gdG12M19tb3JuaW5nUmVhZGluZXNzXycsIHJlLk0pCm09cGF0dGVybi5zZWFyY2gobW9ybmluZykKaWYgbm90IG06CiAgICByYWlzZSBTeXN0ZW1FeGl0KCd0bXYzX3RyaWdnZXJIZWFsdGhfIGFuY2hvciBub3QgZm91bmQnKQptb3JuaW5nPW1vcm5pbmdbOm0uc3RhcnQoKV0rcmVwbGFjZW1lbnQrJ2Z1bmN0aW9uIHRtdjNfbW9ybmluZ1JlYWRpbmVzc18nK21vcm5pbmdbbS5lbmQoKTpdCm1vcm5pbmdfcGF0aC53cml0ZV90ZXh0KG1vcm5pbmcpCgptYW5pZmVzdF9wYXRoPXJvb3QvJ3JlbGVhc2UtY2FuZGlkYXRlcy90bXYzLWNsZWFuLWJvb3RzdHJhcC5qc29uJwptYW5pZmVzdD1qc29uLmxvYWRzKG1hbmlmZXN0X3BhdGgucmVhZF90ZXh0KCkpCm1hbmlmZXN0WydyZWxlYXNlJ109J1RNVjNfRkVBVFVSRV9QQVJJVFlfUjFfTUFOVUFMX0xJVkVfQVVUT19HQVRFRCcKbWFuaWZlc3RfcGF0aC53cml0ZV90ZXh0KGpzb24uZHVtcHMobWFuaWZlc3QsIGluZGVudD0yKSsnXG4nKQo=' | base64 -d > /tmp/tmv3_patch.py
+          python /tmp/tmv3_patch.py
           for f in apps-script/tmv3-clean/*.js; do
             node --check "$f"
           done
-
           grep -q "manualWritesEnabled: true" apps-script/tmv3-clean/00_Config.js
           grep -q "automationWritesEnabled: false" apps-script/tmv3-clean/00_Config.js
           grep -q "function tmv3_syncSelectedAppointment" apps-script/tmv3-clean/58_Operations.js
