@@ -192,6 +192,7 @@ function tmv3_upsertState_(records) {
     'Vertical','Event ID','Calendar ID','Customer ID','Location ID','Contact ID',
     'Order ID','Task ID','Source Fingerprint','Calendar Updated At','Last Verified At',
     'Engine Version','Classification Override','State','Next Action','Error Code',
+    'First Seen At','Last Seen At','Last State Change At','Resolved At',
     'First Detected At','Last Attempt At','Attempt Count',
     'Acknowledged By','Acknowledged At','Acknowledgement Note','Last Error Class'
   ];
@@ -230,6 +231,13 @@ function tmv3_upsertState_(records) {
         ? Number(prior['Attempt Count'] || 0) + 1
         : 0;
 
+    const priorState = tmv3_clean_(prior['State']);
+    const stateChanged = priorState !== tmv3_clean_(status);
+    const resolvedAt =
+      !unresolved && priorState && ['MATCHED','IGNORED'].indexOf(priorState.toUpperCase()) === -1
+        ? now
+        : (!unresolved ? (prior['Resolved At'] || '') : '');
+
     rowsByExactKey[exactKey] = {
       'Vertical': r.vertical,
       'Event ID': r.eventId,
@@ -247,6 +255,10 @@ function tmv3_upsertState_(records) {
       'State': status,
       'Next Action': r.nextAction || prior['Next Action'] || '',
       'Error Code': r.errorCode || '',
+      'First Seen At': prior['First Seen At'] || now,
+      'Last Seen At': now,
+      'Last State Change At': stateChanged ? now : (prior['Last State Change At'] || now),
+      'Resolved At': resolvedAt,
       'First Detected At': firstDetected,
       'Last Attempt At': now,
       'Attempt Count': attemptCount,
