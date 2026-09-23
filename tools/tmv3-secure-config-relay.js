@@ -565,12 +565,24 @@ async function main() {
       relay.targetStatus !== 'IMPORTED' ||
       Number(relay.targetKeyCount) !== APPROVED_KEYS.length
     ) {
-      const missing = Array.isArray(relay.targetMissing)
-        ? relay.targetMissing.join(', ')
-        : '';
+      const sourceMissing = Array.isArray(relay.missing) ? relay.missing : [];
+      const targetMissing = Array.isArray(relay.targetMissing) ? relay.targetMissing : [];
+      const safeFailure = {
+        status: relay.status || 'UNKNOWN',
+        targetStatus: relay.targetStatus || 'UNKNOWN',
+        sourceMissing: sourceMissing,
+        targetMissing: targetMissing
+      };
+
+      fs.writeFileSync(
+        path.join(outDir, 'failure-evidence.json'),
+        JSON.stringify(safeFailure, null, 2)
+      );
+
       fail(
-        'Config relay failed' +
-        (missing ? '; missing keys: ' + missing : '.')
+        'Config relay failed; status=' + safeFailure.status +
+        (sourceMissing.length ? '; source missing=' + sourceMissing.join(',') : '') +
+        (targetMissing.length ? '; target missing=' + targetMissing.join(',') : '')
       );
     }
 
