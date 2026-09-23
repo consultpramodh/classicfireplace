@@ -972,3 +972,97 @@ function tmv3_normalizeV2TaskModel_(raw) {
 
   return row;
 }
+
+
+function tmv3_employeeDirectory_() {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'TMV3_EMPLOYEE_DIRECTORY';
+  const cached = cache.get(cacheKey);
+
+  if (cached) {
+    try { return JSON.parse(cached); } catch (ignored) {}
+  }
+
+  const json = tmv3_fetchJson_(
+    TMV3.API_BASE + '/v1/employees',
+    { method: 'get' }
+  );
+
+  const rows = Array.isArray(json)
+    ? json
+    : (
+        (json && (json.Data || json.data || json.Items || json.items)) ||
+        []
+      );
+
+  const employees = rows.map(function(row) {
+    return {
+      id: Number(
+        row.Id ||
+        row.id ||
+        row.EmployeeId ||
+        row.employeeId ||
+        0
+      ),
+      name: tmv3_clean_(
+        row.Name ||
+        row.name ||
+        row.EmployeeName ||
+        row.employeeName
+      ),
+      email: tmv3_normEmail_(
+        row.Email ||
+        row.email ||
+        row.EmailAddress ||
+        row.emailAddress
+      )
+    };
+  }).filter(function(employee) {
+    return employee.id > 0 && employee.email;
+  });
+
+  try {
+    cache.put(cacheKey, JSON.stringify(employees), 21600);
+  } catch (ignored) {}
+
+  return employees;
+}
+
+function tmv3_resolveOrganizerEmployee_(eventRecord) {
+  const emails = tmv3_extractEmails_(eventRecord && eventRecord.organizer);
+
+  if (emails.length !== 1) {
+    return {
+      status: 'REVIEW',
+      errorCode: 'ORGANIZER_EMAIL_NOT_UNIQUE',
+      reason:
+        'Expected exactly one Calendar organizer email; found ' +
+        emails.length +
+        '.'
+    };
+  }
+
+  const organizerEmail = emails[0];
+  const matches = tmv3_employeeDirectory_().filter(function(employee) {
+    return employee.email === organizerEmail;
+  });
+
+  if (matches.length !== 1) {
+    return {
+      status: 'REVIEW',
+      errorCode: 'ORGANIZER_EMPLOYEE_NOT_UNIQUE',
+      reason:
+        'Calendar organizer ' +
+        organizerEmail +
+        ' resolved to ' +
+        matches.length +
+        ' Striven Employees.'
+    };
+  }
+
+  return {
+    status: 'MATCHED',
+    employee: matches[0],
+    evidence: 'CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE'
+  };
+}
