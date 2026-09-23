@@ -34,6 +34,12 @@ jobs:
       - name: Validate shadow runner
         run: node --check tools/tmv3-shadow-run.js
 
+      - name: Determine shadow run mode
+        shell: bash
+        run: |
+          MODE="$(node -e "const m=require('./release-candidates/tmv3-shadow-run.json'); process.stdout.write(String(m.runMode||'FULL'))")"
+          echo "TMV3_SHADOW_RUN_MODE=$MODE" >> "$GITHUB_ENV"
+
       - name: Run guarded V3 shadow verification
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
