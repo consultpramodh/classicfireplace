@@ -212,7 +212,7 @@ try {
   let runtimeOutput = '';
   if (runtimeTestFunction) {
     console.log(`=== AUTOPATCH 9/10 runtime test ${runtimeTestFunction} ===`);
-    runtimeOutput = clasp(['run', runtimeTestFunction], repoRoot);
+    runtimeOutput = clasp(['run', runtimeTestFunction], workRoot);
     if (/Exception:|ScriptError|Execution failed|(^|[^A-Za-z])Error:/i.test(runtimeOutput)) {
       throw new Error(`runtime test reported an error: ${runtimeOutput.slice(0, 3000)}`);
     }
