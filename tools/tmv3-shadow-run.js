@@ -205,11 +205,20 @@ function doPost(e) {
       });
     }
 
-    if (body.action === 'shadow') {
-      var result = tmv3_shadowRun();
+    if (body.action === 'refreshSources') {
+      var sources = tmv3_refreshSources();
       return TMPV3_shadowResponse_({
         ok:true,
-        status:'SHADOW_RUN_COMPLETE',
+        status:'SOURCE_REFRESH_COMPLETE',
+        sources:sources
+      });
+    }
+
+    if (body.action === 'mapFromCache') {
+      var result = tmv3_shadowMapFromCache();
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'SHADOW_MAP_COMPLETE',
         version:result.version,
         mode:result.mode,
         events:result.events,
@@ -334,14 +343,26 @@ async function main() {
       );
     }
 
-    const shadow = await postJson(url, {
+    const refresh = await postJson(url, {
       token,
-      action:'shadow'
+      action:'refreshSources'
     });
 
-    if (!shadow.ok || shadow.status !== 'SHADOW_RUN_COMPLETE') {
+    if (!refresh.ok || refresh.status !== 'SOURCE_REFRESH_COMPLETE') {
       fail(
-        'V3 shadow run failed: ' +
+        'V3 source refresh failed: ' +
+        (refresh.message || refresh.status || 'UNKNOWN')
+      );
+    }
+
+    const shadow = await postJson(url, {
+      token,
+      action:'mapFromCache'
+    });
+
+    if (!shadow.ok || shadow.status !== 'SHADOW_MAP_COMPLETE') {
+      fail(
+        'V3 shadow mapping failed: ' +
         (shadow.message || shadow.status || 'UNKNOWN')
       );
     }
@@ -355,9 +376,13 @@ async function main() {
       path.join(outDir, 'evidence.json'),
       JSON.stringify({
         status:'V3_SHADOW_RUN_VERIFIED',
+        stages:{
+          sourceRefresh:'PASS',
+          mapFromCache:'PASS'
+        },
         events:shadow.events,
         counts:shadow.counts,
-        sources:shadow.sources,
+        sources:refresh.sources,
         regression:shadow.regression,
         morningOps:shadow.morningOps,
         sourceHeadHashVerified:true,
@@ -368,6 +393,7 @@ async function main() {
 
     console.log('V3_SHADOW_RUN_VERIFIED');
     console.log(JSON.stringify({
+      sources:refresh.sources,
       events:shadow.events,
       counts:shadow.counts,
       regression:shadow.regression,
