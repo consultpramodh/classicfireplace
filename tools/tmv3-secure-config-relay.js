@@ -13,7 +13,6 @@ const APPROVED_KEYS = [
   'CLIENT_SECRET',
   'Striven_Customers_ReportAPI',
   'Striven_CustomerLocations_ReportAPI',
-  'Striven_Contacts_ReportAPI',
   'Striven_ApprovedSalesOrders_ReportAPI',
   'Striven_DeliveryApprovedOrders_ReportAPI',
   'Striven_InstallTasks_ReportAPI',
@@ -363,9 +362,6 @@ function doPost(e) {
       Striven_CustomerLocations_ReportAPI:first([
         'Striven_CustomerLocations_ReportAPI'
       ]),
-      Striven_Contacts_ReportAPI:first([
-        'Striven_Contacts_ReportAPI'
-      ]),
       Striven_ApprovedSalesOrders_ReportAPI:first([
         'Striven_ApprovedSalesOrders_ReportAPI',
         'Striven_CF_Approved_Sales_Orders_ReportAPI'
@@ -382,12 +378,22 @@ function doPost(e) {
       Striven_DeliveryTasks_ReportAPI:first([
         'Striven_DeliveryTasks_ReportAPI'
       ]),
-      Striven_ServiceTasks_ReportAPI:first([
-        'Striven_ServiceTasks_ReportAPI'
-      ]),
-      Striven_ServiceWorkOrders_ReportAPI:first([
-        'Striven_ServiceWorkOrders_ReportAPI'
-      ])
+      Striven_ServiceTasks_ReportAPI:
+        first(['Striven_ServiceTasks_ReportAPI']) ||
+        (
+          typeof SERVICE_TASKS !== 'undefined' &&
+          SERVICE_TASKS.REPORTS
+            ? String(SERVICE_TASKS.REPORTS.SERVICE_TASKS_URL || '')
+            : ''
+        ),
+      Striven_ServiceWorkOrders_ReportAPI:
+        first(['Striven_ServiceWorkOrders_ReportAPI']) ||
+        (
+          typeof SERVICE_TASKS !== 'undefined' &&
+          SERVICE_TASKS.REPORTS
+            ? String(SERVICE_TASKS.REPORTS.SERVICE_WORK_ORDERS_URL || '')
+            : ''
+        )
     };
 
     var missing = Object.keys(config).filter(function(key) {
