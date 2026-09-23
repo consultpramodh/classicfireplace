@@ -1,3 +1,22 @@
+var TMV3_RUNTIME_METRICS = {
+  strivenApiCalls: 0,
+  strivenApiFailures: 0
+};
+
+function tmv3_resetRuntimeMetrics_() {
+  TMV3_RUNTIME_METRICS = {
+    strivenApiCalls: 0,
+    strivenApiFailures: 0
+  };
+}
+
+function tmv3_runtimeMetrics_() {
+  return {
+    strivenApiCalls: Number(TMV3_RUNTIME_METRICS.strivenApiCalls || 0),
+    strivenApiFailures: Number(TMV3_RUNTIME_METRICS.strivenApiFailures || 0)
+  };
+}
+
 function tmv3_token_() {
   const cache = CacheService.getScriptCache();
   const cached = tmv3_clean_(cache.get('TMV3_STRIVEN_TOKEN'));
@@ -20,6 +39,9 @@ function tmv3_token_() {
 
   const code = response.getResponseCode();
   if (code < 200 || code >= 300) {
+    TMV3_RUNTIME_METRICS.strivenApiFailures =
+      Number(TMV3_RUNTIME_METRICS.strivenApiFailures || 0) + 1;
+
     throw new Error('Striven authentication failed HTTP ' + code + '.');
   }
 
@@ -40,6 +62,9 @@ function tmv3_token_() {
 }
 
 function tmv3_fetchJson_(url, options) {
+  TMV3_RUNTIME_METRICS.strivenApiCalls =
+    Number(TMV3_RUNTIME_METRICS.strivenApiCalls || 0) + 1;
+
   const opts = options || {};
   opts.muteHttpExceptions = true;
   opts.headers = Object.assign({
@@ -112,6 +137,7 @@ function tmv3_extractReportRows_(json) {
 
 function tmv3_refreshSources() {
   tmv3_assertShadow_();
+  tmv3_resetRuntimeMetrics_();
 
   const customers =
     tmv3_reportRows_(TMV3.PROPERTIES.CUSTOMERS)
@@ -286,7 +312,9 @@ function tmv3_refreshSources() {
       '; Orders ' +
       orders.length +
       '; Tasks ' +
-      tasks.length
+      tasks.length +
+      '; API ' +
+      JSON.stringify(tmv3_runtimeMetrics_())
   );
 
   return {
@@ -294,7 +322,8 @@ function tmv3_refreshSources() {
     locations: locations.length,
     contacts: contacts.length,
     orders: orders.length,
-    tasks: tasks.length
+    tasks: tasks.length,
+    api: tmv3_runtimeMetrics_()
   };
 }
 
