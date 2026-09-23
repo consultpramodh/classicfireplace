@@ -128,6 +128,10 @@ function tmv3_replaceRows_(sheetName, headers, rows) {
     sh.insertRowsAfter(sh.getMaxRows(), needed - sh.getMaxRows());
   }
 
+  if (sh.getMaxColumns() < width) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), width - sh.getMaxColumns());
+  }
+
   sh.clearContents();
   sh.getRange(1, 1, 1, width).setValues([headers]);
 
