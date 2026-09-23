@@ -1,9 +1,12 @@
 {
-  "schemaVersion": 1,
-  "release": "TM2_SHADOW_R0_2_ONE_CLICK_TEST_SUITE",
+  "schemaVersion": 2,
+  "release": "TMV3_SHADOW_BOOTSTRAP_R1",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-  "sourceDirectory": "apps-script/tm2-shadow",
-  "expectedLegacyNonTm2Count": 36,
+  "sourceDirectory": "apps-script/tmv3-shadow",
+  "candidateFilePrefix": "TMV3_",
+  "candidateFunctionPrefix": "tmv3_",
   "claspVersion": "3.3.0",
-  "mode": "SHADOW_READ_ONLY"
+  "mode": "SHADOW_READ_ONLY",
+  "runtimeTestFunction": "tmv3_testSuite",
+  "targetSpreadsheetId": "1AVVcBwGAVRIbvT0xx1tp4UJ92VIjfCRyWzqTRh8VWfI"
 }
