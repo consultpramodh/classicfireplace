@@ -1,7 +1,18 @@
 function onOpen() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const morning = ss.getSheetByName(TMV3.SHEETS.MORNING);
+
+  if (morning) {
+    ss.setActiveSheet(morning);
+  }
+
   SpreadsheetApp.getUi().createMenu('Task Mapping V3')
-    .addItem('Run Shadow Refresh', 'tmv3_shadowRun')
+    .addItem('Refresh Morning Ops', 'tmv3_refreshMorningOps')
+    .addItem('Run Full Shadow Verification', 'tmv3_shadowRun')
     .addItem('Health Check', 'tmv3_healthCheck')
+    .addSeparator()
+    .addItem('Acknowledge Selected Exception', 'tmv3_acknowledgeSelectedMorningOps')
+    .addItem('Clear Selected Acknowledgement', 'tmv3_clearAcknowledgementSelectedMorningOps')
     .addSeparator()
     .addItem('Install Managed Triggers', 'tmv3_installTriggers')
     .addItem('Remove Managed Triggers', 'tmv3_removeTriggers')
