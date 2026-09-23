@@ -1,2 +1,4 @@
 CAPTURE_PREINSPECT_CURRENT_LIVE_SOURCE_20260917_SELECTION_GATE_R2
 Persist current live 35_PreInspect_Task_Review.js before Stephen candidate selection change. No Apps Script push.
+
+Capture live manifest/runtime evidence for Michael Bieley execution diagnostic 2026-09-23.
