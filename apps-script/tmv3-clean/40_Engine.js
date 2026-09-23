@@ -370,7 +370,7 @@ function tmv3_resolveEvent_(
   }
 
   let order = null;
-  const evidence = [];
+  let evidence = [];
 
   if (cfg.orderRequired) {
     const orderCandidates =
