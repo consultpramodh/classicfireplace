@@ -14,14 +14,17 @@ const repoRoot = process.cwd();
 const manifest = JSON.parse(fs.readFileSync(path.resolve(repoRoot, manifestPath), 'utf8'));
 const scriptId = String(manifest.scriptId || '').trim();
 const sourceDir = path.resolve(repoRoot, manifest.sourceDirectory || '');
-const expectedLegacyNonTm2Count = Number(manifest.expectedLegacyNonTm2Count || 0);
 const claspVersion = String(manifest.claspVersion || '3.3.0');
+const candidateFilePrefix = String(manifest.candidateFilePrefix || 'TM2_');
+const candidateFunctionPrefix = String(manifest.candidateFunctionPrefix || 'tm2_');
+const runtimeTestFunction = String(manifest.runtimeTestFunction || '').trim();
 const shadowOnly = manifest.mode === 'SHADOW_READ_ONLY';
 
 if (!scriptId) throw new Error('release manifest missing scriptId');
 if (!fs.existsSync(sourceDir)) throw new Error(`candidate source directory missing: ${sourceDir}`);
-if (!expectedLegacyNonTm2Count) throw new Error('release manifest missing expectedLegacyNonTm2Count');
-if (!shadowOnly) throw new Error('initial CI autopatch only permits SHADOW_READ_ONLY releases');
+if (!candidateFilePrefix) throw new Error('release manifest missing candidateFilePrefix');
+if (!candidateFunctionPrefix) throw new Error('release manifest missing candidateFunctionPrefix');
+if (!shadowOnly) throw new Error('guarded CI autopatch currently permits SHADOW_READ_ONLY releases only');
 
 function run(command, args, cwd, env) {
   const r = cp.spawnSync(command, args, {
@@ -33,7 +36,7 @@ function run(command, args, cwd, env) {
   process.stdout.write(r.stdout || '');
   process.stderr.write(r.stderr || '');
   if (r.status !== 0) throw new Error(`${command} ${args.join(' ')} failed with exit ${r.status}`);
-  return r.stdout || '';
+  return (r.stdout || '') + (r.stderr || '');
 }
 
 function clasp(args, cwd) {
@@ -67,9 +70,15 @@ function assertHashes(expected, actual, names, label) {
   if (issues.length) throw new Error(`${label}:\n${issues.join('\n')}`);
 }
 
+function assertSameNames(expected, actual, label) {
+  if (JSON.stringify([...expected].sort()) !== JSON.stringify([...actual].sort())) {
+    throw new Error(`${label}: file set differs`);
+  }
+}
+
 function extractFunctions(text) {
   const out = [];
-  const rx = /\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g;
+  const rx = /^\s*function\s+([A-Za-z_$][\w$]*)\s*\(/gm;
   let m;
   while ((m = rx.exec(text))) out.push(m[1]);
   return out;
@@ -79,10 +88,15 @@ function copyDir(src, dest) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
-const candidateNames = listFiles(sourceDir).filter(n => /^TM2_.*\.js$/i.test(n));
-if (!candidateNames.length) throw new Error('no TM2_*.js candidates found');
-if (candidateNames.length !== listFiles(sourceDir).length) {
-  throw new Error('candidate directory may contain only TM2_*.js files');
+function isCandidate(name) {
+  return name.startsWith(candidateFilePrefix) && /\.js$/i.test(name);
+}
+
+const sourceNames = listFiles(sourceDir);
+const candidateNames = sourceNames.filter(isCandidate);
+if (!candidateNames.length) throw new Error(`no ${candidateFilePrefix}*.js candidates found`);
+if (candidateNames.length !== sourceNames.length) {
+  throw new Error(`candidate directory may contain only ${candidateFilePrefix}*.js files`);
 }
 
 const candidateFunctionOwners = new Map();
@@ -90,18 +104,22 @@ let candidateText = '';
 for (const name of candidateNames) {
   const file = path.join(sourceDir, name);
   run(process.execPath, ['--check', file], repoRoot);
-  const text = fs.readFileSync(file, 'utf8');
-  candidateText += `\n${text}`;
-  for (const fn of extractFunctions(text)) {
-    if (!fn.startsWith('tm2_')) throw new Error(`${name}: function ${fn} must start with tm2_`);
-    if (candidateFunctionOwners.has(fn)) throw new Error(`duplicate TM2 function ${fn} in ${name} and ${candidateFunctionOwners.get(fn)}`);
+  const fileText = fs.readFileSync(file, 'utf8');
+  candidateText += `\n${fileText}`;
+  for (const fn of extractFunctions(fileText)) {
+    if (!fn.startsWith(candidateFunctionPrefix)) {
+      throw new Error(`${name}: function ${fn} must start with ${candidateFunctionPrefix}`);
+    }
+    if (candidateFunctionOwners.has(fn)) {
+      throw new Error(`duplicate candidate function ${fn} in ${name} and ${candidateFunctionOwners.get(fn)}`);
+    }
     candidateFunctionOwners.set(fn, name);
   }
 }
 
 if (!/SHADOW_READ_ONLY/.test(candidateText)) throw new Error('SHADOW_READ_ONLY marker missing');
-if (/ScriptApp\.newTrigger\s*\(/.test(candidateText)) throw new Error('trigger creation is prohibited in initial shadow candidate');
-if (/\.setDescription\s*\(/.test(candidateText)) throw new Error('Calendar description mutation is prohibited in initial shadow candidate');
+if (/ScriptApp\.newTrigger\s*\(/.test(candidateText)) throw new Error('trigger creation is prohibited in shadow candidate');
+if (/\.setDescription\s*\(/.test(candidateText)) throw new Error('Calendar description mutation is prohibited in shadow candidate');
 if (/UrlFetchApp\.fetch\s*\(/.test(candidateText)) throw new Error('direct network calls are prohibited in initial shadow candidate');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'task-mapping-autopatch-'));
@@ -117,95 +135,112 @@ const evidencePath = path.join(evidenceDir, 'evidence.json');
 const preArchiveDir = path.join(evidenceDir, 'PRE_SOURCE');
 
 const evidence = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   release: manifest.release || 'UNNAMED',
   mode: manifest.mode,
   scriptId,
+  sourceDirectory: manifest.sourceDirectory,
+  candidateFilePrefix,
+  candidateFunctionPrefix,
+  runtimeTestFunction: runtimeTestFunction || null,
+  targetSpreadsheetId: manifest.targetSpreadsheetId || null,
   startedAt: new Date().toISOString(),
   claspVersion,
   candidateFiles: candidateNames,
-  expectedLegacyNonTm2Count,
   status: 'STARTED'
 };
 
 let pushed = false;
 try {
-  console.log('=== AUTOPATCH 1/9 authorize ===');
+  console.log('=== AUTOPATCH 1/10 authorize ===');
   clasp(['show-authorized-user', '--json'], repoRoot);
 
-  console.log('=== AUTOPATCH 2/9 fresh PRE clone ===');
+  console.log('=== AUTOPATCH 2/10 fresh PRE clone ===');
   clasp(['clone', scriptId, '--rootDir', 'src'], preRoot);
   const preSrc = path.join(preRoot, 'src');
   const preNames = listFiles(preSrc);
-  const legacyNames = preNames.filter(n => !/^TM2_/i.test(n));
-  if (legacyNames.length !== expectedLegacyNonTm2Count) {
-    throw new Error(`expected ${expectedLegacyNonTm2Count} non-TM2 legacy files, found ${legacyNames.length}`);
-  }
-  const preLegacyHashes = hashMap(preSrc, legacyNames);
+  const preHashes = hashMap(preSrc, preNames);
+  const preservedNames = preNames.filter(n => !isCandidate(n));
+  const preservedHashes = hashMap(preSrc, preservedNames);
 
   for (const [fn] of candidateFunctionOwners) {
-    for (const legacyName of legacyNames) {
-      const legacyText = fs.readFileSync(path.join(preSrc, legacyName), 'utf8');
-      if (extractFunctions(legacyText).includes(fn)) {
-        throw new Error(`global collision: candidate ${fn} already exists in legacy file ${legacyName}`);
+    for (const preservedName of preservedNames) {
+      const preservedText = fs.readFileSync(path.join(preSrc, preservedName), 'utf8');
+      if (extractFunctions(preservedText).includes(fn)) {
+        throw new Error(`global collision: candidate ${fn} already exists in preserved file ${preservedName}`);
       }
     }
   }
 
-  console.log('=== AUTOPATCH 3/9 preserve PRE evidence ===');
+  console.log('=== AUTOPATCH 3/10 preserve PRE evidence ===');
   copyDir(preRoot, preArchiveDir);
 
-  console.log('=== AUTOPATCH 4/9 build WORK from PRE ===');
+  console.log('=== AUTOPATCH 4/10 build WORK from PRE ===');
   copyDir(preRoot, workRoot);
   const workSrc = path.join(workRoot, 'src');
+  for (const name of listFiles(workSrc).filter(isCandidate)) {
+    fs.unlinkSync(path.join(workSrc, name));
+  }
   for (const name of candidateNames) {
     fs.copyFileSync(path.join(sourceDir, name), path.join(workSrc, name));
   }
-  assertHashes(preLegacyHashes, hashMap(workSrc, legacyNames), legacyNames, 'pre-push legacy preservation');
+  assertHashes(preservedHashes, hashMap(workSrc, preservedNames), preservedNames, 'pre-push preserved source');
 
-  console.log('=== AUTOPATCH 5/9 freshness clone immediately before push ===');
+  console.log('=== AUTOPATCH 5/10 freshness clone immediately before push ===');
   clasp(['clone', scriptId, '--rootDir', 'src'], freshRoot);
   const freshSrc = path.join(freshRoot, 'src');
   const freshNames = listFiles(freshSrc);
-  const freshLegacyNames = freshNames.filter(n => !/^TM2_/i.test(n));
-  if (freshLegacyNames.length !== legacyNames.length) throw new Error('freshness guard: legacy file count changed');
-  assertHashes(preLegacyHashes, hashMap(freshSrc, legacyNames), legacyNames, 'freshness guard');
+  assertSameNames(preNames, freshNames, 'freshness guard');
+  assertHashes(preHashes, hashMap(freshSrc, freshNames), preNames, 'freshness guard');
 
-  console.log('=== AUTOPATCH 6/9 push guarded candidate ===');
+  console.log('=== AUTOPATCH 6/10 push guarded candidate ===');
   clasp(['push', '--force'], workRoot);
   pushed = true;
 
-  console.log('=== AUTOPATCH 7/9 POST clone ===');
+  console.log('=== AUTOPATCH 7/10 POST clone ===');
   clasp(['clone', scriptId, '--rootDir', 'src'], postRoot);
   const postSrc = path.join(postRoot, 'src');
   const postNames = listFiles(postSrc);
-  const postHashes = hashMap(postSrc, postNames);
-  assertHashes(preLegacyHashes, postHashes, legacyNames, 'POST legacy preservation');
   const candidateHashes = hashMap(sourceDir, candidateNames);
-  assertHashes(candidateHashes, postHashes, candidateNames, 'POST candidate verification');
+  assertHashes(preservedHashes, hashMap(postSrc, preservedNames), preservedNames, 'POST preserved source');
+  assertHashes(candidateHashes, hashMap(postSrc, candidateNames), candidateNames, 'POST candidate verification');
 
-  console.log('=== AUTOPATCH 8/9 verify no unexpected legacy changes ===');
-  const postLegacyNames = postNames.filter(n => !/^TM2_/i.test(n));
-  if (JSON.stringify(postLegacyNames) !== JSON.stringify(legacyNames)) {
-    throw new Error('POST legacy file set differs from PRE');
+  console.log('=== AUTOPATCH 8/10 verify exact POST file set ===');
+  const expectedPostNames = [...preservedNames, ...candidateNames].sort();
+  assertSameNames(expectedPostNames, postNames, 'POST verification');
+
+  let runtimeOutput = '';
+  if (runtimeTestFunction) {
+    console.log(`=== AUTOPATCH 9/10 runtime test ${runtimeTestFunction} ===`);
+    runtimeOutput = clasp(['run', runtimeTestFunction], repoRoot);
+    if (/Exception:|ScriptError|Execution failed|(^|[^A-Za-z])Error:/i.test(runtimeOutput)) {
+      throw new Error(`runtime test reported an error: ${runtimeOutput.slice(0, 3000)}`);
+    }
+    evidence.runtimeTest = {
+      functionName: runtimeTestFunction,
+      status: 'PASS',
+      outputPreview: runtimeOutput.slice(0, 4000)
+    };
+  } else {
+    console.log('=== AUTOPATCH 9/10 runtime test skipped ===');
+    evidence.runtimeTest = { status: 'NOT_CONFIGURED' };
   }
 
-  evidence.status = 'DEPLOYED_SHADOW_SOURCE_VERIFIED';
+  evidence.status = 'DEPLOYED_SHADOW_SOURCE_AND_RUNTIME_VERIFIED';
   evidence.completedAt = new Date().toISOString();
   evidence.preFileCount = preNames.length;
   evidence.postFileCount = postNames.length;
-  evidence.legacyFileCount = legacyNames.length;
-  evidence.tm2CandidateFileCount = candidateNames.length;
-  evidence.remoteRuntimeTests = 'NOT_CONFIGURED';
+  evidence.preservedFileCount = preservedNames.length;
+  evidence.candidateFileCount = candidateNames.length;
   fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2));
-  console.log('=== AUTOPATCH 9/9 complete ===');
-  console.log('DEPLOYED_SHADOW_SOURCE_VERIFIED');
+  console.log('=== AUTOPATCH 10/10 complete ===');
+  console.log('DEPLOYED_SHADOW_SOURCE_AND_RUNTIME_VERIFIED');
 } catch (err) {
   evidence.status = 'FAILED';
   evidence.failedAt = new Date().toISOString();
   evidence.error = String(err && err.stack || err);
   if (pushed) {
-    console.error('POST verification failed after push; attempting automatic rollback to PRE source...');
+    console.error('Verification failed after push; attempting automatic rollback to PRE source...');
     try {
       clasp(['push', '--force'], preRoot);
       evidence.rollback = 'ROLLBACK_PUSH_COMPLETED';
