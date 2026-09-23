@@ -206,8 +206,8 @@ function tmv3_morningExceptionRecord_(vertical, row, state) {
     priority: priority,
     rank: rank,
     vertical: vertical,
-    date: tmv3_clean_(row['Date']),
-    time: tmv3_clean_(row['Time']),
+    date: tmv3_morningDateValue_(row['Date']),
+    time: tmv3_morningTimeValue_(row['Time']),
     appointment: tmv3_clean_(row['Calendar Title']),
     customer: tmv3_clean_(row['Customer']),
     task: tmv3_clean_(row['Task']),
@@ -228,6 +228,20 @@ function tmv3_morningExceptionRecord_(vertical, row, state) {
     source: vertical,
     operatorRow: Number(row.__operatorRow || 0)
   };
+}
+
+function tmv3_morningDateValue_(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return tmv3_date_(value);
+  }
+  return tmv3_clean_(value);
+}
+
+function tmv3_morningTimeValue_(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return tmv3_time_(value);
+  }
+  return tmv3_clean_(value);
 }
 
 function tmv3_morningExceptionSort_(a, b) {
