@@ -5,7 +5,7 @@ on:
     branches:
       - task_mapping
     paths:
-      - 'ops/tmv3-parity-payload.json'
+      - 'ops/tmv3-parity-chunks/trigger.txt'
   workflow_dispatch:
 
 permissions:
@@ -28,18 +28,28 @@ jobs:
         with:
           node-version: 20
 
-      - name: Apply V3 feature parity source
+      - name: Reconstruct and validate V3 feature parity source
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' 'aW1wb3J0IGJhc2U2NCwgZ3ppcCwganNvbiwgcGF0aGxpYiwgcmUKcm9vdD1wYXRobGliLlBhdGgoJy4nKQpwYXlsb2FkPWpzb24ubG9hZHMoKHJvb3QvJ29wcy90bXYzLXBhcml0eS1wYXlsb2FkLmpzb24nKS5yZWFkX3RleHQoKSkKc3JjPXJvb3QvJ2FwcHMtc2NyaXB0L3RtdjMtY2xlYW4nCmZvciBuYW1lIGluICgnNThfT3BlcmF0aW9ucy5qcycsJzYwX0F1dG9tYXRpb24uanMnKToKICAgIChzcmMvbmFtZSkud3JpdGVfYnl0ZXMoZ3ppcC5kZWNvbXByZXNzKGJhc2U2NC5iNjRkZWNvZGUocGF5bG9hZFtuYW1lXSkpKQpjb25maWc9KHNyYy8nMDBfQ29uZmlnLmpzJykucmVhZF90ZXh0KCkKY29uZmlnPXJlLnN1YihyImNvbnN0IFRNVjNfVkVSU0lPTiA9ICdbXiddKyc7IiwgImNvbnN0IFRNVjNfVkVSU0lPTiA9ICczLjEuMC1wYXJpdHktcjEtbWFudWFsLWxpdmUtYXV0by1nYXRlZCc7IiwgY29uZmlnLCBjb3VudD0xKQppZiAnT1BFUkFUSU9OUzogT2JqZWN0LmZyZWV6ZSh7JyBub3QgaW4gY29uZmlnOgogICAgY29uZmlnPWNvbmZpZy5yZXBsYWNlKAogICAgICAgICIgIE1BWF9QQUdFUzogNTAsXG4iLAogICAgICAgICIgIE1BWF9QQUdFUzogNTAsXG4iCiAgICAgICAgIiAgT1BFUkFUSU9OUzogT2JqZWN0LmZyZWV6ZSh7XG4iCiAgICAgICAgIiAgICBtYW51YWxXcml0ZXNFbmFibGVkOiB0cnVlLFxuIgogICAgICAgICIgICAgYXV0b21hdGlvbldyaXRlc0VuYWJsZWQ6IGZhbHNlLFxuIgogICAgICAgICIgICAgYXV0b01heFdyaXRlc1BlclJ1bjogMTAsXG4iCiAgICAgICAgIiAgICBpbnN0YWxsUmVtaW5kZXJzRW5hYmxlZDogdHJ1ZVxuIgogICAgICAgICIgIH0pLFxuIgogICAgKQpjb25maWc9Y29uZmlnLnJlcGxhY2UoImZpZWxkODU0UG9saWN5OiAnTk9fV1JJVEUnIiwgImZpZWxkODU0UG9saWN5OiAnTUFOQUdFRF9XUklURV9QUkVTRVJWRV9PVEhFUl9GSUVMRFMnIikKKHNyYy8nMDBfQ29uZmlnLmpzJykud3JpdGVfdGV4dChjb25maWcpCgptb3JuaW5nX3BhdGg9c3JjLyc4MF9Nb3JuaW5nT3BzLmpzJwptb3JuaW5nPW1vcm5pbmdfcGF0aC5yZWFkX3RleHQoKQpyZXBsYWNlbWVudD0iIiJmdW5jdGlvbiB0bXYzX3RyaWdnZXJIZWFsdGhfKCkgewogIGNvbnN0IGluc3RhbGxlZCA9IHRtdjNfbGlzdFRyaWdnZXJzKCk7CgogIGNvbnN0IGV4cGVjdGVkQ291bnRzID0gewogICAgdG12M19kYWlseVNvdXJjZVJlZnJlc2g6IDEsCiAgICB0bXYzX3NjaGVkdWxlZE9wZXJhdGlvbnM6IDUsCiAgICB0bXYzX3JlZnJlc2hMaW5rc1Nsb3RfMDgwMDogMSwKICAgIHRtdjNfcmVmcmVzaExpbmtzU2xvdF8xMDAwOiAxLAogICAgdG12M19yZWZyZXNoTGlua3NTbG90XzEyMDA6IDEsCiAgICB0bXYzX3JlZnJlc2hMaW5rc1Nsb3RfMTQwMDogMSwKICAgIHRtdjNfcmVmcmVzaExpbmtzU2xvdF8xNjAwOiAxLAogICAgdG12M19yZWZyZXNoTGlua3NTbG90XzE4MDA6IDEsCiAgICB0bXYzX2luc3RhbGxSZW1pbmRlckNoZWNrOiAxLAogICAgdG12M19jYWxlbmRhckV2ZW50VXBkYXRlZDogNAogIH07CgogIGNvbnN0IGFjdHVhbENvdW50cyA9IHt9OwogIGluc3RhbGxlZC5mb3JFYWNoKGZ1bmN0aW9uKHQpIHsKICAgIGNvbnN0IGhhbmRsZXIgPSB0bXYzX2NsZWFuXyh0LmhhbmRsZXIpOwogICAgYWN0dWFsQ291bnRzW2hhbmRsZXJdID0gKGFjdHVhbENvdW50c1toYW5kbGVyXSB8fCAwKSArIDE7CiAgfSk7CgogIGNvbnN0IG1pc3NpbmcgPSBbXTsKICBjb25zdCBleHRyYSA9IFtdOwoKICBPYmplY3Qua2V5cyhleHBlY3RlZENvdW50cykuZm9yRWFjaChmdW5jdGlvbihoYW5kbGVyKSB7CiAgICBjb25zdCBleHBlY3RlZCA9IGV4cGVjdGVkQ291bnRzW2hhbmRsZXJdOwogICAgY29uc3QgYWN0dWFsID0gYWN0dWFsQ291bnRzW2hhbmRsZXJdIHx8IDA7CiAgICBpZiAoYWN0dWFsIDwgZXhwZWN0ZWQpIHsKICAgICAgbWlzc2luZy5wdXNoKGhhbmRsZXIgKyAnICcgKyBhY3R1YWwgKyAnLycgKyBleHBlY3RlZCk7CiAgICB9IGVsc2UgaWYgKGFjdHVhbCA+IGV4cGVjdGVkKSB7CiAgICAgIGV4dHJhLnB1c2goaGFuZGxlciArICcgJyArIGFjdHVhbCArICcvJyArIGV4cGVjdGVkKTsKICAgIH0KICB9KTsKCiAgcmV0dXJuIHsKICAgIGluc3RhbGxlZDogaW5zdGFsbGVkLmxlbmd0aCwKICAgIG1pc3Npbmc6IG1pc3NpbmcsCiAgICBkdXBsaWNhdGVzOiBleHRyYSwKICAgIGVuYWJsZWQ6IE9iamVjdC5rZXlzKGFjdHVhbENvdW50cykuc29tZShmdW5jdGlvbihoYW5kbGVyKSB7CiAgICAgIHJldHVybiBleHBlY3RlZENvdW50c1toYW5kbGVyXSAhPT0gdW5kZWZpbmVkOwogICAgfSksCiAgICBleHBlY3RlZENvdW50OiAxNywKICAgIG1hbnVhbFdyaXRlc0VuYWJsZWQ6ICEhKFRNVjMuT1BFUkFUSU9OUyAmJiBUTVYzLk9QRVJBVElPTlMubWFudWFsV3JpdGVzRW5hYmxlZCksCiAgICBhdXRvbWF0aW9uV3JpdGVzRW5hYmxlZDogISEoVE1WMy5PUEVSQVRJT05TICYmIFRNVjMuT1BFUkFUSU9OUy5hdXRvbWF0aW9uV3JpdGVzRW5hYmxlZCkKICB9Owp9CgoiIiIKcGF0dGVybj1yZS5jb21waWxlKHInZnVuY3Rpb24gdG12M190cmlnZ2VySGVhbHRoX1woXCkgXHtbXHNcU10qP1xuXH1cblxuZnVuY3Rpb24gdG12M19tb3JuaW5nUmVhZGluZXNzXycsIHJlLk0pCm09cGF0dGVybi5zZWFyY2gobW9ybmluZykKaWYgbm90IG06CiAgICByYWlzZSBTeXN0ZW1FeGl0KCd0bXYzX3RyaWdnZXJIZWFsdGhfIGFuY2hvciBub3QgZm91bmQnKQptb3JuaW5nPW1vcm5pbmdbOm0uc3RhcnQoKV0rcmVwbGFjZW1lbnQrJ2Z1bmN0aW9uIHRtdjNfbW9ybmluZ1JlYWRpbmVzc18nK21vcm5pbmdbbS5lbmQoKTpdCm1vcm5pbmdfcGF0aC53cml0ZV90ZXh0KG1vcm5pbmcpCgptYW5pZmVzdF9wYXRoPXJvb3QvJ3JlbGVhc2UtY2FuZGlkYXRlcy90bXYzLWNsZWFuLWJvb3RzdHJhcC5qc29uJwptYW5pZmVzdD1qc29uLmxvYWRzKG1hbmlmZXN0X3BhdGgucmVhZF90ZXh0KCkpCm1hbmlmZXN0WydyZWxlYXNlJ109J1RNVjNfRkVBVFVSRV9QQVJJVFlfUjFfTUFOVUFMX0xJVkVfQVVUT19HQVRFRCcKbWFuaWZlc3RfcGF0aC53cml0ZV90ZXh0KGpzb24uZHVtcHMobWFuaWZlc3QsIGluZGVudD0yKSsnXG4nKQo=' | base64 -d > /tmp/tmv3_patch.py
-          python /tmp/tmv3_patch.py
+          cat ops/tmv3-parity-chunks/58_Operations.*.b64 | base64 -d | gzip -dc > apps-script/tmv3-clean/58_Operations.js
+          cat ops/tmv3-parity-chunks/60_Automation.*.b64 | base64 -d | gzip -dc > apps-script/tmv3-clean/60_Automation.js
+
+          echo "7cf539e8fc339592c4b6764fb53c692a001c8c2293c4bffc5a4c70b33dc8d6fc  apps-script/tmv3-clean/58_Operations.js" | sha256sum -c -
+          echo "a11f306f6384d2994803238710c210c82e1a8140f264dab1362b66151646b41b  apps-script/tmv3-clean/60_Automation.js" | sha256sum -c -
+
+          python ops/tmv3-parity-chunks/apply_patch.py
+
           for f in apps-script/tmv3-clean/*.js; do
             node --check "$f"
           done
+
           grep -q "manualWritesEnabled: true" apps-script/tmv3-clean/00_Config.js
           grep -q "automationWritesEnabled: false" apps-script/tmv3-clean/00_Config.js
+          grep -q "field854Policy: 'MANAGED_WRITE_PRESERVE_OTHER_FIELDS'" apps-script/tmv3-clean/00_Config.js
           grep -q "function tmv3_syncSelectedAppointment" apps-script/tmv3-clean/58_Operations.js
+          grep -q "function tmv3_createOrRecreateSelectedTask" apps-script/tmv3-clean/58_Operations.js
+          grep -q "function tmv3_sendInstallMissingSoRemindersNow" apps-script/tmv3-clean/58_Operations.js
           grep -q "Push Date / Time" apps-script/tmv3-clean/60_Automation.js
           grep -q "tmv3_calendarEventUpdated: 4" apps-script/tmv3-clean/80_MorningOps.js
 
