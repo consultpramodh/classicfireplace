@@ -1,11 +1,7 @@
 name: Task Mapping Standardization R1 Deployment Refresh
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - ops/task-mapping-standardization-r1-deployment-refresh-trigger.txt
+  workflow_dispatch:
 
 permissions:
   contents: read
