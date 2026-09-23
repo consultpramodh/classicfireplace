@@ -21,17 +21,75 @@ function onOpen() {
 
 function tmv3_installTriggers() {
   tmv3_removeTriggers();
-  ScriptApp.newTrigger('tmv3_scheduledShadow').timeBased().everyHours(2).create();
-  ScriptApp.newTrigger('tmv3_installReminderCheck').timeBased().everyDays(1).atHour(11).create();
+
+  // One heavy source refresh before the business day.
+  ScriptApp
+    .newTrigger('tmv3_dailySourceRefresh')
+    .timeBased()
+    .atHour(7)
+    .nearMinute(0)
+    .everyDays(1)
+    .create();
+
+  // Lightweight Calendar -> cached Striven mapping slots.
+  [8,11,13,15,17].forEach(function(hour) {
+    ScriptApp
+      .newTrigger('tmv3_scheduledShadow')
+      .timeBased()
+      .atHour(hour)
+      .nearMinute(30)
+      .everyDays(1)
+      .create();
+  });
+
+  // Install missing-SO operational reminder.
+  ScriptApp
+    .newTrigger('tmv3_installReminderCheck')
+    .timeBased()
+    .atHour(11)
+    .nearMinute(0)
+    .everyDays(1)
+    .create();
+
   return tmv3_listTriggers();
 }
 
 function tmv3_removeTriggers() {
-  const managed = ['tmv3_scheduledShadow', 'tmv3_installReminderCheck'];
+  const managed = [
+    'tmv3_scheduledShadow',
+    'tmv3_dailySourceRefresh',
+    'tmv3_installReminderCheck'
+  ];
+
   ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (managed.indexOf(t.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(t);
+    if (managed.indexOf(t.getHandlerFunction()) !== -1) {
+      ScriptApp.deleteTrigger(t);
+    }
   });
+
   return tmv3_listTriggers();
+}
+
+function tmv3_dailySourceRefresh() {
+  tmv3_assertShadow_();
+
+  const result = tmv3_refreshSources();
+
+  tmv3_audit_(
+    'SYSTEM',
+    '',
+    '',
+    'DAILY_SOURCE_REFRESH',
+    'PASS',
+    JSON.stringify(result)
+  );
+
+  tmv3_refreshMorningOps();
+  return result;
+}
+
+function tmv3_scheduledShadow() {
+  return tmv3_shadowMapFromCache();
 }
 
 function tmv3_listTriggers() {
@@ -40,9 +98,6 @@ function tmv3_listTriggers() {
   });
 }
 
-function tmv3_scheduledShadow() {
-  return tmv3_shadowRun();
-}
 
 function tmv3_installReminderCheck() {
   tmv3_assertShadow_();
