@@ -1,11 +1,7 @@
 name: Task Mapping AutoPatch
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - release-candidates/tm2-autopatch.json
+  workflow_dispatch:
 
 permissions:
   contents: read
