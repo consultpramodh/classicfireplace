@@ -1,0 +1,49 @@
+name: Task Mapping V3 Shadow Verification
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - 'release-candidates/tmv3-shadow-run.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout task_mapping
+        uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate shadow runner
+        run: node --check tools/tmv3-shadow-run.js
+
+      - name: Run guarded V3 shadow verification
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-shadow-run.js
+
+      - name: Preserve shadow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-shadow-run-${{ github.run_id }}
+          path: autopatch-output-v3-shadow/
+          if-no-files-found: warn
+          retention-days: 30
