@@ -47,6 +47,9 @@ function tmv3_shadowRun() {
       resolved.length
   );
 
+  const morningOps =
+    tmv3_refreshMorningOps();
+
   return {
     version:
       TMV3.VERSION,
@@ -61,7 +64,9 @@ function tmv3_shadowRun() {
         resolved
       ),
     regression:
-      regression
+      regression,
+    morningOps:
+      morningOps
   };
 }
 
