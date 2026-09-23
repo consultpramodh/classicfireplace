@@ -1243,8 +1243,12 @@ function tmv3_buildDataChecklist_(eventRecord, cfg, customer, location, order, c
   lines.push(customer && tmv3_clean_(customer['Customer ID']) ? '✅ Customer' : '❌ Customer');
 
   if (cfg && cfg.orderRequired) {
-    const orderLabel = eventRecord.vertical === 'Service' ? 'WO' : 'SO';
-    lines.push(order && tmv3_clean_(order['Order ID']) ? '✅ ' + orderLabel : '❌ ' + orderLabel);
+    if (eventRecord.vertical === 'Service') {
+      lines.push(eventRecord.orderNumber ? '✅ SO' : '❌ SO');
+      lines.push(order && tmv3_clean_(order['Order ID']) ? '✅ WO' : '⚪ WO');
+    } else {
+      lines.push(order && tmv3_clean_(order['Order ID']) ? '✅ SO' : '❌ SO');
+    }
   }
 
   lines.push(hasContact ? '✅ Contact' : '⚪ Contact');
@@ -1263,6 +1267,10 @@ function tmv3_buildDataChecklist_(eventRecord, cfg, customer, location, order, c
 
   if (!hasTask) {
     lines.push('⚪ Calendar Link');
+  } else if (/LINKS\s*✓/i.test(verification)) {
+    lines.push('✅ Calendar Link');
+  } else if (/LINKS\s*[△✕]/i.test(verification)) {
+    lines.push('❌ Calendar Link');
   } else {
     lines.push(eventRecord && eventRecord.existingTaskUrl ? '✅ Calendar Link' : '❌ Calendar Link');
   }
