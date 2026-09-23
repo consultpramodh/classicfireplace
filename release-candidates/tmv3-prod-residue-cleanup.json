@@ -1,0 +1,8 @@
+{
+  "release": "TMV3_PROD_RESIDUE_CLEANUP_R1",
+  "targets": [
+    "TMV3_00_Config.js",
+    "TMV3_01_Core.js",
+    "TMV3_90_Diagnostics.js"
+  ]
+}
