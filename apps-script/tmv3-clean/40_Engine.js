@@ -29,6 +29,8 @@ function tmv3_sourceCacheSummary_() {
 }
 
 function tmv3_shadowMapFromCache_(sourceSummary) {
+  tmv3_resetRuntimeMetrics_();
+
   const events =
     tmv3_calendarRecords_();
 
@@ -71,7 +73,9 @@ function tmv3_shadowMapFromCache_(sourceSummary) {
     'Events ' +
       resolved.length +
       '; Sources ' +
-      JSON.stringify(sourceSummary || {})
+      JSON.stringify(sourceSummary || {}) +
+      '; API ' +
+      JSON.stringify(tmv3_runtimeMetrics_())
   );
 
   const morningOps =
