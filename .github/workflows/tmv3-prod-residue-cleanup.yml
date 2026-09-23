@@ -1,12 +1,6 @@
 name: Task Mapping V3 Production Residue Cleanup
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - 'release-candidates/tmv3-prod-residue-cleanup.json'
-      - '.github/workflows/tmv3-prod-residue-cleanup.yml'
   workflow_dispatch:
 
 permissions:
