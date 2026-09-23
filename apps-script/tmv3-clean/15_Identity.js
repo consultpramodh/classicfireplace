@@ -340,7 +340,7 @@ function tmv3_resolveOwnedLocation_(customer, calendarAddress, ownedLocations) {
 
 function tmv3_resolveOwnedContact_(customer, preferredContactId, eventRecord, ix) {
   const customerId = tmv3_clean_(customer && customer['Customer ID']);
-  const owned = (ix.contactsByCustomer[customerId] || []).slice();
+  let owned = (ix.contactsByCustomer[customerId] || []).slice();
 
   if (preferredContactId) {
     const preferred = owned.filter(function(r) {
@@ -351,15 +351,29 @@ function tmv3_resolveOwnedContact_(customer, preferredContactId, eventRecord, ix
       return {
         status: 'MATCHED',
         contact: preferred[0],
-        evidence: ['CONTACT_FROM_ORDER']
+        evidence: ['CONTACT_FROM_CACHE']
       };
     }
 
-    if (preferred.length > 1) {
+    try {
+      const direct = tmv3_getContactById_(preferredContactId, customerId);
+
+      if (direct && direct.__ownershipVerified) {
+        return {
+          status: 'MATCHED',
+          contact: direct,
+          evidence: ['CONTACT_FROM_ORDER_VERIFIED_BY_API']
+        };
+      }
+    } catch (err) {
       return {
         status: 'REVIEW',
-        errorCode: 'DUPLICATE_CONTACT_ID',
-        reason: 'Preferred Contact ID appears more than once for the Customer.',
+        errorCode: 'CONTACT_READ_FAILED',
+        reason:
+          'Order Contact ' +
+          preferredContactId +
+          ' could not be freshly verified: ' +
+          String(err && err.message || err),
         evidence: []
       };
     }
@@ -367,7 +381,20 @@ function tmv3_resolveOwnedContact_(customer, preferredContactId, eventRecord, ix
     return {
       status: 'REVIEW',
       errorCode: 'ORDER_CONTACT_OWNERSHIP_CONFLICT',
-      reason: 'Order Contact is not owned by the resolved Customer.',
+      reason: 'Order Contact is not proven to belong to the resolved Customer.',
+      evidence: []
+    };
+  }
+
+  try {
+    owned = tmv3_getCustomerContacts_(customerId);
+  } catch (err) {
+    return {
+      status: 'REVIEW',
+      errorCode: 'CUSTOMER_CONTACTS_READ_FAILED',
+      reason:
+        'Customer Contacts could not be read: ' +
+        String(err && err.message || err),
       evidence: []
     };
   }
@@ -380,12 +407,19 @@ function tmv3_resolveOwnedContact_(customer, preferredContactId, eventRecord, ix
   );
 
   let candidates = owned.filter(function(r) {
-    const email = tmv3_normEmail_(r['Email']);
-    const phone = tmv3_phone10_(r['Phone']);
-    return (
-      (email && emails.indexOf(email) !== -1) ||
-      (phone && phones.indexOf(phone) !== -1)
-    );
+    const emailList = r.Emails || (r['Email'] ? [tmv3_normEmail_(r['Email'])] : []);
+    const phoneList = r.Phones || (r['Phone'] ? [tmv3_phone10_(r['Phone'])] : []);
+
+    const emailHit = emailList.some(function(email) {
+      return email && emails.indexOf(tmv3_normEmail_(email)) !== -1;
+    });
+
+    const phoneHit = phoneList.some(function(phone) {
+      const cleanPhone = tmv3_phone10_(phone);
+      return cleanPhone && phones.indexOf(cleanPhone) !== -1;
+    });
+
+    return emailHit || phoneHit;
   });
 
   const seen = {};
@@ -400,7 +434,7 @@ function tmv3_resolveOwnedContact_(customer, preferredContactId, eventRecord, ix
     return {
       status: 'MATCHED',
       contact: candidates[0],
-      evidence: ['CUSTOMER_CONTACT_EXACT']
+      evidence: ['CUSTOMER_CONTACT_PHONE_EMAIL_EXACT']
     };
   }
 
@@ -410,6 +444,14 @@ function tmv3_resolveOwnedContact_(customer, preferredContactId, eventRecord, ix
       errorCode: 'AMBIGUOUS_CONTACT',
       reason: 'Calendar phone/email matches multiple Contacts owned by the Customer.',
       evidence: []
+    };
+  }
+
+  if (owned.length === 1) {
+    return {
+      status: 'MATCHED',
+      contact: owned[0],
+      evidence: ['ONLY_CUSTOMER_CONTACT']
     };
   }
 
