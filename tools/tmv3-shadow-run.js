@@ -7,6 +7,7 @@ const crypto = require('crypto');
 
 const V3_SCRIPT_ID = '1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
 const outDir = path.resolve(process.cwd(), 'autopatch-output-v3-shadow');
+const RUN_MODE = String(process.env.TMV3_SHADOW_RUN_MODE || 'FULL').toUpperCase();
 fs.mkdirSync(outDir, { recursive: true });
 
 function fail(message) {
@@ -343,16 +344,24 @@ async function main() {
       );
     }
 
-    const refresh = await postJson(url, {
-      token,
-      action:'refreshSources'
-    });
+    let refresh = {
+      ok: true,
+      status: 'SOURCE_REFRESH_SKIPPED',
+      sources: null
+    };
 
-    if (!refresh.ok || refresh.status !== 'SOURCE_REFRESH_COMPLETE') {
-      fail(
-        'V3 source refresh failed: ' +
-        (refresh.message || refresh.status || 'UNKNOWN')
-      );
+    if (RUN_MODE !== 'MAP_ONLY') {
+      refresh = await postJson(url, {
+        token,
+        action:'refreshSources'
+      });
+
+      if (!refresh.ok || refresh.status !== 'SOURCE_REFRESH_COMPLETE') {
+        fail(
+          'V3 source refresh failed: ' +
+          (refresh.message || refresh.status || 'UNKNOWN')
+        );
+      }
     }
 
     const shadow = await postJson(url, {
@@ -377,12 +386,12 @@ async function main() {
       JSON.stringify({
         status:'V3_SHADOW_RUN_VERIFIED',
         stages:{
-          sourceRefresh:'PASS',
+          sourceRefresh:RUN_MODE === 'MAP_ONLY' ? 'SKIPPED_CACHE_REUSE' : 'PASS',
           mapFromCache:'PASS'
         },
         events:shadow.events,
         counts:shadow.counts,
-        sources:refresh.sources,
+        sources:refresh.sources || shadow.sources,
         regression:shadow.regression,
         morningOps:shadow.morningOps,
         sourceHeadHashVerified:true,
@@ -393,7 +402,7 @@ async function main() {
 
     console.log('V3_SHADOW_RUN_VERIFIED');
     console.log(JSON.stringify({
-      sources:refresh.sources,
+      sources:refresh.sources || shadow.sources,
       events:shadow.events,
       counts:shadow.counts,
       regression:shadow.regression,
