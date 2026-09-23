@@ -319,6 +319,18 @@ function preinspectSyncCalendarMirror_(reason) {
       preinspectWriteCalendarMirror_(sheet, rows);
     }
 
+    // R5.5: refresh the isolated Stephen review queue. This is read-only Calendar -> Sheet.
+    // It preserves operator checkbox choices by Event ID + occurrence start and performs no guest writes.
+    let stephenCandidateQueue = null;
+    if (typeof preinspectRefreshStephenCandidateQueue_ === 'function') {
+      try {
+        stephenCandidateQueue = preinspectRefreshStephenCandidateQueue_(sheet, window.start, window.end);
+      } catch (queueErr) {
+        stephenCandidateQueue = {status:'REVIEW_QUEUE_ERROR',error:String(queueErr && queueErr.message || queueErr)};
+        Logger.log(JSON.stringify(stephenCandidateQueue));
+      }
+    }
+
     const result = {
       mode: 'ONE_WAY_CALENDAR_LIVE_MIRROR',
       status: changed ? 'UPDATED' : 'NO_CHANGE',
@@ -332,7 +344,8 @@ function preinspectSyncCalendarMirror_(reason) {
       mirrorRows: rows.length,
       firstStart: rows.length ? rows[0][1] : '',
       calendarWritesPerformed: false,
-      sheetWritesPerformed: changed,
+      sheetWritesPerformed: changed || !!(stephenCandidateQueue && stephenCandidateQueue.sheetWritesPerformed),
+      stephenCandidateQueue: stephenCandidateQueue,
       sort: 'START_ASCENDING_TODAY_FIRST'
     };
 
@@ -463,10 +476,19 @@ function preinspectCalendarDateOnly_(date) {
 
 
 function preinspectCalendarReadableDescription_(value) {
-  if (typeof tm_cleanHtmlToText_ === 'function') {
-    return tm_cleanHtmlToText_(value || '');
+  let source = String(value || '');
+
+  // Managed Task-link blocks are transport metadata, not customer identity
+  // evidence. Remove them before Customer/SO/phone extraction so Task IDs can
+  // never be mistaken for Customer Numbers.
+  if (typeof preinspectRemoveManagedTaskLinkBlock_ === 'function') {
+    source = preinspectRemoveManagedTaskLinkBlock_(source);
   }
-  return String(value || '').trim();
+
+  if (typeof tm_cleanHtmlToText_ === 'function') {
+    return tm_cleanHtmlToText_(source);
+  }
+  return source.trim();
 }
 
 
@@ -501,15 +523,18 @@ function preinspectWriteCalendarMirror_(sheet, rows) {
     sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
   }
 
-  const clearRows = Math.max(0, sheet.getLastRow() - 1);
-  const clearCols = Math.max(sheet.getLastColumn(), headers.length);
+    const clearRows = Math.max(0, sheet.getLastRow() - 1);
+  // R5.5: production mirror owns A:R only. T:AD is the isolated Stephen review queue.
+  const productionColumnCount = Math.min(sheet.getMaxColumns(), Math.max(headers.length, 18));
   if (clearRows > 0) {
-    sheet.getRange(2, 1, clearRows, clearCols).clearContent();
+    sheet.getRange(2, 1, clearRows, productionColumnCount).clearContent();
   }
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  if (sheet.getLastColumn() > headers.length) {
-    sheet.getRange(1, headers.length + 1, 1, sheet.getLastColumn() - headers.length)
+  // R5.5: clear only production helper headers Q:R; never touch S:AD review queue.
+  const productionExtraCols = Math.max(0, Math.min(sheet.getMaxColumns(), 18) - headers.length);
+  if (productionExtraCols > 0) {
+    sheet.getRange(1, headers.length + 1, 1, productionExtraCols)
       .clearContent()
       .clearFormat();
   }
@@ -784,6 +809,27 @@ function preinspectReviewRow_(row, indexes, rowNumber) {
   };
 
   const signals = preinspectExtractSignals_(event);
+
+  // The one-way Calendar mirror has dedicated identity columns. Prefer a
+  // previously resolved/carried-forward Customer # and normalized Phone over
+  // re-parsing managed description metadata.
+  const mirrorCustomerNumber = preinspectNumber_(
+    preinspectFirst_(row, ['Customer #', 'Customer Number', 'CustomerNumber'])
+  );
+  if (mirrorCustomerNumber) {
+    signals.customerNumber = mirrorCustomerNumber;
+    signals.customerNumberCandidates = [];
+  }
+
+  const mirrorPhone = preinspectPhone_(
+    preinspectFirst_(row, ['Phone', 'Phone Number', 'Customer Phone'])
+  );
+  if (mirrorPhone) {
+    signals.phones = preinspectUnique_(
+      [mirrorPhone].concat(signals.phones || [])
+    );
+  }
+
   let classification = preinspectClassifyCalendarEvent_(event, signals);
 
   if (classification.code === 'SKIP_NON_JOB' || classification.code === 'OTHER_JOB') {
@@ -946,7 +992,14 @@ function preinspectFinalDecision_(signals, customer, location, salesOrder) {
  ************************************************************/
 
 function preinspectExtractSignals_(event) {
-  const combined = [event.title, event.description, event.location].join(' ');
+  event = event || {};
+
+  const authoredDescription =
+    typeof tmPreInspectIdentityAuthoredDescription_ === 'function'
+      ? tmPreInspectIdentityAuthoredDescription_(event.description)
+      : String(event.description || '');
+
+  const combined = [event.title, authoredDescription, event.location].join(' ');
   const salesOrderNumber = preinspectExtractSONumber_(combined);
   const customerNumber = preinspectExtractCustomerNumber_(combined, salesOrderNumber);
   const compoundIdentifiers = preinspectExtractCompoundIdentifiers_(combined);
@@ -977,7 +1030,7 @@ function preinspectExtractSignals_(event) {
   const locationAddress = tm_cleanString_(event.location);
   const descriptionAddress = locationAddress
     ? ''
-    : preinspectExtractAddressFromDescription_(event.description);
+    : preinspectExtractAddressFromDescription_(authoredDescription);
   const address = locationAddress || descriptionAddress;
 
   return {
@@ -1032,28 +1085,21 @@ function preinspectExtractCustomerNumber_(text, soNumber) {
     if (match) return match[1];
   }
 
-  // Historical labelled pattern: "Name phone #62208 SO#584502".
-  value = value
-    .replace(/\b(?:SO|S\/O|Sales\s*Order|Order)\s*[#:\-]?\s*\d{4,8}(?:\s*[\/,;&+]\s*(?:(?:SO|S\/O|Sales\s*Order|Order)\s*[#:\-]?\s*)?#?\d{4,8})*/gi, ' ')
-    .replace(/(?:\+?1[\s\-.]?)?(?:\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4})/g, ' ');
-
-  const found = [];
-  const re = /(?:^|\s)#\s*(\d{4,8})\b/g;
-  let match;
-
-  while ((match = re.exec(value)) !== null) {
-    if (!soNumber || match[1] !== String(soNumber)) found.push(match[1]);
-  }
-
-  const unique = preinspectUnique_(found);
-  return unique.length === 1 ? unique[0] : '';
+  // Bare "#12345" values are legacy candidates, not explicit Customer Numbers.
+  // preinspectExtractSignals_ already collects them in customerNumberCandidates,
+  // where Striven phone/address/name/SO evidence must corroborate them.
+  return '';
 }
 
 
 function preinspectExtractPhones_(text) {
   // Capture only standalone NANP phone shapes. Do not take a 10-digit slice
   // out of a longer compound numeric run; those are handled separately.
-  const value = String(text || '');
+  // Normalize common Unicode parentheses/dashes used by pasted phone numbers.
+  const value = String(text || '')
+    .replace(/[（﹙﴾]/g, '(')
+    .replace(/[）﹚﴿]/g, ')')
+    .replace(/[‐‑‒–—−]/g, '-');
   const out = [];
   const re = /(?:^|[^0-9])((?:\+?1[\s\-.]?)?(?:\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4})(?:\s*(?:x|ext\.?)\s*\d+)?)(?=$|[^0-9])/gi;
   let match;
@@ -3348,6 +3394,21 @@ function preinspectApplyTaskLookupToMappingObject_(obj, lookup) {
 
   if(lookup.action==='READY_CREATE'){
     obj['Task ID']='';obj['Task Status']='';obj['Patch Preview']='';
+
+    const readySignals = preinspectExtractSignals_({
+      title: obj['Calendar Title'] || '',
+      description: obj['Calendar Description'] || '',
+      location: obj['Calendar Location'] || obj['Location'] || ''
+    });
+
+    if (!readySignals.phones || readySignals.phones.length !== 1) {
+      obj['Status']='REVIEW';
+      obj['Task Action']='REVIEW_MISSING_PHONE';
+      obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+
+        'CREATE blocked: exactly one verified phone is required for the standard Task Name (Customer Name - Address - Customer Phone Number).';
+      return;
+    }
+
     if(tm_cleanString_(obj['Classification'])==='LIKELY_PREINSPECT_JOB'){
       obj['Status']='REVIEW';obj['Task Action']='REVIEW_BEFORE_CREATE';
       obj['Issue']=(obj['Issue']?obj['Issue']+' | ':'')+'Location makes this likely task-worthy, but stronger PreInspect evidence is required before CREATE.';
@@ -8226,6 +8287,14 @@ function preinspectR3414ApplySheetHyperlinks__R3418G_ORIGINAL_() {
       salesOrderLinks: 0,
       taskLinks: 0
     },
+    calendarEventTaskLinks: {
+      checked: 0,
+      alreadyVerified: 0,
+      writtenAndVerified: 0,
+      failed: 0,
+      failures: []
+    },
+    calendarWritesPerformed: false,
     customerLinksSkippedNoVerifiedRecordUrl: 0
   };
 
@@ -8406,6 +8475,83 @@ function preinspectR3414ApplySheetHyperlinks__R3418G_ORIGINAL_() {
     // Presentation only.
   }
 
+  /**********************************************************
+   * ACTUAL GOOGLE CALENDAR EVENT:
+   * Whenever Event ID + Task ID are resolved, append/verify
+   * the Striven Task link in the event description itself.
+   * This is the operator-facing acceptance rule used by the
+   * other verticals. The helper is idempotent and performs a
+   * fresh Calendar read-back after any write.
+   **********************************************************/
+  if (typeof tmPreInspectEnsureDualCalendarTaskLink_ === 'function') {
+    mappingRows.forEach(function(row) {
+      const eventId = String(row['Event ID'] || '').trim();
+      const taskId = Number(row['Task ID'] || 0);
+      const status = String(row['Status'] || '').trim().toUpperCase();
+
+      if (
+        !eventId ||
+        !(taskId > 0) ||
+        status === 'SKIP' ||
+        status === 'SKIPPED' ||
+        status === 'NOT MATCHED'
+      ) {
+        return;
+      }
+
+      const taskTitle =
+        String(row['Task Name'] || '').trim() ||
+        ('Pre-Inspection Task #' + taskId);
+
+      result.calendarEventTaskLinks.checked++;
+
+      try {
+        const linkResult = tmPreInspectEnsureDualCalendarTaskLink_(
+          eventId,
+          taskId,
+          taskTitle
+        );
+
+        if (linkResult && linkResult.readBackVerified) {
+          if (linkResult.writePerformed) {
+            result.calendarEventTaskLinks.writtenAndVerified++;
+            result.calendarWritesPerformed = true;
+            result.writesPerformed = true;
+          } else {
+            result.calendarEventTaskLinks.alreadyVerified++;
+          }
+        } else {
+          result.calendarEventTaskLinks.failed++;
+          result.calendarEventTaskLinks.failures.push({
+            eventId: eventId,
+            taskId: taskId,
+            reason: 'Calendar Task-link helper did not return readBackVerified=true.'
+          });
+        }
+      } catch (linkErr) {
+        result.calendarEventTaskLinks.failed++;
+        result.calendarEventTaskLinks.failures.push({
+          eventId: eventId,
+          taskId: taskId,
+          reason: String(
+            linkErr && linkErr.message ? linkErr.message : linkErr
+          )
+        });
+      }
+    });
+  } else {
+    result.calendarEventTaskLinks.failed++;
+    result.calendarEventTaskLinks.failures.push({
+      eventId: '',
+      taskId: '',
+      reason: 'PreInspection dual-calendar Task-link helper is unavailable.'
+    });
+  }
+
+  if (result.calendarEventTaskLinks.failed > 0) {
+    result.status = 'COMPLETE_WITH_CALENDAR_LINK_FAILURES';
+  }
+
   Logger.log(JSON.stringify(result, null, 2));
   return result;
 }
@@ -8478,7 +8624,9 @@ function preinspectR3415SyncMirrorAndHyperlinks_(reason) {
     mirror: mirror,
     hyperlinks: hyperlinks,
     hyperlinkError: hyperlinkError,
-    calendarWritesPerformed: false,
+    calendarWritesPerformed: !!(
+      hyperlinks && hyperlinks.calendarWritesPerformed
+    ),
     sheetWritesPerformed: !!(
       (mirror && mirror.sheetWritesPerformed) ||
       (hyperlinks && hyperlinks.writesPerformed)
@@ -14006,6 +14154,32 @@ function preinspectR47EnsureInstallNotesCanonical_(taskId, desiredValue) {
   const props = PropertiesService.getScriptProperties();
   const uncertainKey = preinspectR47Field854UncertainKey_(id);
   const priorUncertain = String(props.getProperty(uncertainKey) || '').trim();
+
+  // Canonical v1 task customFields is the independent read surface already
+  // proven for Field 854. If it confirms the desired value, reconcile a
+  // prior uncertain HTTP-200 write without issuing another mutation.
+  let canonicalBefore = null;
+  try {
+    canonicalBefore = preinspectR47ReadCanonicalV1Field854_(id);
+  } catch (ignoredCanonicalBefore) {}
+
+  if (preinspectR47Field854CanonicalMatches_(canonicalBefore, desiredValue)) {
+    props.deleteProperty(uncertainKey);
+    const reconciled = {
+      mode: 'PREINSPECT_FIELD854_CANONICAL_V1_VERIFIED',
+      status: priorUncertain ? 'RECONCILED_PRIOR_UNCERTAIN_V1_MATCH' : 'NOT_NEEDED_V1_MATCH',
+      taskId: id,
+      fieldId: 854,
+      writesPerformed: false,
+      verificationSource: 'V1_TASK_CUSTOMFIELDS',
+      reason: priorUncertain
+        ? 'Prior uncertain Field 854 write is confirmed by canonical v1 customFields. No retry performed.'
+        : 'Canonical v1 customFields already contains the requested Install Notes. No PATCH performed.'
+    };
+    Logger.log(JSON.stringify(reconciled, null, 2));
+    return reconciled;
+  }
+
   const auth = preinspectR30ApiAuth_();
   const taskUrl = String(auth.apiBaseUrl || 'https://api.striven.com').replace(/\/+$/, '') + '/v2/tasks/' + encodeURIComponent(id);
   const headers = tm_getStrivenHeaders_();
@@ -14078,6 +14252,38 @@ function preinspectR47EnsureInstallNotesCanonical_(taskId, desiredValue) {
   const afterTarget = preinspectR346FindFieldById_(afterInfo.fields, 854);
   const afterSemantic = afterTarget ? preinspectR346aSemanticField854Text_(preinspectR345bFieldValue_(afterTarget)) : null;
   if (afterSemantic === null || afterSemantic !== desiredSemantic) {
+    let canonicalAfter = null;
+    try {
+      canonicalAfter = preinspectR47ReadCanonicalV1Field854_(id);
+    } catch (ignoredCanonicalAfter) {}
+
+    if (preinspectR47Field854CanonicalMatches_(canonicalAfter, desiredValue)) {
+      const canonicalParity = preinspectR345bCompareFieldMaps_(
+        preinspectR346WithoutFieldId_(beforeMap, '854'),
+        preinspectR346WithoutFieldId_(afterMap, '854')
+      );
+
+      if (!canonicalParity.equal || Object.keys(beforeMap).length !== Object.keys(afterMap).length) {
+        props.setProperty(uncertainKey, JSON.stringify({taskId:id,fieldId:854,at:new Date().toISOString(),reason:'non-854 parity changed after canonical v1 confirmation'}));
+        throw new Error('CRITICAL_FIELD854_PARITY_FAILURE: Field 854 is visible in canonical v1, but a non-854 custom field changed. Manual review required.');
+      }
+
+      props.deleteProperty(uncertainKey);
+      const canonicalSuccess = {
+        mode: 'PREINSPECT_FIELD854_CANONICAL_V1_VERIFIED',
+        status: 'PUSHED_AND_VERIFIED_V1',
+        taskId: id,
+        fieldId: 854,
+        writesPerformed: true,
+        verificationSource: 'V1_TASK_CUSTOMFIELDS',
+        patchHttpCode: patch.statusCode,
+        non854FieldsPreserved: true,
+        note: 'v2 InfoCustomFields did not echo the value, but canonical v1 customFields confirmed Field 854.'
+      };
+      Logger.log(JSON.stringify(canonicalSuccess, null, 2));
+      return canonicalSuccess;
+    }
+
     const uncertain = {
       taskId:id, fieldId:854, at:new Date().toISOString(), patchHttpCode:patch.statusCode,
       desiredSemanticLength:desiredSemantic.length,
@@ -14085,7 +14291,7 @@ function preinspectR47EnsureInstallNotesCanonical_(taskId, desiredValue) {
     };
     props.setProperty(uncertainKey, JSON.stringify(uncertain));
     Logger.log(JSON.stringify({mode:'PREINSPECT_FIELD854_UNCERTAIN_WRITE',status:'UNCERTAIN_WRITE',evidence:uncertain},null,2));
-    throw new Error('UNCERTAIN_WRITE: Field 854 PATCH returned success but v2 InfoCustomFields did not confirm the requested Install Notes. No retry allowed.');
+    throw new Error('UNCERTAIN_WRITE: Field 854 PATCH returned success but neither v2 InfoCustomFields nor canonical v1 customFields confirmed the requested Install Notes. No retry allowed.');
   }
 
   const nonTargetComparison = preinspectR345bCompareFieldMaps_(
