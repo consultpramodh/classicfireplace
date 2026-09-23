@@ -117,9 +117,18 @@ function tmv3_refreshSources() {
     tmv3_reportRows_(TMV3.PROPERTIES.CUSTOMERS)
       .map(tmv3_normalizeCustomer_);
 
+  const customerNumberToId = {};
+  customers.forEach(function(r) {
+    if (tmv3_clean_(r[1]) && tmv3_clean_(r[0])) {
+      customerNumberToId[tmv3_clean_(r[1])] = tmv3_clean_(r[0]);
+    }
+  });
+
   const locations =
     tmv3_reportRows_(TMV3.PROPERTIES.LOCATIONS)
-      .map(tmv3_normalizeLocation_);
+      .map(function(r) {
+        return tmv3_normalizeLocation_(r, customerNumberToId);
+      });
 
   const contacts =
     tmv3_reportRows_(TMV3.PROPERTIES.CONTACTS)
@@ -147,22 +156,29 @@ function tmv3_refreshSources() {
     approved.concat(deliveryApproved, serviceOrders)
   );
 
+  const orderIdByNumber = {};
+  orders.forEach(function(r) {
+    if (tmv3_clean_(r[1]) && tmv3_clean_(r[0])) {
+      orderIdByNumber[tmv3_clean_(r[1])] = tmv3_clean_(r[0]);
+    }
+  });
+
   const installTasks =
     tmv3_reportRows_(TMV3.PROPERTIES.INSTALL_TASKS)
       .map(function(r) {
-        return tmv3_normalizeTask_(r, 'Install');
+        return tmv3_normalizeTask_(r, 'Install', orderIdByNumber);
       });
 
   const deliveryTasks =
     tmv3_reportRows_(TMV3.PROPERTIES.DELIVERY_TASKS)
       .map(function(r) {
-        return tmv3_normalizeTask_(r, 'Delivery');
+        return tmv3_normalizeTask_(r, 'Delivery', orderIdByNumber);
       });
 
   const serviceTasks =
     tmv3_reportRows_(TMV3.PROPERTIES.SERVICE_TASKS)
       .map(function(r) {
-        return tmv3_normalizeTask_(r, 'Service');
+        return tmv3_normalizeTask_(r, 'Service', orderIdByNumber);
       });
 
   const tasks = tmv3_dedupeObjects_(
@@ -286,6 +302,7 @@ function tmv3_normalizeCustomer_(r) {
     tmv3_first_(r, [
       'CustomerId',
       'Customer ID',
+      'CustomerCustomerId',
       'Id',
       'AccountId',
       'Account ID'
@@ -304,6 +321,7 @@ function tmv3_normalizeCustomer_(r) {
     tmv3_first_(r, [
       'CustomerName',
       'Customer Name',
+      'FullName',
       'Name',
       'AccountName',
       'Account Name'
@@ -336,7 +354,7 @@ function tmv3_normalizeCustomer_(r) {
   ];
 }
 
-function tmv3_normalizeLocation_(r) {
+function tmv3_normalizeLocation_(r, customerNumberToId) {
   const id =
     tmv3_first_(r, [
       'LocationId',
@@ -344,18 +362,28 @@ function tmv3_normalizeLocation_(r) {
       'Id'
     ]);
 
-  const customerId =
+  let customerId =
     tmv3_first_(r, [
       'CustomerId',
       'Customer ID',
+      'CustomerCustomerId',
       'AccountId',
       'Account ID'
     ]);
+
+  if (!customerId) {
+    const customerNumber = tmv3_first_(r, ['CustomerNumber','Customer Number','Customer #']);
+    customerId = customerNumberToId && customerNumber
+      ? (customerNumberToId[tmv3_clean_(customerNumber)] || '')
+      : '';
+  }
 
   const a1 =
     tmv3_first_(r, [
       'Address1',
       'Address 1',
+      'AddressFullAddress',
+      'FullAddress',
       'Street',
       'Street1',
       'Street 1'
@@ -371,7 +399,7 @@ function tmv3_normalizeLocation_(r) {
 
   const city = tmv3_first_(r, ['City']);
   const province = tmv3_first_(r, ['State','Province','State/Province']);
-  const postal = tmv3_first_(r, ['PostalCode','Postal Code','Zip','ZIP']);
+  const postal = tmv3_first_(r, ['PostalCode','Postal Code','AddressZip','Zip','ZIP']);
   const phone = tmv3_first_(r, ['Phone','Phone Number']);
 
   return [
@@ -410,6 +438,7 @@ function tmv3_normalizeContact_(r) {
     tmv3_first_(r, [
       'CustomerId',
       'Customer ID',
+      'CustomerCustomerId',
       'AccountId',
       'Account ID'
     ]);
@@ -482,6 +511,7 @@ function tmv3_normalizeOrder_(r, type) {
     tmv3_first_(r, [
       'CustomerId',
       'Customer ID',
+      'CustomerCustomerId',
       'AccountId',
       'Account ID'
     ]);
@@ -489,18 +519,23 @@ function tmv3_normalizeOrder_(r, type) {
   const locationId =
     tmv3_first_(r, [
       'LocationId',
-      'Location ID'
+      'Location ID',
+      'CustomerAddressAddressId',
+      'ShipToAddressAddressId',
+      'CustomerAddressId'
     ]);
 
   const contactId =
     tmv3_first_(r, [
       'ContactId',
-      'Contact ID'
+      'Contact ID',
+      'ContactContactId'
     ]);
 
   const status =
     tmv3_first_(r, [
       'Status',
+      'SOStatus',
       'SalesOrderStatus',
       'Order Status'
     ]);
@@ -509,6 +544,7 @@ function tmv3_normalizeOrder_(r, type) {
     tmv3_first_(r, [
       'SalesOrderName',
       'Sales Order Name',
+      'SOName',
       'OrderName',
       'Order Name',
       'Name',
@@ -545,7 +581,7 @@ function tmv3_normalizeOrder_(r, type) {
   ];
 }
 
-function tmv3_normalizeTask_(r, vertical) {
+function tmv3_normalizeTask_(r, vertical, orderIdByNumber) {
   const id =
     tmv3_first_(r, [
       'TaskId',
@@ -560,7 +596,7 @@ function tmv3_normalizeTask_(r, vertical) {
       'TaskNumber',
       'Task Number',
       'Task #'
-    ]);
+    ]) || id;
 
   const typeId =
     tmv3_first_(r, [
@@ -606,7 +642,9 @@ function tmv3_normalizeTask_(r, vertical) {
   const locationId =
     tmv3_first_(r, [
       'LocationId',
-      'Location ID'
+      'Location ID',
+      'LocationLocationId',
+      'CustomerLocationId'
     ]);
 
   const contactId =
@@ -615,7 +653,7 @@ function tmv3_normalizeTask_(r, vertical) {
       'Contact ID'
     ]);
 
-  const orderId =
+  let orderId =
     tmv3_first_(r, [
       'SalesOrderId',
       'Sales Order ID',
@@ -624,6 +662,21 @@ function tmv3_normalizeTask_(r, vertical) {
       'OrderId',
       'Order ID'
     ]);
+
+  if (!orderId) {
+    const orderNumber = tmv3_first_(r, [
+      'SalesOrderNumber',
+      'Sales Order Number',
+      'SONumber',
+      'SO Number',
+      'SO #',
+      'OrderNumber',
+      'Order Number'
+    ]);
+    if (orderNumber && orderIdByNumber) {
+      orderId = orderIdByNumber[tmv3_clean_(orderNumber)] || '';
+    }
+  }
 
   const start =
     tmv3_first_(r, [
@@ -744,4 +797,178 @@ function tmv3_mergeOrderRows_(rows) {
   });
 
   return Object.keys(map).map(function(k) { return map[k]; });
+}
+
+
+function tmv3_getTaskById_(taskId) {
+  const id = Number(taskId || 0);
+  if (!id) throw new Error('A positive Task ID is required.');
+
+  const raw = tmv3_fetchJson_(
+    TMV3.API_BASE + '/v2/tasks/' + encodeURIComponent(id),
+    { method: 'get' }
+  );
+
+  return tmv3_normalizeV2TaskModel_(raw || {});
+}
+
+function tmv3_searchPreInspectionTasks_(customer) {
+  const customerId = Number(tmv3_clean_(customer && customer['Customer ID']) || 0);
+  if (!customerId) throw new Error('PreInspection task search requires Customer ID.');
+
+  const customerPayload = { Id: customerId };
+  const customerNumber = tmv3_clean_(customer['Customer Number']);
+  const customerName = tmv3_clean_(customer['Name']);
+  if (customerNumber) customerPayload.Number = customerNumber;
+  if (customerName) customerPayload.Name = customerName;
+
+  const all = [];
+  let previousSignature = '';
+
+  for (let pageIndex = 0; pageIndex < 3; pageIndex++) {
+    const payload = {
+      Customer: customerPayload,
+      Type: [105],
+      PageIndex: pageIndex,
+      PageSize: 100
+    };
+
+    const json = tmv3_fetchJson_(
+      TMV3.API_BASE + '/v2/tasks/search',
+      {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(payload)
+      }
+    );
+
+    const rows = tmv3_extractTaskSearchRows_(json);
+    const signature = rows.slice(0, 5).map(function(row) {
+      return tmv3_clean_(tmv3_first_(row, ['id','Id','taskId','TaskId']));
+    }).join('|');
+
+    if (pageIndex > 0 && signature && signature === previousSignature) {
+      throw new Error('PreInspection task search pagination repeated a page.');
+    }
+
+    previousSignature = signature;
+    Array.prototype.push.apply(all, rows);
+
+    if (!rows.length || rows.length < 100) break;
+  }
+
+  const ids = tmv3_unique_(all.map(function(row) {
+    return tmv3_first_(row, ['id','Id','taskId','TaskId']);
+  })).slice(0, 11);
+
+  if (ids.length > 10) {
+    throw new Error('More than 10 PreInspection task candidates were returned for Customer + Type 105.');
+  }
+
+  return ids.map(function(id) {
+    return tmv3_getTaskById_(id);
+  }).filter(function(task) {
+    return (
+      Number(task['Task Type ID'] || 0) === 105 &&
+      String(task['Customer ID'] || '') === String(customerId)
+    );
+  });
+}
+
+function tmv3_extractTaskSearchRows_(json) {
+  if (!json) return [];
+  if (Array.isArray(json)) return json;
+
+  const direct = [
+    json.data, json.Data, json.items, json.Items,
+    json.results, json.Results, json.tasks, json.Tasks
+  ];
+
+  for (let i = 0; i < direct.length; i++) {
+    if (Array.isArray(direct[i])) return direct[i];
+  }
+
+  const nested = [json.data, json.Data, json.result, json.Result];
+
+  for (let j = 0; j < nested.length; j++) {
+    const obj = nested[j];
+    if (!obj || typeof obj !== 'object') continue;
+
+    const arrays = [
+      obj.items, obj.Items, obj.results, obj.Results,
+      obj.tasks, obj.Tasks, obj.rows, obj.Rows, obj.data, obj.Data
+    ];
+
+    for (let k = 0; k < arrays.length; k++) {
+      if (Array.isArray(arrays[k])) return arrays[k];
+    }
+  }
+
+  return [];
+}
+
+function tmv3_normalizeV2TaskModel_(raw) {
+  raw = raw || {};
+  const type = raw.type || raw.Type || {};
+  const status = raw.status || raw.Status || {};
+  const customer = raw.customer || raw.Customer || {};
+  const location = raw.location || raw.Location || {};
+  const salesOrder = raw.salesOrder || raw.SalesOrder || {};
+  const requestedBy = raw.requestedBy || raw.RequestedBy || {};
+  const requestedByContact = raw.requestedByContact || raw.RequestedByContact || {};
+  const assignments = raw.assignments || raw.Assignments || [];
+
+  const taskId = tmv3_first_(raw, ['id','Id','taskId','TaskId']);
+  const taskNumber = tmv3_first_(raw, ['number','Number','taskNumber','TaskNumber']) || taskId;
+  const typeId = tmv3_first_(type, ['id','Id']);
+  const typeName = tmv3_first_(type, ['name','Name']);
+  const statusName = tmv3_first_(status, ['name','Name']);
+  const customerId = tmv3_first_(customer, ['id','Id']);
+  const locationId = tmv3_first_(location, ['id','Id']);
+  const orderId = tmv3_first_(salesOrder, ['id','Id']);
+  const requestedById =
+    tmv3_first_(requestedBy, ['id','Id']) ||
+    tmv3_first_(requestedByContact, ['contactId','ContactId','id','Id']) ||
+    tmv3_first_(raw, ['contactId','ContactId','requestedByContactId','RequestedByContactId']);
+
+  const employeeNames = [];
+  const poolNames = [];
+
+  (assignments || []).forEach(function(a) {
+    const kind = tmv3_norm_(tmv3_first_(a, ['type','Type']));
+    const name = tmv3_clean_(tmv3_first_(a, ['name','Name']));
+    const id = tmv3_clean_(tmv3_first_(a, ['id','Id']));
+    if (kind === 'pool') poolNames.push(name || id);
+    else if (name || id) employeeNames.push(name || id);
+  });
+
+  const start = tmv3_first_(raw, ['startDateTime','StartDateTime','startDate','StartDate']);
+  const due = tmv3_first_(raw, ['dueDateTime','DueDateTime','dueDate','DueDate']);
+  const name = tmv3_first_(raw, ['title','Title','name','Name']);
+
+  const row = {
+    'Task ID': taskId,
+    'Task Number': taskNumber,
+    'Task Type ID': typeId,
+    'Task Type': typeName,
+    'Status': statusName,
+    'Name': name,
+    'Customer ID': customerId,
+    'Location ID': locationId,
+    'Contact ID': requestedById,
+    'Order ID': orderId,
+    'Start': start,
+    'Due': due,
+    'Assignees': employeeNames.join(', '),
+    'Pools': poolNames.join(', '),
+    'URL': taskId ? TMV3.TASK_URL_BASE + encodeURIComponent(taskId) : ''
+  };
+
+  row.Fingerprint = tmv3_hash_([
+    taskId, taskNumber, typeId, typeName, statusName, name, customerId,
+    locationId, requestedById, orderId, start, due,
+    row.Assignees, row.Pools
+  ].join('|'));
+
+  return row;
 }
