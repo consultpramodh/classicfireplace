@@ -226,17 +226,45 @@ function tmv3_morningExceptionRecord_(vertical, row, state) {
 }
 
 function tmv3_morningExceptionSort_(a, b) {
+  // Technical failures always come first.
+  if (a.rank === 0 || b.rank === 0) {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+  }
+
+  // Then prioritize the appointment that is operationally closest.
+  const au = tmv3_morningUrgencyRank_(a.date);
+  const bu = tmv3_morningUrgencyRank_(b.date);
+  if (au !== bu) return au - bu;
+
+  // Within the same urgency window, blocked/review outrank planned actions.
   if (a.rank !== b.rank) return a.rank - b.rank;
 
   const aa = a.ageMinutes === null ? -1 : a.ageMinutes;
   const bb = b.ageMinutes === null ? -1 : b.ageMinutes;
-
   if (aa !== bb) return bb - aa;
 
   return (
     (a.date + ' ' + a.time)
       .localeCompare(b.date + ' ' + b.time)
   );
+}
+
+function tmv3_morningUrgencyRank_(dateValue) {
+  const text = tmv3_clean_(dateValue);
+  const d = new Date(text + 'T00:00:00');
+  if (isNaN(d.getTime())) return 9;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  d.setHours(0,0,0,0);
+
+  const days = Math.floor((d.getTime() - today.getTime()) / 86400000);
+
+  if (days <= 0) return 0;
+  if (days === 1) return 1;
+  if (days <= 3) return 2;
+  if (days <= 7) return 3;
+  return 4;
 }
 
 function tmv3_lastSuccessfulRun_(auditRows) {
