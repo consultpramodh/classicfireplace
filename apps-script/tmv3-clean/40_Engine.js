@@ -710,7 +710,52 @@ function tmv3_resolveEvent_(
   let taskCandidates =
     [];
 
-  if (
+  if (e.vertical === 'PreInspection') {
+    let piDecision;
+
+    try {
+      piDecision = tmv3_preInspectionTaskDecision_(
+        e,
+        customer,
+        location
+      );
+    } catch (err) {
+      return tmv3_result_(
+        e,
+        {
+          status: 'REVIEW',
+          nextAction: 'REVIEW TASK LOOKUP',
+          issue: String(err && err.message || err),
+          customer: customer,
+          location: location,
+          evidence: evidence,
+          errorCode: 'PREINSPECTION_TASK_LOOKUP_ERROR'
+        }
+      );
+    }
+
+    if (piDecision.status === 'REVIEW') {
+      return tmv3_result_(
+        e,
+        {
+          status: 'REVIEW',
+          nextAction: 'REVIEW TASK CANDIDATES',
+          issue: piDecision.reason,
+          customer: customer,
+          location: location,
+          evidence: evidence.concat(piDecision.evidence || []),
+          errorCode: piDecision.errorCode || 'PREINSPECTION_TASK_REVIEW'
+        }
+      );
+    }
+
+    taskCandidates = piDecision.task ? [piDecision.task] : [];
+
+    if (piDecision.task) {
+      evidence.push(piDecision.reason || 'PreInspection task verified');
+    }
+
+  } else if (
     e.existingTaskId &&
     refs
       .taskById[
@@ -1733,4 +1778,193 @@ function tmv3_updateOverview_(
         );
     }
   );
+}
+
+
+function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
+  const customerId = tmv3_clean_(customer && customer['Customer ID']);
+  const locationId = tmv3_clean_(location && location['Location ID']);
+
+  let candidates = [];
+
+  if (eventRecord.existingTaskId) {
+    const linked = tmv3_getTaskById_(eventRecord.existingTaskId);
+    candidates = linked ? [linked] : [];
+  } else {
+    candidates = tmv3_searchPreInspectionTasks_(customer);
+  }
+
+  candidates = (candidates || []).filter(function(task) {
+    return (
+      Number(task['Task Type ID'] || 0) === 105 &&
+      tmv3_clean_(task['Customer ID']) === customerId
+    );
+  });
+
+  const evaluated = candidates.map(function(task) {
+    const taskStart = tmv3_clean_(task['Start']);
+    const taskDue = tmv3_clean_(task['Due']);
+    const sameStart = tmv3_sameMinute_(eventRecord.start, taskStart);
+    const sameDue = tmv3_sameMinute_(eventRecord.end, taskDue);
+    const sameDay = tmv3_sameLocalDay_(eventRecord.start, taskStart);
+    const sameLocation =
+      !!locationId &&
+      tmv3_clean_(task['Location ID']) === locationId;
+
+    const taskTitle = tmv3_clean_(task['Name']);
+    const titlePhones = tmv3_allPhones_(taskTitle);
+    const titlePhoneMatch =
+      !!eventRecord.phone &&
+      titlePhones.indexOf(tmv3_phone10_(eventRecord.phone)) !== -1;
+
+    const customerName = tmv3_norm_(customer && customer['Name']);
+    const titleNameMatch =
+      !!customerName &&
+      tmv3_norm_(taskTitle).indexOf(customerName) !== -1;
+
+    const identityCorroborated = titlePhoneMatch || titleNameMatch;
+    const strongMatch =
+      sameStart ||
+      (sameDay && sameLocation) ||
+      (sameLocation && identityCorroborated);
+
+    return {
+      task: task,
+      open: tmv3_taskIsOpen_(task['Status']),
+      sameStart: sameStart,
+      sameDue: sameDue,
+      sameDay: sameDay,
+      sameLocation: sameLocation,
+      titlePhoneMatch: titlePhoneMatch,
+      titleNameMatch: titleNameMatch,
+      identityCorroborated: identityCorroborated,
+      strongMatch: strongMatch,
+      hasStart: !!taskStart,
+      score:
+        (sameStart ? 100 : 0) +
+        (sameDue ? 30 : 0) +
+        (sameLocation ? 50 : 0) +
+        (sameDay ? 20 : 0) +
+        (titlePhoneMatch ? 80 : 0) +
+        (titleNameMatch ? 40 : 0)
+    };
+  });
+
+  const open = evaluated.filter(function(c) { return c.open; });
+
+  // Current PreInspection policy: historical/non-open tasks never block the
+  // current appointment. A new active task may be created when no OPEN
+  // candidate remains.
+  if (!open.length) {
+    return {
+      status: 'CLEAR',
+      task: null,
+      reason: 'No OPEN PreInspection task remains for this appointment.'
+    };
+  }
+
+  open.sort(function(a, b) { return b.score - a.score; });
+
+  const strong = open.filter(function(c) { return c.strongMatch; });
+
+  if (strong.length === 1) {
+    return {
+      status: 'MATCHED',
+      task: strong[0].task,
+      reason: 'One OPEN PreInspection task strongly matches this appointment.',
+      evidence: tmv3_preInspectionCandidateEvidence_(strong[0])
+    };
+  }
+
+  if (strong.length > 1) {
+    return {
+      status: 'REVIEW',
+      reason: 'Multiple OPEN PreInspection tasks strongly match this appointment.',
+      errorCode: 'MULTIPLE_STRONG_PREINSPECTION_TASKS'
+    };
+  }
+
+  const sameDay = open.filter(function(c) { return c.sameDay; });
+  if (sameDay.length) {
+    return {
+      status: 'REVIEW',
+      reason: 'Same-day OPEN PreInspection candidate(s) exist, but none is strong enough to link automatically.',
+      errorCode: 'WEAK_SAME_DAY_PREINSPECTION_TASK'
+    };
+  }
+
+  const sameLocation = open.filter(function(c) { return c.sameLocation; });
+  if (sameLocation.length) {
+    return {
+      status: 'REVIEW',
+      reason: 'OPEN PreInspection candidate(s) already use this Customer + Location. Duplicate creation is blocked.',
+      errorCode: 'SAME_LOCATION_PREINSPECTION_TASK'
+    };
+  }
+
+  const unresolved = open.filter(function(c) { return !c.hasStart; });
+  const reusableUnscheduled = unresolved.filter(function(c) {
+    const noConflictingLocation =
+      !tmv3_clean_(c.task['Location ID']) || c.sameLocation;
+    return c.identityCorroborated && noConflictingLocation;
+  });
+
+  if (open.length === 1 && reusableUnscheduled.length === 1) {
+    return {
+      status: 'MATCHED',
+      task: reusableUnscheduled[0].task,
+      reason: 'Exactly one unscheduled OPEN PreInspection task is identity-corroborated and has no conflicting Location.',
+      evidence: tmv3_preInspectionCandidateEvidence_(reusableUnscheduled[0])
+    };
+  }
+
+  if (unresolved.length) {
+    return {
+      status: 'REVIEW',
+      reason: 'OPEN PreInspection candidate(s) have no usable start date and cannot be safely reused or ruled out.',
+      errorCode: 'UNRESOLVED_PREINSPECTION_TASK'
+    };
+  }
+
+  return {
+    status: 'CLEAR',
+    task: null,
+    reason: 'No OPEN existing PreInspection task match was found for this appointment.'
+  };
+}
+
+function tmv3_preInspectionCandidateEvidence_(candidate) {
+  const parts = [];
+  if (candidate.sameStart) parts.push('START');
+  if (candidate.sameDue) parts.push('DUE');
+  if (candidate.sameDay) parts.push('DAY');
+  if (candidate.sameLocation) parts.push('LOCATION');
+  if (candidate.titlePhoneMatch) parts.push('PHONE');
+  if (candidate.titleNameMatch) parts.push('NAME');
+  return parts;
+}
+
+function tmv3_sameMinute_(a, b) {
+  const da = a instanceof Date ? a : new Date(a);
+  const db = b instanceof Date ? b : new Date(b);
+  if (isNaN(da.getTime()) || isNaN(db.getTime())) return false;
+  return Math.floor(da.getTime() / 60000) === Math.floor(db.getTime() / 60000);
+}
+
+function tmv3_sameLocalDay_(a, b) {
+  const da = a instanceof Date ? a : new Date(a);
+  const db = b instanceof Date ? b : new Date(b);
+  if (isNaN(da.getTime()) || isNaN(db.getTime())) return false;
+  return tmv3_date_(da) === tmv3_date_(db);
+}
+
+function tmv3_allPhones_(text) {
+  const raw = tmv3_clean_(text);
+  const out = [];
+  const rx = /(?:\+?1[\s.\-]?)?\(?([2-9]\d{2})\)?[\s.\-]?([2-9]\d{2})[\s.\-]?(\d{4})/g;
+  let m;
+  while ((m = rx.exec(raw)) !== null) {
+    out.push(m[1] + m[2] + m[3]);
+  }
+  return tmv3_unique_(out);
 }
