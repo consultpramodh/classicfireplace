@@ -154,12 +154,32 @@ function tmv3_audit_(vertical, eventId, taskId, action, result, detail) {
   ]);
 }
 
+function tmv3_stateKey_(vertical, eventId, taskId) {
+  return [
+    tmv3_clean_(vertical),
+    tmv3_clean_(eventId),
+    tmv3_clean_(taskId)
+  ].join('|');
+}
+
 function tmv3_eventStateIndex_() {
   const rows = tmv3_rows_(TMV3.SHEETS.STATE);
   const byKey = {};
+
   rows.forEach(function(r) {
-    byKey[tmv3_clean_(r['Vertical']) + '|' + tmv3_clean_(r['Event ID'])] = r;
+    const vertical = tmv3_clean_(r['Vertical']);
+    const eventId = tmv3_clean_(r['Event ID']);
+    const taskId = tmv3_clean_(r['Task ID']);
+    const exactKey = tmv3_stateKey_(vertical, eventId, taskId);
+    const eventKey = vertical + '|' + eventId;
+
+    byKey[exactKey] = r;
+
+    // Event-level alias is retained for classification overrides and
+    // acknowledgement even when Service expands to multiple fireplace Tasks.
+    if (!byKey[eventKey]) byKey[eventKey] = r;
   });
+
   return byKey;
 }
 
@@ -167,16 +187,46 @@ function tmv3_upsertState_(records) {
   const headers = [
     'Vertical','Event ID','Calendar ID','Customer ID','Location ID','Contact ID',
     'Order ID','Task ID','Source Fingerprint','Calendar Updated At','Last Verified At',
-    'Engine Version','Classification Override','State','Next Action','Error Code'
+    'Engine Version','Classification Override','State','Next Action','Error Code',
+    'First Detected At','Last Attempt At','Attempt Count',
+    'Acknowledged By','Acknowledged At','Acknowledgement Note','Last Error Class'
   ];
 
-  const existing = tmv3_eventStateIndex_();
+  const existingIndex = tmv3_eventStateIndex_();
+  const rowsByExactKey = {};
+
+  // Preserve every existing physical row, including multiple Tasks for one Event.
+  tmv3_rows_(TMV3.SHEETS.STATE).forEach(function(r) {
+    rowsByExactKey[
+      tmv3_stateKey_(r['Vertical'], r['Event ID'], r['Task ID'])
+    ] = r;
+  });
 
   (records || []).forEach(function(r) {
-    const key = r.vertical + '|' + r.eventId;
-    const prior = existing[key] || {};
+    const exactKey = tmv3_stateKey_(r.vertical, r.eventId, r.taskId);
+    const eventKey = r.vertical + '|' + r.eventId;
+    const prior =
+      rowsByExactKey[exactKey] ||
+      existingIndex[exactKey] ||
+      existingIndex[eventKey] ||
+      {};
 
-    existing[key] = {
+    const status = r.status || prior['State'] || '';
+    const unresolved =
+      ['MATCHED','IGNORED'].indexOf(tmv3_clean_(status).toUpperCase()) === -1;
+
+    const now = tmv3_now_();
+    const firstDetected =
+      unresolved
+        ? (prior['First Detected At'] || now)
+        : '';
+
+    const attemptCount =
+      unresolved
+        ? Number(prior['Attempt Count'] || 0) + 1
+        : 0;
+
+    rowsByExactKey[exactKey] = {
       'Vertical': r.vertical,
       'Event ID': r.eventId,
       'Calendar ID': r.calendarId || prior['Calendar ID'] || '',
@@ -190,14 +240,21 @@ function tmv3_upsertState_(records) {
       'Last Verified At': r.lastVerified || prior['Last Verified At'] || '',
       'Engine Version': TMV3.VERSION,
       'Classification Override': prior['Classification Override'] || '',
-      'State': r.status || prior['State'] || '',
+      'State': status,
       'Next Action': r.nextAction || prior['Next Action'] || '',
-      'Error Code': r.errorCode || ''
+      'Error Code': r.errorCode || '',
+      'First Detected At': firstDetected,
+      'Last Attempt At': now,
+      'Attempt Count': attemptCount,
+      'Acknowledged By': unresolved ? (prior['Acknowledged By'] || '') : '',
+      'Acknowledged At': unresolved ? (prior['Acknowledged At'] || '') : '',
+      'Acknowledgement Note': unresolved ? (prior['Acknowledgement Note'] || '') : '',
+      'Last Error Class': unresolved ? (r.errorCode || prior['Last Error Class'] || '') : ''
     };
   });
 
-  const rows = Object.keys(existing).sort().map(function(k) {
-    const r = existing[k];
+  const rows = Object.keys(rowsByExactKey).sort().map(function(k) {
+    const r = rowsByExactKey[k];
     return headers.map(function(h) {
       return r[h] === undefined ? '' : r[h];
     });
