@@ -329,30 +329,43 @@ function tmv3_regressionHealth_() {
 
 function tmv3_triggerHealth_() {
   const installed = tmv3_listTriggers();
-  const expected = [
-    'tmv3_scheduledShadow',
-    'tmv3_installReminderCheck'
-  ];
 
-  const handlers = installed.map(function(t) {
-    return tmv3_clean_(t.handler);
+  const expectedCounts = {
+    tmv3_dailySourceRefresh: 1,
+    tmv3_scheduledShadow: 5,
+    tmv3_installReminderCheck: 1
+  };
+
+  const actualCounts = {};
+
+  installed.forEach(function(t) {
+    const handler = tmv3_clean_(t.handler);
+    actualCounts[handler] = (actualCounts[handler] || 0) + 1;
   });
 
-  const missing = expected.filter(function(handler) {
-    return handlers.indexOf(handler) === -1;
-  });
+  const missing = [];
+  const extra = [];
 
-  const duplicates = expected.filter(function(handler) {
-    return handlers.filter(function(x) { return x === handler; }).length > 1;
+  Object.keys(expectedCounts).forEach(function(handler) {
+    const expected = expectedCounts[handler];
+    const actual = actualCounts[handler] || 0;
+
+    if (actual < expected) {
+      missing.push(handler + ' ' + actual + '/' + expected);
+    } else if (actual > expected) {
+      extra.push(handler + ' ' + actual + '/' + expected);
+    }
   });
 
   return {
     installed: installed.length,
     missing: missing,
-    duplicates: duplicates,
+    duplicates: extra,
     enabled:
-      TMV3.MODE !== 'SHADOW_READ_ONLY' ||
-      expected.some(function(x) { return handlers.indexOf(x) !== -1; })
+      Object.keys(actualCounts).some(function(handler) {
+        return expectedCounts[handler] !== undefined;
+      }),
+    expectedCount: 7
   };
 }
 
