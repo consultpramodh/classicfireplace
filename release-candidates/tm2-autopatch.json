@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "release": "TMV3_SHADOW_BOOTSTRAP_R1",
+  "release": "TMV3_SHADOW_BOOTSTRAP_R2",
   "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
   "sourceDirectory": "apps-script/tmv3-shadow",
   "candidateFilePrefix": "TMV3_",
