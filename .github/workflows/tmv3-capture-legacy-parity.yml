@@ -1,0 +1,72 @@
+name: TMV3 Capture Legacy Parity Source
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - 'ops/tmv3-capture-legacy-parity-trigger.txt'
+      - '.github/workflows/tmv3-capture-legacy-parity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure clasp authorization
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}"
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          npx -y @google/clasp@3.3.0 show-authorized-user --json >/dev/null
+
+      - name: Capture current legacy sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/autopatch-output-v3-parity-source"
+          mkdir -p "$OUT/main" "$OUT/preinspect"
+
+          MAIN_ID="1QZp4NAFeA8LmWBN31ylJYdK4XFepBX1h2lP_APaR-d1lTAC-d8LA9x3g"
+          PRE_ID="1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m"
+
+          TMP="$(mktemp -d)"
+          mkdir -p "$TMP/main" "$TMP/pre"
+
+          (cd "$TMP/main" && npx -y @google/clasp@3.3.0 clone "$MAIN_ID" --rootDir src)
+          (cd "$TMP/pre" && npx -y @google/clasp@3.3.0 clone "$PRE_ID" --rootDir src)
+
+          cp -R "$TMP/main/src/." "$OUT/main/"
+          cp -R "$TMP/pre/src/." "$OUT/preinspect/"
+
+          find "$OUT/main" -maxdepth 1 -type f -printf '%f\n' | sort > "$OUT/main-files.txt"
+          find "$OUT/preinspect" -maxdepth 1 -type f -printf '%f\n' | sort > "$OUT/preinspect-files.txt"
+
+          sha256sum "$OUT/main/"* > "$OUT/main-sha256.txt" || true
+          sha256sum "$OUT/preinspect/"* > "$OUT/preinspect-sha256.txt" || true
+
+          echo "LEGACY_PARITY_SOURCE_CAPTURED"
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-legacy-parity-source-${{ github.run_id }}
+          path: autopatch-output-v3-parity-source/
+          if-no-files-found: error
+          retention-days: 7
