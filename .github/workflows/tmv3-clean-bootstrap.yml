@@ -83,7 +83,7 @@ jobs:
           rollback() {
             if [ "$PUSHED" = "1" ] && [ "$HAD_PRE" = "1" ] && [ -d "$PRE/src" ]; then
               echo "Verification failed; restoring PRE V3 source."
-              (cd "$PRE" && npx -y "@google/clasp@$CLASP_VERSION" push --force --delete) || true
+              (cd "$PRE" && npx -y "@google/clasp@$CLASP_VERSION" push --force) || true
             fi
           }
 
@@ -111,7 +111,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/$SOURCE_DIR/"* "$WORK/src/"
 
           echo "Pushing only clean V3 source."
-          (cd "$WORK" && npx -y "@google/clasp@$CLASP_VERSION" push --force --delete)
+          (cd "$WORK" && npx -y "@google/clasp@$CLASP_VERSION" push --force)
           PUSHED=1
 
           echo "Creating immutable V3 source version."
