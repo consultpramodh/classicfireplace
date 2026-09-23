@@ -1,11 +1,7 @@
 name: Task Mapping Title Runtime Probe
 
 on:
-  push:
-    branches:
-      - task_mapping
-    paths:
-      - ops/task-mapping-title-runtime-probe.txt
+  workflow_dispatch:
 
 permissions:
   contents: read
