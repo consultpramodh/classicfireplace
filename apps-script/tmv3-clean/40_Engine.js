@@ -4,6 +4,31 @@ function tmv3_shadowRun() {
   const sourceSummary =
     tmv3_refreshSources();
 
+  return tmv3_shadowMapFromCache_(
+    sourceSummary
+  );
+}
+
+function tmv3_shadowMapFromCache() {
+  tmv3_assertShadow_();
+
+  return tmv3_shadowMapFromCache_(
+    tmv3_sourceCacheSummary_()
+  );
+}
+
+function tmv3_sourceCacheSummary_() {
+  return {
+    customers: tmv3_rows_(TMV3.SHEETS.CUSTOMERS).length,
+    locations: tmv3_rows_(TMV3.SHEETS.LOCATIONS).length,
+    contacts: tmv3_rows_(TMV3.SHEETS.CONTACTS).length,
+    orders: tmv3_rows_(TMV3.SHEETS.ORDERS).length,
+    tasks: tmv3_rows_(TMV3.SHEETS.TASKS).length,
+    source: 'CACHED'
+  };
+}
+
+function tmv3_shadowMapFromCache_(sourceSummary) {
   const events =
     tmv3_calendarRecords_();
 
@@ -44,7 +69,9 @@ function tmv3_shadowRun() {
     'SHADOW_RUN',
     'PASS',
     'Events ' +
-      resolved.length
+      resolved.length +
+      '; Sources ' +
+      JSON.stringify(sourceSummary || {})
   );
 
   const morningOps =
