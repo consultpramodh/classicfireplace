@@ -556,7 +556,7 @@ function tmv3_writeMorningExceptions_(sh, exceptions) {
   const headers = [
     'Status','Data','Date','Time','Customer','Task','Issue','Action',
     'Vertical','Event ID','Priority','Age','Attempts',
-    'Acknowledged / Owner','Calendar Title'
+    'Acknowledged / Owner'
   ];
 
   const headerRow = 16;
@@ -594,8 +594,7 @@ function tmv3_writeMorningExceptions_(sh, exceptions) {
         x.priority,
         x.ageMinutes === null ? 'Baseline' : tmv3_ageLabel_(x.ageMinutes),
         x.attempts || '',
-        x.acknowledged,
-        x.appointment
+        x.acknowledged
       ];
     });
 
