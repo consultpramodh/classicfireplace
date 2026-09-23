@@ -13,14 +13,12 @@ function tmv3_shadowRun() {
   const state =
     tmv3_eventStateIndex_();
 
-  const resolved =
-    events.map(function(e) {
-      return tmv3_resolveEvent_(
-        e,
-        refs,
-        state
-      );
-    });
+  const resolved = [];
+
+  events.forEach(function(e) {
+    const records = tmv3_resolveEventRecords_(e, refs, state);
+    Array.prototype.push.apply(resolved, records);
+  });
 
   tmv3_writeOperatorViews_(
     resolved
@@ -420,7 +418,14 @@ function tmv3_resolveEvent_(
   let taskCandidates =
     [];
 
-  if (e.vertical === 'PreInspection') {
+  if (
+    e.forcedTaskId &&
+    refs.taskById[String(e.forcedTaskId)]
+  ) {
+    taskCandidates = [refs.taskById[String(e.forcedTaskId)]];
+    if (e.forcedMatchEvidence) evidence.push(e.forcedMatchEvidence);
+
+  } else if (e.vertical === 'PreInspection') {
     let piDecision;
 
     try {
@@ -1758,4 +1763,117 @@ function tmv3_verificationSummary_(
       ? 'CALENDAR ↔ STRIVEN PASS · ' + parts.join(' · ')
       : 'CALENDAR ↔ STRIVEN CHECK · ' + parts.join(' · ')
   );
+}
+
+
+/************************************************************
+ * SERVICE MULTI-FIREPLACE EXPANSION
+ *
+ * Old-system rule preserved:
+ * If the same Work Order has multiple OPEN Service Tasks with
+ * explicit FP#n / Fireplace #n markers, one Calendar event
+ * expands to one V3 operational record per fireplace task.
+ *
+ * Arbitrary multiple tasks without those markers still REVIEW.
+ ************************************************************/
+function tmv3_resolveEventRecords_(eventRecord, refs, stateIndex) {
+  if (eventRecord.vertical !== 'Service') {
+    return [tmv3_resolveEvent_(eventRecord, refs, stateIndex)];
+  }
+
+  const orderCandidates =
+    eventRecord.existingOrderId && refs.orderById[eventRecord.existingOrderId]
+      ? [refs.orderById[eventRecord.existingOrderId]]
+      : (
+          eventRecord.orderNumber
+            ? (refs.ordersByNumber[eventRecord.orderNumber] || [])
+            : []
+        );
+
+  if (orderCandidates.length !== 1) {
+    return [tmv3_resolveEvent_(eventRecord, refs, stateIndex)];
+  }
+
+  const order = orderCandidates[0];
+  const orderId = tmv3_clean_(order['Order ID']);
+  const cfg = TMV3.VERTICALS.Service;
+
+  const candidates = (refs.tasksByOrder[orderId] || [])
+    .filter(function(task) {
+      return (
+        tmv3_taskFitsVertical_(task, 'Service', cfg) &&
+        tmv3_taskIsOpen_(task['Status'])
+      );
+    })
+    .map(function(task) {
+      return {
+        task: task,
+        fireplaceNumber: tmv3_extractServiceFireplaceNumber_(task['Name'])
+      };
+    })
+    .filter(function(item) {
+      return item.fireplaceNumber > 0;
+    })
+    .sort(function(a, b) {
+      return a.fireplaceNumber - b.fireplaceNumber;
+    });
+
+  if (candidates.length <= 1) {
+    return [tmv3_resolveEvent_(eventRecord, refs, stateIndex)];
+  }
+
+  const numberCounts = {};
+  candidates.forEach(function(item) {
+    numberCounts[item.fireplaceNumber] =
+      (numberCounts[item.fireplaceNumber] || 0) + 1;
+  });
+
+  const duplicates = Object.keys(numberCounts).filter(function(n) {
+    return numberCounts[n] > 1;
+  });
+
+  if (duplicates.length) {
+    return [tmv3_result_(eventRecord, {
+      status: 'REVIEW',
+      nextAction: 'REVIEW MULTI-FIREPLACE TASKS',
+      issue:
+        'Multiple OPEN Service Tasks use the same fireplace marker: FP#' +
+        duplicates.join(', FP#') +
+        '.',
+      errorCode: 'DUPLICATE_SERVICE_FIREPLACE_NUMBER'
+    })];
+  }
+
+  return candidates.map(function(item) {
+    const clone = Object.assign({}, eventRecord, {
+      forcedTaskId: tmv3_clean_(item.task['Task ID']),
+      forcedMatchEvidence: 'WORK ORDER + FP#' + item.fireplaceNumber,
+      serviceFireplaceNumber: item.fireplaceNumber
+    });
+
+    const result = tmv3_resolveEvent_(clone, refs, stateIndex);
+    result.serviceFireplaceNumber = item.fireplaceNumber;
+    return result;
+  });
+}
+
+function tmv3_extractServiceFireplaceNumber_(taskName) {
+  const clean = tmv3_clean_(taskName);
+  if (!clean) return 0;
+
+  const patterns = [
+    /\bFP\s*#?\s*(\d+)\b/i,
+    /\bF\.?P\.?\s*#?\s*(\d+)\b/i,
+    /\bFireplace\s*#?\s*(\d+)\b/i
+  ];
+
+  for (let i = 0; i < patterns.length; i++) {
+    const match = clean.match(patterns[i]);
+    if (match && match[1]) {
+      const value = Number(match[1]);
+      if (!isNaN(value) && value > 0) return value;
+    }
+  }
+
+  return 0;
 }
