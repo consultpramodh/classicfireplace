@@ -130,9 +130,10 @@ function tmv3_refreshSources() {
         return tmv3_normalizeLocation_(r, customerNumberToId);
       });
 
-  const contacts =
-    tmv3_reportRows_(TMV3.PROPERTIES.CONTACTS)
-      .map(tmv3_normalizeContact_);
+  // Contacts are resolved on demand by Customer through the Striven API.
+  // The cache sheet remains as a normalized optional surface, but V3 does not
+  // require a full Contacts report refresh for each mapping run.
+  const contacts = [];
 
   const approved =
     tmv3_reportRows_(TMV3.PROPERTIES.APPROVED_ORDERS)
@@ -1065,4 +1066,122 @@ function tmv3_resolveOrganizerEmployee_(eventRecord) {
     employee: matches[0],
     evidence: 'CALENDAR_ORGANIZER_EMAIL_EXACT_EMPLOYEE'
   };
+}
+
+
+function tmv3_getCustomerContacts_(customerId) {
+  const id = Number(customerId || 0);
+  if (!id) throw new Error('Customer ID is required for contact lookup.');
+
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'TMV3_CUSTOMER_CONTACTS_' + id;
+  const cached = cache.get(cacheKey);
+
+  if (cached) {
+    try { return JSON.parse(cached); } catch (ignored) {}
+  }
+
+  const raw = tmv3_fetchJson_(
+    TMV3.API_BASE + '/v1/customers/' + encodeURIComponent(id) + '/contacts',
+    { method: 'get' }
+  );
+
+  const rows = tmv3_arrayFromApiResponse_(raw);
+  const contacts = rows
+    .map(function(item) {
+      return tmv3_normalizeApiContact_(item, id);
+    })
+    .filter(function(item) {
+      return !!item['Contact ID'];
+    });
+
+  try {
+    cache.put(cacheKey, JSON.stringify(contacts), 1800);
+  } catch (ignored) {}
+
+  return contacts;
+}
+
+function tmv3_getContactById_(contactId, expectedCustomerId) {
+  const id = Number(contactId || 0);
+  if (!id) throw new Error('Contact ID is required.');
+
+  const raw = tmv3_fetchJson_(
+    TMV3.API_BASE + '/v1/contacts/' + encodeURIComponent(id),
+    { method: 'get' }
+  ) || {};
+
+  const contact = tmv3_normalizeApiContact_(raw, expectedCustomerId || '');
+  const expected = String(Number(expectedCustomerId || 0) || '');
+
+  if (expected) {
+    const directCustomerId = tmv3_clean_(contact['Customer ID']);
+    const text = JSON.stringify(raw);
+
+    contact.__ownershipVerified =
+      directCustomerId === expected ||
+      new RegExp(
+        '(?:customerId|accountId|id)\\D{0,8}' +
+        expected +
+        '(?:\\D|$)',
+        'i'
+      ).test(text);
+  } else {
+    contact.__ownershipVerified = false;
+  }
+
+  return contact;
+}
+
+function tmv3_normalizeApiContact_(raw, fallbackCustomerId) {
+  raw = raw || {};
+
+  const id = tmv3_first_(raw, ['id','Id','contactId','ContactId']);
+  const first = tmv3_clean_(tmv3_first_(raw, ['firstName','FirstName']));
+  const last = tmv3_clean_(tmv3_first_(raw, ['lastName','LastName']));
+  const name =
+    tmv3_clean_(tmv3_first_(raw, ['name','Name','fullName','FullName'])) ||
+    [first,last].filter(Boolean).join(' ');
+
+  const customerId =
+    tmv3_first_(raw, ['customerId','CustomerId','accountId','AccountId']) ||
+    tmv3_first_(raw.customer || raw.Customer || {}, ['id','Id']) ||
+    fallbackCustomerId ||
+    '';
+
+  const text = JSON.stringify(raw);
+  const phones = tmv3_allPhones_(text);
+  const emails = tmv3_extractEmails_(text);
+
+  return {
+    'Contact ID': tmv3_clean_(id),
+    'Customer ID': tmv3_clean_(customerId),
+    'Name': name,
+    'Phone': phones[0] || '',
+    'Email': emails[0] || '',
+    Phones: phones,
+    Emails: emails
+  };
+}
+
+function tmv3_arrayFromApiResponse_(json) {
+  if (!json) return [];
+  if (Array.isArray(json)) return json;
+
+  const direct = [
+    json.data,
+    json.Data,
+    json.items,
+    json.Items,
+    json.results,
+    json.Results,
+    json.contacts,
+    json.Contacts
+  ];
+
+  for (let i = 0; i < direct.length; i++) {
+    if (Array.isArray(direct[i])) return direct[i];
+  }
+
+  return [];
 }
