@@ -332,380 +332,90 @@ function tmv3_resolveEvent_(
     );
   }
 
-  let order =
-    null;
+  let order = null;
+  const evidence = [];
 
-  let customer =
-    null;
-
-  let location =
-    null;
-
-  let contactId =
-    '';
-
-  const evidence =
-    [];
-
-  if (
-    cfg.orderRequired
-  ) {
+  if (cfg.orderRequired) {
     const orderCandidates =
-      e.existingOrderId &&
-      refs
-        .orderById[
-          e.existingOrderId
-        ]
-        ? [
-            refs
-              .orderById[
-                e.existingOrderId
-              ]
-          ]
+      e.existingOrderId && refs.orderById[e.existingOrderId]
+        ? [refs.orderById[e.existingOrderId]]
         : (
             e.orderNumber
-              ? (
-                  refs
-                    .ordersByNumber[
-                      e.orderNumber
-                    ] ||
-                  []
-                )
+              ? (refs.ordersByNumber[e.orderNumber] || [])
               : []
           );
 
-    if (
-      orderCandidates.length >
-      1
-    ) {
+    if (orderCandidates.length > 1) {
       return tmv3_result_(
         e,
         {
-          status:
-            'REVIEW',
-          nextAction:
-            'RESOLVE ORDER',
-          issue:
-            'Multiple matching ' +
-            cfg.orderLabel +
-            ' records.',
-          errorCode:
-            'AMBIGUOUS_ORDER'
+          status: 'REVIEW',
+          nextAction: 'RESOLVE ' + cfg.orderLabel.toUpperCase(),
+          issue: 'Multiple matching ' + cfg.orderLabel + ' records.',
+          errorCode: 'AMBIGUOUS_ORDER'
         }
       );
     }
 
-    if (
-      orderCandidates.length ===
-      0
-    ) {
+    if (orderCandidates.length === 0) {
       return tmv3_result_(
         e,
         {
-          status:
-            'BLOCKED',
-          nextAction:
-            'ADD / VERIFY ' +
-            cfg
-              .orderLabel
-              .toUpperCase(),
-          issue:
-            cfg.orderLabel +
-            ' is required and was not resolved.',
-          errorCode:
-            'ORDER_REQUIRED'
+          status: 'BLOCKED',
+          nextAction: 'ADD / VERIFY ' + cfg.orderLabel.toUpperCase(),
+          issue: cfg.orderLabel + ' is required and was not resolved.',
+          errorCode: 'ORDER_REQUIRED'
         }
       );
     }
 
-    order =
-      orderCandidates[0];
-
-    evidence.push(
-      cfg.orderLabel +
-      ' exact'
-    );
-
-    customer =
-      refs
-        .customerById[
-          tmv3_clean_(
-            order[
-              'Customer ID'
-            ]
-          )
-        ] ||
-      null;
-
-    if (!customer) {
-      return tmv3_result_(
-        e,
-        {
-          status:
-            'BLOCKED',
-          nextAction:
-            'RESOLVE CUSTOMER',
-          issue:
-            'Resolved order does not resolve to a Customer.',
-          order:
-            order,
-          errorCode:
-            'ORDER_CUSTOMER_MISSING'
-        }
-      );
-    }
-
-    evidence.push(
-      'Customer from ' +
-      cfg.orderLabel
-    );
-
-    contactId =
-      tmv3_clean_(
-        order[
-          'Contact ID'
-        ]
-      );
-
-  } else {
-
-    if (
-      e.customerNumber &&
-      refs
-        .customerByNumber[
-          e.customerNumber
-        ]
-    ) {
-      customer =
-        refs
-          .customerByNumber[
-            e.customerNumber
-          ];
-
-      evidence.push(
-        'Customer # exact'
-      );
-    }
-
-    if (
-      !customer &&
-      e.phone &&
-      (
-        refs
-          .customerByPhone[
-            e.phone
-          ] ||
-        []
-      ).length === 1
-    ) {
-      customer =
-        refs
-          .customerByPhone[
-            e.phone
-          ][0];
-
-      evidence.push(
-        'Phone exact'
-      );
-    }
-
-    if (
-      !customer &&
-      e.phone &&
-      (
-        refs
-          .customerByPhone[
-            e.phone
-          ] ||
-        []
-      ).length > 1
-    ) {
-      return tmv3_result_(
-        e,
-        {
-          status:
-            'REVIEW',
-          nextAction:
-            'RESOLVE CUSTOMER',
-          issue:
-            'Phone matches multiple customers.',
-          errorCode:
-            'AMBIGUOUS_CUSTOMER'
-        }
-      );
-    }
-
-    if (!customer) {
-      return tmv3_result_(
-        e,
-        {
-          status:
-            'REVIEW',
-          nextAction:
-            'RESOLVE CUSTOMER',
-          issue:
-            'PreInspection customer could not be proven.',
-          errorCode:
-            'CUSTOMER_UNRESOLVED'
-        }
-      );
-    }
+    order = orderCandidates[0];
+    evidence.push(cfg.orderLabel + ' exact');
   }
 
-  const customerId =
-    tmv3_clean_(
-      customer[
-        'Customer ID'
-      ]
-    );
-
-  const orderLocationId =
+  const identity = tmv3_resolveIdentity_(
+    e,
+    cfg,
+    refs,
     order
-      ? tmv3_clean_(
-          order[
-            'Location ID'
-          ]
-        )
-      : '';
+  );
 
-  const customerLocations =
-    refs
-      .locationsByCustomer[
-        customerId
-      ] ||
-    [];
-
-  if (
-    orderLocationId
-  ) {
-    location =
-      customerLocations
-        .filter(
-          function(r) {
-            return (
-              tmv3_clean_(
-                r[
-                  'Location ID'
-                ]
-              ) ===
-              orderLocationId
-            );
-          }
-        )[0] ||
-      null;
-  }
-
-  if (
-    !location &&
-    e.location
-  ) {
-    const target =
-      tmv3_norm_(
-        e.location
-      );
-
-    const matches =
-      customerLocations
-        .filter(
-          function(r) {
-            const full =
-              [
-                r[
-                  'Address 1'
-                ],
-                r[
-                  'Address 2'
-                ],
-                r[
-                  'City'
-                ],
-                r[
-                  'Province'
-                ],
-                r[
-                  'Postal Code'
-                ]
-              ]
-                .map(
-                  tmv3_clean_
-                )
-                .join(' ');
-
-            return (
-              target &&
-              (
-                tmv3_norm_(
-                  full
-                ) ===
-                  target ||
-                tmv3_norm_(
-                  r[
-                    'Address 1'
-                  ]
-                ) ===
-                  target
-              )
-            );
-          }
-        );
-
-    if (
-      matches.length ===
-      1
-    ) {
-      location =
-        matches[0];
-
-      evidence.push(
-        'Location exact'
-      );
-
-    } else if (
-      matches.length >
-      1
-    ) {
-      return tmv3_result_(
-        e,
-        {
-          status:
-            'REVIEW',
-          nextAction:
-            'RESOLVE LOCATION',
-          issue:
-            'Multiple customer-owned locations match event.',
-          customer:
-            customer,
-          order:
-            order,
-          errorCode:
-            'AMBIGUOUS_LOCATION'
-        }
-      );
-    }
-  }
-
-  if (!location) {
+  if (identity.status !== 'MATCHED') {
     return tmv3_result_(
       e,
       {
-        status:
-          'REVIEW',
+        status: identity.status || 'REVIEW',
         nextAction:
-          e.vertical ===
-            'PreInspection'
-              ? 'VERIFY / CREATE LOCATION'
-              : 'RESOLVE LOCATION',
-        issue:
-          'Customer is known but appointment location is not proven.',
-        customer:
-          customer,
-        order:
-          order,
-        errorCode:
-          'LOCATION_UNRESOLVED'
+          identity.errorCode === 'LOCATION_UNRESOLVED'
+            ? (
+                e.vertical === 'PreInspection'
+                  ? 'VERIFY / CREATE LOCATION'
+                  : 'RESOLVE LOCATION'
+              )
+            : 'RESOLVE IDENTITY',
+        issue: identity.reason || 'Identity requires review.',
+        customer: identity.customer || null,
+        location: identity.location || null,
+        order: order,
+        evidence: evidence.concat(identity.evidence || []),
+        errorCode: identity.errorCode || 'IDENTITY_REVIEW'
       }
     );
   }
+
+  const customer = identity.customer;
+  const location = identity.location;
+  const contact = identity.contact || null;
+  const customerId = tmv3_clean_(customer['Customer ID']);
+  const contactId = contact
+    ? tmv3_clean_(contact['Contact ID'])
+    : (
+        order
+          ? tmv3_clean_(order['Contact ID'])
+          : ''
+      );
+
+  Array.prototype.push.apply(evidence, identity.evidence || []);
 
   let taskCandidates =
     [];
@@ -875,6 +585,8 @@ function tmv3_resolveEvent_(
           location,
         order:
           order,
+        contact:
+          contact,
         evidence:
           evidence,
         errorCode:
@@ -928,6 +640,8 @@ function tmv3_resolveEvent_(
           location,
         order:
           order,
+        contact:
+          contact,
         evidence:
           evidence,
         errorCode:
@@ -1004,6 +718,8 @@ function tmv3_resolveEvent_(
         location,
       order:
         order,
+      contact:
+        contact,
       task:
         task,
       evidence:
@@ -1399,6 +1115,10 @@ function tmv3_result_(
     x.task ||
     null;
 
+  const contact =
+    x.contact ||
+    null;
+
   return {
     vertical:
       e.vertical,
@@ -1469,13 +1189,13 @@ function tmv3_result_(
           )
         : '',
     contactId:
-      order
-        ? tmv3_clean_(
-            order[
-              'Contact ID'
-            ]
-          )
-        : '',
+      contact
+        ? tmv3_clean_(contact['Contact ID'])
+        : (
+            order
+              ? tmv3_clean_(order['Contact ID'])
+              : ''
+          ),
     order:
       order
         ? (
