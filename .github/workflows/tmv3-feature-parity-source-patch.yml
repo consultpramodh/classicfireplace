@@ -1,0 +1,161 @@
+name: TMV3 Feature Parity Source Patch
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - 'ops/tmv3-parity-payload.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tmv3-feature-parity-source-patch
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: task_mapping
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Apply V3 feature parity source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, gzip, json, pathlib, re
+
+          root = pathlib.Path('.')
+          payload = json.loads((root/'ops/tmv3-parity-payload.json').read_text())
+          src = root/'apps-script/tmv3-clean'
+
+          for name in ('58_Operations.js','60_Automation.js'):
+              data = gzip.decompress(base64.b64decode(payload[name]))
+              (src/name).write_bytes(data)
+
+          config = (src/'00_Config.js').read_text()
+          config = re.sub(
+              r"const TMV3_VERSION = '[^']+';",
+              "const TMV3_VERSION = '3.1.0-parity-r1-manual-live-auto-gated';",
+              config,
+              count=1
+          )
+          if 'OPERATIONS: Object.freeze({' not in config:
+              config = config.replace(
+                  "  MAX_PAGES: 50,\n",
+                  "  MAX_PAGES: 50,\n"
+                  "  OPERATIONS: Object.freeze({\n"
+                  "    manualWritesEnabled: true,\n"
+                  "    automationWritesEnabled: false,\n"
+                  "    autoMaxWritesPerRun: 10,\n"
+                  "    installRemindersEnabled: true\n"
+                  "  }),\n"
+              )
+          config = config.replace(
+              "field854Policy: 'NO_WRITE'",
+              "field854Policy: 'MANAGED_WRITE_PRESERVE_OTHER_FIELDS'"
+          )
+          (src/'00_Config.js').write_text(config)
+
+          morning_path = src/'80_MorningOps.js'
+          morning = morning_path.read_text()
+          replacement = r'''function tmv3_triggerHealth_() {
+  const installed = tmv3_listTriggers();
+
+  const expectedCounts = {
+    tmv3_dailySourceRefresh: 1,
+    tmv3_scheduledOperations: 5,
+    tmv3_refreshLinksSlot_0800: 1,
+    tmv3_refreshLinksSlot_1000: 1,
+    tmv3_refreshLinksSlot_1200: 1,
+    tmv3_refreshLinksSlot_1400: 1,
+    tmv3_refreshLinksSlot_1600: 1,
+    tmv3_refreshLinksSlot_1800: 1,
+    tmv3_installReminderCheck: 1,
+    tmv3_calendarEventUpdated: 4
+  };
+
+  const actualCounts = {};
+  installed.forEach(function(t) {
+    const handler = tmv3_clean_(t.handler);
+    actualCounts[handler] = (actualCounts[handler] || 0) + 1;
+  });
+
+  const missing = [];
+  const extra = [];
+
+  Object.keys(expectedCounts).forEach(function(handler) {
+    const expected = expectedCounts[handler];
+    const actual = actualCounts[handler] || 0;
+    if (actual < expected) {
+      missing.push(handler + ' ' + actual + '/' + expected);
+    } else if (actual > expected) {
+      extra.push(handler + ' ' + actual + '/' + expected);
+    }
+  });
+
+  return {
+    installed: installed.length,
+    missing: missing,
+    duplicates: extra,
+    enabled: Object.keys(actualCounts).some(function(handler) {
+      return expectedCounts[handler] !== undefined;
+    }),
+    expectedCount: 17,
+    manualWritesEnabled:
+      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.manualWritesEnabled),
+    automationWritesEnabled:
+      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.automationWritesEnabled)
+  };
+}
+
+'''
+          pattern = re.compile(
+              r'function tmv3_triggerHealth_\(\) \{[\s\S]*?\n\}\n\nfunction tmv3_morningReadiness_',
+              re.M
+          )
+          m = pattern.search(morning)
+          if not m:
+              raise SystemExit('tmv3_triggerHealth_ anchor not found')
+          morning = morning[:m.start()] + replacement + 'function tmv3_morningReadiness_' + morning[m.end():]
+          morning_path.write_text(morning)
+
+          manifest_path = root/'release-candidates/tmv3-clean-bootstrap.json'
+          manifest = json.loads(manifest_path.read_text())
+          manifest['release'] = 'TMV3_FEATURE_PARITY_R1_MANUAL_LIVE_AUTO_GATED'
+          manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
+
+          for f in apps-script/tmv3-clean/*.js; do
+            node --check "$f"
+          done
+
+          grep -q "manualWritesEnabled: true" apps-script/tmv3-clean/00_Config.js
+          grep -q "automationWritesEnabled: false" apps-script/tmv3-clean/00_Config.js
+          grep -q "function tmv3_syncSelectedAppointment" apps-script/tmv3-clean/58_Operations.js
+          grep -q "Push Date / Time" apps-script/tmv3-clean/60_Automation.js
+          grep -q "tmv3_calendarEventUpdated: 4" apps-script/tmv3-clean/80_MorningOps.js
+
+      - name: Commit V3 feature parity implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "consultpramodh"
+          git config user.email "consultpramodh@gmail.com"
+          git add apps-script/tmv3-clean release-candidates/tmv3-clean-bootstrap.json
+          if git diff --cached --quiet; then
+            echo "No source changes."
+            exit 0
+          fi
+          git commit -m "task-mapping: restore V3 operational parity and manual controls"
+          git push origin task_mapping
