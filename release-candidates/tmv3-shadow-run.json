@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_SHADOW_RUN_R4_COMPACT_DATA_CHECKLIST_MAP_ONLY",
+  "release": "TMV3_SHADOW_RUN_R5_COMPACT_DATA_CHECKLIST_REFRESH",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
