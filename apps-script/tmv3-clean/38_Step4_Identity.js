@@ -1178,15 +1178,28 @@ function tmv3_step4TaskColumnIdentity_(record, step4) {
 }
 
 function tmv3_step4LocationDisplay_(location) {
-  const parts = [
-    tmv3_clean_(location && location['Address 1']),
-    tmv3_clean_(location && location['Address 2']),
-    tmv3_clean_(location && location['City']),
-    tmv3_clean_(location && location['Province']),
-    tmv3_clean_(location && location['Postal Code'])
-  ].filter(Boolean);
+  const a1 = tmv3_clean_(location && location['Address 1']);
+  const a2 = tmv3_clean_(location && location['Address 2']);
+  const city = tmv3_clean_(location && location['City']);
+  const province = tmv3_clean_(location && location['Province']);
+  const postal = tmv3_clean_(location && location['Postal Code']);
 
-  return tmv3_unique_(parts).join(', ');
+  const parts = [];
+  if (a1) parts.push(a1);
+
+  const currentText = function() {
+    return parts.join(' ').toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
+  [a2, city, province, postal].forEach(function(part) {
+    if (!part) return;
+    const key = part.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!key) return;
+    if (currentText().indexOf(key) !== -1) return;
+    parts.push(part);
+  });
+
+  return parts.join(', ');
 }
 
 function tmv3_step4IdentitySummary_(customer, location, contact, contactStatus, locationStatus) {

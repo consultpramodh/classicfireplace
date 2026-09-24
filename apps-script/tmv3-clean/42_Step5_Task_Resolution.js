@@ -156,11 +156,16 @@ function tmv3_step5ResolvePreInspection_(record) {
     );
 
     if (decision.status === 'MATCHED' && decision.task) {
+      const alignedTask = tmv3_step5AlignPreInspectionTaskClock_(
+        decision.task,
+        record
+      );
+
       return tmv3_step5Decision_(
         'MATCHED',
         'PREINSPECTION_TASK_MATCHED',
         decision.reason,
-        [decision.task],
+        [alignedTask],
         (decision.historyTasks || []).length,
         decision.evidence || [],
         [],
@@ -691,6 +696,57 @@ function tmv3_step5TaskSummary_(tasks, disposition) {
   }).join('\n');
 }
 
+function tmv3_step5AlignPreInspectionTaskClock_(task, record) {
+  const out = Object.assign({}, task || {});
+
+  [
+    ['Start', record && record.start],
+    ['Due', record && record.end]
+  ].forEach(function(pair) {
+    const field = pair[0];
+    const calendarValue = pair[1];
+    const taskValue = tmv3_clean_(out[field]);
+
+    if (!taskValue || !calendarValue) return;
+
+    const taskDate = new Date(taskValue);
+    const calendarDate =
+      calendarValue instanceof Date
+        ? calendarValue
+        : new Date(calendarValue);
+
+    if (
+      isNaN(taskDate.getTime()) ||
+      isNaN(calendarDate.getTime())
+    ) {
+      return;
+    }
+
+    if (
+      tmv3_step6LocalDay_(taskDate) !==
+      tmv3_step6LocalDay_(calendarDate)
+    ) {
+      return;
+    }
+
+    const diff = Math.abs(
+      taskDate.getTime() - calendarDate.getTime()
+    );
+
+    // Striven V2 occasionally serializes afternoon 1–11 PM as 1–11 AM.
+    // Correct only the exact 12-hour case corroborated by this Calendar event.
+    if (diff === 12 * 60 * 60 * 1000) {
+      out[field] = Utilities.formatDate(
+        calendarDate,
+        TMV3_TIMEZONE,
+        "yyyy-MM-dd'T'HH:mm:ssXXX"
+      );
+    }
+  });
+
+  return out;
+}
+
 function tmv3_step5TaskColumnSummary_(record, tasks, disposition) {
   const identity = tmv3_step4TaskColumnIdentity_(
     record,
@@ -713,7 +769,7 @@ function tmv3_step5TaskCombinedSummary_(tasks, disposition) {
 
   return tasks.map(function(task) {
     const id = tmv3_clean_(task['Task ID']);
-    const name = tmv3_clean_(task['Name']);
+    const name = tmv3_step5DisplayTaskName_(task['Name']);
     const detail = 'Task #' + id + (name ? ' · ' + name : '');
     const schedule = tmv3_step5TaskScheduleOne_(task);
     const status = tmv3_step5DisplayStatus_(task['Status']);
@@ -722,6 +778,16 @@ function tmv3_step5TaskCombinedSummary_(tasks, disposition) {
       .filter(Boolean)
       .join('\n\n');
   }).join('\n\n');
+}
+
+function tmv3_step5DisplayTaskName_(value) {
+  return tmv3_clean_(value)
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&nbsp;/gi, ' ');
 }
 
 function tmv3_step5TaskScheduleSummary_(tasks) {
