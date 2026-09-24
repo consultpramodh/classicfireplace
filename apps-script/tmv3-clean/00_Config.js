@@ -1,5 +1,5 @@
-const TMV3_VERSION = '3.7.8-step6-customer-dashboard-link-r6';
-const TMV3_EXECUTION_STAGE = 6;
+const TMV3_VERSION = '3.8.0-step7-reconciliation-plan-r1';
+const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
@@ -30,6 +30,7 @@ const TMV3 = Object.freeze({
     PREINSPECTION: 'PreInspection',
     STATE: 'TM State',
     AUDIT: 'TM Audit',
+    RECONCILE: 'TM Reconcile',
     CUSTOMERS: 'Source Customers',
     LOCATIONS: 'Source Locations',
     CONTACTS: 'Source Contacts',
