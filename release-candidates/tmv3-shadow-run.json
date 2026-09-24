@@ -1,7 +1,7 @@
 {
-  "release": "TMV3_STEP3_BUSINESS_ANCHOR_VERIFY_R2",
+  "release": "TMV3_STEP4_IDENTITY_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP3"
+  "runMode": "STEP4"
 }
