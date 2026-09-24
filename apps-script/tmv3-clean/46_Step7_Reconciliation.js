@@ -78,7 +78,13 @@ function tmv3_step7ReconciliationRun(reason, refreshSources, verticalFilter) {
           source: 'CACHED_TASK_SOURCES'
         };
 
-  const step2Snapshot = tmv3_step2CalendarRecords_();
+  const allStep2Snapshot = tmv3_step2CalendarRecords_();
+  const step2Snapshot = filter
+    ? allStep2Snapshot.filter(function(record) {
+        return record.vertical === filter;
+      })
+    : allStep2Snapshot;
+
   const step3Refs = tmv3_step3AnchorIndex_();
   const step3Records = tmv3_step3BusinessAnchorRecords_(
     step2Snapshot,
@@ -111,7 +117,7 @@ function tmv3_step7ReconciliationRun(reason, refreshSources, verticalFilter) {
   };
 
   const plans = tmv3_step7Plans_(selected, runtime);
-  const write = tmv3_step7WritePlans_(plans);
+  const write = tmv3_step7WritePlans_(plans, filter);
   const verification = tmv3_step7Verify_(selected, plans);
   const counts = tmv3_step7Counts_(plans);
 
@@ -477,7 +483,7 @@ function tmv3_step7ExistingTaskPlan_(
   const expected = tmv3_step7Expected_(
     record,
     runtime,
-    !historical
+    false
   );
 
   if (!fresh.ok) {
@@ -539,6 +545,29 @@ function tmv3_step7ExistingTaskPlan_(
     expected,
     requestedBy
   );
+
+  // Fresh Contact ownership is only needed when Step 7 would propose a
+  // Requested By mutation. Matching Requested By relationships do not consume
+  // an extra Contact API call; Step 8 must re-verify ownership immediately
+  // before any future write.
+  if (
+    expected.requestedByType === 'contact' &&
+    expected.requestedById
+  ) {
+    if (requestedCheck === 'MATCH') {
+      expected.contactOwnership = 'NOT_NEEDED_REQUESTED_BY_MATCH';
+    } else if (!historical) {
+      const ownership = tmv3_step7ContactOwnership_(
+        expected.requestedById,
+        expected.customerId,
+        runtime
+      );
+      expected.contactOwnership = ownership.status;
+      if (ownership.error) {
+        expected.requestedByError = ownership.error;
+      }
+    }
+  }
 
   const startCheck = tmv3_step7DateCheck_(
     record.start,
@@ -663,6 +692,7 @@ function tmv3_step7ExistingAction_(
 
   if (
     expected.requestedByType === 'contact' &&
+    checks.requestedBy !== 'MATCH' &&
     expected.contactOwnership !== 'VERIFIED'
   ) {
     return {
@@ -1137,10 +1167,11 @@ function tmv3_step7EnsureSheet_() {
   return sh;
 }
 
-function tmv3_step7WritePlans_(plans) {
+function tmv3_step7WritePlans_(plans, verticalFilter) {
   const sh = tmv3_step7EnsureSheet_();
+  const filter = tmv3_clean_(verticalFilter);
 
-  const rows = (plans || []).map(function(plan) {
+  const newRows = (plans || []).map(function(plan) {
     return [
       plan.vertical,
       plan.eventId,
@@ -1184,6 +1215,42 @@ function tmv3_step7WritePlans_(plans) {
     ];
   });
 
+  let rows = newRows.slice();
+
+  if (filter && sh.getLastRow() > 1) {
+    const existing = sh
+      .getRange(1,1,sh.getLastRow(),TMV3_STEP7_HEADERS.length)
+      .getValues();
+
+    const headerMatches =
+      existing.length &&
+      String(existing[0][0] || '') === TMV3_STEP7_HEADERS[0] &&
+      existing[0].length === TMV3_STEP7_HEADERS.length;
+
+    if (headerMatches) {
+      const preserved = existing.slice(1).filter(function(row) {
+        return (
+          tmv3_clean_(row[0]) &&
+          tmv3_clean_(row[0]) !== filter
+        );
+      });
+
+      rows = preserved.concat(newRows);
+    }
+  }
+
+  rows.sort(function(a, b) {
+    const verticalCompare =
+      tmv3_clean_(a[0]).localeCompare(tmv3_clean_(b[0]));
+    if (verticalCompare !== 0) return verticalCompare;
+
+    const startCompare =
+      tmv3_clean_(a[22]).localeCompare(tmv3_clean_(b[22]));
+    if (startCompare !== 0) return startCompare;
+
+    return tmv3_clean_(a[3]).localeCompare(tmv3_clean_(b[3]));
+  });
+
   tmv3_replaceRows_(
     TMV3.SHEETS.RECONCILE,
     TMV3_STEP7_HEADERS.slice(),
@@ -1211,7 +1278,10 @@ function tmv3_step7WritePlans_(plans) {
 
   return {
     sheet: TMV3.SHEETS.RECONCILE,
-    rows: rows.length,
+    verticalFilter: filter || 'ALL',
+    rowsWritten: newRows.length,
+    totalRows: rows.length,
+    preservedOtherVerticalRows: rows.length - newRows.length,
     hidden: true
   };
 }
