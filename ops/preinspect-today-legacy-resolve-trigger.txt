@@ -1,5 +1,4 @@
-purpose=Resolve exactly one legacy PreInspection queue action for today's appointments
+purpose=Discover callable legacy Apps Script deployment for today's PreInspection resolution
 date=2026-09-24
-run=1
-requested_by=ChatGPT
-scope=legacy_preinspect_only
+run=deployment-diagnostic-1
+scope=read_only_deployments_versions
