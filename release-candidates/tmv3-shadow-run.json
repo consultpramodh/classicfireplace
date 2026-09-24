@@ -1,7 +1,7 @@
 {
-  "release": "TMV3_TASK_COMPLETION_SCHEMA_PROBE_R2",
+  "release": "TMV3_STEP6_TASK_DECISION_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEMA"
+  "runMode": "STEP6"
 }
