@@ -151,6 +151,9 @@ const injected =
   'function doGet(e) {\n' +
   '  if (e && e.parameter && e.parameter.__preinspect_kristin === ' + JSON.stringify(nonce) + ') {\n' +
   '    return tmWebJson_(tmTemporaryResolveKristin18683_());\n' +
+  '  }\n' +
+  '  if (e && e.parameter && e.parameter.__preinspect_today === ' + JSON.stringify(nonce) + ') {\n' +
+  '    return tmWebJson_(runNextPreInspectActionFromAppsScript());\n' +
   '  }';
 
 s = s.replace(anchor, injected);
