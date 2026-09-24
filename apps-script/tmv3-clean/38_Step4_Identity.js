@@ -200,7 +200,10 @@ function tmv3_step4ResolveOrderIdentity_(record, refs, anchor) {
     anchor.orderLocationIdEvidence
   );
 
-  if (locationResult.status !== 'MATCHED') {
+  if (
+    locationResult.status !== 'MATCHED' &&
+    locationResult.status !== 'CREATE_REQUIRED'
+  ) {
     return tmv3_step4Decision_(
       locationResult.status === 'BLOCKED' ? 'BLOCKED' : 'REVIEW',
       locationResult.errorCode,
@@ -212,6 +215,10 @@ function tmv3_step4ResolveOrderIdentity_(record, refs, anchor) {
       evidence.concat(locationResult.evidence || []),
       warnings
     );
+  }
+
+  if (locationResult.status === 'CREATE_REQUIRED') {
+    warnings.push('Location will need to be created on the verified Customer before any Task write.');
   }
 
   const contactResult = tmv3_step4ResolveContact_(
@@ -243,7 +250,7 @@ function tmv3_step4ResolveOrderIdentity_(record, refs, anchor) {
     'ORDER_IDENTITY_VERIFIED',
     'Customer and Customer-owned Location are verified from the Step-3 business anchor.',
     customer,
-    locationResult.location,
+    locationResult.location || null,
     contactResult.contact || null,
     contactResult.status,
     evidence.concat(locationResult.evidence || [], contactResult.evidence || []),
@@ -312,7 +319,10 @@ function tmv3_step4ResolveServiceIdentity_(record, refs, anchor) {
       orderLocationId
     );
 
-    if (locationResult.status !== 'MATCHED') {
+    if (
+      locationResult.status !== 'MATCHED' &&
+      locationResult.status !== 'CREATE_REQUIRED'
+    ) {
       return tmv3_step4Decision_(
         locationResult.status === 'BLOCKED' ? 'BLOCKED' : 'REVIEW',
         locationResult.errorCode,
@@ -326,7 +336,11 @@ function tmv3_step4ResolveServiceIdentity_(record, refs, anchor) {
       );
     }
 
-    location = locationResult.location;
+    if (locationResult.status === 'CREATE_REQUIRED') {
+      warnings.push('Location will need to be created on the verified Customer before any Task write.');
+    }
+
+    location = locationResult.location || null;
     Array.prototype.push.apply(evidence, locationResult.evidence || []);
   }
 
@@ -407,7 +421,10 @@ function tmv3_step4ResolvePreInspectionIdentity_(record, refs, anchor) {
     anchor.orderLocationIdEvidence
   );
 
-  if (locationResult.status !== 'MATCHED') {
+  if (
+    locationResult.status !== 'MATCHED' &&
+    locationResult.status !== 'CREATE_REQUIRED'
+  ) {
     return tmv3_step4Decision_(
       'REVIEW',
       locationResult.errorCode,
@@ -419,6 +436,10 @@ function tmv3_step4ResolvePreInspectionIdentity_(record, refs, anchor) {
       evidence.concat(locationResult.evidence || []),
       warnings
     );
+  }
+
+  if (locationResult.status === 'CREATE_REQUIRED') {
+    warnings.push('Location will need to be created on the verified Customer before any Task write.');
   }
 
   const contactResult = tmv3_step4ResolveContact_(record, customer, '');
@@ -471,45 +492,60 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
   }
 
   const phone = tmv3_phone10_(record.phone);
+  const phoneMatches = phone
+    ? (refs.customerByPhone[phone] || []).slice()
+    : [];
 
-  if (phone) {
-    const primaryMatches = refs.customerByPhone[phone] || [];
-
-    if (primaryMatches.length === 1) {
-      return {
-        status: 'MATCHED',
-        customer: primaryMatches[0],
-        location: null,
-        evidence: ['CUSTOMER_PRIMARY_PHONE_EXACT']
-      };
-    }
-
-    if (primaryMatches.length > 1) {
-      return {
-        status: 'REVIEW',
-        errorCode: 'AMBIGUOUS_CUSTOMER_PHONE',
-        reason: 'Calendar phone matches multiple Customer primary phones.',
-        evidence: []
-      };
-    }
+  if (phoneMatches.length === 1) {
+    return {
+      status: 'MATCHED',
+      customer: phoneMatches[0],
+      location: null,
+      evidence: ['CUSTOMER_PRIMARY_PHONE_EXACT']
+    };
   }
 
-  const addressKey = tmv3_normalizeAddress_(record.location);
+  const addressCandidates = tmv3_step4AddressCandidates_(
+    record.location,
+    refs.locations
+  );
 
-  if (addressKey) {
-    const matchingLocations = refs.locations.filter(function(location) {
-      return tmv3_normalizeAddress_(
-        tmv3_locationFullAddress_(location)
-      ) === addressKey;
-    });
+  const ownerIds = tmv3_unique_(
+    addressCandidates.locations
+      .map(function(location) {
+        return tmv3_clean_(location['Customer ID']);
+      })
+      .filter(Boolean)
+  );
 
-    const ownerIds = tmv3_unique_(
-      matchingLocations
-        .map(function(location) {
-          return tmv3_clean_(location['Customer ID']);
-        })
-        .filter(Boolean)
-    );
+  if (ownerIds.length) {
+    // Shared phone numbers are not an immediate failure. If the Calendar
+    // address narrows the same phone to one Customer, that is deterministic.
+    if (phoneMatches.length > 1) {
+      const phoneIds = phoneMatches.map(function(customer) {
+        return tmv3_clean_(customer['Customer ID']);
+      });
+
+      const intersect = ownerIds.filter(function(ownerId) {
+        return phoneIds.indexOf(ownerId) !== -1;
+      });
+
+      if (intersect.length === 1 && refs.customerById[intersect[0]]) {
+        const customer = refs.customerById[intersect[0]];
+        const owned = addressCandidates.locations.filter(function(location) {
+          return tmv3_clean_(location['Customer ID']) === intersect[0];
+        });
+
+        return {
+          status: 'MATCHED',
+          customer: customer,
+          location: owned.length === 1 ? owned[0] : null,
+          evidence: [
+            'SHARED_PHONE_RESOLVED_BY_' + addressCandidates.matchType + '_ADDRESS'
+          ]
+        };
+      }
+    }
 
     if (ownerIds.length === 1 && refs.customerById[ownerIds[0]]) {
       const customer = refs.customerById[ownerIds[0]];
@@ -519,42 +555,136 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
       );
 
       if (corroboration.matched) {
-        const ownedExact = matchingLocations.filter(function(location) {
+        const owned = addressCandidates.locations.filter(function(location) {
           return tmv3_clean_(location['Customer ID']) === ownerIds[0];
         });
 
         return {
           status: 'MATCHED',
           customer: customer,
-          location: ownedExact.length === 1 ? ownedExact[0] : null,
-          evidence: ['CUSTOMER_FROM_EXACT_ADDRESS'].concat(corroboration.evidence)
+          location: owned.length === 1 ? owned[0] : null,
+          evidence: [
+            'CUSTOMER_FROM_' + addressCandidates.matchType + '_ADDRESS'
+          ].concat(corroboration.evidence)
         };
       }
 
       return {
         status: 'REVIEW',
         errorCode: 'ADDRESS_OWNER_NOT_CORROBORATED',
-        reason: 'Calendar address has one Customer owner, but name/phone evidence does not yet corroborate that household.',
+        reason:
+          'Calendar address points to one Customer, but name/phone evidence does not corroborate that household.',
         customer: customer,
-        evidence: ['EXACT_ADDRESS_OWNER_ONLY']
+        evidence: [
+          addressCandidates.matchType + '_ADDRESS_OWNER_ONLY'
+        ]
       };
     }
 
     if (ownerIds.length > 1) {
+      const nameHits = ownerIds.filter(function(ownerId) {
+        const customer = refs.customerById[ownerId];
+        return customer && tmv3_nameCorroboratesCustomer_(
+          record.title + ' ' + record.descriptionClean,
+          customer['Name']
+        );
+      });
+
+      if (nameHits.length === 1 && refs.customerById[nameHits[0]]) {
+        const customer = refs.customerById[nameHits[0]];
+        const owned = addressCandidates.locations.filter(function(location) {
+          return tmv3_clean_(location['Customer ID']) === nameHits[0];
+        });
+
+        return {
+          status: 'MATCHED',
+          customer: customer,
+          location: owned.length === 1 ? owned[0] : null,
+          evidence: [
+            'AMBIGUOUS_ADDRESS_RESOLVED_BY_CUSTOMER_NAME'
+          ]
+        };
+      }
+
       return {
         status: 'REVIEW',
         errorCode: 'AMBIGUOUS_ADDRESS_OWNER',
-        reason: 'Calendar address is owned by multiple Customers.',
+        reason: 'Calendar address is associated with multiple Customers and no unique corroboration wins.',
         evidence: []
       };
     }
   }
 
+  if (phoneMatches.length > 1) {
+    const nameHits = phoneMatches.filter(function(customer) {
+      return tmv3_nameCorroboratesCustomer_(
+        record.title + ' ' + record.descriptionClean,
+        customer['Name']
+      );
+    });
+
+    if (nameHits.length === 1) {
+      return {
+        status: 'MATCHED',
+        customer: nameHits[0],
+        location: null,
+        evidence: ['SHARED_PHONE_RESOLVED_BY_CUSTOMER_NAME']
+      };
+    }
+
+    return {
+      status: 'REVIEW',
+      errorCode: 'AMBIGUOUS_CUSTOMER_PHONE',
+      reason: 'Calendar phone matches multiple Customers and address/name evidence does not identify one.',
+      evidence: []
+    };
+  }
+
   return {
     status: 'REVIEW',
     errorCode: 'CUSTOMER_UNRESOLVED',
-    reason: 'No deterministic Customer match was proven from Customer #, primary phone, or exact owned address.',
+    reason: 'No deterministic Customer match was proven from Customer #, phone, or Calendar address.',
     evidence: []
+  };
+}
+
+function tmv3_step4AddressCandidates_(calendarAddress, locations) {
+  const target = tmv3_normalizeAddress_(calendarAddress);
+
+  if (!target) {
+    return {
+      matchType: 'NO',
+      locations: []
+    };
+  }
+
+  const exact = (locations || []).filter(function(location) {
+    return tmv3_normalizeAddress_(
+      tmv3_locationFullAddress_(location)
+    ) === target;
+  });
+
+  if (exact.length) {
+    return {
+      matchType: 'EXACT',
+      locations: exact
+    };
+  }
+
+  const targetParts = tmv3_addressParts_(calendarAddress);
+
+  const strong = (locations || []).filter(function(location) {
+    return tmv3_addressStrongMatch_(
+      targetParts,
+      tmv3_addressParts_(
+        tmv3_locationFullAddress_(location)
+      )
+    );
+  });
+
+  return {
+    matchType: strong.length ? 'STRONG' : 'NO',
+    locations: strong
   };
 }
 
@@ -644,10 +774,6 @@ function tmv3_step4ResolveLocation_(record, refs, customer, preferredLocationId)
       };
     }
 
-    // The current Sales Order / Delivery report can expose a different
-    // address identifier than the Customer Locations report. Do not turn that
-    // schema mismatch into a false identity failure. Fall back to the
-    // customer-owned Calendar address and retain the Order ID as evidence.
     fallbackEvidence.push('ORDER_LOCATION_ID_NOT_IN_LOCATION_SOURCE');
   }
 
@@ -662,6 +788,21 @@ function tmv3_step4ResolveLocation_(record, refs, customer, preferredLocationId)
       status: 'MATCHED',
       location: owned.location,
       evidence: fallbackEvidence.concat(owned.evidence || [])
+    };
+  }
+
+  // Historical rule: once Customer identity is proven, a genuinely different
+  // Calendar job-site address may be added to that Customer later.
+  if (
+    owned.errorCode === 'LOCATION_UNRESOLVED' &&
+    tmv3_clean_(record.location)
+  ) {
+    return {
+      status: 'CREATE_REQUIRED',
+      errorCode: 'LOCATION_CREATE_REQUIRED',
+      reason: 'Customer is verified and Calendar job-site address is not yet a Customer-owned Location.',
+      proposedAddress: tmv3_clean_(record.location),
+      evidence: fallbackEvidence.concat(['NEW_CUSTOMER_LOCATION_REQUIRED'])
     };
   }
 
@@ -739,6 +880,16 @@ function tmv3_step4Decision_(
     location: location || null,
     contact: contact || null,
     contactStatus: contactStatus || 'NO_MATCH',
+    locationStatus:
+      location && tmv3_clean_(location['Location ID'])
+        ? 'MATCHED'
+        : ((evidence || []).indexOf('NEW_CUSTOMER_LOCATION_REQUIRED') !== -1
+          ? 'CREATE_REQUIRED'
+          : 'NOT_RESOLVED'),
+    proposedLocation:
+      (evidence || []).indexOf('NEW_CUSTOMER_LOCATION_REQUIRED') !== -1
+        ? tmv3_clean_(reason && reason.indexOf('job-site') !== -1 ? '' : '')
+        : '',
     evidence: evidence || [],
     warnings: warnings || []
   };
@@ -919,7 +1070,14 @@ function tmv3_step4OperatorRow_(record) {
   const disposition = step4.disposition || 'REVIEW';
 
   row[4] = tmv3_step4SyncChecklist_(record, step4);
-  row[5] = tmv3_step4IdentitySummary_(customer, location, contact, step4.contactStatus);
+  row[5] = tmv3_step4IdentitySummary_(
+    customer,
+    location,
+    contact,
+    step4.locationStatus === 'CREATE_REQUIRED'
+      ? '__LOCATION_CREATE_REQUIRED__'
+      : step4.contactStatus
+  );
   row[6] = 'Task not resolved yet';
   row[7] = '';
   row[8] = '';
@@ -946,10 +1104,11 @@ function tmv3_step4SyncChecklist_(record, step4) {
     step4.location &&
     tmv3_clean_(step4.location['Location ID'])
   );
+  const locationCreate = step4.locationStatus === 'CREATE_REQUIRED';
 
   return [
     'Customer ' + (customerOk ? '✅' : '⚠'),
-    'Location ' + (locationOk ? '✅' : '⚠'),
+    'Location ' + (locationOk ? '✅' : (locationCreate ? '🟡' : '⚠')),
     'Date / Time ⏳',
     'Assignee ⏳',
     'Notes ⏳',
@@ -976,6 +1135,8 @@ function tmv3_step4IdentitySummary_(customer, location, contact, contactStatus) 
       'Location ID: ' +
       (tmv3_clean_(location['Location ID']) || '—')
     );
+  } else if (contactStatus === '__LOCATION_CREATE_REQUIRED__') {
+    lines.push('Location: Create required');
   } else {
     lines.push('Location ID: —');
   }
@@ -1016,8 +1177,11 @@ function tmv3_step4Verify_(records, step3Records) {
       (
         !record.step4.customer ||
         !tmv3_clean_(record.step4.customer['Customer ID']) ||
-        !record.step4.location ||
-        !tmv3_clean_(record.step4.location['Location ID'])
+        (
+          !record.step4.location ||
+          !tmv3_clean_(record.step4.location['Location ID'])
+        ) &&
+        record.step4.locationStatus !== 'CREATE_REQUIRED'
       )
     ) {
       verifiedWithoutIdentity++;
