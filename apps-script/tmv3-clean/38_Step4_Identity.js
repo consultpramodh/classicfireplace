@@ -1122,19 +1122,11 @@ function tmv3_step4TaskColumnIdentity_(record, step4) {
   const lines = [];
 
   if (customer) {
-    const customerPhone =
-      tmv3_step1FormatPhone_(
-        tmv3_clean_(customer['Primary Phone']) ||
-        tmv3_clean_(record && record.phone)
-      );
-
     lines.push(
       'Customer #' +
       (tmv3_clean_(customer['Customer Number']) || '—') +
       ' - ' +
-      (tmv3_clean_(customer['Name']) || '—') +
-      ' - ' +
-      customerPhone
+      (tmv3_clean_(customer['Name']) || '—')
     );
   } else {
     lines.push('Customer —');

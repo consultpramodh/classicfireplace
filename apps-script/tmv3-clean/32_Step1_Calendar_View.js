@@ -463,13 +463,13 @@ function tmv3_step1FormatTaskCells_(sh, records) {
     const record = records[index] || {};
     const builder = SpreadsheetApp.newRichTextValue().setText(text);
 
-    // Customer line: use the already-proven customer-specific Striven page.
+    // Customer line: open the Striven Customer Dashboard.
     const customer =
       record.step4 && record.step4.customer
         ? record.step4.customer
         : null;
     const customerId = tmv3_clean_(customer && customer['Customer ID']);
-    if (customerId && TMV3.CUSTOMER_ORDERS_PAGE_BASE) {
+    if (customerId && TMV3.CUSTOMER_DASHBOARD_BASE) {
       const customerLine = text.split('\n').filter(function(line) {
         return /^Customer #/i.test(String(line || '').trim());
       })[0] || '';
@@ -480,7 +480,7 @@ function tmv3_step1FormatTaskCells_(sh, records) {
           builder.setLinkUrl(
             start,
             start + customerLine.length,
-            TMV3.CUSTOMER_ORDERS_PAGE_BASE + encodeURIComponent(customerId)
+            TMV3.CUSTOMER_DASHBOARD_BASE + encodeURIComponent(customerId)
           );
         }
       }

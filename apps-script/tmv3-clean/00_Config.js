@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.7.7-step6-pi-task-date-guard-r5';
+const TMV3_VERSION = '3.7.8-step6-customer-dashboard-link-r6';
 const TMV3_EXECUTION_STAGE = 6;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -12,6 +12,7 @@ const TMV3 = Object.freeze({
   TASK_URL_BASE: 'https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=',
   ORDER_URL_BASE: 'https://classicfireplace.striven.com/next/crm#/sales-orders/',
   CUSTOMER_ORDERS_PAGE_BASE: 'https://classicfireplace.striven.com/next/crm#/sales-orders?accountId=',
+  CUSTOMER_DASHBOARD_BASE: 'https://classicfireplace.striven.com/CRM/AccountDashboard.aspx?AccountID=',
   PAGE_SIZE: 10000,
   MAX_PAGES: 50,
   OPERATIONS: Object.freeze({
