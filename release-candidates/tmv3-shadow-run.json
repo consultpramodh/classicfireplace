@@ -1,7 +1,7 @@
 {
-  "release": "TMV3_STEP2_PREINSPECT_CREATOR_FILTER_POSTDEPLOY_VERIFY_R2",
+  "release": "TMV3_STAGE2_CURRENT_TRIGGER_REFRESH_331",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP2"
+  "runMode": "STEP1_INSTALL_LIVE"
 }
