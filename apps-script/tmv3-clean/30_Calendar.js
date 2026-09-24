@@ -578,7 +578,7 @@ function tmv3_extractLegacyPreInspectionOrderNumber_(description) {
   if (!clean) return '';
 
   const match = clean.match(
-    /\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{4,8})\b/i
+    /\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{5,8})\b/i
   );
 
   return match ? match[1] : '';

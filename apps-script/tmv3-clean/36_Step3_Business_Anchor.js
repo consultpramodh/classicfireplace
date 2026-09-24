@@ -205,6 +205,17 @@ function tmv3_step3ResolveOrderAnchor_(record, refs) {
   const customer = customerId ? (refs.customerById[customerId] || null) : null;
   const anchor = tmv3_step3AnchorFromOrder_(record, order, customer);
 
+  if (!customerId && record.vertical === 'Service') {
+    return tmv3_step3Decision_(
+      'VERIFIED',
+      'SERVICE_WORK_ORDER_ANCHOR_VERIFIED',
+      'Work Order resolved uniquely. Customer identity is intentionally deferred to Step 4.',
+      anchor,
+      evidence.concat(['WORK_ORDER_UNIQUE']),
+      ['Work Order source does not expose Customer ID; Step 4 will resolve Customer from independent evidence.']
+    );
+  }
+
   if (!customerId) {
     return tmv3_step3Decision_(
       'REVIEW',
@@ -235,54 +246,50 @@ function tmv3_step3ResolveOrderAnchor_(record, refs) {
 }
 
 function tmv3_step3ResolvePreInspectionAnchor_(record, refs) {
-  const customerNumber = tmv3_clean_(record.customerNumber);
-  const orderNumber = tmv3_clean_(record.orderNumber);
+  const calendarCustomerNumber = tmv3_clean_(record.customerNumber);
   const evidence = [];
   const warnings = [];
 
   let customer = null;
   let order = null;
+  let unresolvedCalendarCustomerNumber = '';
 
-  if (customerNumber) {
-    customer = refs.customerByNumber[customerNumber] || null;
+  if (calendarCustomerNumber) {
+    customer = refs.customerByNumber[calendarCustomerNumber] || null;
 
-    if (!customer) {
-      return tmv3_step3Decision_(
-        'BLOCKED',
-        'PREINSPECTION_CUSTOMER_NUMBER_NOT_FOUND',
-        'Explicit Calendar Customer # ' + customerNumber + ' is not present in the current Customer source.',
-        null,
-        ['CALENDAR_CUSTOMER_NUMBER_EXPLICIT']
-      );
-    }
-
-    evidence.push('CALENDAR_CUSTOMER_NUMBER_EXACT');
-  }
-
-  if (orderNumber) {
-    const candidates = tmv3_step3UniqueOrders_(
-      (refs.ordersByNumber[orderNumber] || []).slice()
-    );
-
-    if (candidates.length > 1) {
-      return tmv3_step3Decision_(
-        'REVIEW',
-        'PREINSPECTION_SO_AMBIGUOUS',
-        'Multiple Striven orders match Calendar SO #' + orderNumber + '.',
-        null,
-        evidence.concat(['CALENDAR_SO_NUMBER_PRESENT'])
-      );
-    }
-
-    if (candidates.length === 1) {
-      order = candidates[0];
-      evidence.push('CALENDAR_SO_NUMBER_EXACT');
+    if (customer) {
+      evidence.push('CALENDAR_CUSTOMER_NUMBER_EXACT');
     } else {
-      warnings.push('Calendar SO #' + orderNumber + ' was not found in the current Order source.');
+      unresolvedCalendarCustomerNumber = calendarCustomerNumber;
+      warnings.push(
+        'Calendar number ' + calendarCustomerNumber +
+        ' did not match a Customer #; it will be tested only as deterministic SO evidence.'
+      );
     }
-  } else {
-    warnings.push('No labelled SO # is available for corroboration.');
   }
+
+  const orderResolution = tmv3_step3ResolvePreInspectionOrderEvidence_(
+    record,
+    refs,
+    unresolvedCalendarCustomerNumber
+  );
+
+  if (orderResolution.ambiguous) {
+    return tmv3_step3Decision_(
+      'REVIEW',
+      'PREINSPECTION_SO_AMBIGUOUS',
+      'Multiple distinct Striven orders are supported by the Calendar numeric evidence.',
+      customer
+        ? tmv3_step3AnchorFromPreInspection_(record, customer, null)
+        : null,
+      evidence.concat(orderResolution.evidence),
+      warnings.concat(orderResolution.warnings)
+    );
+  }
+
+  order = orderResolution.order;
+  Array.prototype.push.apply(evidence, orderResolution.evidence);
+  Array.prototype.push.apply(warnings, orderResolution.warnings);
 
   if (customer && order) {
     const orderCustomerId = tmv3_clean_(order['Customer ID']);
@@ -294,11 +301,14 @@ function tmv3_step3ResolvePreInspectionAnchor_(record, refs) {
         'PREINSPECTION_CUSTOMER_SO_CONFLICT',
         'Calendar Customer # and Calendar SO resolve to different Striven Customers.',
         tmv3_step3AnchorFromPreInspection_(record, customer, order),
-        evidence
+        evidence,
+        warnings
       );
     }
 
-    evidence.push('SO_CORROBORATES_CUSTOMER');
+    if (orderCustomerId && customerId) {
+      evidence.push('SO_CORROBORATES_CUSTOMER');
+    }
   }
 
   if (!customer && order) {
@@ -323,26 +333,121 @@ function tmv3_step3ResolvePreInspectionAnchor_(record, refs) {
 
   const anchor = tmv3_step3AnchorFromPreInspection_(record, customer, order);
 
-  if (warnings.length) {
-    return tmv3_step3Decision_(
-      'REVIEW',
-      'PREINSPECTION_ANCHOR_NEEDS_CORROBORATION',
-      'Customer anchor resolved, but the expected SO corroboration is incomplete.',
-      anchor,
-      evidence,
-      warnings
-    );
-  }
-
+  // Exact Customer # is already a deterministic business anchor.
+  // SO is corroboration/data quality, not a prerequisite for Step 3.
   return tmv3_step3Decision_(
     'VERIFIED',
-    order ? 'PREINSPECTION_CUSTOMER_SO_VERIFIED' : 'PREINSPECTION_CUSTOMER_VERIFIED',
     order
-      ? 'Customer # resolved exactly and the Calendar SO corroborates the same Customer.'
-      : 'Customer # resolved exactly.',
+      ? 'PREINSPECTION_CUSTOMER_SO_VERIFIED'
+      : 'PREINSPECTION_CUSTOMER_VERIFIED',
+    order
+      ? 'PreInspection Customer resolved and the Calendar SO evidence points to the same Customer.'
+      : 'PreInspection Customer resolved exactly; SO corroboration is unavailable or unresolved.',
     anchor,
     evidence,
     warnings
+  );
+}
+
+function tmv3_step3ResolvePreInspectionOrderEvidence_(record, refs, unresolvedCalendarCustomerNumber) {
+  const candidateNumbers = [];
+  const evidence = [];
+  const warnings = [];
+
+  const parsed = tmv3_clean_(record.orderNumber);
+  if (parsed) candidateNumbers.push(parsed);
+
+  // A six-digit leading number that failed Customer lookup is a common
+  // legacy pattern where the title actually carried the Sales Order.
+  if (
+    unresolvedCalendarCustomerNumber &&
+    /^\d{6}$/.test(unresolvedCalendarCustomerNumber)
+  ) {
+    candidateNumbers.push(unresolvedCalendarCustomerNumber);
+  }
+
+  if (!parsed) {
+    tmv3_step3BareSixDigitOrderCandidates_(record).forEach(function(number) {
+      candidateNumbers.push(number);
+    });
+  }
+
+  const uniqueNumbers = tmv3_unique_(
+    candidateNumbers.map(tmv3_clean_).filter(Boolean)
+  );
+
+  const matchedOrders = [];
+
+  uniqueNumbers.forEach(function(number) {
+    const matches = tmv3_step3UniqueOrders_(
+      (refs.ordersByNumber[number] || []).slice()
+    );
+
+    if (matches.length === 1) {
+      matchedOrders.push(matches[0]);
+
+      if (number === parsed) {
+        evidence.push('CALENDAR_SO_NUMBER_EXACT');
+      } else if (number === unresolvedCalendarCustomerNumber) {
+        evidence.push('LEADING_NUMBER_RECOVERED_AS_SO');
+      } else {
+        evidence.push('LEGACY_BARE_SIX_DIGIT_SO_EXACT');
+      }
+    }
+  });
+
+  const orders = tmv3_step3UniqueOrders_(matchedOrders);
+
+  if (orders.length > 1) {
+    return {
+      ambiguous: true,
+      order: null,
+      evidence: tmv3_unique_(evidence),
+      warnings: warnings
+    };
+  }
+
+  if (orders.length === 1) {
+    return {
+      ambiguous: false,
+      order: orders[0],
+      evidence: tmv3_unique_(evidence),
+      warnings: warnings
+    };
+  }
+
+  if (parsed) {
+    warnings.push(
+      'Calendar SO #' + parsed +
+      ' was not found in the current Order source.'
+    );
+  } else {
+    warnings.push('No deterministic SO corroboration was found.');
+  }
+
+  return {
+    ambiguous: false,
+    order: null,
+    evidence: tmv3_unique_(evidence),
+    warnings: warnings
+  };
+}
+
+function tmv3_step3BareSixDigitOrderCandidates_(record) {
+  const text = tmv3_stripPhonesForOrderParsing_(
+    [
+      tmv3_clean_(record.title),
+      tmv3_clean_(record.descriptionClean)
+    ].join(' ')
+  );
+
+  const matches = text.match(/\b\d{6}\b/g) || [];
+  const customerNumber = tmv3_clean_(record.customerNumber);
+
+  return tmv3_unique_(
+    matches.filter(function(number) {
+      return number !== customerNumber;
+    })
   );
 }
 
