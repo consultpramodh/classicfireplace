@@ -351,6 +351,22 @@ function tmv3_step6OperatorRow_(record) {
 
   row[9] = 'STEP 6 — ' + (decision.disposition || 'NOT_RUN');
 
+  if (
+    decision.disposition === 'FULFILLED_NO_RECREATE' ||
+    decision.disposition === 'RECREATE_TASK'
+  ) {
+    const historical = decision.tasks || decision.historyTasks || [];
+    if (historical.length) {
+      row[6] = tmv3_step5TaskColumnSummary_(
+        record,
+        historical,
+        'HISTORY'
+      );
+      row[7] = tmv3_step5TaskScheduleSummary_(historical);
+      row[8] = tmv3_step5TaskStatusSummary_(historical, 'HISTORY');
+    }
+  }
+
   if (decision.disposition === 'MATCH_EXISTING') {
     row[10] = 'Use existing OPEN Task.';
   } else if (decision.disposition === 'MATCH_EXISTING_MULTI') {

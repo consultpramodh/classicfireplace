@@ -709,16 +709,10 @@ function tmv3_step5AlignPreInspectionTaskClock_(task, record) {
 
     if (!taskValue || !calendarValue) return;
 
-    const taskDate = new Date(taskValue);
-    const calendarDate =
-      calendarValue instanceof Date
-        ? calendarValue
-        : new Date(calendarValue);
+    const taskDate = tmv3_parseDateTime_(taskValue);
+    const calendarDate = tmv3_parseDateTime_(calendarValue);
 
-    if (
-      isNaN(taskDate.getTime()) ||
-      isNaN(calendarDate.getTime())
-    ) {
+    if (!taskDate || !calendarDate) {
       return;
     }
 
@@ -803,11 +797,11 @@ function tmv3_step5TaskScheduleOne_(task) {
   const dueRaw = tmv3_clean_(task && task['Due']);
   if (!startRaw && !dueRaw) return '';
 
-  const start = startRaw ? new Date(startRaw) : null;
-  const due = dueRaw ? new Date(dueRaw) : null;
+  const start = startRaw ? tmv3_parseDateTime_(startRaw) : null;
+  const due = dueRaw ? tmv3_parseDateTime_(dueRaw) : null;
 
-  const startOk = start && !isNaN(start.getTime());
-  const dueOk = due && !isNaN(due.getTime());
+  const startOk = !!start;
+  const dueOk = !!due;
 
   if (!startOk && !dueOk) return [startRaw, dueRaw].filter(Boolean).join(' - ');
 

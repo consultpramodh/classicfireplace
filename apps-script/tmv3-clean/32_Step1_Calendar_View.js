@@ -190,14 +190,12 @@ function tmv3_step1EventDetails_(record) {
   lines.push(record.title || '(Untitled Calendar event)');
 
   if (record.start) {
-    const date = tmv3_date_(record.start);
-    const start = record.isAllDay ? 'All day' : tmv3_time_(record.start);
-    const end = record.isAllDay || !record.end ? '' : tmv3_time_(record.end);
-
     lines.push(
-      date +
-      (start ? ' · ' + start : '') +
-      (end ? '–' + end : '')
+      tmv3_step1CalendarScheduleDisplay_(
+        record.start,
+        record.end,
+        record.isAllDay
+      )
     );
   }
 
@@ -221,13 +219,76 @@ function tmv3_step1CalendarCustomerDetails_(record) {
 function tmv3_step1People_(record) {
   const creators = (record.sourceCreators || []).filter(Boolean).join(', ') ||
     record.creator || '—';
-  const guests = (record.sourceGuests || []).filter(Boolean).join(', ') ||
-    record.guests || '—';
+
+  const sourceIds = record.sourceCalendarIds || [];
+  const sourceNames = record.sourceCalendarNames || [];
+  const calendarNamesById = {};
+
+  sourceIds.forEach(function(id, index) {
+    const key = tmv3_norm_(id);
+    const name = tmv3_clean_(sourceNames[index]);
+    if (key && name) calendarNamesById[key] = name;
+  });
+
+  const rawGuests = []
+    .concat(record.sourceGuests || [])
+    .concat(record.guests || '')
+    .join(',')
+    .split(',')
+    .map(function(value) { return tmv3_clean_(value); })
+    .filter(Boolean);
+
+  const guests = tmv3_unique_(
+    rawGuests.map(function(value) {
+      return calendarNamesById[tmv3_norm_(value)] || value;
+    })
+  ).join(', ') || '—';
 
   return [
     'Created by: ' + creators,
     'Guests: ' + guests
   ].join('\n');
+}
+
+function tmv3_step1CalendarScheduleDisplay_(startValue, endValue, isAllDay) {
+  const start = tmv3_parseDateTime_(startValue);
+  const end = tmv3_parseDateTime_(endValue);
+
+  if (!start) return '';
+
+  const dateLabel = Utilities.formatDate(
+    start,
+    TMV3_TIMEZONE,
+    'MMM d, yyyy'
+  );
+
+  if (isAllDay) return dateLabel + ' (All day)';
+
+  if (!end) {
+    return dateLabel + ' (' +
+      Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') +
+      ')';
+  }
+
+  const startDay = Utilities.formatDate(start, TMV3_TIMEZONE, 'yyyy-MM-dd');
+  const endDay = Utilities.formatDate(end, TMV3_TIMEZONE, 'yyyy-MM-dd');
+
+  if (startDay === endDay) {
+    return (
+      dateLabel +
+      ' (' +
+      Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') +
+      ' - ' +
+      Utilities.formatDate(end, TMV3_TIMEZONE, 'h:mm a') +
+      ')'
+    );
+  }
+
+  return (
+    Utilities.formatDate(start, TMV3_TIMEZONE, 'MMM d, yyyy h:mm a') +
+    ' - ' +
+    Utilities.formatDate(end, TMV3_TIMEZONE, 'MMM d, yyyy h:mm a')
+  );
 }
 
 function tmv3_step1CalendarChecklist_(record) {

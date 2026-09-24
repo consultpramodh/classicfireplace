@@ -41,6 +41,41 @@ function tmv3_iso_(date) {
   return Utilities.formatDate(date, 'America/Toronto', "yyyy-MM-dd'T'HH:mm:ssXXX");
 }
 
+function tmv3_parseDateTime_(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : value;
+  }
+
+  const text = tmv3_clean_(value);
+  if (!text) return null;
+
+  // Explicit zone/offset: preserve the actual instant.
+  if (/Z$/i.test(text) || /[+-]\d{2}:?\d{2}$/.test(text)) {
+    const zoned = new Date(text);
+    return isNaN(zoned.getTime()) ? null : zoned;
+  }
+
+  const patterns = [
+    "yyyy-MM-dd'T'HH:mm:ss",
+    "yyyy-MM-dd'T'HH:mm",
+    'MM/dd/yyyy hh:mm a',
+    'M/d/yyyy h:mm a',
+    'MM/dd/yyyy HH:mm',
+    'M/d/yyyy H:mm'
+  ];
+
+  for (let i = 0; i < patterns.length; i++) {
+    try {
+      const parsed = Utilities.parseDate(text, TMV3_TIMEZONE, patterns[i]);
+      if (parsed && !isNaN(parsed.getTime())) return parsed;
+    } catch (ignored) {}
+  }
+
+  const fallback = new Date(text);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
+
 function tmv3_hash_(value) {
   const bytes = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,

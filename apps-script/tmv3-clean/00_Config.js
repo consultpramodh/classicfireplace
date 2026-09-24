@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.7.5-step6-task-ui-cleanup-r3';
+const TMV3_VERSION = '3.7.6-step6-calendar-time-name-r4';
 const TMV3_EXECUTION_STAGE = 6;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';

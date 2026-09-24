@@ -1615,10 +1615,15 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
       tmv3_norm_(taskTitle).indexOf(customerName) !== -1;
 
     const identityCorroborated = titlePhoneMatch || titleNameMatch;
+    const exactCalendarTaskLink =
+      !!eventRecord.existingTaskId &&
+      tmv3_clean_(eventRecord.existingTaskId) ===
+        tmv3_clean_(task['Task ID']);
+
     const strongMatch =
+      exactCalendarTaskLink ||
       sameStart ||
-      (sameDay && sameLocation) ||
-      (sameLocation && identityCorroborated);
+      (sameDay && sameLocation && identityCorroborated);
 
     return {
       task: task,
@@ -1630,6 +1635,7 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
       titlePhoneMatch: titlePhoneMatch,
       titleNameMatch: titleNameMatch,
       identityCorroborated: identityCorroborated,
+      exactCalendarTaskLink: exactCalendarTaskLink,
       strongMatch: strongMatch,
       hasStart: !!taskStart,
       score:
@@ -1747,6 +1753,7 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
 
 function tmv3_preInspectionCandidateEvidence_(candidate) {
   const parts = [];
+  if (candidate.exactCalendarTaskLink) parts.push('CALENDAR_TASK_LINK');
   if (candidate.sameStart) parts.push('START');
   if (candidate.sameDue) parts.push('DUE');
   if (candidate.sameDay) parts.push('DAY');
@@ -1757,16 +1764,16 @@ function tmv3_preInspectionCandidateEvidence_(candidate) {
 }
 
 function tmv3_sameMinute_(a, b) {
-  const da = a instanceof Date ? a : new Date(a);
-  const db = b instanceof Date ? b : new Date(b);
-  if (isNaN(da.getTime()) || isNaN(db.getTime())) return false;
+  const da = tmv3_parseDateTime_(a);
+  const db = tmv3_parseDateTime_(b);
+  if (!da || !db) return false;
   return Math.floor(da.getTime() / 60000) === Math.floor(db.getTime() / 60000);
 }
 
 function tmv3_sameLocalDay_(a, b) {
-  const da = a instanceof Date ? a : new Date(a);
-  const db = b instanceof Date ? b : new Date(b);
-  if (isNaN(da.getTime()) || isNaN(db.getTime())) return false;
+  const da = tmv3_parseDateTime_(a);
+  const db = tmv3_parseDateTime_(b);
+  if (!da || !db) return false;
   return tmv3_date_(da) === tmv3_date_(db);
 }
 
