@@ -255,10 +255,17 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
 }
 
 function tmv3_preInspectionStep1SourceAllowed_(cfg, calCfg, creator) {
+  // Shared CF Preinspects calendar remains authoritative intake: keep all.
   if (calCfg.role === 'PRIMARY_SHARED') return true;
   if (calCfg.role !== 'SECONDARY_STEPHEN') return true;
 
-  const owner = tmv3_norm_(cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca');
+  const ignored = (cfg.secondaryIgnoredCreatorEmails || [
+    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca',
+    'pramodh@classicfireplace.ca'
+  ])
+    .map(function(v) { return tmv3_norm_(v); })
+    .filter(Boolean);
+
   const creators = String(creator || '')
     .split(',')
     .map(function(v) { return tmv3_norm_(v); })
@@ -272,7 +279,11 @@ function tmv3_preInspectionStep1SourceAllowed_(cfg, calCfg, creator) {
     return false;
   }
 
-  return creators.indexOf(owner) === -1;
+  // Stephen-created and Pramodh-created events on Stephen's personal
+  // calendar are operational blockers/internal events for this workflow.
+  return !creators.some(function(email) {
+    return ignored.indexOf(email) !== -1;
+  });
 }
 
 function tmv3_mergeLogicalCalendarRecords_(records) {

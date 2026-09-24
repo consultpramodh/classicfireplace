@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.3.0-step2-calendar-eligibility-r1';
+const TMV3_VERSION = '3.3.1-step2-preinspect-creator-filter-r1';
 const TMV3_EXECUTION_STAGE = 2;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -124,6 +124,10 @@ const TMV3 = Object.freeze({
       primaryCalendarId: 'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com',
       secondaryCalendarIds: ['classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'],
       secondaryOwnerEmail: 'stephen@classicfireplace.ca',
+      secondaryIgnoredCreatorEmails: [
+        'stephen@classicfireplace.ca',
+        'pramodh@classicfireplace.ca'
+      ],
       calendarOrdersPageLinkRequired: true,
       calendarTaskLinkRequired: true,
       lookbackDays: 0,
