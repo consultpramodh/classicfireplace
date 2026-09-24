@@ -485,7 +485,7 @@ async function main() {
                       : RUN_MODE === 'TASK_SCHEMA'
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
-          step1: step1.result || null,
+          step1: RUN_MODE === 'TASK_SCHEMA' ? step1 : (step1.result || null),
           sourceHeadHashVerified: true,
           temporaryDeploymentDeleted: false,
           verifiedAt: new Date().toISOString()
