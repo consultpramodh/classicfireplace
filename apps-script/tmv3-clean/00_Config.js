@@ -1,4 +1,5 @@
-const TMV3_VERSION = '3.1.0-parity-r1-manual-live-auto-gated';
+const TMV3_VERSION = '3.2.0-step1-calendar-adapter-r1';
+const TMV3_EXECUTION_STAGE = 1;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
@@ -121,6 +122,7 @@ const TMV3 = Object.freeze({
       taskTypeNames: ['pre inspection', 'pre-inspection', 'preinspection'],
       primaryCalendarId: 'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com',
       secondaryCalendarIds: ['classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'],
+      secondaryOwnerEmail: 'stephen@classicfireplace.ca',
       calendarOrdersPageLinkRequired: true,
       calendarTaskLinkRequired: true,
       lookbackDays: 0,

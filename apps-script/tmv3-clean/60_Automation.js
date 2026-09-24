@@ -13,6 +13,7 @@ function onOpen() {
   ui.createMenu('Task Mapping V3')
     .addSubMenu(
       ui.createMenu('Operations')
+        .addItem('Step 1 — Refresh Calendar Intake', 'tmv3_step1CalendarRun')
         .addItem('Refresh Sources + Mapping', 'tmv3_shadowRun')
         .addItem('Refresh Mapping From Cache', 'tmv3_shadowMapFromCache')
         .addItem('Refresh Morning Ops', 'tmv3_refreshMorningOps')
@@ -104,14 +105,18 @@ function tmv3_installTriggers() {
       .timeBased().atHour(11).nearMinute(0).everyDays(1).create()
   );
 
-  // Restore the original Delivery + Service event-update response path.
-  const watchedCalendars = [
-    TMV3.VERTICALS.Delivery.calendarIds[0]
-  ].concat(
-    (TMV3.VERTICALS.Service.calendars || []).map(function(item) {
-      return item.calendarId;
-    })
-  );
+  // Stage 1 watches every configured Calendar. The handler is one-way:
+  // Google Calendar -> V3 sheets only while TMV3_EXECUTION_STAGE === 1.
+  const watchedCalendars =
+    tmv3_executionStage_() === 1 && typeof tmv3_step1CalendarIds_ === 'function'
+      ? tmv3_step1CalendarIds_()
+      : [
+          TMV3.VERTICALS.Delivery.calendarIds[0]
+        ].concat(
+          (TMV3.VERTICALS.Service.calendars || []).map(function(item) {
+            return item.calendarId;
+          })
+        );
 
   watchedCalendars.forEach(function(calendarId) {
     try {
@@ -157,6 +162,11 @@ function tmv3_removeTriggers() {
 
 function tmv3_dailySourceRefresh() {
   tmv3_assertShadow_();
+
+  if (tmv3_executionStage_() === 1) {
+    return tmv3_step1CalendarRun('DAILY_STAGE1_REFRESH');
+  }
+
   const result = tmv3_refreshSources();
   tmv3_audit_(
     'SYSTEM','','','DAILY_SOURCE_REFRESH','PASS',JSON.stringify(result)
@@ -178,12 +188,26 @@ function tmv3_scheduledShadow() {
 }
 
 function tmv3_scheduledOperations() {
+  if (tmv3_executionStage_() === 1) {
+    return {
+      stage: 1,
+      mapped: tmv3_step1CalendarRun('SCHEDULED_STAGE1_REFRESH'),
+      writes: { status: 'STAGE_1_GATED', writes: 0 }
+    };
+  }
+
   const mapped = tmv3_shadowMapFromCache();
   const writes = tmv3_runSafeReadyRows_AUTO();
   return { mapped: mapped, writes: writes };
 }
 
 function tmv3_refreshLinksSlot_(label) {
+  if (tmv3_executionStage_() === 1) {
+    const mapped = tmv3_step1CalendarRun('STAGE1_SLOT_' + String(label || ''));
+    const links = { status: 'STAGE_1_GATED', writes: 0 };
+    return { slot: label, mapped: mapped, links: links };
+  }
+
   const mapped = tmv3_shadowMapFromCache();
   const links = tmv3_runCalendarLinksForReady_AUTO();
   tmv3_audit_(
@@ -201,6 +225,9 @@ function tmv3_refreshLinksSlot_1600() { return tmv3_refreshLinksSlot_('4:00 PM')
 function tmv3_refreshLinksSlot_1800() { return tmv3_refreshLinksSlot_('6:00 PM'); }
 
 function tmv3_installReminderCheck() {
+  if (tmv3_executionStage_() === 1) {
+    return { status: 'STAGE_1_GATED', sent: 0 };
+  }
   return tmv3_sendInstallMissingSoReminders_('AUTO');
 }
 
@@ -211,6 +238,14 @@ function tmv3_calendarEventUpdated() {
     return { status: 'DEBOUNCED' };
   }
   try { cache.put(key, '1', 45); } catch (ignored) {}
+
+  if (tmv3_executionStage_() === 1) {
+    return {
+      stage: 1,
+      mapped: tmv3_step1CalendarRun('CALENDAR_EVENT_UPDATED'),
+      writes: { status: 'STAGE_1_GATED', writes: 0 }
+    };
+  }
 
   const mapped = tmv3_shadowMapFromCache();
   const writes = tmv3_runSafeReadyRows_AUTO();

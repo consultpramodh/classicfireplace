@@ -230,6 +230,24 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step1Calendar') {
+      var step1 = tmv3_step1CalendarRun('GITHUB_STEP1_VERIFY');
+      return TMPV3_shadowResponse_({
+        ok:step1.status === 'PASS',
+        status:'STEP1_CALENDAR_COMPLETE',
+        result:step1
+      });
+    }
+
+    if (body.action === 'installStep1LiveSync') {
+      var install = tmv3_installStep1CalendarLiveSync();
+      return TMPV3_shadowResponse_({
+        ok:install.initialSync && install.initialSync.status === 'PASS',
+        status:'STEP1_LIVE_SYNC_INSTALL_COMPLETE',
+        result:install
+      });
+    }
+
     return TMPV3_shadowResponse_({ok:false,status:'UNKNOWN_ACTION'});
   } catch (err) {
     return TMPV3_shadowResponse_({
@@ -322,6 +340,54 @@ async function main() {
         deployment.entryPoints[0].webApp.url
       ) ||
       ('https://script.google.com/macros/s/' + deploymentId + '/exec');
+
+    if (RUN_MODE === 'STEP1' || RUN_MODE === 'STEP1_INSTALL_LIVE') {
+      const action = RUN_MODE === 'STEP1_INSTALL_LIVE'
+        ? 'installStep1LiveSync'
+        : 'step1Calendar';
+
+      const step1 = await postJson(url, {
+        token,
+        action
+      });
+
+      if (!step1.ok) {
+        fs.writeFileSync(
+          path.join(outDir, 'step1-calendar.json'),
+          JSON.stringify(step1, null, 2)
+        );
+        fail(
+          'V3 Step 1 Calendar verification failed: ' +
+          ((step1.result && step1.result.status) || step1.status || 'UNKNOWN')
+        );
+      }
+
+      const finalHead = await getContent();
+      if (canonicalHash(finalHead) !== preHash) {
+        fail('V3 source parity failed after Step 1 execution.');
+      }
+
+      fs.writeFileSync(
+        path.join(outDir, 'evidence.json'),
+        JSON.stringify({
+          status: RUN_MODE === 'STEP1_INSTALL_LIVE'
+            ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
+            : 'V3_STEP1_CALENDAR_VERIFIED',
+          step1: step1.result || null,
+          sourceHeadHashVerified: true,
+          temporaryDeploymentDeleted: false,
+          verifiedAt: new Date().toISOString()
+        }, null, 2)
+      );
+
+      console.log(
+        RUN_MODE === 'STEP1_INSTALL_LIVE'
+          ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
+          : 'V3_STEP1_CALENDAR_VERIFIED'
+      );
+      console.log(JSON.stringify(step1.result || {}));
+      return;
+    }
 
     const health = await postJson(url, {
       token,
