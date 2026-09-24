@@ -1073,7 +1073,9 @@ function tmv3_step4OperatorRow_(record) {
     step4.contactStatus,
     step4.locationStatus
   );
-  row[6] = 'Task not resolved yet';
+  row[6] =
+    tmv3_step4TaskColumnIdentity_(record, step4) +
+    '\n\nTask not resolved yet';
   row[7] = '';
   row[8] = '';
   row[9] = 'STEP 4 — ' + disposition;
@@ -1109,6 +1111,82 @@ function tmv3_step4SyncChecklist_(record, step4) {
     'Notes ⏳',
     'Task Link ' + (record.existingTaskUrl ? '✅' : '⏳')
   ].join('\n');
+}
+
+function tmv3_step4TaskColumnIdentity_(record, step4) {
+  step4 = step4 || {};
+
+  const customer = step4.customer || null;
+  const contact = step4.contact || null;
+  const location = step4.location || null;
+  const lines = [];
+
+  if (customer) {
+    const customerPhone =
+      tmv3_step1FormatPhone_(
+        tmv3_clean_(customer['Primary Phone']) ||
+        tmv3_clean_(record && record.phone)
+      );
+
+    lines.push(
+      'Customer #' +
+      (tmv3_clean_(customer['Customer Number']) || '—') +
+      ' - ' +
+      (tmv3_clean_(customer['Name']) || '—') +
+      ' - ' +
+      customerPhone
+    );
+  } else {
+    lines.push('Customer —');
+  }
+
+  if (contact && tmv3_clean_(contact['Contact ID'])) {
+    const contactPhone = tmv3_step1FormatPhone_(
+      tmv3_clean_(contact['Phone']) ||
+      tmv3_clean_(record && record.phone)
+    );
+
+    lines.push(
+      'Contact ID ' +
+      tmv3_clean_(contact['Contact ID']) +
+      ' - ' +
+      contactPhone
+    );
+  } else {
+    lines.push(
+      'Contact: ' +
+      (step4.contactStatus === 'REVIEW'
+        ? 'Review'
+        : 'Not required / not resolved')
+    );
+  }
+
+  if (location && tmv3_clean_(location['Location ID'])) {
+    const address = tmv3_step4LocationDisplay_(location);
+    lines.push(
+      'Location: ' +
+      tmv3_clean_(location['Location ID']) +
+      (address ? ' ' + address : '')
+    );
+  } else if (step4.locationStatus === 'CREATE_REQUIRED') {
+    lines.push('Location: Create required');
+  } else {
+    lines.push('Location: —');
+  }
+
+  return lines.join('\n\n');
+}
+
+function tmv3_step4LocationDisplay_(location) {
+  const parts = [
+    tmv3_clean_(location && location['Address 1']),
+    tmv3_clean_(location && location['Address 2']),
+    tmv3_clean_(location && location['City']),
+    tmv3_clean_(location && location['Province']),
+    tmv3_clean_(location && location['Postal Code'])
+  ].filter(Boolean);
+
+  return tmv3_unique_(parts).join(', ');
 }
 
 function tmv3_step4IdentitySummary_(customer, location, contact, contactStatus, locationStatus) {

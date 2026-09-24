@@ -6,7 +6,7 @@ const TMV3_STEP1_HEADERS = Object.freeze([
   'Description',
   'Created / Guests',
   'Data Checklist',
-  'Task Customer / IDs',
+  'Task Customer / IDs (Evidence)',
   'Task',
   'Task Schedule',
   'Task Status',
@@ -292,9 +292,10 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRo
 
   sh.showColumns(1, Math.min(visible, maxColumns));
 
-  // Task Schedule and Task Status remain as hidden evidence columns.
-  // Their operator-facing presentation is combined into the Task column.
+  // Customer/IDs, Schedule, and Status remain as hidden evidence columns.
+  // Their operator-facing presentation is combined into the single Task column.
   if (maxColumns >= 9) {
+    sh.hideColumns(6, 1);
     sh.hideColumns(8, 2);
   }
 
@@ -302,7 +303,7 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRo
     sh.hideColumns(visible + 1, maxColumns - visible);
   }
 
-  const widths = [330,220,330,260,190,190,330,180,120,170,320];
+  const widths = [330,220,330,260,190,190,430,180,120,170,320];
 
   widths.forEach(function(width, index) {
     if (index + 1 <= maxColumns) sh.setColumnWidth(index + 1, width);
@@ -312,7 +313,7 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRo
   sh.setFrozenColumns(1);
 
   // Visual grouping kept intentionally light:
-  // Calendar A:E, Task F:G (H:I hidden evidence), decision J:K.
+  // Calendar A:E, Task G (F/H/I hidden evidence), decision J:K.
   if (maxColumns >= 5) {
     sh.getRange(1, 1, 1, 5)
       .setBackground('#EAF3FF')
@@ -366,15 +367,18 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRo
   }
 
   if (lastRow >= 2 && maxColumns >= 9) {
-    tmv3_step1ColorTaskStatuses_(sh, lastRow);
+    tmv3_step1FormatTaskCells_(sh, records || []);
   }
 }
 
-function tmv3_step1ColorTaskStatuses_(sh, lastRow) {
-  const range = sh.getRange(2, 7, lastRow - 1, 1);
+function tmv3_step1FormatTaskCells_(sh, records) {
+  const rowCount = Math.max(0, sh.getLastRow() - 1);
+  if (!rowCount) return;
+
+  const range = sh.getRange(2, 7, rowCount, 1);
   const values = range.getDisplayValues();
 
-  const styles = {
+  const statusStyles = {
     'open': SpreadsheetApp.newTextStyle()
       .setForegroundColor('#137333')
       .setBold(true)
@@ -393,13 +397,66 @@ function tmv3_step1ColorTaskStatuses_(sh, lastRow) {
       .build()
   };
 
-  const rich = values.map(function(row) {
+  const rich = values.map(function(row, index) {
     const text = String(row[0] || '');
+    const record = records[index] || {};
     const builder = SpreadsheetApp.newRichTextValue().setText(text);
 
+    // Customer line: use the already-proven customer-specific Striven page.
+    const customer =
+      record.step4 && record.step4.customer
+        ? record.step4.customer
+        : null;
+    const customerId = tmv3_clean_(customer && customer['Customer ID']);
+    if (customerId && TMV3.CUSTOMER_ORDERS_PAGE_BASE) {
+      const customerLine = text.split('\n').filter(function(line) {
+        return /^Customer #/i.test(String(line || '').trim());
+      })[0] || '';
+
+      if (customerLine) {
+        const start = text.indexOf(customerLine);
+        if (start >= 0) {
+          builder.setLinkUrl(
+            start,
+            start + customerLine.length,
+            TMV3.CUSTOMER_ORDERS_PAGE_BASE + encodeURIComponent(customerId)
+          );
+        }
+      }
+    }
+
+    // Each exact Task line opens the exact Striven Task.
+    const tasks =
+      record.step5 && Array.isArray(record.step5.tasks)
+        ? record.step5.tasks
+        : [];
+
+    tasks.forEach(function(task) {
+      const taskId = tmv3_clean_(task && task['Task ID']);
+      const taskUrl =
+        tmv3_clean_(task && task['URL']) ||
+        (taskId ? TMV3.TASK_URL_BASE + encodeURIComponent(taskId) : '');
+
+      if (!taskId || !taskUrl) return;
+
+      const prefix = 'Task #' + taskId;
+      const lines = text.split('\n');
+      const taskLine = lines.filter(function(line) {
+        return String(line || '').indexOf(prefix) === 0;
+      })[0] || '';
+
+      if (taskLine) {
+        const start = text.indexOf(taskLine);
+        if (start >= 0) {
+          builder.setLinkUrl(start, start + taskLine.length, taskUrl);
+        }
+      }
+    });
+
+    // Status stays in the same Task cell and is visually coded.
     text.split('\n').forEach(function(line) {
       const clean = String(line || '').trim().toLowerCase();
-      const style = styles[clean];
+      const style = statusStyles[clean];
       if (!style) return;
 
       const start = text.indexOf(line);

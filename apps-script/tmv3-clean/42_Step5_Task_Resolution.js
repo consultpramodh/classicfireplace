@@ -589,7 +589,7 @@ function tmv3_step5OperatorRow_(record) {
   const tasks = step5.tasks || [];
 
   row[4] = tmv3_step5SyncChecklist_(record, tasks);
-  row[6] = tmv3_step5TaskCombinedSummary_(tasks, disposition);
+  row[6] = tmv3_step5TaskColumnSummary_(record, tasks, disposition);
   row[7] = tmv3_step5TaskScheduleSummary_(tasks);
   row[8] = tmv3_step5TaskStatusSummary_(tasks, disposition);
   row[9] = 'STEP 5 — ' + disposition;
@@ -689,6 +689,19 @@ function tmv3_step5TaskSummary_(tasks, disposition) {
     const name = tmv3_clean_(task['Name']);
     return 'Task #' + id + (name ? ' · ' + name : '');
   }).join('\n');
+}
+
+function tmv3_step5TaskColumnSummary_(record, tasks, disposition) {
+  const identity = tmv3_step4TaskColumnIdentity_(
+    record,
+    record.step4 || {}
+  );
+
+  const task = tmv3_step5TaskCombinedSummary_(tasks, disposition);
+
+  return [identity, task]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 function tmv3_step5TaskCombinedSummary_(tasks, disposition) {
