@@ -321,10 +321,40 @@ function tmv3_step3ResolvePreInspectionAnchor_(record, refs) {
   }
 
   if (!customer) {
+    const identityBundleReady =
+      !unresolvedCalendarCustomerNumber &&
+      !!tmv3_clean_(record.calendarCustomerName) &&
+      !!tmv3_phone10_(record.phone) &&
+      !!tmv3_clean_(record.location);
+
+    if (identityBundleReady) {
+      return tmv3_step3Decision_(
+        'VERIFIED',
+        'PREINSPECTION_IDENTITY_EVIDENCE_READY',
+        'No deterministic Customer/Order anchor is available, but Calendar name + phone + address are sufficient to proceed to Step 4 identity proof.',
+        {
+          anchorType: 'IDENTITY_EVIDENCE',
+          customerId: '',
+          customerNumber: '',
+          customerName: tmv3_clean_(record.calendarCustomerName),
+          orderId: tmv3_clean_(order && order['Order ID']),
+          orderNumber: tmv3_clean_(order && order['Order Number']),
+          orderType: tmv3_clean_(order && order['Order Type']),
+          orderStatus: tmv3_clean_(order && order['Status']),
+          orderUrl: tmv3_clean_(order && order['URL']),
+          orderLocationIdEvidence: tmv3_clean_(order && order['Location ID']),
+          orderContactIdEvidence: tmv3_clean_(order && order['Contact ID']),
+          orderEvidenceOnly: true
+        },
+        evidence.concat(['CALENDAR_IDENTITY_BUNDLE_READY']),
+        warnings
+      );
+    }
+
     return tmv3_step3Decision_(
       'REVIEW',
       'PREINSPECTION_BUSINESS_ANCHOR_UNRESOLVED',
-      'No exact Customer # or unique SO relationship resolved a Striven Customer.',
+      'No exact Customer #, unique SO relationship, or complete identity bundle is available.',
       tmv3_step3AnchorFromPreInspection_(record, null, order),
       evidence,
       warnings

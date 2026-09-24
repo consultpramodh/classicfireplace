@@ -16,6 +16,7 @@ function onOpen() {
         .addItem('Step 1 — Refresh Calendar Intake', 'tmv3_step1CalendarRun')
         .addItem('Step 2 — Refresh Eligibility', 'tmv3_step2CalendarRun')
         .addItem('Step 3 — Resolve Business Anchors', 'tmv3_step3BusinessAnchorRunCached')
+        .addItem('Step 4 — Resolve Customer / Location', 'tmv3_step4IdentityRunCached')
         .addItem('Refresh Sources + Mapping', 'tmv3_shadowRun')
         .addItem('Refresh Mapping From Cache', 'tmv3_shadowMapFromCache')
         .addItem('Refresh Morning Ops', 'tmv3_refreshMorningOps')
@@ -174,6 +175,12 @@ function tmv3_calendarStageRefresh_(reason) {
     );
   }
 
+  if (stage === 4) {
+    return tmv3_step4IdentityRunCached(
+      reason || 'STAGE4_IDENTITY_REFRESH'
+    );
+  }
+
   return tmv3_shadowMapFromCache();
 }
 
@@ -208,6 +215,14 @@ function tmv3_dailySourceRefresh() {
     return { sources: sources, mapped: mapped };
   }
 
+  if (tmv3_executionStage_() === 4) {
+    const sources = tmv3_step4RefreshIdentitySources_();
+    const mapped = tmv3_step4IdentityRunCached(
+      'DAILY_STAGE4_IDENTITY_REFRESH'
+    );
+    return { sources: sources, mapped: mapped };
+  }
+
   const result = tmv3_refreshSources();
   tmv3_audit_(
     'SYSTEM','','','DAILY_SOURCE_REFRESH','PASS',JSON.stringify(result)
@@ -229,7 +244,7 @@ function tmv3_scheduledShadow() {
 }
 
 function tmv3_scheduledOperations() {
-  if (tmv3_executionStage_() <= 3) {
+  if (tmv3_executionStage_() <= 4) {
     return {
       stage: tmv3_executionStage_(),
       mapped: tmv3_calendarStageRefresh_('SCHEDULED_CALENDAR_STAGE_REFRESH'),
@@ -243,7 +258,7 @@ function tmv3_scheduledOperations() {
 }
 
 function tmv3_refreshLinksSlot_(label) {
-  if (tmv3_executionStage_() <= 3) {
+  if (tmv3_executionStage_() <= 4) {
     const mapped = tmv3_calendarStageRefresh_(
       'CALENDAR_STAGE_SLOT_' + String(label || '')
     );
@@ -268,7 +283,7 @@ function tmv3_refreshLinksSlot_1600() { return tmv3_refreshLinksSlot_('4:00 PM')
 function tmv3_refreshLinksSlot_1800() { return tmv3_refreshLinksSlot_('6:00 PM'); }
 
 function tmv3_installReminderCheck() {
-  if (tmv3_executionStage_() <= 3) {
+  if (tmv3_executionStage_() <= 4) {
     return { status: 'CALENDAR_STAGE_GATED', sent: 0 };
   }
   return tmv3_sendInstallMissingSoReminders_('AUTO');
