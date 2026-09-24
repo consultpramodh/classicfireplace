@@ -1,7 +1,7 @@
 {
-  "release": "TMV3_STEP1_TRIGGER_REFRESH_R3",
+  "release": "TMV3_STEP1_LEGACY_CALENDAR_PARITY_R3_STABLE",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP1_INSTALL_LIVE"
+  "runMode": "STEP1"
 }
