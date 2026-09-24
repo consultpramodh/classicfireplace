@@ -1,5 +1,5 @@
 purpose=Resolve today's legacy PreInspection appointments through rollback-safe temporary web runtime
 date=2026-09-24
-run=guarded-web-runtime-6-kristin-after-lookup-header-fix
+run=guarded-web-runtime-7-kristin-reconcile-18683
 scope=today_preinspect_only
 max_actions=5
