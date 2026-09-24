@@ -1,4 +1,4 @@
-purpose=Discover callable legacy Apps Script deployment for today's PreInspection resolution
+purpose=Run exactly one guarded legacy PreInspection action against Apps Script HEAD
 date=2026-09-24
-run=deployment-diagnostic-1
-scope=read_only_deployments_versions
+run=head-dev-1
+scope=legacy_preinspect_one_appointment
