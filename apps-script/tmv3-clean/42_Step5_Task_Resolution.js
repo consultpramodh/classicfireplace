@@ -117,7 +117,7 @@ function tmv3_step5TaskIndex_() {
 }
 
 function tmv3_step5TaskRecords_(step4Records, refs) {
-  return (step4Records || []).map(function(record) {
+  const records = (step4Records || []).map(function(record) {
     const step4 = record.step4 || {};
 
     if (step4.disposition !== 'VERIFIED') {
@@ -141,6 +141,11 @@ function tmv3_step5TaskRecords_(step4Records, refs) {
 
     return Object.assign({}, record, { step5: decision });
   });
+
+  tmv3_step5NormalizePreInspectionTaskTimesAcrossRecords_(records);
+  tmv3_step5GuardTaskLinkedAcrossEventDates_(records);
+
+  return records;
 }
 
 function tmv3_step5ResolvePreInspection_(record) {
@@ -156,16 +161,11 @@ function tmv3_step5ResolvePreInspection_(record) {
     );
 
     if (decision.status === 'MATCHED' && decision.task) {
-      const alignedTask = tmv3_step5AlignPreInspectionTaskClock_(
-        decision.task,
-        record
-      );
-
       return tmv3_step5Decision_(
         'MATCHED',
         'PREINSPECTION_TASK_MATCHED',
         decision.reason,
-        [alignedTask],
+        [decision.task],
         (decision.historyTasks || []).length,
         decision.evidence || [],
         [],
@@ -694,6 +694,151 @@ function tmv3_step5TaskSummary_(tasks, disposition) {
     const name = tmv3_clean_(task['Name']);
     return 'Task #' + id + (name ? ' · ' + name : '');
   }).join('\n');
+}
+
+function tmv3_step5NormalizePreInspectionTaskTimesAcrossRecords_(records) {
+  const corrections = {};
+
+  (records || []).forEach(function(record) {
+    if (record.vertical !== 'PreInspection') return;
+
+    const tasks =
+      record.step5 && Array.isArray(record.step5.tasks)
+        ? record.step5.tasks
+        : [];
+
+    tasks.forEach(function(task) {
+      const taskId = tmv3_clean_(task && task['Task ID']);
+      if (!taskId) return;
+
+      if (!corrections[taskId]) {
+        corrections[taskId] = {
+          Start:null,
+          Due:null,
+          conflictStart:false,
+          conflictDue:false
+        };
+      }
+
+      [
+        ['Start', record.start],
+        ['Due', record.end]
+      ].forEach(function(pair) {
+        const field = pair[0];
+        const calendarValue = pair[1];
+        const taskValue = tmv3_clean_(task && task[field]);
+        if (!taskValue || !calendarValue) return;
+
+        const taskDate = tmv3_parseDateTime_(taskValue);
+        const calendarDate = tmv3_parseDateTime_(calendarValue);
+        if (!taskDate || !calendarDate) return;
+
+        if (
+          tmv3_step6LocalDay_(taskDate) !==
+          tmv3_step6LocalDay_(calendarDate)
+        ) {
+          return;
+        }
+
+        const diff = Math.abs(
+          taskDate.getTime() - calendarDate.getTime()
+        );
+
+        if (diff !== 12 * 60 * 60 * 1000) return;
+
+        const corrected = Utilities.formatDate(
+          calendarDate,
+          TMV3_TIMEZONE,
+          "yyyy-MM-dd'T'HH:mm:ssXXX"
+        );
+
+        if (
+          corrections[taskId][field] &&
+          corrections[taskId][field] !== corrected
+        ) {
+          corrections[taskId]['conflict' + field] = true;
+          return;
+        }
+
+        corrections[taskId][field] = corrected;
+      });
+    });
+  });
+
+  (records || []).forEach(function(record) {
+    if (record.vertical !== 'PreInspection' || !record.step5) return;
+
+    ['tasks','historyTasks'].forEach(function(listName) {
+      const list = Array.isArray(record.step5[listName])
+        ? record.step5[listName]
+        : [];
+
+      record.step5[listName] = list.map(function(task) {
+        const out = Object.assign({}, task || {});
+        const taskId = tmv3_clean_(out['Task ID']);
+        const fix = corrections[taskId];
+        if (!fix) return out;
+
+        if (fix.Start && !fix.conflictStart) out.Start = fix.Start;
+        if (fix.Due && !fix.conflictDue) out.Due = fix.Due;
+
+        return out;
+      });
+    });
+  });
+
+  return records;
+}
+
+function tmv3_step5GuardTaskLinkedAcrossEventDates_(records) {
+  const usage = {};
+
+  (records || []).forEach(function(record) {
+    if (
+      record.vertical !== 'PreInspection' ||
+      !record.step5 ||
+      record.step5.disposition !== 'MATCHED'
+    ) {
+      return;
+    }
+
+    (record.step5.tasks || []).forEach(function(task) {
+      const taskId = tmv3_clean_(task && task['Task ID']);
+      if (!taskId) return;
+
+      if (!usage[taskId]) usage[taskId] = [];
+      usage[taskId].push({
+        record:record,
+        eventDay:tmv3_step6LocalDay_(record.start)
+      });
+    });
+  });
+
+  Object.keys(usage).forEach(function(taskId) {
+    const entries = usage[taskId];
+    const days = tmv3_unique_(
+      entries.map(function(entry) {
+        return entry.eventDay;
+      }).filter(Boolean)
+    );
+
+    if (days.length <= 1) return;
+
+    entries.forEach(function(entry) {
+      const prior = entry.record.step5 || {};
+      entry.record.step5 = Object.assign({}, prior, {
+        disposition:'REVIEW',
+        code:'TASK_LINKED_TO_MULTIPLE_EVENT_DATES',
+        reason:
+          'Task #' + taskId +
+          ' is linked to multiple PreInspection event dates (' +
+          days.join(', ') +
+          '). Do not reconcile either appointment automatically.'
+      });
+    });
+  });
+
+  return records;
 }
 
 function tmv3_step5AlignPreInspectionTaskClock_(task, record) {
