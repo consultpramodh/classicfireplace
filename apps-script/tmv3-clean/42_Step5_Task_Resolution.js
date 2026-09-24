@@ -128,6 +128,7 @@ function tmv3_step5TaskRecords_(step4Records, refs) {
           reason: 'Task resolution did not run because Step 4 is not VERIFIED.',
           tasks: [],
           completedHistory: 0,
+          historyTasks: [],
           warnings: []
         }
       });
@@ -160,8 +161,10 @@ function tmv3_step5ResolvePreInspection_(record) {
         'PREINSPECTION_TASK_MATCHED',
         decision.reason,
         [decision.task],
-        0,
-        decision.evidence || []
+        (decision.historyTasks || []).length,
+        decision.evidence || [],
+        [],
+        decision.historyTasks || []
       );
     }
 
@@ -171,8 +174,10 @@ function tmv3_step5ResolvePreInspection_(record) {
         'PREINSPECTION_NO_OPEN_TASK',
         decision.reason,
         [],
-        0,
-        []
+        (decision.historyTasks || []).length,
+        [],
+        [],
+        decision.historyTasks || []
       );
     }
 
@@ -293,7 +298,9 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
         : 'No applicable Task was found.',
       [],
       completed.length,
-      evidence
+      evidence,
+      [],
+      completed
     );
   }
 
@@ -304,7 +311,9 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
       'Exactly one applicable OPEN Task was found.',
       [open[0]],
       completed.length,
-      evidence
+      evidence,
+      [],
+      completed
     );
   }
 
@@ -344,7 +353,9 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
           expanded.map(function(item) {
             return 'FP#' + item.fireplaceNumber;
           })
-        )
+        ),
+        [],
+        completed
       );
     }
   }
@@ -356,7 +367,8 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
     open,
     completed.length,
     evidence,
-    warnings
+    warnings,
+    completed
   );
 }
 
@@ -367,7 +379,8 @@ function tmv3_step5Decision_(
   tasks,
   completedHistory,
   evidence,
-  warnings
+  warnings,
+  historyTasks
 ) {
   return {
     disposition: disposition,
@@ -375,6 +388,7 @@ function tmv3_step5Decision_(
     reason: reason,
     tasks: tasks || [],
     completedHistory: Number(completedHistory || 0),
+    historyTasks: historyTasks || [],
     evidence: evidence || [],
     warnings: warnings || []
   };

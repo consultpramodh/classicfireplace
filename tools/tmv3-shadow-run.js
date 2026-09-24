@@ -284,6 +284,18 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step6Decision') {
+      var step6 = tmv3_step6TaskDecisionRun(
+        'GITHUB_STEP6_VERIFY',
+        true
+      );
+      return TMPV3_shadowResponse_({
+        ok:step6.status === 'PASS',
+        status:'STEP6_TASK_DECISION_COMPLETE',
+        result:step6
+      });
+    }
+
     if (body.action === 'taskSchemaProbe') {
       var rawTask = tmv3_fetchJson_(
         TMV3.API_BASE + '/v2/tasks/17881',
@@ -417,6 +429,7 @@ async function main() {
       RUN_MODE === 'STEP3' ||
       RUN_MODE === 'STEP4' ||
       RUN_MODE === 'STEP5' ||
+      RUN_MODE === 'STEP6' ||
       RUN_MODE === 'TASK_SCHEMA'
     ) {
       const action =
@@ -436,7 +449,9 @@ async function main() {
                 ? 'step4Identity'
                 : RUN_MODE === 'STEP5'
                   ? 'step5Task'
-                  : RUN_MODE === 'TASK_SCHEMA'
+                  : RUN_MODE === 'STEP6'
+                    ? 'step6Decision'
+                    : RUN_MODE === 'TASK_SCHEMA'
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
 
@@ -482,7 +497,9 @@ async function main() {
                     ? 'V3_STEP4_IDENTITY_VERIFIED'
                     : RUN_MODE === 'STEP5'
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
-                      : RUN_MODE === 'TASK_SCHEMA'
+                      : RUN_MODE === 'STEP6'
+                        ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                        : RUN_MODE === 'TASK_SCHEMA'
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1: RUN_MODE === 'TASK_SCHEMA' ? step1 : (step1.result || null),
@@ -511,7 +528,9 @@ async function main() {
                   ? 'V3_STEP4_IDENTITY_VERIFIED'
                   : RUN_MODE === 'STEP5'
                     ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
-                    : RUN_MODE === 'TASK_SCHEMA'
+                    : RUN_MODE === 'STEP6'
+                      ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                      : RUN_MODE === 'TASK_SCHEMA'
                       ? 'V3_TASK_SCHEMA_PROBED'
                       : 'V3_STEP1_CALENDAR_VERIFIED'
       );

@@ -1643,14 +1643,17 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
   });
 
   const open = evaluated.filter(function(c) { return c.open; });
+  const historyTasks = evaluated
+    .filter(function(c) { return !c.open && tmv3_taskIsCompleted_(c.task['Status']); })
+    .map(function(c) { return c.task; });
 
-  // Current PreInspection policy: historical/non-open tasks never block the
-  // current appointment. A new active task may be created when no OPEN
-  // candidate remains.
+  // Step 5 resolves only the current OPEN task. Historical tasks are carried
+  // forward so Step 6 can decide CREATE vs RECREATE vs FULFILLED safely.
   if (!open.length) {
     return {
       status: 'CLEAR',
       task: null,
+      historyTasks: historyTasks,
       reason: 'No OPEN PreInspection task remains for this appointment.'
     };
   }
@@ -1721,6 +1724,7 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
   return {
     status: 'CLEAR',
     task: null,
+    historyTasks: historyTasks,
     reason: 'No OPEN existing PreInspection task match was found for this appointment.'
   };
 }
