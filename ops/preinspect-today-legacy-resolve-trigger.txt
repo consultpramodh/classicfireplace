@@ -1,4 +1,5 @@
-purpose=Run exactly one guarded legacy PreInspection action against Apps Script HEAD
+purpose=Resolve today's legacy PreInspection appointments through rollback-safe temporary web runtime
 date=2026-09-24
-run=head-dev-1
-scope=legacy_preinspect_one_appointment
+run=guarded-web-runtime-1
+scope=today_preinspect_only
+max_actions=5
