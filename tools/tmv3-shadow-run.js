@@ -296,6 +296,19 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7Reconcile') {
+      var step7 = tmv3_step7ReconciliationRun(
+        'GITHUB_STEP7_VERIFY',
+        true,
+        String(body.vertical || '')
+      );
+      return TMPV3_shadowResponse_({
+        ok:step7.status === 'PASS',
+        status:'STEP7_RECONCILIATION_COMPLETE',
+        result:step7
+      });
+    }
+
     if (body.action === 'taskSchemaProbe') {
       var rawTask = tmv3_fetchJson_(
         TMV3.API_BASE + '/v2/tasks/17881',
@@ -431,6 +444,8 @@ async function main() {
       RUN_MODE === 'STEP4' ||
       RUN_MODE === 'STEP5' ||
       RUN_MODE === 'STEP6' ||
+      RUN_MODE === 'STEP7' ||
+      RUN_MODE === 'STEP7_INSTALL' ||
       RUN_MODE === 'TASK_SCHEMA'
     ) {
       const action =
@@ -453,13 +468,16 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
-                    : RUN_MODE === 'TASK_SCHEMA'
+                    : (RUN_MODE === 'STEP7' || RUN_MODE === 'STEP7_INSTALL')
+                      ? 'step7Reconcile'
+                      : RUN_MODE === 'TASK_SCHEMA'
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
 
       const step1 = await postJson(url, {
         token,
-        action
+        action,
+        vertical: RUN_MODE === 'STEP7_INSTALL' ? 'Install' : ''
       });
 
       if (!step1.ok) {
@@ -503,7 +521,11 @@ async function main() {
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                       : RUN_MODE === 'STEP6'
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
-                        : RUN_MODE === 'TASK_SCHEMA'
+                        : RUN_MODE === 'STEP7_INSTALL'
+                          ? 'V3_STEP7_INSTALL_RECONCILIATION_VERIFIED'
+                          : RUN_MODE === 'STEP7'
+                            ? 'V3_STEP7_RECONCILIATION_VERIFIED'
+                            : RUN_MODE === 'TASK_SCHEMA'
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1: RUN_MODE === 'TASK_SCHEMA' ? step1 : (step1.result || null),
@@ -536,7 +558,11 @@ async function main() {
                     ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                     : RUN_MODE === 'STEP6'
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
-                      : RUN_MODE === 'TASK_SCHEMA'
+                      : RUN_MODE === 'STEP7_INSTALL'
+                        ? 'V3_STEP7_INSTALL_RECONCILIATION_VERIFIED'
+                        : RUN_MODE === 'STEP7'
+                          ? 'V3_STEP7_RECONCILIATION_VERIFIED'
+                          : RUN_MODE === 'TASK_SCHEMA'
                       ? 'V3_TASK_SCHEMA_PROBED'
                       : 'V3_STEP1_CALENDAR_VERIFIED'
       );

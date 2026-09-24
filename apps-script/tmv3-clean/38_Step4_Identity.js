@@ -80,18 +80,21 @@ function tmv3_step4IdentityIndex_() {
   const customers = tmv3_rows_(TMV3.SHEETS.CUSTOMERS);
   const locations = tmv3_rows_(TMV3.SHEETS.LOCATIONS);
   const orders = tmv3_rows_(TMV3.SHEETS.ORDERS);
+  const tasks = tmv3_rows_(TMV3.SHEETS.TASKS);
 
   const refs = {
     customers: customers,
     locations: locations,
     contacts: [],
     orders: orders,
+    tasks: tasks,
     customerById: {},
     customerByNumber: {},
     customerByPhone: {},
     locationsByCustomer: {},
     locationById: {},
-    orderById: {}
+    orderById: {},
+    taskById: {}
   };
 
   customers.forEach(function(row) {
@@ -125,6 +128,11 @@ function tmv3_step4IdentityIndex_() {
   orders.forEach(function(row) {
     const id = tmv3_clean_(row['Order ID']);
     if (id) refs.orderById[id] = row;
+  });
+
+  tasks.forEach(function(row) {
+    const id = tmv3_clean_(row['Task ID']);
+    if (id) refs.taskById[id] = row;
   });
 
   return refs;
@@ -791,6 +799,24 @@ function tmv3_step4ResolveLocation_(record, refs, customer, preferredLocationId)
     };
   }
 
+  // An explicit Calendar Task link is strong relationship evidence, but it is
+  // only allowed to break an address tie when the linked Task is consistent
+  // with the verified Order, the Task Location belongs to the same Customer,
+  // and that one Location strongly matches the Calendar job-site address.
+  const linkedTaskLocation = tmv3_step4LinkedTaskLocation_(
+    record,
+    refs,
+    customer
+  );
+
+  if (linkedTaskLocation.status === 'MATCHED') {
+    return {
+      status: 'MATCHED',
+      location: linkedTaskLocation.location,
+      evidence: fallbackEvidence.concat(linkedTaskLocation.evidence || [])
+    };
+  }
+
   // Historical rule: once Customer identity is proven, a genuinely different
   // Calendar job-site address may be added to that Customer later.
   if (
@@ -814,6 +840,84 @@ function tmv3_step4ResolveLocation_(record, refs, customer, preferredLocationId)
         ' was not directly present in the Customer Location source.'
       : owned.reason,
     evidence: fallbackEvidence.concat(owned.evidence || [])
+  };
+}
+
+function tmv3_step4LinkedTaskLocation_(record, refs, customer) {
+  const taskId = tmv3_clean_(record && record.existingTaskId);
+  const customerId = tmv3_clean_(customer && customer['Customer ID']);
+
+  if (!taskId || !customerId) {
+    return { status: 'NO_MATCH', evidence: [] };
+  }
+
+  const task = refs.taskById && refs.taskById[taskId];
+  if (!task) {
+    return {
+      status: 'NO_MATCH',
+      evidence: ['EXPLICIT_TASK_ID_NOT_IN_TASK_SOURCE']
+    };
+  }
+
+  const expectedOrderId = tmv3_clean_(
+    record &&
+    record.step3 &&
+    record.step3.anchor &&
+    record.step3.anchor.orderId
+  );
+  const taskOrderId = tmv3_clean_(task['Order ID']);
+
+  if (
+    expectedOrderId &&
+    taskOrderId &&
+    expectedOrderId !== taskOrderId
+  ) {
+    return {
+      status: 'NO_MATCH',
+      evidence: ['EXPLICIT_TASK_ORDER_CONFLICT']
+    };
+  }
+
+  const locationId = tmv3_clean_(task['Location ID']);
+  const location = locationId && refs.locationById
+    ? refs.locationById[locationId]
+    : null;
+
+  if (!location) {
+    return {
+      status: 'NO_MATCH',
+      evidence: ['EXPLICIT_TASK_LOCATION_NOT_IN_LOCATION_SOURCE']
+    };
+  }
+
+  if (tmv3_clean_(location['Customer ID']) !== customerId) {
+    return {
+      status: 'NO_MATCH',
+      evidence: ['EXPLICIT_TASK_LOCATION_CUSTOMER_CONFLICT']
+    };
+  }
+
+  const corroborated = tmv3_resolveOwnedLocation_(
+    customer,
+    record.location,
+    [location]
+  );
+
+  if (corroborated.status !== 'MATCHED') {
+    return {
+      status: 'NO_MATCH',
+      evidence: ['EXPLICIT_TASK_LOCATION_DOES_NOT_MATCH_CALENDAR_ADDRESS']
+    };
+  }
+
+  return {
+    status: 'MATCHED',
+    location: location,
+    evidence: [
+      'LOCATION_FROM_EXPLICIT_LINKED_TASK',
+      'EXPLICIT_TASK_LOCATION_CUSTOMER_OWNED',
+      'EXPLICIT_TASK_LOCATION_CALENDAR_ADDRESS_MATCH'
+    ]
   };
 }
 
