@@ -1,0 +1,5 @@
+purpose=Resolve exactly one legacy PreInspection queue action for today's appointments
+date=2026-09-24
+run=1
+requested_by=ChatGPT
+scope=legacy_preinspect_only
