@@ -195,6 +195,15 @@ function tmv3_calendarStageRefresh_(reason) {
     );
   }
 
+  if (stage === 7) {
+    // Keep routine Calendar-driven refreshes on the proven Step 6 view.
+    // Full Step 7 performs many fresh Task/Contact reads and is deliberately
+    // invoked through the guarded verification runner during this stage.
+    return tmv3_step6TaskDecisionRunCached(
+      reason || 'STAGE7_RECONCILIATION_VIEW_REFRESH'
+    );
+  }
+
   return tmv3_shadowMapFromCache();
 }
 
@@ -253,6 +262,14 @@ function tmv3_dailySourceRefresh() {
     return { sources: sources, mapped: mapped };
   }
 
+  if (tmv3_executionStage_() === 7) {
+    const sources = tmv3_step5RefreshTaskSources_();
+    const mapped = tmv3_step6TaskDecisionRunCached(
+      'DAILY_STAGE7_RECONCILIATION_VIEW_REFRESH'
+    );
+    return { sources: sources, mapped: mapped };
+  }
+
   const result = tmv3_refreshSources();
   tmv3_audit_(
     'SYSTEM','','','DAILY_SOURCE_REFRESH','PASS',JSON.stringify(result)
@@ -274,7 +291,7 @@ function tmv3_scheduledShadow() {
 }
 
 function tmv3_scheduledOperations() {
-  if (tmv3_executionStage_() <= 6) {
+  if (tmv3_executionStage_() <= 7) {
     return {
       stage: tmv3_executionStage_(),
       mapped: tmv3_calendarStageRefresh_('SCHEDULED_CALENDAR_STAGE_REFRESH'),
@@ -288,7 +305,7 @@ function tmv3_scheduledOperations() {
 }
 
 function tmv3_refreshLinksSlot_(label) {
-  if (tmv3_executionStage_() <= 6) {
+  if (tmv3_executionStage_() <= 7) {
     const mapped = tmv3_calendarStageRefresh_(
       'CALENDAR_STAGE_SLOT_' + String(label || '')
     );
@@ -313,7 +330,7 @@ function tmv3_refreshLinksSlot_1600() { return tmv3_refreshLinksSlot_('4:00 PM')
 function tmv3_refreshLinksSlot_1800() { return tmv3_refreshLinksSlot_('6:00 PM'); }
 
 function tmv3_installReminderCheck() {
-  if (tmv3_executionStage_() <= 6) {
+  if (tmv3_executionStage_() <= 7) {
     return { status: 'CALENDAR_STAGE_GATED', sent: 0 };
   }
   return tmv3_sendInstallMissingSoReminders_('AUTO');
