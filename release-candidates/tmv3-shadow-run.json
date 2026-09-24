@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_STEP1_CALENDAR_STABLE_R1",
+  "release": "TMV3_STEP1_LEGACY_CALENDAR_PARITY_R2_VERIFY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
