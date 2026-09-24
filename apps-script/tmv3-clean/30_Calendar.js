@@ -135,6 +135,14 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
   }
 
   if (
+    options.stage === 'STEP1' &&
+    vertical === 'Service' &&
+    !tmv3_serviceStep1LegacyAllowed_(title, isAllDay, creator)
+  ) {
+    return null;
+  }
+
+  if (
     options.applyEligibility !== false &&
     tmv3_shouldIgnoreEvent_(vertical, title, rawDescription, isAllDay, creator)
   ) {
@@ -146,11 +154,15 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
   const eventId = event.getId();
   const links = tmv3_extractLinks_(rawDescription);
 
-  const orderNumber = tmv3_extractOrderNumber_(
-    [title, descriptionClean, location].join(' ')
+  const orderNumber = tmv3_extractOrderNumberForVertical_(
+    vertical,
+    title,
+    descriptionClean,
+    location
   );
 
-  const customerNumber = tmv3_extractCustomerNumber_(
+  const customerNumber = tmv3_extractCustomerNumberForVertical_(
+    vertical,
     title + ' ' + descriptionClean
   );
 
@@ -334,13 +346,276 @@ function tmv3_calendarReadableDescription_(value) {
   );
 }
 
+function tmv3_serviceStep1LegacyAllowed_(title, isAllDay, creator) {
+  const cleanTitle = tmv3_clean_(title);
+  const normalizedTitle = tmv3_norm_(cleanTitle);
+  const creatorText = String(creator || '').toLowerCase();
+
+  // Original Service calendar intake rule:
+  // only events actually created by @classicfireplace.ca.
+  if (creatorText.indexOf('@classicfireplace.ca') === -1) return false;
+
+  if (!cleanTitle) return false;
+  if (isAllDay) return false;
+
+  if (
+    normalizedTitle === 'chris' ||
+    normalizedTitle === 'travis' ||
+    normalizedTitle === 'matt' ||
+    normalizedTitle === 'matthew' ||
+    normalizedTitle === 'matthew thompson'
+  ) {
+    return false;
+  }
+
+  if (
+    normalizedTitle === 'classic fireplace' ||
+    normalizedTitle === 'classic fireplace bbq' ||
+    normalizedTitle === 'classic fireplace and bbq'
+  ) {
+    return false;
+  }
+
+  if (
+    normalizedTitle.indexOf('take van home') !== -1 ||
+    normalizedTitle.indexOf('van home') !== -1 ||
+    normalizedTitle.indexOf('day off') !== -1 ||
+    normalizedTitle.indexOf('vacation') !== -1 ||
+    normalizedTitle.indexOf('sick') !== -1 ||
+    normalizedTitle.indexOf('off') === normalizedTitle.length - 3
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function tmv3_extractOrderNumberForVertical_(vertical, title, description, location) {
+  const titleText = tmv3_clean_(title);
+  const descriptionText = tmv3_clean_(description);
+  const locationText = tmv3_clean_(location);
+
+  if (vertical === 'Install') {
+    return tmv3_extractLegacyInstallOrderNumber_(titleText + ' ' + descriptionText);
+  }
+
+  if (vertical === 'Delivery') {
+    return tmv3_extractLegacyDeliveryOrderNumber_(titleText + ' ' + descriptionText);
+  }
+
+  if (vertical === 'Service') {
+    return tmv3_extractLegacyServiceOrderNumber_(
+      [titleText, descriptionText, locationText].join(' ')
+    );
+  }
+
+  if (vertical === 'PreInspection') {
+    // PreInspection title begins with Customer #, so SO evidence must come
+    // from the description rather than a bare-number fallback in the title.
+    return tmv3_extractLegacyPreInspectionOrderNumber_(descriptionText);
+  }
+
+  return tmv3_extractOrderNumber_(
+    [titleText, descriptionText, locationText].join(' ')
+  );
+}
+
+function tmv3_stripPhonesForOrderParsing_(text) {
+  return String(text || '')
+    .replace(
+      /(?:\+?1[\s\-.]?)?(?:\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4})(?:\s*(?:x|ext\.?)\s*\d+)?/gi,
+      ' '
+    )
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tmv3_extractLegacyInstallOrderNumber_(text) {
+  const clean = tmv3_stripPhonesForOrderParsing_(text);
+  if (!clean) return '';
+
+  let match = clean.match(
+    /\b(?:SO|S\/O|Sales\s*Order)\s*[#:\-]?\s*(\d{4,8})(?!\d)/i
+  );
+  if (match) return match[1];
+
+  match = clean.match(/#\s*(\d{4,8})(?!\d)/);
+  return match ? match[1] : '';
+}
+
+function tmv3_extractLegacyDeliveryOrderNumber_(text) {
+  const clean = tmv3_stripPhonesForOrderParsing_(text);
+  if (!clean) return '';
+
+  const patterns = [
+    /\bSO\s*#?\s*(\d{5,8})\b/i,
+    /\bS\/O\s*#?\s*(\d{5,8})\b/i,
+    /\bSales\s*Order\s*#?\s*(\d{5,8})\b/i,
+    /\bOrder\s*#?\s*(\d{5,8})\b/i,
+    /#\s*(\d{5,8})\b/i,
+    /\b(\d{6})\b/
+  ];
+
+  for (let i = 0; i < patterns.length; i++) {
+    const match = clean.match(patterns[i]);
+    if (match && match[1]) return match[1];
+  }
+
+  return '';
+}
+
+function tmv3_extractLegacyServiceOrderNumber_(text) {
+  const clean = tmv3_clean_(text);
+  if (!clean) return '';
+
+  const patterns = [
+    /\bSO\s*#?\s*(\d{5,8})\b/i,
+    /\bS\/O\s*#?\s*(\d{5,8})\b/i,
+    /\bSales\s*Order\s*#?\s*(\d{5,8})\b/i,
+    /\bOrder\s*#?\s*(\d{5,8})\b/i,
+    /\b(\d{6})\b/
+  ];
+
+  for (let i = 0; i < patterns.length; i++) {
+    const match = clean.match(patterns[i]);
+    if (match && match[1]) return match[1];
+  }
+
+  return '';
+}
+
+function tmv3_extractLegacyPreInspectionOrderNumber_(description) {
+  const clean = tmv3_stripPhonesForOrderParsing_(description);
+  if (!clean) return '';
+
+  const match = clean.match(
+    /\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{4,8})\b/i
+  );
+
+  return match ? match[1] : '';
+}
+
+function tmv3_extractCustomerNumberForVertical_(vertical, text) {
+  const s = tmv3_clean_(text);
+
+  const labelled = s.match(
+    /(?:Customer|Cust(?:omer)?\s*#?)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{3,8})/i
+  );
+
+  if (labelled) return labelled[1];
+
+  if (vertical === 'PreInspection') {
+    const leading = s.match(/^\s*#?(\d{4,8})\s*[-–—]/);
+    return leading ? leading[1] : '';
+  }
+
+  return '';
+}
+
 function tmv3_extractCalendarCustomerName_(vertical, title, customerNumber, phone, orderNumber, calCfg) {
+  if (vertical === 'Install') {
+    return tmv3_installLegacyCustomerName_(title);
+  }
+
+  if (vertical === 'Delivery') {
+    return tmv3_deliveryLegacyCustomerName_(title);
+  }
+
+  if (vertical === 'Service') {
+    return tmv3_serviceLegacyCustomerName_(title);
+  }
+
+  return tmv3_preInspectionCalendarCustomerName_(
+    title,
+    customerNumber
+  );
+}
+
+function tmv3_installLegacyCustomerName_(title) {
+  return tmv3_clean_(title)
+    .replace(/\b(?:SO|S\/O|Sales\s*Order)\s*[#:\-]?\s*\d{4,8}\b/ig, ' ')
+    .replace(/#\s*\d{4,8}\b/g, ' ')
+    .replace(/\b(?:install|installation|fireplace|bbq|delivery)\b/ig, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tmv3_deliveryLegacyCustomerName_(title) {
+  let clean = tmv3_clean_(title);
+  if (!clean) return '';
+
+  clean = clean
+    .replace(
+      /(?:\+?1[\s\-.]?)?(?:\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4})(?:\s*(?:x|ext\.?)\s*\d+)?/gi,
+      ' '
+    )
+    .replace(/\b(?:SO|S\/O|Sales\s*Order)\s*[#:\-]?\s*\d{4,8}\b/gi, ' ')
+    .replace(/#\s*\d{4,8}\b/g, ' ')
+    .replace(
+      /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi,
+      ' '
+    )
+    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi, ' ')
+    .replace(/\bjohn\s+hoang\b/gi, ' ')
+    .replace(/\bjohn\b/gi, ' ')
+    .replace(/\bjay\s+scott\b/gi, ' ')
+    .replace(/\bjay\b/gi, ' ')
+    .replace(/\bstephen\s+foley\b/gi, ' ')
+    .replace(/\bsteven\s+foley\b/gi, ' ')
+    .replace(/\bstephen\b/gi, ' ')
+    .replace(/\bsteven\b/gi, ' ')
+    .replace(/\bsf\b/gi, ' ')
+    .replace(/\bspencer\b/gi, ' ')
+    .replace(/\bthang\b/gi, ' ')
+    .replace(/\bpramodh\b/gi, ' ')
+    .replace(/\bmatthew\s+thompson\b/gi, ' ')
+    .replace(/\bmatthew\b/gi, ' ')
+    .replace(/\bmatt\b/gi, ' ')
+    .replace(/\baiden\b/gi, ' ')
+    .replace(/\bdelivery\b/gi, ' ')
+    .replace(/\bdeliveries\b/gi, ' ')
+    .replace(/\binstall\b/gi, ' ')
+    .replace(/\binstallation\b/gi, ' ')
+    .replace(/\bfireplace\b/gi, ' ')
+    .replace(/\bbbq\b/gi, ' ')
+    .replace(/[&+/,]/g, ' ')
+    .replace(/[-–]/g, ' ')
+    .replace(/\band\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return clean;
+}
+
+function tmv3_serviceLegacyCustomerName_(title) {
+  const clean = tmv3_clean_(title);
+  if (!clean) return '';
+
+  const value = clean
+    .replace(/\bSO\s*#?\s*\d{5,8}\b/gi, '')
+    .replace(/\bSales\s*Order\s*#?\s*\d{5,8}\b/gi, '')
+    .replace(/\bOrder\s*#?\s*\d{5,8}\b/gi, '')
+    .replace(/\bTask\s*#?\s*\d{4,8}\b/gi, '')
+    .replace(/\bService\b/gi, '')
+    .replace(/\bChris\b/gi, '')
+    .replace(/\bTravis\b/gi, '')
+    .replace(/\bMatt\b/gi, '')
+    .replace(/\bMatthew\b/gi, '')
+    .replace(/[|:;,#\-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return value.length >= 3 ? value : '';
+}
+
+function tmv3_preInspectionCalendarCustomerName_(title, customerNumber) {
   let value = tmv3_clean_(title);
   if (!value) return '';
 
-  value = value
-    .replace(/(?:SO|Sales\s*Order|Work\s*Order|Service\s*Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*\d{4,8}/ig, ' ')
-    .replace(/(?:\+?1[\s.\-]?)?\(?[2-9]\d{2}\)?[\s.\-]?[2-9]\d{2}[\s.\-]?\d{4}/g, ' ');
+  value = value.replace(
+    /(?:\+?1[\s.\-]?)?\(?[2-9]\d{2}\)?[\s.\-]?[2-9]\d{2}[\s.\-]?\d{4}/g,
+    ' '
+  );
 
   if (customerNumber) {
     value = value.replace(
@@ -349,21 +624,11 @@ function tmv3_extractCalendarCustomerName_(vertical, title, customerNumber, phon
     );
   }
 
-  if (vertical === 'Service' && calCfg && calCfg.technician) {
-    value = value.replace(
-      new RegExp('\\b' + String(calCfg.technician) + '\\b', 'ig'),
-      ' '
-    );
-  }
-
-  value = value
-    .replace(/\b(?:pre\s*-?inspect(?:ion)?|installation?|delivery|service)\b/ig, ' ')
-    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–—]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/ig, ' ')
+  return value
+    .replace(/\bpre\s*-?inspect(?:ion)?\b/ig, ' ')
     .replace(/\s*[-–—:+&]+\s*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-
-  return value;
 }
 
 function tmv3_shouldIgnoreEvent_(vertical, title, description, isAllDay, organizer) {

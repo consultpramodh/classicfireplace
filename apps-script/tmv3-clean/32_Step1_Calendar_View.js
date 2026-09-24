@@ -122,6 +122,13 @@ function tmv3_step1WriteOperatorViews_(records) {
         const aTime = a.start instanceof Date ? a.start.getTime() : 0;
         const bTime = b.start instanceof Date ? b.start.getTime() : 0;
         if (aTime !== bTime) return aTime - bTime;
+
+        if (vertical === 'Service') {
+          const techCompare = tmv3_clean_(a.technician)
+            .localeCompare(tmv3_clean_(b.technician));
+          if (techCompare !== 0) return techCompare;
+        }
+
         return tmv3_clean_(a.title).localeCompare(tmv3_clean_(b.title));
       });
 
@@ -129,7 +136,7 @@ function tmv3_step1WriteOperatorViews_(records) {
     const sheetName = TMV3.VERTICALS[vertical].sheet;
 
     tmv3_replaceRows_(sheetName, TMV3_STEP1_HEADERS.slice(), rows);
-    tmv3_step1FormatOperatorView_(sheetName);
+    tmv3_step1FormatOperatorView_(sheetName, vertical, verticalRecords);
     written[vertical] = rows.length;
   });
 
@@ -267,7 +274,7 @@ function tmv3_step1FormatPhone_(value) {
     : (tmv3_clean_(value) || '—');
 }
 
-function tmv3_step1FormatOperatorView_(sheetName) {
+function tmv3_step1FormatOperatorView_(sheetName, vertical, records) {
   const sh = tmv3_sheet_(sheetName);
   const visible = TMV3_STEP1_VISIBLE_COLUMN_COUNT;
   const maxColumns = sh.getMaxColumns();
@@ -287,6 +294,52 @@ function tmv3_step1FormatOperatorView_(sheetName) {
 
   sh.setFrozenRows(1);
   sh.setFrozenColumns(1);
+
+  // Visual grouping kept intentionally light:
+  // Calendar A:E, Task F:I, decision J:K.
+  if (maxColumns >= 5) {
+    sh.getRange(1, 1, 1, 5)
+      .setBackground('#EAF3FF')
+      .setFontColor('#1F2937')
+      .setFontWeight('bold');
+  }
+
+  if (maxColumns >= 9) {
+    sh.getRange(1, 6, 1, 4)
+      .setBackground('#EDF7EE')
+      .setFontColor('#1F2937')
+      .setFontWeight('bold');
+  }
+
+  if (maxColumns >= 11) {
+    sh.getRange(1, 10, 1, 2)
+      .setBackground('#F3F4F6')
+      .setFontColor('#1F2937')
+      .setFontWeight('bold');
+  }
+
+  if (lastRow >= 2) {
+    const dataRows = lastRow - 1;
+    sh.getRange(2, 1, dataRows, visible).setBackground('#FFFFFF');
+
+    if (vertical === 'Service' && records && records.length) {
+      const techColors = {
+        chris: '#EEF7FF',
+        travis: '#F0FAF3',
+        matt: '#FFF7ED',
+        matthew: '#FFF7ED'
+      };
+
+      const backgrounds = records.map(function(record) {
+        const tech = tmv3_norm_(record.technician || '');
+        const color = techColors[tech] || '#FFFFFF';
+        return new Array(visible).fill(color);
+      });
+
+      sh.getRange(2, 1, backgrounds.length, visible)
+        .setBackgrounds(backgrounds);
+    }
+  }
 
   if (lastRow >= 1) {
     sh.getRange(1, 1, lastRow, Math.min(visible, maxColumns))
