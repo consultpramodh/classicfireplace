@@ -1,18 +1,20 @@
 # PreInspect Today Legacy Resolve — guarded temporary web runtime
 
-Trigger commit: 9f2ae4a7acf7cf5dcc5806051f01dd963ebf78a7
-Workflow run: 36016510027
-Recorded at: 2026-09-24T14:57:45Z
+Trigger commit: 269196537d263740c49f8ee124a81c520305183d
+Workflow run: 36016955355
+Recorded at: 2026-09-24T15:02:06Z
 
 ## Result
 
 ~~~text
-No success marker.
+LEGACY_PREINSPECT_RUNTIME_COMPLETE_AND_RESTORED
 ~~~
 
 ## Progress
 
 ~~~text
+{"iteration":1,"status":"COMPLETE","writesPerformed":true,"refreshStatus":"COMPLETE","lookupStatus":"NO_PENDING_OR_HYDRATION_ROWS","lookupProcessed":0,"lookupMatchedExisting":null,"lookupReadyCreate":null,"lookupReview":null,"locationStatus":"NO_LOCATION_FIRST_ROWS","candidateReviewStatus":"NO_CANDIDATE_REVIEW_ROW","foundTaskStatus":"NO_MAPPED_OPEN_TASK_NEEDS_SYNC","foundTaskRow":null,"foundTaskId":null,"endToEndStatus":"NO_READY_ROWS","endToEndRow":null,"endToEndTaskId":null,"calendarTaskLinkStatus":"NOT_APPLICABLE_NO_HANDLED_TASK","errors":[]}
+NO_MORE_ACTIONABLE_ROWS iteration=1
 ~~~
 
 ## Deployment restore
@@ -24,5 +26,4 @@ Deployed AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBu
 ## Source parity
 
 ~~~text
-No source parity diff.
 ~~~
