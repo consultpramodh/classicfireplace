@@ -9,8 +9,10 @@
  * - Later stages may consume only tmv3_step2EligibleCalendarRecords_().
  ************************************************************/
 
-function tmv3_step2CalendarRecords_() {
-  return tmv3_step1CalendarRecords_().map(function(record) {
+function tmv3_step2CalendarRecords_(step1Records) {
+  const sourceRecords = step1Records || tmv3_step1CalendarRecords_();
+
+  return sourceRecords.map(function(record) {
     const classified = tmv3_step2ClassifyCalendarRecord_(record);
     return Object.assign({}, record, { step2: classified });
   });
@@ -236,10 +238,11 @@ function tmv3_step2Decision_(disposition, code, reason, mirrorRequired, warnings
 function tmv3_step2CalendarRun(reason) {
   tmv3_assertShadow_();
 
-  const records = tmv3_step2CalendarRecords_();
+  const step1Snapshot = tmv3_step1CalendarRecords_();
+  const records = tmv3_step2CalendarRecords_(step1Snapshot);
   const counts = tmv3_step2Counts_(records);
   const write = tmv3_step2WriteOperatorViews_(records);
-  const verify = tmv3_step2Verify_(records);
+  const verify = tmv3_step2Verify_(records, step1Snapshot);
 
   const result = {
     version: TMV3.VERSION,
@@ -367,8 +370,8 @@ function tmv3_step2OperatorRow_(record) {
   return row;
 }
 
-function tmv3_step2Verify_(records) {
-  const step1 = tmv3_step1CalendarRecords_();
+function tmv3_step2Verify_(records, step1Snapshot) {
+  const step1 = step1Snapshot || tmv3_step1CalendarRecords_();
   const step1Keys = {};
   const step2Keys = {};
   let missingDecision = 0;
