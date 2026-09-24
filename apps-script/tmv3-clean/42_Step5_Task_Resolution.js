@@ -589,7 +589,7 @@ function tmv3_step5OperatorRow_(record) {
   const tasks = step5.tasks || [];
 
   row[4] = tmv3_step5SyncChecklist_(record, tasks);
-  row[6] = tmv3_step5TaskSummary_(tasks, disposition);
+  row[6] = tmv3_step5TaskCombinedSummary_(tasks, disposition);
   row[7] = tmv3_step5TaskScheduleSummary_(tasks);
   row[8] = tmv3_step5TaskStatusSummary_(tasks, disposition);
   row[9] = 'STEP 5 — ' + disposition;
@@ -691,14 +691,93 @@ function tmv3_step5TaskSummary_(tasks, disposition) {
   }).join('\n');
 }
 
+function tmv3_step5TaskCombinedSummary_(tasks, disposition) {
+  if (!tasks || !tasks.length) {
+    return disposition === 'NO_TASK'
+      ? 'No OPEN Task'
+      : 'Task not resolved';
+  }
+
+  return tasks.map(function(task) {
+    const id = tmv3_clean_(task['Task ID']);
+    const name = tmv3_clean_(task['Name']);
+    const detail = 'Task #' + id + (name ? ' · ' + name : '');
+    const schedule = tmv3_step5TaskScheduleOne_(task);
+    const status = tmv3_step5DisplayStatus_(task['Status']);
+
+    return [detail, schedule, status]
+      .filter(Boolean)
+      .join('\n\n');
+  }).join('\n\n');
+}
+
 function tmv3_step5TaskScheduleSummary_(tasks) {
   if (!tasks || !tasks.length) return '';
 
   return tasks.map(function(task) {
-    const start = tmv3_clean_(task['Start']);
-    const due = tmv3_clean_(task['Due']);
-    return [start, due].filter(Boolean).join(' → ');
-  }).join('\n');
+    return tmv3_step5TaskScheduleOne_(task);
+  }).filter(Boolean).join('\n');
+}
+
+function tmv3_step5TaskScheduleOne_(task) {
+  const startRaw = tmv3_clean_(task && task['Start']);
+  const dueRaw = tmv3_clean_(task && task['Due']);
+  if (!startRaw && !dueRaw) return '';
+
+  const start = startRaw ? new Date(startRaw) : null;
+  const due = dueRaw ? new Date(dueRaw) : null;
+
+  const startOk = start && !isNaN(start.getTime());
+  const dueOk = due && !isNaN(due.getTime());
+
+  if (!startOk && !dueOk) return [startRaw, dueRaw].filter(Boolean).join(' - ');
+
+  if (startOk && dueOk) {
+    const startDay = Utilities.formatDate(start, TMV3_TIMEZONE, 'yyyy-MM-dd');
+    const dueDay = Utilities.formatDate(due, TMV3_TIMEZONE, 'yyyy-MM-dd');
+
+    if (startDay === dueDay) {
+      return (
+        Utilities.formatDate(start, TMV3_TIMEZONE, 'MMM d, yyyy') +
+        ' (' +
+        Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') +
+        ' - ' +
+        Utilities.formatDate(due, TMV3_TIMEZONE, 'h:mm a') +
+        ')'
+      );
+    }
+
+    return (
+      Utilities.formatDate(start, TMV3_TIMEZONE, 'MMM d, yyyy h:mm a') +
+      ' - ' +
+      Utilities.formatDate(due, TMV3_TIMEZONE, 'MMM d, yyyy h:mm a')
+    );
+  }
+
+  const only = startOk ? start : due;
+  return Utilities.formatDate(only, TMV3_TIMEZONE, 'MMM d, yyyy h:mm a');
+}
+
+function tmv3_step5DisplayStatus_(status) {
+  const clean = tmv3_norm_(status);
+
+  if (['open','in progress','inprogress'].indexOf(clean) !== -1) {
+    return 'Open';
+  }
+
+  if (['done','complete','completed','closed'].indexOf(clean) !== -1) {
+    return 'Done';
+  }
+
+  if (['on hold','onhold'].indexOf(clean) !== -1) {
+    return 'On Hold';
+  }
+
+  if (['cancelled','canceled'].indexOf(clean) !== -1) {
+    return 'Cancelled';
+  }
+
+  return tmv3_clean_(status);
 }
 
 function tmv3_step5TaskStatusSummary_(tasks, disposition) {
@@ -708,7 +787,7 @@ function tmv3_step5TaskStatusSummary_(tasks, disposition) {
 
   return tmv3_unique_(
     tasks.map(function(task) {
-      return tmv3_clean_(task['Status']);
+      return tmv3_step5DisplayStatus_(task['Status']);
     }).filter(Boolean)
   ).join(', ');
 }

@@ -7,7 +7,7 @@ const TMV3_STEP1_HEADERS = Object.freeze([
   'Created / Guests',
   'Data Checklist',
   'Task Customer / IDs',
-  'Task Details',
+  'Task',
   'Task Schedule',
   'Task Status',
   'Mapping Status',
@@ -292,11 +292,17 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRo
 
   sh.showColumns(1, Math.min(visible, maxColumns));
 
+  // Task Schedule and Task Status remain as hidden evidence columns.
+  // Their operator-facing presentation is combined into the Task column.
+  if (maxColumns >= 9) {
+    sh.hideColumns(8, 2);
+  }
+
   if (maxColumns > visible) {
     sh.hideColumns(visible + 1, maxColumns - visible);
   }
 
-  const widths = [330,220,330,260,190,190,240,180,120,170,320];
+  const widths = [330,220,330,260,190,190,330,180,120,170,320];
 
   widths.forEach(function(width, index) {
     if (index + 1 <= maxColumns) sh.setColumnWidth(index + 1, width);
@@ -306,7 +312,7 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRo
   sh.setFrozenColumns(1);
 
   // Visual grouping kept intentionally light:
-  // Calendar A:E, Task F:I, decision J:K.
+  // Calendar A:E, Task F:G (H:I hidden evidence), decision J:K.
   if (maxColumns >= 5) {
     sh.getRange(1, 1, 1, 5)
       .setBackground('#EAF3FF')
@@ -358,6 +364,54 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRo
       .setWrap(true)
       .setVerticalAlignment('top');
   }
+
+  if (lastRow >= 2 && maxColumns >= 9) {
+    tmv3_step1ColorTaskStatuses_(sh, lastRow);
+  }
+}
+
+function tmv3_step1ColorTaskStatuses_(sh, lastRow) {
+  const range = sh.getRange(2, 7, lastRow - 1, 1);
+  const values = range.getDisplayValues();
+
+  const styles = {
+    'open': SpreadsheetApp.newTextStyle()
+      .setForegroundColor('#137333')
+      .setBold(true)
+      .build(),
+    'done': SpreadsheetApp.newTextStyle()
+      .setForegroundColor('#5F6368')
+      .setBold(true)
+      .build(),
+    'on hold': SpreadsheetApp.newTextStyle()
+      .setForegroundColor('#B06000')
+      .setBold(true)
+      .build(),
+    'cancelled': SpreadsheetApp.newTextStyle()
+      .setForegroundColor('#B3261E')
+      .setBold(true)
+      .build()
+  };
+
+  const rich = values.map(function(row) {
+    const text = String(row[0] || '');
+    const builder = SpreadsheetApp.newRichTextValue().setText(text);
+
+    text.split('\n').forEach(function(line) {
+      const clean = String(line || '').trim().toLowerCase();
+      const style = styles[clean];
+      if (!style) return;
+
+      const start = text.indexOf(line);
+      if (start >= 0) {
+        builder.setTextStyle(start, start + line.length, style);
+      }
+    });
+
+    return [builder.build()];
+  });
+
+  range.setRichTextValues(rich);
 }
 
 function tmv3_step1VerifyOperatorViews_(records) {
