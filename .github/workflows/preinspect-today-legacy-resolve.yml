@@ -193,8 +193,74 @@ jobs:
 
           : > "$OUT/progress.txt"
 
+          cat > /tmp/preinspect-today-parse.js <<'NODE'
+const fs=require('fs');
+const [file,iteration,progressFile,decisionFile]=process.argv.slice(2);
+const raw=fs.readFileSync(file,'utf8').trim();
+let value;
+try {
+  value=JSON.parse(raw);
+} catch(err) {
+  throw new Error('Iteration '+iteration+' returned non-JSON: '+raw.slice(0,300));
+}
+if(!value || typeof value!=='object') {
+  throw new Error('Iteration '+iteration+' returned no object.');
+}
+
+const errors=Array.isArray(value.errors)?value.errors:[];
+const refresh=value.refreshRebuild || {};
+const lookup=value.lookupBatch || {};
+const location=value.locationResolution || {};
+const review=value.reviewCandidateReevaluation || {};
+const found=value.foundTaskReconcile || {};
+const e2e=value.endToEnd || {};
+const link=value.calendarTaskLink || {};
+
+const foundStatus=String(found.status||'');
+const e2eStatus=String(e2e.status||'');
+const linkStatus=String(link.status||'');
+
+const summary={
+  iteration:Number(iteration),
+  status:String(value.status||''),
+  writesPerformed:!!value.writesPerformed,
+  refreshStatus:String(refresh.status||''),
+  lookupStatus:String(lookup.status||''),
+  lookupProcessed:lookup.processed??null,
+  lookupMatchedExisting:lookup.matchedExisting??null,
+  lookupReadyCreate:lookup.readyCreate??null,
+  lookupReview:lookup.review??null,
+  locationStatus:String(location.status||''),
+  candidateReviewStatus:String(review.status||''),
+  foundTaskStatus:foundStatus,
+  foundTaskRow:found.mappingRow||null,
+  foundTaskId:found.taskId||null,
+  endToEndStatus:e2eStatus,
+  endToEndRow:e2e.mappingRow||null,
+  endToEndTaskId:e2e.taskId||null,
+  calendarTaskLinkStatus:linkStatus,
+  errors:errors
+};
+fs.appendFileSync(progressFile,JSON.stringify(summary)+'\n');
+console.log(JSON.stringify(summary));
+
+let decision='CONTINUE';
+if(errors.length || String(value.status||'').toUpperCase().includes('ERROR')) {
+  decision='ERROR';
+} else {
+  const noFound=!foundStatus || foundStatus==='NO_MAPPED_OPEN_TASK_NEEDS_SYNC';
+  const e2eHandled=!!(e2e.mappingRow || e2e.taskId || e2e.writesPerformed) &&
+    e2eStatus!=='NO_READY_ROWS' &&
+    e2eStatus!=='SKIPPED_ONE_APPOINTMENT_ALREADY_HANDLED';
+  const noReady=!e2eHandled && (e2eStatus==='NO_READY_ROWS' || !e2eStatus);
+  if(noFound && noReady) decision='STOP';
+}
+fs.writeFileSync(decisionFile,decision);
+NODE
+
           for i in 1 2 3 4 5; do
             RESPONSE="$OUT/action-$i.json"
+            DECISION_FILE="$OUT/decision-$i.txt"
 
             curl --location-trusted --fail-with-body --silent --show-error --retry 3 \
               -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -202,57 +268,15 @@ jobs:
               "https://script.google.com/macros/s/$TARGET/exec?__preinspect_today=$NONCE&iteration=$i" \
               -o "$RESPONSE"
 
-            node - "$RESPONSE" "$i" "$OUT/progress.txt" <<'NODE'
-            const fs=require('fs');
-            const [file,iteration,progressFile]=process.argv.slice(2);
-            const raw=fs.readFileSync(file,'utf8').trim();
-            let value;
-            try { value=JSON.parse(raw); }
-            catch(err) { throw new Error('Iteration '+iteration+' returned non-JSON: '+raw.slice(0,300)); }
+            node /tmp/preinspect-today-parse.js "$RESPONSE" "$i" "$OUT/progress.txt" "$DECISION_FILE"
+            decision="$(cat "$DECISION_FILE")"
 
-            if(!value || typeof value!=='object') throw new Error('Iteration '+iteration+' returned no object.');
-            const errors=Array.isArray(value.errors)?value.errors:[];
-            const found=value.foundTaskReconcile || {};
-            const e2e=value.endToEnd || {};
-            const link=value.calendarTaskLink || {};
-            const foundStatus=String(found.status||'');
-            const e2eStatus=String(e2e.status||'');
-            const linkStatus=String(link.status||'');
-
-            const summary={
-              iteration:Number(iteration),
-              status:String(value.status||''),
-              writesPerformed:!!value.writesPerformed,
-              foundTaskStatus:foundStatus,
-              foundTaskRow:found.mappingRow||null,
-              foundTaskId:found.taskId||null,
-              endToEndStatus:e2eStatus,
-              endToEndRow:e2e.mappingRow||null,
-              endToEndTaskId:e2e.taskId||null,
-              calendarTaskLinkStatus:linkStatus,
-              errors:errors
-            };
-            fs.appendFileSync(progressFile,JSON.stringify(summary)+'\n');
-            console.log(JSON.stringify(summary));
-
-            if(errors.length || String(value.status||'').toUpperCase().includes('ERROR')) {
-              process.exit(20);
-            }
-
-            const noFound = !foundStatus || foundStatus==='NO_MAPPED_OPEN_TASK_NEEDS_SYNC';
-            const noReady = e2eStatus==='NO_READY_ROWS' || !e2eStatus;
-
-            if(noFound && noReady) process.exit(10);
-            process.exit(0);
-            NODE
-            decision=$?
-
-            if [ "$decision" -eq 20 ]; then
+            if [ "$decision" = "ERROR" ]; then
               echo "STOP_ON_RUNTIME_ERROR iteration=$i" | tee -a "$OUT/progress.txt"
               exit 20
             fi
 
-            if [ "$decision" -eq 10 ]; then
+            if [ "$decision" = "STOP" ]; then
               echo "NO_MORE_ACTIONABLE_ROWS iteration=$i" | tee -a "$OUT/progress.txt"
               break
             fi
