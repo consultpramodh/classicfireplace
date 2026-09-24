@@ -1,7 +1,7 @@
 {
-  "release": "TMV3_STAGE2_CURRENT_TRIGGER_REFRESH_331",
+  "release": "TMV3_STEP3_BUSINESS_ANCHOR_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP1_INSTALL_LIVE"
+  "runMode": "STEP3"
 }
