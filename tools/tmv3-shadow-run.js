@@ -239,6 +239,15 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step2Calendar') {
+      var step2 = tmv3_step2CalendarRun('GITHUB_STEP2_VERIFY');
+      return TMPV3_shadowResponse_({
+        ok:step2.status === 'PASS',
+        status:'STEP2_CALENDAR_COMPLETE',
+        result:step2
+      });
+    }
+
     if (body.action === 'installStep1LiveSync') {
       var install = tmv3_installStep1CalendarLiveSync();
       return TMPV3_shadowResponse_({
@@ -341,10 +350,17 @@ async function main() {
       ) ||
       ('https://script.google.com/macros/s/' + deploymentId + '/exec');
 
-    if (RUN_MODE === 'STEP1' || RUN_MODE === 'STEP1_INSTALL_LIVE') {
-      const action = RUN_MODE === 'STEP1_INSTALL_LIVE'
-        ? 'installStep1LiveSync'
-        : 'step1Calendar';
+    if (
+      RUN_MODE === 'STEP1' ||
+      RUN_MODE === 'STEP1_INSTALL_LIVE' ||
+      RUN_MODE === 'STEP2'
+    ) {
+      const action =
+        RUN_MODE === 'STEP1_INSTALL_LIVE'
+          ? 'installStep1LiveSync'
+          : RUN_MODE === 'STEP2'
+            ? 'step2Calendar'
+            : 'step1Calendar';
 
       const step1 = await postJson(url, {
         token,
@@ -372,7 +388,9 @@ async function main() {
         JSON.stringify({
           status: RUN_MODE === 'STEP1_INSTALL_LIVE'
             ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
-            : 'V3_STEP1_CALENDAR_VERIFIED',
+            : RUN_MODE === 'STEP2'
+              ? 'V3_STEP2_CALENDAR_VERIFIED'
+              : 'V3_STEP1_CALENDAR_VERIFIED',
           step1: step1.result || null,
           sourceHeadHashVerified: true,
           temporaryDeploymentDeleted: false,
@@ -383,7 +401,9 @@ async function main() {
       console.log(
         RUN_MODE === 'STEP1_INSTALL_LIVE'
           ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
-          : 'V3_STEP1_CALENDAR_VERIFIED'
+          : RUN_MODE === 'STEP2'
+            ? 'V3_STEP2_CALENDAR_VERIFIED'
+            : 'V3_STEP1_CALENDAR_VERIFIED'
       );
       console.log(JSON.stringify(step1.result || {}));
       return;

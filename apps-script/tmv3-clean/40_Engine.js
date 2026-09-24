@@ -31,8 +31,20 @@ function tmv3_sourceCacheSummary_() {
 function tmv3_shadowMapFromCache_(sourceSummary) {
   tmv3_resetRuntimeMetrics_();
 
+  if (
+    typeof tmv3_executionStage_ === 'function' &&
+    tmv3_executionStage_() < 3
+  ) {
+    throw new Error(
+      'Execution stage ' + tmv3_executionStage_() +
+      ' blocks Striven/customer/task mapping. Run the current Calendar stage instead.'
+    );
+  }
+
   const events =
-    tmv3_calendarRecords_();
+    typeof tmv3_step2EligibleCalendarRecords_ === 'function'
+      ? tmv3_step2EligibleCalendarRecords_()
+      : tmv3_calendarRecords_();
 
   const refs =
     tmv3_referenceIndex_();

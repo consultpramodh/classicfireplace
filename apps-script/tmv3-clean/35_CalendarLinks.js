@@ -79,6 +79,7 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
   return {
     vertical: eventRecord.vertical,
     eventId: eventRecord.eventId,
+    occurrenceStart: eventRecord.start ? tmv3_iso_(eventRecord.start) : '',
     calendarIds: tmv3_requiredCalendarCopies_(eventRecord.vertical),
     links: links
   };
@@ -169,14 +170,20 @@ function tmv3_regexEscape_(value) {
   return String(value || '').replace(/[.*+?^\$\{\}()|[\]\\]/g, '\\$&');
 }
 
-function tmv3_findEventCopies_(eventId, calendarIds) {
+function tmv3_findEventCopies_(eventId, calendarIds, occurrenceStart) {
   const copies = [];
+  const target = occurrenceStart ? new Date(occurrenceStart) : null;
 
   (calendarIds || []).forEach(function(calendarId) {
     const calendar = CalendarApp.getCalendarById(calendarId);
     if (!calendar) return;
 
-    const event = calendar.getEventById(eventId);
+    const event = tmv3_findCalendarOccurrence_(
+      calendar,
+      eventId,
+      target
+    );
+
     if (!event) return;
 
     copies.push({
@@ -187,6 +194,41 @@ function tmv3_findEventCopies_(eventId, calendarIds) {
   });
 
   return copies;
+}
+
+function tmv3_findCalendarOccurrence_(calendar, eventId, targetStart) {
+  const direct = calendar.getEventById(eventId);
+
+  if (!targetStart) return direct || null;
+
+  if (
+    direct &&
+    Math.abs(direct.getStartTime().getTime() - targetStart.getTime()) < 1000
+  ) {
+    return direct;
+  }
+
+  const from = new Date(targetStart.getTime() - 60000);
+  const to = new Date(targetStart.getTime() + 60000);
+
+  const matches = calendar.getEvents(from, to).filter(function(event) {
+    return (
+      String(event.getId()) === String(eventId) &&
+      Math.abs(event.getStartTime().getTime() - targetStart.getTime()) < 1000
+    );
+  });
+
+  if (matches.length > 1) {
+    throw new Error(
+      'Calendar occurrence lookup is ambiguous for Event ID ' +
+      eventId +
+      ' at ' +
+      targetStart.toISOString() +
+      '.'
+    );
+  }
+
+  return matches.length === 1 ? matches[0] : null;
 }
 
 function tmv3_previewCalendarLinks_(eventRecord, resolved) {
@@ -210,7 +252,11 @@ function tmv3_writeCalendarLinksForEvent_(eventRecord, resolvedRecords) {
     : [resolvedRecords];
 
   const plan = tmv3_buildCalendarLinkPlan_(eventRecord, records);
-  const copies = tmv3_findEventCopies_(plan.eventId, plan.calendarIds);
+  const copies = tmv3_findEventCopies_(
+    plan.eventId,
+    plan.calendarIds,
+    plan.occurrenceStart
+  );
 
   if (!copies.length) {
     throw new Error('No Calendar copy found for Event ID ' + plan.eventId + '.');

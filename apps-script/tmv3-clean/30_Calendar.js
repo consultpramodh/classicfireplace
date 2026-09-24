@@ -135,14 +135,6 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
   }
 
   if (
-    options.stage === 'STEP1' &&
-    vertical === 'Service' &&
-    !tmv3_serviceStep1LegacyAllowed_(title, isAllDay, creator)
-  ) {
-    return null;
-  }
-
-  if (
     options.applyEligibility !== false &&
     tmv3_shouldIgnoreEvent_(vertical, title, rawDescription, isAllDay, creator)
   ) {
@@ -169,6 +161,40 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
   const phone = tmv3_extractPhone_(
     title + ' ' + descriptionClean + ' ' + location
   );
+
+  const taskNumber = tmv3_extractCalendarTaskNumber_(
+    title + ' ' + descriptionClean
+  );
+
+  const serviceLegacyAllowed =
+    vertical === 'Service'
+      ? tmv3_serviceStep1LegacyAllowed_(title, isAllDay, creator)
+      : true;
+
+  const serviceExternalRecovery =
+    vertical === 'Service' &&
+    !serviceLegacyAllowed &&
+    tmv3_serviceExternalCreatorRecoveryAllowed_({
+      title: title,
+      description: descriptionClean,
+      location: location,
+      isAllDay: isAllDay,
+      creator: creator,
+      orderNumber: orderNumber,
+      phone: phone,
+      taskNumber: taskNumber,
+      existingTaskId: links.taskId,
+      existingOrderId: links.orderId
+    });
+
+  if (
+    options.stage === 'STEP1' &&
+    vertical === 'Service' &&
+    !serviceLegacyAllowed &&
+    !serviceExternalRecovery
+  ) {
+    return null;
+  }
 
   const calendarCustomerName = tmv3_extractCalendarCustomerName_(
     vertical, title, customerNumber, phone, orderNumber, calCfg
@@ -205,6 +231,9 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
     customerNumber: customerNumber,
     calendarCustomerName: calendarCustomerName,
     phone: phone,
+    taskNumber: taskNumber,
+    serviceLegacyAllowed: serviceLegacyAllowed,
+    serviceExternalRecovery: serviceExternalRecovery,
     existingTaskId: links.taskId,
     existingTaskUrl: links.taskUrl,
     existingOrderId: links.orderId,
@@ -390,6 +419,52 @@ function tmv3_serviceStep1LegacyAllowed_(title, isAllDay, creator) {
   return true;
 }
 
+function tmv3_serviceExternalCreatorRecoveryAllowed_(evidence) {
+  evidence = evidence || {};
+
+  if (evidence.isAllDay) return false;
+
+  const title = tmv3_norm_(evidence.title || '');
+
+  if (
+    !title ||
+    title === 'chris' ||
+    title === 'travis' ||
+    title === 'matt' ||
+    title === 'matthew' ||
+    title === 'matthew thompson' ||
+    title === 'classic fireplace' ||
+    title === 'classic fireplace bbq' ||
+    title === 'classic fireplace and bbq' ||
+    /\b(day off|vacation|sick|take van home|van home|do not book|meeting|lunch|training|warehouse|pickup|pick up)\b/i.test(title)
+  ) {
+    return false;
+  }
+
+  // A managed Striven link or labelled Task number is strong Calendar-carried
+  // evidence. Otherwise require SO/WO + phone + physical location together.
+  if (evidence.existingTaskId || evidence.existingOrderId || evidence.taskNumber) {
+    return true;
+  }
+
+  return !!(
+    evidence.orderNumber &&
+    evidence.phone &&
+    tmv3_clean_(evidence.location)
+  );
+}
+
+function tmv3_extractCalendarTaskNumber_(text) {
+  const value = tmv3_clean_(text);
+  if (!value) return '';
+
+  const match = value.match(
+    /\bTask\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{4,8})\b/i
+  );
+
+  return match ? match[1] : '';
+}
+
 function tmv3_extractOrderNumberForVertical_(vertical, title, description, location) {
   const titleText = tmv3_clean_(title);
   const descriptionText = tmv3_clean_(description);
@@ -410,9 +485,12 @@ function tmv3_extractOrderNumberForVertical_(vertical, title, description, locat
   }
 
   if (vertical === 'PreInspection') {
-    // PreInspection title begins with Customer #, so SO evidence must come
-    // from the description rather than a bare-number fallback in the title.
-    return tmv3_extractLegacyPreInspectionOrderNumber_(descriptionText);
+    // Only labelled SO patterns are accepted here, so a leading Customer #
+    // can never be mistaken for the Sales Order. Step 2 still separately
+    // verifies that the SO is present in the description per the new format.
+    return tmv3_extractLegacyPreInspectionOrderNumber_(
+      titleText + ' ' + descriptionText
+    );
   }
 
   return tmv3_extractOrderNumber_(

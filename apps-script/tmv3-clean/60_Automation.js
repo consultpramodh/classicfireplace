@@ -14,6 +14,7 @@ function onOpen() {
     .addSubMenu(
       ui.createMenu('Operations')
         .addItem('Step 1 — Refresh Calendar Intake', 'tmv3_step1CalendarRun')
+        .addItem('Step 2 — Refresh Eligibility', 'tmv3_step2CalendarRun')
         .addItem('Refresh Sources + Mapping', 'tmv3_shadowRun')
         .addItem('Refresh Mapping From Cache', 'tmv3_shadowMapFromCache')
         .addItem('Refresh Morning Ops', 'tmv3_refreshMorningOps')
@@ -65,6 +66,7 @@ function tmv3_managedTriggerHandlers_() {
     'tmv3_refreshLinksSlot_1800',
     'tmv3_installReminderCheck',
     'tmv3_calendarEventUpdated',
+    'tmv3_calendarReconciliationFallback',
     // Older V3 handler retained for cleanup during upgrade.
     'tmv3_scheduledShadow'
   ];
@@ -160,11 +162,41 @@ function tmv3_removeTriggers() {
   return tmv3_listTriggers();
 }
 
+function tmv3_calendarStageRefresh_(reason) {
+  const stage = tmv3_executionStage_();
+
+  if (stage <= 1) {
+    return tmv3_step1CalendarRun(reason || 'STAGE1_REFRESH');
+  }
+
+  if (stage === 2) {
+    return tmv3_step2CalendarRun(reason || 'STAGE2_REFRESH');
+  }
+
+  return tmv3_shadowMapFromCache();
+}
+
+function tmv3_calendarReconciliationFallback() {
+  const hour = Number(
+    Utilities.formatDate(
+      new Date(),
+      TMV3_TIMEZONE,
+      'H'
+    )
+  );
+
+  if (hour < 8 || hour > 18) {
+    return { status: 'OUTSIDE_BUSINESS_HOURS' };
+  }
+
+  return tmv3_calendarStageRefresh_('CALENDAR_RECONCILIATION_FALLBACK');
+}
+
 function tmv3_dailySourceRefresh() {
   tmv3_assertShadow_();
 
-  if (tmv3_executionStage_() === 1) {
-    return tmv3_step1CalendarRun('DAILY_STAGE1_REFRESH');
+  if (tmv3_executionStage_() <= 2) {
+    return tmv3_calendarStageRefresh_('DAILY_CALENDAR_STAGE_REFRESH');
   }
 
   const result = tmv3_refreshSources();
@@ -188,11 +220,11 @@ function tmv3_scheduledShadow() {
 }
 
 function tmv3_scheduledOperations() {
-  if (tmv3_executionStage_() === 1) {
+  if (tmv3_executionStage_() <= 2) {
     return {
-      stage: 1,
-      mapped: tmv3_step1CalendarRun('SCHEDULED_STAGE1_REFRESH'),
-      writes: { status: 'STAGE_1_GATED', writes: 0 }
+      stage: tmv3_executionStage_(),
+      mapped: tmv3_calendarStageRefresh_('SCHEDULED_CALENDAR_STAGE_REFRESH'),
+      writes: { status: 'CALENDAR_STAGE_GATED', writes: 0 }
     };
   }
 
@@ -202,9 +234,11 @@ function tmv3_scheduledOperations() {
 }
 
 function tmv3_refreshLinksSlot_(label) {
-  if (tmv3_executionStage_() === 1) {
-    const mapped = tmv3_step1CalendarRun('STAGE1_SLOT_' + String(label || ''));
-    const links = { status: 'STAGE_1_GATED', writes: 0 };
+  if (tmv3_executionStage_() <= 2) {
+    const mapped = tmv3_calendarStageRefresh_(
+      'CALENDAR_STAGE_SLOT_' + String(label || '')
+    );
+    const links = { status: 'CALENDAR_STAGE_GATED', writes: 0 };
     return { slot: label, mapped: mapped, links: links };
   }
 
@@ -225,31 +259,42 @@ function tmv3_refreshLinksSlot_1600() { return tmv3_refreshLinksSlot_('4:00 PM')
 function tmv3_refreshLinksSlot_1800() { return tmv3_refreshLinksSlot_('6:00 PM'); }
 
 function tmv3_installReminderCheck() {
-  if (tmv3_executionStage_() === 1) {
-    return { status: 'STAGE_1_GATED', sent: 0 };
+  if (tmv3_executionStage_() <= 2) {
+    return { status: 'CALENDAR_STAGE_GATED', sent: 0 };
   }
   return tmv3_sendInstallMissingSoReminders_('AUTO');
 }
 
 function tmv3_calendarEventUpdated() {
+  const lock = LockService.getScriptLock();
   const cache = CacheService.getScriptCache();
-  const key = 'TMV3_CALENDAR_EVENT_UPDATE_DEBOUNCE';
-  if (cache.get(key)) {
-    return { status: 'DEBOUNCED' };
-  }
-  try { cache.put(key, '1', 45); } catch (ignored) {}
+  const dirtyKey = 'TMV3_CALENDAR_EVENT_UPDATE_DIRTY';
 
-  if (tmv3_executionStage_() === 1) {
+  if (!lock.tryLock(1000)) {
+    try { cache.put(dirtyKey, '1', 300); } catch (ignored) {}
+    return { status: 'QUEUED_BEHIND_ACTIVE_REFRESH' };
+  }
+
+  try {
+    try { cache.remove(dirtyKey); } catch (ignored) {}
+
+    const first = tmv3_calendarStageRefresh_('CALENDAR_EVENT_UPDATED');
+    let rerun = null;
+
+    if (cache.get(dirtyKey)) {
+      try { cache.remove(dirtyKey); } catch (ignored) {}
+      rerun = tmv3_calendarStageRefresh_('CALENDAR_EVENT_UPDATED_RERUN');
+    }
+
     return {
-      stage: 1,
-      mapped: tmv3_step1CalendarRun('CALENDAR_EVENT_UPDATED'),
-      writes: { status: 'STAGE_1_GATED', writes: 0 }
+      status: rerun ? 'REFRESHED_AND_RERUN' : 'REFRESHED',
+      first: first,
+      rerun: rerun,
+      writes: { status: 'CALENDAR_STAGE_GATED', writes: 0 }
     };
+  } finally {
+    lock.releaseLock();
   }
-
-  const mapped = tmv3_shadowMapFromCache();
-  const writes = tmv3_runSafeReadyRows_AUTO();
-  return { mapped: mapped, writes: writes };
 }
 
 function tmv3_listTriggers() {
