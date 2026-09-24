@@ -1,5 +1,5 @@
-const TMV3_VERSION = '3.7.1-step6-task-decision-r2';
-const TMV3_EXECUTION_STAGE = 5;
+const TMV3_VERSION = '3.7.2-step6-task-decision-live-r3';
+const TMV3_EXECUTION_STAGE = 6;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';

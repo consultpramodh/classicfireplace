@@ -425,6 +425,7 @@ async function main() {
       RUN_MODE === 'STEP3_INSTALL_LIVE' ||
       RUN_MODE === 'STEP4_INSTALL_LIVE' ||
       RUN_MODE === 'STEP5_INSTALL_LIVE' ||
+      RUN_MODE === 'STEP6_INSTALL_LIVE' ||
       RUN_MODE === 'STEP2' ||
       RUN_MODE === 'STEP3' ||
       RUN_MODE === 'STEP4' ||
@@ -438,7 +439,8 @@ async function main() {
           RUN_MODE === 'STEP2_INSTALL_LIVE' ||
           RUN_MODE === 'STEP3_INSTALL_LIVE' ||
           RUN_MODE === 'STEP4_INSTALL_LIVE' ||
-          RUN_MODE === 'STEP5_INSTALL_LIVE'
+          RUN_MODE === 'STEP5_INSTALL_LIVE' ||
+          RUN_MODE === 'STEP6_INSTALL_LIVE'
         )
           ? 'installStep1LiveSync'
           : RUN_MODE === 'STEP2'
@@ -479,7 +481,9 @@ async function main() {
       fs.writeFileSync(
         path.join(outDir, 'evidence.json'),
         JSON.stringify({
-          status: RUN_MODE === 'STEP5_INSTALL_LIVE'
+          status: RUN_MODE === 'STEP6_INSTALL_LIVE'
+            ? 'V3_STEP6_LIVE_SYNC_VERIFIED'
+            : RUN_MODE === 'STEP5_INSTALL_LIVE'
             ? 'V3_STEP5_LIVE_SYNC_VERIFIED'
             : RUN_MODE === 'STEP4_INSTALL_LIVE'
             ? 'V3_STEP4_LIVE_SYNC_VERIFIED'
@@ -510,7 +514,9 @@ async function main() {
       );
 
       console.log(
-        RUN_MODE === 'STEP5_INSTALL_LIVE'
+        RUN_MODE === 'STEP6_INSTALL_LIVE'
+          ? 'V3_STEP6_LIVE_SYNC_VERIFIED'
+          : RUN_MODE === 'STEP5_INSTALL_LIVE'
           ? 'V3_STEP5_LIVE_SYNC_VERIFIED'
           : RUN_MODE === 'STEP4_INSTALL_LIVE'
           ? 'V3_STEP4_LIVE_SYNC_VERIFIED'
