@@ -134,9 +134,15 @@ function tmv3_step1WriteOperatorViews_(records) {
 
     const rows = verticalRecords.map(tmv3_step1OperatorRow_);
     const sheetName = TMV3.VERTICALS[vertical].sheet;
+    const priorLastRow = tmv3_sheet_(sheetName).getLastRow();
 
     tmv3_replaceRows_(sheetName, TMV3_STEP1_HEADERS.slice(), rows);
-    tmv3_step1FormatOperatorView_(sheetName, vertical, verticalRecords);
+    tmv3_step1FormatOperatorView_(
+      sheetName,
+      vertical,
+      verticalRecords,
+      priorLastRow
+    );
     written[vertical] = rows.length;
   });
 
@@ -274,11 +280,15 @@ function tmv3_step1FormatPhone_(value) {
     : (tmv3_clean_(value) || '—');
 }
 
-function tmv3_step1FormatOperatorView_(sheetName, vertical, records) {
+function tmv3_step1FormatOperatorView_(sheetName, vertical, records, priorLastRow) {
   const sh = tmv3_sheet_(sheetName);
   const visible = TMV3_STEP1_VISIBLE_COLUMN_COUNT;
   const maxColumns = sh.getMaxColumns();
   const lastRow = sh.getLastRow();
+  const clearThroughRow = Math.max(
+    Number(lastRow || 0),
+    Number(priorLastRow || 0)
+  );
 
   sh.showColumns(1, Math.min(visible, maxColumns));
 
@@ -318,10 +328,12 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records) {
       .setFontWeight('bold');
   }
 
-  if (lastRow >= 2) {
-    const dataRows = lastRow - 1;
-    sh.getRange(2, 1, dataRows, visible).setBackground('#FFFFFF');
+  if (clearThroughRow >= 2) {
+    sh.getRange(2, 1, clearThroughRow - 1, visible)
+      .setBackground('#FFFFFF');
+  }
 
+  if (lastRow >= 2) {
     if (vertical === 'Service' && records && records.length) {
       const techColors = {
         chris: '#EEF7FF',
@@ -331,7 +343,7 @@ function tmv3_step1FormatOperatorView_(sheetName, vertical, records) {
       };
 
       const backgrounds = records.map(function(record) {
-        const tech = tmv3_norm_(record.technician || '');
+        const tech = String(record.technician || '').trim().toLowerCase();
         const color = techColors[tech] || '#FFFFFF';
         return new Array(visible).fill(color);
       });
@@ -393,51 +405,49 @@ function tmv3_step1CalendarIds_() {
 function tmv3_installStep1CalendarLiveSync() {
   const handler = 'tmv3_calendarEventUpdated';
   const expected = tmv3_step1CalendarIds_();
-  const existing = ScriptApp.getProjectTriggers().filter(function(trigger) {
-    return trigger.getHandlerFunction() === handler &&
-      String(trigger.getTriggerSource()) === String(ScriptApp.TriggerSource.CALENDAR);
-  });
 
-  const bySource = {};
-  existing.forEach(function(trigger) {
-    const sourceId = tmv3_safeCalendar_(function() {
-      return trigger.getTriggerSourceId();
-    }, '');
+  // Stage-1 trigger upgrade rule:
+  // remove all V3 managed triggers first so an older version-pinned trigger
+  // cannot repopulate the four operator sheets with stale logic.
+  const managed = typeof tmv3_managedTriggerHandlers_ === 'function'
+    ? tmv3_managedTriggerHandlers_()
+    : [handler];
 
-    if (!bySource[sourceId]) bySource[sourceId] = [];
-    bySource[sourceId].push(trigger);
+  const removed = [];
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (managed.indexOf(trigger.getHandlerFunction()) === -1) return;
+
+    removed.push({
+      handler: trigger.getHandlerFunction(),
+      source: String(trigger.getTriggerSource()),
+      sourceId: tmv3_safeCalendar_(function() {
+        return trigger.getTriggerSourceId();
+      }, '')
+    });
+
+    ScriptApp.deleteTrigger(trigger);
   });
 
   const created = [];
-  const deduped = [];
 
   expected.forEach(function(calendarId) {
-    const found = bySource[calendarId] || [];
+    ScriptApp.newTrigger(handler)
+      .forUserCalendar(calendarId)
+      .onEventUpdated()
+      .create();
 
-    if (!found.length) {
-      ScriptApp.newTrigger(handler)
-        .forUserCalendar(calendarId)
-        .onEventUpdated()
-        .create();
-      created.push(calendarId);
-      return;
-    }
-
-    for (let i = 1; i < found.length; i++) {
-      ScriptApp.deleteTrigger(found[i]);
-      deduped.push(calendarId);
-    }
+    created.push(calendarId);
   });
 
-  const initial = tmv3_step1CalendarRun('LIVE_SYNC_INSTALL');
+  const initial = tmv3_step1CalendarRun('LIVE_SYNC_INSTALL_REFRESHED');
 
   const result = {
     status: initial.status === 'PASS' ? 'INSTALLED' : 'INSTALLED_WITH_REVIEW',
     mode: 'ONE_WAY_CALENDAR_TO_V3_SHEETS',
     handler: handler,
     calendarsExpected: expected.length,
+    removedManagedTriggers: removed,
     createdCalendarTriggers: created,
-    dedupedCalendarTriggers: deduped,
     calendarWritesPerformed: false,
     initialSync: initial,
     triggerStatus: tmv3_step1CalendarLiveSyncStatus()
