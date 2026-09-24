@@ -50,7 +50,6 @@ function tmv3_step4RefreshIdentitySources_() {
     [
       'Location ID',
       'Customer ID',
-      'Name',
       'Address 1',
       'Address 2',
       'City',
