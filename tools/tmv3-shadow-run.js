@@ -284,6 +284,26 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskSchemaProbe') {
+      var rawTask = tmv3_fetchJson_(
+        TMV3.API_BASE + '/v2/tasks/17881',
+        { method:'get' }
+      ) || {};
+      var fieldValues = {};
+      Object.keys(rawTask).forEach(function(key) {
+        if (/date|time|complete|done|close|status|finish/i.test(key)) {
+          fieldValues[key] = rawTask[key];
+        }
+      });
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'TASK_SCHEMA_PROBE_COMPLETE',
+        taskId:17881,
+        keys:Object.keys(rawTask).sort(),
+        relevant:fieldValues
+      });
+    }
+
     if (body.action === 'installStep1LiveSync') {
       var install = tmv3_installStep1CalendarLiveSync();
       return TMPV3_shadowResponse_({
@@ -396,7 +416,8 @@ async function main() {
       RUN_MODE === 'STEP2' ||
       RUN_MODE === 'STEP3' ||
       RUN_MODE === 'STEP4' ||
-      RUN_MODE === 'STEP5'
+      RUN_MODE === 'STEP5' ||
+      RUN_MODE === 'TASK_SCHEMA'
     ) {
       const action =
         (
@@ -415,7 +436,9 @@ async function main() {
                 ? 'step4Identity'
                 : RUN_MODE === 'STEP5'
                   ? 'step5Task'
-                  : 'step1Calendar';
+                  : RUN_MODE === 'TASK_SCHEMA'
+                    ? 'taskSchemaProbe'
+                    : 'step1Calendar';
 
       const step1 = await postJson(url, {
         token,
@@ -459,7 +482,9 @@ async function main() {
                     ? 'V3_STEP4_IDENTITY_VERIFIED'
                     : RUN_MODE === 'STEP5'
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
-                      : 'V3_STEP1_CALENDAR_VERIFIED',
+                      : RUN_MODE === 'TASK_SCHEMA'
+                        ? 'V3_TASK_SCHEMA_PROBED'
+                        : 'V3_STEP1_CALENDAR_VERIFIED',
           step1: step1.result || null,
           sourceHeadHashVerified: true,
           temporaryDeploymentDeleted: false,
@@ -486,7 +511,9 @@ async function main() {
                   ? 'V3_STEP4_IDENTITY_VERIFIED'
                   : RUN_MODE === 'STEP5'
                     ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
-                    : 'V3_STEP1_CALENDAR_VERIFIED'
+                    : RUN_MODE === 'TASK_SCHEMA'
+                      ? 'V3_TASK_SCHEMA_PROBED'
+                      : 'V3_STEP1_CALENDAR_VERIFIED'
       );
       console.log(JSON.stringify(step1.result || {}));
       return;
