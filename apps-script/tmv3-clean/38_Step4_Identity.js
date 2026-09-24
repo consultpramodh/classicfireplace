@@ -613,6 +613,7 @@ function tmv3_step4CorroborateCustomer_(record, customer) {
 
 function tmv3_step4ResolveLocation_(record, refs, customer, preferredLocationId) {
   const customerId = tmv3_clean_(customer && customer['Customer ID']);
+  const fallbackEvidence = [];
 
   if (!customerId) {
     return {
@@ -626,36 +627,53 @@ function tmv3_step4ResolveLocation_(record, refs, customer, preferredLocationId)
   if (preferredLocationId) {
     const preferred = refs.locationById[tmv3_clean_(preferredLocationId)] || null;
 
-    if (!preferred) {
+    if (preferred) {
+      if (tmv3_clean_(preferred['Customer ID']) !== customerId) {
+        return {
+          status: 'BLOCKED',
+          errorCode: 'ORDER_LOCATION_OWNERSHIP_CONFLICT',
+          reason: 'Order Location resolves to a Location owned by a different Customer.',
+          evidence: []
+        };
+      }
+
       return {
-        status: 'REVIEW',
-        errorCode: 'ORDER_LOCATION_NOT_IN_SOURCE',
-        reason: 'Order Location ID is not present in the current Location source.',
-        evidence: []
+        status: 'MATCHED',
+        location: preferred,
+        evidence: ['LOCATION_FROM_BUSINESS_ANCHOR']
       };
     }
 
-    if (tmv3_clean_(preferred['Customer ID']) !== customerId) {
-      return {
-        status: 'BLOCKED',
-        errorCode: 'ORDER_LOCATION_OWNERSHIP_CONFLICT',
-        reason: 'Order Location is not owned by the resolved Customer.',
-        evidence: []
-      };
-    }
-
-    return {
-      status: 'MATCHED',
-      location: preferred,
-      evidence: ['LOCATION_FROM_BUSINESS_ANCHOR']
-    };
+    // The current Sales Order / Delivery report can expose a different
+    // address identifier than the Customer Locations report. Do not turn that
+    // schema mismatch into a false identity failure. Fall back to the
+    // customer-owned Calendar address and retain the Order ID as evidence.
+    fallbackEvidence.push('ORDER_LOCATION_ID_NOT_IN_LOCATION_SOURCE');
   }
 
-  return tmv3_resolveOwnedLocation_(
+  const owned = tmv3_resolveOwnedLocation_(
     customer,
     record.location,
     refs.locationsByCustomer[customerId] || []
   );
+
+  if (owned.status === 'MATCHED') {
+    return {
+      status: 'MATCHED',
+      location: owned.location,
+      evidence: fallbackEvidence.concat(owned.evidence || [])
+    };
+  }
+
+  return {
+    status: owned.status,
+    errorCode: owned.errorCode,
+    reason: preferredLocationId
+      ? owned.reason + ' Order Location ID ' + preferredLocationId +
+        ' was not directly present in the Customer Location source.'
+      : owned.reason,
+    evidence: fallbackEvidence.concat(owned.evidence || [])
+  };
 }
 
 function tmv3_step4ResolveContact_(record, customer, preferredContactId) {
