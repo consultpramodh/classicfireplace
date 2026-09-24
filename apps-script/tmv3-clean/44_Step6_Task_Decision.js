@@ -235,7 +235,7 @@ function tmv3_step6Decision_(
 
 function tmv3_step6IsFulfilledStatus_(status) {
   const clean = tmv3_norm_(status);
-  return ['done','completed','closed'].indexOf(clean) !== -1;
+  return ['done','complete','completed','closed'].indexOf(clean) !== -1;
 }
 
 function tmv3_step6IsCancelledStatus_(status) {

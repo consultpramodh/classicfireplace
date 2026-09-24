@@ -287,6 +287,26 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
     return tmv3_taskIsCompleted_(task['Status']);
   });
 
+  const nonOpenActive = candidates.filter(function(task) {
+    return (
+      !tmv3_taskIsOpen_(task['Status']) &&
+      !tmv3_taskIsCompleted_(task['Status'])
+    );
+  });
+
+  if (open.length === 0 && nonOpenActive.length) {
+    return tmv3_step5Decision_(
+      'REVIEW',
+      'NON_OPEN_ACTIVE_TASK_EXISTS',
+      'Applicable Task exists in a non-open active status and must not be duplicated.',
+      nonOpenActive,
+      completed.length,
+      evidence,
+      [],
+      completed
+    );
+  }
+
   if (open.length === 0) {
     return tmv3_step5Decision_(
       'NO_TASK',

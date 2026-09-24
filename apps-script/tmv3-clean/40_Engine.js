@@ -1646,6 +1646,22 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
   const historyTasks = evaluated
     .filter(function(c) { return !c.open && tmv3_taskIsCompleted_(c.task['Status']); })
     .map(function(c) { return c.task; });
+  const nonOpenActive = evaluated.filter(function(c) {
+    return (
+      !c.open &&
+      !tmv3_taskIsCompleted_(c.task['Status'])
+    );
+  });
+
+  if (!open.length && nonOpenActive.length) {
+    return {
+      status: 'REVIEW',
+      task: null,
+      historyTasks: historyTasks,
+      reason: 'Applicable PreInspection Task exists in a non-open active status and must not be duplicated.',
+      errorCode: 'NON_OPEN_ACTIVE_PREINSPECTION_TASK'
+    };
+  }
 
   // Step 5 resolves only the current OPEN task. Historical tasks are carried
   // forward so Step 6 can decide CREATE vs RECREATE vs FULFILLED safely.
