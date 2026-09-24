@@ -272,6 +272,18 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step5Task') {
+      var step5 = tmv3_step5TaskResolutionRun(
+        'GITHUB_STEP5_VERIFY',
+        true
+      );
+      return TMPV3_shadowResponse_({
+        ok:step5.status === 'PASS',
+        status:'STEP5_TASK_COMPLETE',
+        result:step5
+      });
+    }
+
     if (body.action === 'installStep1LiveSync') {
       var install = tmv3_installStep1CalendarLiveSync();
       return TMPV3_shadowResponse_({
@@ -379,15 +391,18 @@ async function main() {
       RUN_MODE === 'STEP1_INSTALL_LIVE' ||
       RUN_MODE === 'STEP2_INSTALL_LIVE' ||
       RUN_MODE === 'STEP3_INSTALL_LIVE' ||
+      RUN_MODE === 'STEP4_INSTALL_LIVE' ||
       RUN_MODE === 'STEP2' ||
       RUN_MODE === 'STEP3' ||
-      RUN_MODE === 'STEP4'
+      RUN_MODE === 'STEP4' ||
+      RUN_MODE === 'STEP5'
     ) {
       const action =
         (
           RUN_MODE === 'STEP1_INSTALL_LIVE' ||
           RUN_MODE === 'STEP2_INSTALL_LIVE' ||
-          RUN_MODE === 'STEP3_INSTALL_LIVE'
+          RUN_MODE === 'STEP3_INSTALL_LIVE' ||
+          RUN_MODE === 'STEP4_INSTALL_LIVE'
         )
           ? 'installStep1LiveSync'
           : RUN_MODE === 'STEP2'
@@ -396,7 +411,9 @@ async function main() {
               ? 'step3Anchor'
               : RUN_MODE === 'STEP4'
                 ? 'step4Identity'
-                : 'step1Calendar';
+                : RUN_MODE === 'STEP5'
+                  ? 'step5Task'
+                  : 'step1Calendar';
 
       const step1 = await postJson(url, {
         token,
@@ -422,7 +439,9 @@ async function main() {
       fs.writeFileSync(
         path.join(outDir, 'evidence.json'),
         JSON.stringify({
-          status: RUN_MODE === 'STEP3_INSTALL_LIVE'
+          status: RUN_MODE === 'STEP4_INSTALL_LIVE'
+            ? 'V3_STEP4_LIVE_SYNC_VERIFIED'
+            : RUN_MODE === 'STEP3_INSTALL_LIVE'
             ? 'V3_STEP3_LIVE_SYNC_VERIFIED'
             : RUN_MODE === 'STEP2_INSTALL_LIVE'
               ? 'V3_STEP2_LIVE_SYNC_VERIFIED'
@@ -434,7 +453,9 @@ async function main() {
                   ? 'V3_STEP3_BUSINESS_ANCHOR_VERIFIED'
                   : RUN_MODE === 'STEP4'
                     ? 'V3_STEP4_IDENTITY_VERIFIED'
-                    : 'V3_STEP1_CALENDAR_VERIFIED',
+                    : RUN_MODE === 'STEP5'
+                      ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
+                      : 'V3_STEP1_CALENDAR_VERIFIED',
           step1: step1.result || null,
           sourceHeadHashVerified: true,
           temporaryDeploymentDeleted: false,
@@ -443,7 +464,9 @@ async function main() {
       );
 
       console.log(
-        RUN_MODE === 'STEP3_INSTALL_LIVE'
+        RUN_MODE === 'STEP4_INSTALL_LIVE'
+          ? 'V3_STEP4_LIVE_SYNC_VERIFIED'
+          : RUN_MODE === 'STEP3_INSTALL_LIVE'
           ? 'V3_STEP3_LIVE_SYNC_VERIFIED'
           : RUN_MODE === 'STEP2_INSTALL_LIVE'
             ? 'V3_STEP2_LIVE_SYNC_VERIFIED'
@@ -455,7 +478,9 @@ async function main() {
                 ? 'V3_STEP3_BUSINESS_ANCHOR_VERIFIED'
                 : RUN_MODE === 'STEP4'
                   ? 'V3_STEP4_IDENTITY_VERIFIED'
-                  : 'V3_STEP1_CALENDAR_VERIFIED'
+                  : RUN_MODE === 'STEP5'
+                    ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
+                    : 'V3_STEP1_CALENDAR_VERIFIED'
       );
       console.log(JSON.stringify(step1.result || {}));
       return;
