@@ -886,10 +886,6 @@ function tmv3_step4Decision_(
         : ((evidence || []).indexOf('NEW_CUSTOMER_LOCATION_REQUIRED') !== -1
           ? 'CREATE_REQUIRED'
           : 'NOT_RESOLVED'),
-    proposedLocation:
-      (evidence || []).indexOf('NEW_CUSTOMER_LOCATION_REQUIRED') !== -1
-        ? tmv3_clean_(reason && reason.indexOf('job-site') !== -1 ? '' : '')
-        : '',
     evidence: evidence || [],
     warnings: warnings || []
   };
@@ -1074,9 +1070,8 @@ function tmv3_step4OperatorRow_(record) {
     customer,
     location,
     contact,
-    step4.locationStatus === 'CREATE_REQUIRED'
-      ? '__LOCATION_CREATE_REQUIRED__'
-      : step4.contactStatus
+    step4.contactStatus,
+    step4.locationStatus
   );
   row[6] = 'Task not resolved yet';
   row[7] = '';
@@ -1116,7 +1111,7 @@ function tmv3_step4SyncChecklist_(record, step4) {
   ].join('\n');
 }
 
-function tmv3_step4IdentitySummary_(customer, location, contact, contactStatus) {
+function tmv3_step4IdentitySummary_(customer, location, contact, contactStatus, locationStatus) {
   const lines = [];
 
   if (customer) {
@@ -1135,7 +1130,7 @@ function tmv3_step4IdentitySummary_(customer, location, contact, contactStatus) 
       'Location ID: ' +
       (tmv3_clean_(location['Location ID']) || '—')
     );
-  } else if (contactStatus === '__LOCATION_CREATE_REQUIRED__') {
+  } else if (locationStatus === 'CREATE_REQUIRED') {
     lines.push('Location: Create required');
   } else {
     lines.push('Location ID: —');
