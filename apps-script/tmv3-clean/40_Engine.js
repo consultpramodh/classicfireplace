@@ -33,7 +33,7 @@ function tmv3_shadowMapFromCache_(sourceSummary) {
 
   if (
     typeof tmv3_executionStage_ === 'function' &&
-    tmv3_executionStage_() < 3
+    tmv3_executionStage_() < 4
   ) {
     throw new Error(
       'Execution stage ' + tmv3_executionStage_() +

@@ -248,6 +248,18 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step3Anchor') {
+      var step3 = tmv3_step3BusinessAnchorRun(
+        'GITHUB_STEP3_VERIFY',
+        true
+      );
+      return TMPV3_shadowResponse_({
+        ok:step3.status === 'PASS',
+        status:'STEP3_ANCHOR_COMPLETE',
+        result:step3
+      });
+    }
+
     if (body.action === 'installStep1LiveSync') {
       var install = tmv3_installStep1CalendarLiveSync();
       return TMPV3_shadowResponse_({
@@ -354,14 +366,17 @@ async function main() {
       RUN_MODE === 'STEP1' ||
       RUN_MODE === 'STEP1_INSTALL_LIVE' ||
       RUN_MODE === 'STEP2_INSTALL_LIVE' ||
-      RUN_MODE === 'STEP2'
+      RUN_MODE === 'STEP2' ||
+      RUN_MODE === 'STEP3'
     ) {
       const action =
         (RUN_MODE === 'STEP1_INSTALL_LIVE' || RUN_MODE === 'STEP2_INSTALL_LIVE')
           ? 'installStep1LiveSync'
           : RUN_MODE === 'STEP2'
             ? 'step2Calendar'
-            : 'step1Calendar';
+            : RUN_MODE === 'STEP3'
+              ? 'step3Anchor'
+              : 'step1Calendar';
 
       const step1 = await postJson(url, {
         token,
@@ -393,7 +408,9 @@ async function main() {
               ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
               : RUN_MODE === 'STEP2'
                 ? 'V3_STEP2_CALENDAR_VERIFIED'
-                : 'V3_STEP1_CALENDAR_VERIFIED',
+                : RUN_MODE === 'STEP3'
+                  ? 'V3_STEP3_BUSINESS_ANCHOR_VERIFIED'
+                  : 'V3_STEP1_CALENDAR_VERIFIED',
           step1: step1.result || null,
           sourceHeadHashVerified: true,
           temporaryDeploymentDeleted: false,
@@ -408,7 +425,9 @@ async function main() {
             ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
             : RUN_MODE === 'STEP2'
               ? 'V3_STEP2_CALENDAR_VERIFIED'
-              : 'V3_STEP1_CALENDAR_VERIFIED'
+              : RUN_MODE === 'STEP3'
+                ? 'V3_STEP3_BUSINESS_ANCHOR_VERIFIED'
+                : 'V3_STEP1_CALENDAR_VERIFIED'
       );
       console.log(JSON.stringify(step1.result || {}));
       return;
