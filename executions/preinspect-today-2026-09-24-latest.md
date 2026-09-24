@@ -1,12 +1,28 @@
-# PreInspect Today Legacy Resolve — HEAD single action
+# PreInspect Today Legacy Resolve — guarded temporary web runtime
 
-Trigger commit: 476ffaab788aaed400a186fa86f94b06e79ae9b3
-Workflow run: 36015949674
-Recorded at: 2026-09-24T14:52:44Z
+Trigger commit: 9f2ae4a7acf7cf5dcc5806051f01dd963ebf78a7
+Workflow run: 36016510027
+Recorded at: 2026-09-24T14:57:45Z
+
+## Result
 
 ~~~text
-RUN_STARTED_AT=2026-09-24T14:52:43Z
-error: unknown option '--dev'
-(Did you mean --nondev?)
-CLASP_EXIT_CODE=0
+No success marker.
+~~~
+
+## Progress
+
+~~~text
+~~~
+
+## Deployment restore
+
+~~~text
+Deployed AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBuy @20
+~~~
+
+## Source parity
+
+~~~text
+No source parity diff.
 ~~~
