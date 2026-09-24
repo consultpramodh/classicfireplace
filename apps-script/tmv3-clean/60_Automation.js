@@ -108,18 +108,12 @@ function tmv3_installTriggers() {
       .timeBased().atHour(11).nearMinute(0).everyDays(1).create()
   );
 
-  // Stage 1 watches every configured Calendar. The handler is one-way:
-  // Google Calendar -> V3 sheets only while TMV3_EXECUTION_STAGE === 1.
+  // V3 watches every configured Calendar through the staged pipeline.
+  // The current execution stage decides how far the event may progress.
   const watchedCalendars =
-    tmv3_executionStage_() === 1 && typeof tmv3_step1CalendarIds_ === 'function'
+    typeof tmv3_step1CalendarIds_ === 'function'
       ? tmv3_step1CalendarIds_()
-      : [
-          TMV3.VERTICALS.Delivery.calendarIds[0]
-        ].concat(
-          (TMV3.VERTICALS.Service.calendars || []).map(function(item) {
-            return item.calendarId;
-          })
-        );
+      : [];
 
   watchedCalendars.forEach(function(calendarId) {
     try {
