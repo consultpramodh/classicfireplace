@@ -15,18 +15,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  run-one:
+  guarded-resolve:
     if: github.repository == 'consultpramodh/classicfireplace'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout canonical Task Mapping branch
+        uses: actions/checkout@v4
         with:
           ref: task_mapping
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Configure clasp authorization
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
@@ -36,54 +41,297 @@ jobs:
           test -n "${CLASPRC_JSON:-}"
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-      - name: Verify live legacy runner exists
+
+      - name: Run rollback-safe legacy PreInspection actions
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf /tmp/preinspect-today-live
-          mkdir -p /tmp/preinspect-today-live
-          (cd /tmp/preinspect-today-live && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
-          grep -R -q "function runNextPreInspectActionFromAppsScript" /tmp/preinspect-today-live/src
-          grep -R -q "ONE ACTION = ONE APPOINTMENT" /tmp/preinspect-today-live/src
-          grep -R -q "preinspectR3418fSyncHandledTaskLinkToCalendar_" /tmp/preinspect-today-live/src
-          echo "LIVE_LEGACY_PREINSPECT_ONE_ACTION_RUNNER_VERIFIED"
-      - name: Configure remote runtime target
-        shell: bash
-        run: |
-          printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
-      - name: Run exactly one legacy PreInspect action against HEAD
-        shell: bash
-        run: |
-          set -o pipefail
-          mkdir -p /tmp/preinspect-today-result
-          echo "RUN_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee /tmp/preinspect-today-result/result.txt
-          npx -y @google/clasp@3.3.0 run runNextPreInspectActionFromAppsScript --dev 2>&1 | tee -a /tmp/preinspect-today-result/result.txt
-          code=${PIPESTATUS[0]}
-          echo "CLASP_EXIT_CODE=$code" | tee -a /tmp/preinspect-today-result/result.txt
-          if grep -Eqi 'Exception:|Error code NOT_FOUND|ScriptError|API executable' /tmp/preinspect-today-result/result.txt; then
-            echo "REMOTE_EXECUTION_REJECTED" | tee -a /tmp/preinspect-today-result/result.txt
-            exit 1
-          fi
-          exit $code
+
+          OUT="preinspect-today-legacy-output"
+          mkdir -p "$OUT"
+
+          SCRIPT_ID='1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m'
+          TARGET='AKfycbxCNxV4vsi002BCpoihsbjOLdJxs-vgoo_qbUCQ0mtd_QNw11cDxLtK2ThNlk2AiBuy'
+          PREVIOUS_VERSION='20'
+          PREVIOUS_DESCRIPTION='Website operations v3 - unified task links for Service, Inspection, Delivery, and Install'
+
+          BASE=$(mktemp -d)
+          WORK=$(mktemp -d)
+          RESTORED=$(mktemp -d)
+          NONCE=$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")
+          echo "::add-mask::$NONCE"
+
+          SOURCE_TRANSIENT=0
+          DEPLOYMENT_UPDATED=0
+
+          (cd "$BASE" && npx -y @google/clasp@3.3.0 clone "$SCRIPT_ID" --rootDir src)
+
+          test -f "$BASE/src/35_PreInspect_Task_Review.js"
+          test -f "$BASE/src/98_Web_Operations_Gateway.js"
+          grep -q 'function runNextPreInspectActionFromAppsScript' "$BASE/src/35_PreInspect_Task_Review.js"
+          grep -q 'ONE ACTION = ONE APPOINTMENT' "$BASE/src/35_PreInspect_Task_Review.js"
+          grep -q 'function doGet() {' "$BASE/src/98_Web_Operations_Gateway.js"
+
+          cp -a "$BASE/." "$WORK/"
+
+          node - "$WORK/src/98_Web_Operations_Gateway.js" "$NONCE" <<'NODE'
+          const fs=require('fs');
+          const [file,nonce]=process.argv.slice(2);
+          let s=fs.readFileSync(file,'utf8');
+          const old='function doGet() {';
+          if(!s.includes(old)) throw new Error('doGet anchor missing.');
+          const injected=
+            'function doGet(e) {\n' +
+            '  if (e && e.parameter && e.parameter.__preinspect_today === ' + JSON.stringify(nonce) + ') {\n' +
+            '    return tmWebJson_(runNextPreInspectActionFromAppsScript());\n' +
+            '  }';
+          s=s.replace(old,injected);
+          fs.writeFileSync(file,s);
+          NODE
+
+          restore_all() {
+            code=$?
+            set +e
+            if [ "$DEPLOYMENT_UPDATED" -eq 1 ]; then
+              npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION" > "$OUT/deployment-restore.log" 2>&1
+            fi
+            if [ "$SOURCE_TRANSIENT" -eq 1 ]; then
+              (cd "$BASE" && npx -y @google/clasp@3.3.0 push --force) > "$OUT/source-restore.log" 2>&1
+            fi
+            set -e
+            exit "$code"
+          }
+          trap restore_all EXIT
+
+          printf '%s\n' '{"scriptId":"'"$SCRIPT_ID"'","rootDir":"."}' > .clasp.json
+          npx -y @google/clasp@3.3.0 deployments --json | tee "$OUT/deployments-before.json"
+
+          node - "$OUT/deployments-before.json" "$TARGET" "$PREVIOUS_VERSION" <<'NODE'
+          const fs=require('fs');
+          const [file,target,expectedVersion]=process.argv.slice(2);
+          const raw=fs.readFileSync(file,'utf8');
+          const arr=JSON.parse(raw.slice(raw.indexOf('[')));
+          const d=arr.find(x=>x.deploymentId===target);
+          if(!d) throw new Error('Website deployment not found.');
+          if(String(d.versionNumber)!==String(expectedVersion)) {
+            throw new Error('Website deployment moved from expected version before run: '+JSON.stringify(d));
+          }
+          console.log('PRE_RUN_DEPLOYMENT_VERIFIED');
+          NODE
+
+          (cd "$WORK" && npx -y @google/clasp@3.3.0 push --force)
+          SOURCE_TRANSIENT=1
+
+          (cd "$WORK" && npx -y @google/clasp@3.3.0 version 'Temporary PreInspect today legacy resolver 2026-09-24')
+          (cd "$WORK" && npx -y @google/clasp@3.3.0 versions --json) | tee "$OUT/versions-after-temp.json"
+
+          NEW_VERSION=$(node - "$OUT/versions-after-temp.json" <<'NODE'
+          const fs=require('fs');
+          const raw=fs.readFileSync(process.argv[2],'utf8');
+          const arr=JSON.parse(raw.slice(raw.indexOf('[')));
+          process.stdout.write(String(Math.max(...arr.map(x=>Number(x.versionNumber)||0))));
+          NODE
+          )
+          test -n "$NEW_VERSION"
+
+          (cd "$WORK" && npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$NEW_VERSION" -d 'Temporary PreInspect today legacy resolver 2026-09-24') | tee "$OUT/temp-deploy.log"
+          DEPLOYMENT_UPDATED=1
+
+          node - "$HOME/.clasprc.json" "/tmp/preinspect-today-access-token" <<'NODE'
+          const fs=require('fs');
+          const [configFile,outFile]=process.argv.slice(2);
+          const cfg=JSON.parse(fs.readFileSync(configFile,'utf8'));
+
+          function walk(value, found) {
+            if (!value || typeof value !== 'object') return;
+            if (Array.isArray(value)) {
+              value.forEach(v=>walk(v,found));
+              return;
+            }
+            Object.entries(value).forEach(([k,v])=>{
+              const key=k.replace(/[_-]/g,'').toLowerCase();
+              if (typeof v === 'string' && v) {
+                if (key === 'accesstoken' && !found.accessToken) found.accessToken=v;
+                if (key === 'refreshtoken' && !found.refreshToken) found.refreshToken=v;
+                if (key === 'clientid' && !found.clientId) found.clientId=v;
+                if (key === 'clientsecret' && !found.clientSecret) found.clientSecret=v;
+              }
+              walk(v,found);
+            });
+          }
+
+          (async()=>{
+            const found={};
+            walk(cfg,found);
+            let accessToken=found.accessToken || '';
+
+            if (found.refreshToken && found.clientId && found.clientSecret) {
+              const body=new URLSearchParams({
+                client_id:found.clientId,
+                client_secret:found.clientSecret,
+                refresh_token:found.refreshToken,
+                grant_type:'refresh_token'
+              });
+              const response=await fetch('https://oauth2.googleapis.com/token',{
+                method:'POST',
+                headers:{'content-type':'application/x-www-form-urlencoded'},
+                body
+              });
+              if(!response.ok) throw new Error('OAuth token refresh failed with HTTP '+response.status);
+              const json=await response.json();
+              accessToken=String(json.access_token || '');
+            }
+
+            if(!accessToken) throw new Error('No usable OAuth access token was available in clasp credentials.');
+            fs.writeFileSync(outFile,accessToken,{mode:0o600});
+            console.log('OAUTH_ACCESS_TOKEN_READY');
+          })().catch(err=>{ console.error(err.message); process.exit(1); });
+          NODE
+
+          ACCESS_TOKEN="$(cat /tmp/preinspect-today-access-token)"
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          : > "$OUT/progress.txt"
+
+          for i in 1 2 3 4 5; do
+            RESPONSE="$OUT/action-$i.json"
+
+            curl --location-trusted --fail-with-body --silent --show-error --retry 3 \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "Accept: application/json" \
+              "https://script.google.com/macros/s/$TARGET/exec?__preinspect_today=$NONCE&iteration=$i" \
+              -o "$RESPONSE"
+
+            node - "$RESPONSE" "$i" "$OUT/progress.txt" <<'NODE'
+            const fs=require('fs');
+            const [file,iteration,progressFile]=process.argv.slice(2);
+            const raw=fs.readFileSync(file,'utf8').trim();
+            let value;
+            try { value=JSON.parse(raw); }
+            catch(err) { throw new Error('Iteration '+iteration+' returned non-JSON: '+raw.slice(0,300)); }
+
+            if(!value || typeof value!=='object') throw new Error('Iteration '+iteration+' returned no object.');
+            const errors=Array.isArray(value.errors)?value.errors:[];
+            const found=value.foundTaskReconcile || {};
+            const e2e=value.endToEnd || {};
+            const link=value.calendarTaskLink || {};
+            const foundStatus=String(found.status||'');
+            const e2eStatus=String(e2e.status||'');
+            const linkStatus=String(link.status||'');
+
+            const summary={
+              iteration:Number(iteration),
+              status:String(value.status||''),
+              writesPerformed:!!value.writesPerformed,
+              foundTaskStatus:foundStatus,
+              foundTaskRow:found.mappingRow||null,
+              foundTaskId:found.taskId||null,
+              endToEndStatus:e2eStatus,
+              endToEndRow:e2e.mappingRow||null,
+              endToEndTaskId:e2e.taskId||null,
+              calendarTaskLinkStatus:linkStatus,
+              errors:errors
+            };
+            fs.appendFileSync(progressFile,JSON.stringify(summary)+'\n');
+            console.log(JSON.stringify(summary));
+
+            if(errors.length || String(value.status||'').toUpperCase().includes('ERROR')) {
+              process.exit(20);
+            }
+
+            const noFound = !foundStatus || foundStatus==='NO_MAPPED_OPEN_TASK_NEEDS_SYNC';
+            const noReady = e2eStatus==='NO_READY_ROWS' || !e2eStatus;
+
+            if(noFound && noReady) process.exit(10);
+            process.exit(0);
+            NODE
+            decision=$?
+
+            if [ "$decision" -eq 20 ]; then
+              echo "STOP_ON_RUNTIME_ERROR iteration=$i" | tee -a "$OUT/progress.txt"
+              exit 20
+            fi
+
+            if [ "$decision" -eq 10 ]; then
+              echo "NO_MORE_ACTIONABLE_ROWS iteration=$i" | tee -a "$OUT/progress.txt"
+              break
+            fi
+          done
+
+          rm -f /tmp/preinspect-today-access-token
+          unset ACCESS_TOKEN
+
+          npx -y @google/clasp@3.3.0 deploy -i "$TARGET" -V "$PREVIOUS_VERSION" -d "$PREVIOUS_DESCRIPTION" | tee "$OUT/deployment-restore.log"
+          DEPLOYMENT_UPDATED=0
+
+          (cd "$BASE" && npx -y @google/clasp@3.3.0 push --force) | tee "$OUT/source-restore.log"
+          SOURCE_TRANSIENT=0
+
+          rm -rf "$RESTORED"
+          mkdir -p "$RESTORED"
+          (cd "$RESTORED" && npx -y @google/clasp@3.3.0 clone "$SCRIPT_ID" --rootDir src)
+
+          diff -qr "$BASE/src" "$RESTORED/src" | tee "$OUT/source-parity-diff.txt"
+          test ! -s "$OUT/source-parity-diff.txt"
+
+          npx -y @google/clasp@3.3.0 deployments --json | tee "$OUT/deployments-after.json"
+          node - "$OUT/deployments-after.json" "$TARGET" "$PREVIOUS_VERSION" <<'NODE'
+          const fs=require('fs');
+          const [file,target,expectedVersion]=process.argv.slice(2);
+          const raw=fs.readFileSync(file,'utf8');
+          const arr=JSON.parse(raw.slice(raw.indexOf('[')));
+          const d=arr.find(x=>x.deploymentId===target);
+          if(!d) throw new Error('Website deployment missing after restore.');
+          if(String(d.versionNumber)!==String(expectedVersion)) {
+            throw new Error('Website deployment was not restored: '+JSON.stringify(d));
+          }
+          console.log('POST_RUN_DEPLOYMENT_RESTORED');
+          NODE
+
+          trap - EXIT
+          echo "LEGACY_PREINSPECT_RUNTIME_COMPLETE_AND_RESTORED" | tee "$OUT/result.txt"
+
       - name: Commit runtime evidence
         if: always()
         shell: bash
         run: |
           set -euo pipefail
+          OUT="preinspect-today-legacy-output"
           mkdir -p executions
           {
-            echo "# PreInspect Today Legacy Resolve — HEAD single action"
+            echo "# PreInspect Today Legacy Resolve — guarded temporary web runtime"
             echo
             echo "Trigger commit: $GITHUB_SHA"
             echo "Workflow run: $GITHUB_RUN_ID"
             echo "Recorded at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo
+            echo "## Result"
+            echo
             echo '~~~text'
-            cat /tmp/preinspect-today-result/result.txt 2>/dev/null || echo "No runtime result file was produced."
+            cat "$OUT/result.txt" 2>/dev/null || echo "No success marker."
+            echo '~~~'
+            echo
+            echo "## Progress"
+            echo
+            echo '~~~text'
+            cat "$OUT/progress.txt" 2>/dev/null || echo "No action progress."
+            echo '~~~'
+            echo
+            echo "## Deployment restore"
+            echo
+            echo '~~~text'
+            cat "$OUT/deployment-restore.log" 2>/dev/null || echo "No deployment restore log."
+            echo '~~~'
+            echo
+            echo "## Source parity"
+            echo
+            echo '~~~text'
+            cat "$OUT/source-parity-diff.txt" 2>/dev/null || echo "No source parity diff."
             echo '~~~'
           } > executions/preinspect-today-2026-09-24-latest.md
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add executions/preinspect-today-2026-09-24-latest.md
-          git commit -m "ops: record PreInspect legacy HEAD runtime result" || exit 0
+          git commit -m "ops: record guarded PreInspect today legacy resolution" || exit 0
           git push origin HEAD:task_mapping
