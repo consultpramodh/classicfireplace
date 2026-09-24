@@ -15,10 +15,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  inspect:
+  run-one:
     if: github.repository == 'consultpramodh/classicfireplace'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,36 +36,54 @@ jobs:
           test -n "${CLASPRC_JSON:-}"
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Verify live legacy runner exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/preinspect-today-live
+          mkdir -p /tmp/preinspect-today-live
+          (cd /tmp/preinspect-today-live && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
+          grep -R -q "function runNextPreInspectActionFromAppsScript" /tmp/preinspect-today-live/src
+          grep -R -q "ONE ACTION = ONE APPOINTMENT" /tmp/preinspect-today-live/src
+          grep -R -q "preinspectR3418fSyncHandledTaskLinkToCalendar_" /tmp/preinspect-today-live/src
+          echo "LIVE_LEGACY_PREINSPECT_ONE_ACTION_RUNNER_VERIFIED"
+      - name: Configure remote runtime target
+        shell: bash
+        run: |
           printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
-      - name: Capture live deployments and versions
+      - name: Run exactly one legacy PreInspect action against HEAD
         shell: bash
         run: |
           set -o pipefail
           mkdir -p /tmp/preinspect-today-result
-          echo "CAPTURE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/preinspect-today-result/result.txt
-          echo "===== DEPLOYMENTS =====" >> /tmp/preinspect-today-result/result.txt
-          npx -y @google/clasp@3.3.0 deployments --json 2>&1 | tee -a /tmp/preinspect-today-result/result.txt
-          echo "===== VERSIONS =====" >> /tmp/preinspect-today-result/result.txt
-          npx -y @google/clasp@3.3.0 versions --json 2>&1 | tee -a /tmp/preinspect-today-result/result.txt
-      - name: Commit diagnostic evidence
+          echo "RUN_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee /tmp/preinspect-today-result/result.txt
+          npx -y @google/clasp@3.3.0 run runNextPreInspectActionFromAppsScript --dev 2>&1 | tee -a /tmp/preinspect-today-result/result.txt
+          code=${PIPESTATUS[0]}
+          echo "CLASP_EXIT_CODE=$code" | tee -a /tmp/preinspect-today-result/result.txt
+          if grep -Eqi 'Exception:|Error code NOT_FOUND|ScriptError|API executable' /tmp/preinspect-today-result/result.txt; then
+            echo "REMOTE_EXECUTION_REJECTED" | tee -a /tmp/preinspect-today-result/result.txt
+            exit 1
+          fi
+          exit $code
+      - name: Commit runtime evidence
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p executions
           {
-            echo "# PreInspect Today Legacy Resolve — deployment diagnostic"
+            echo "# PreInspect Today Legacy Resolve — HEAD single action"
             echo
             echo "Trigger commit: $GITHUB_SHA"
             echo "Workflow run: $GITHUB_RUN_ID"
             echo "Recorded at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo
             echo '~~~text'
-            cat /tmp/preinspect-today-result/result.txt 2>/dev/null || echo "No diagnostic result file was produced."
+            cat /tmp/preinspect-today-result/result.txt 2>/dev/null || echo "No runtime result file was produced."
             echo '~~~'
           } > executions/preinspect-today-2026-09-24-latest.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add executions/preinspect-today-2026-09-24-latest.md
-          git commit -m "ops: record PreInspect legacy deployment diagnostic" || exit 0
+          git commit -m "ops: record PreInspect legacy HEAD runtime result" || exit 0
           git push origin HEAD:task_mapping
