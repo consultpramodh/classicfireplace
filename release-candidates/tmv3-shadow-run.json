@@ -1,7 +1,7 @@
 {
-  "release": "TMV3_SHADOW_RUN_R5_COMPACT_DATA_CHECKLIST_REFRESH",
+  "release": "TMV3_STEP1_CALENDAR_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "MAP_ONLY"
+  "runMode": "STEP1"
 }
