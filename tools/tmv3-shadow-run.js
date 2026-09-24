@@ -353,10 +353,11 @@ async function main() {
     if (
       RUN_MODE === 'STEP1' ||
       RUN_MODE === 'STEP1_INSTALL_LIVE' ||
+      RUN_MODE === 'STEP2_INSTALL_LIVE' ||
       RUN_MODE === 'STEP2'
     ) {
       const action =
-        RUN_MODE === 'STEP1_INSTALL_LIVE'
+        (RUN_MODE === 'STEP1_INSTALL_LIVE' || RUN_MODE === 'STEP2_INSTALL_LIVE')
           ? 'installStep1LiveSync'
           : RUN_MODE === 'STEP2'
             ? 'step2Calendar'
@@ -386,11 +387,13 @@ async function main() {
       fs.writeFileSync(
         path.join(outDir, 'evidence.json'),
         JSON.stringify({
-          status: RUN_MODE === 'STEP1_INSTALL_LIVE'
-            ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
-            : RUN_MODE === 'STEP2'
-              ? 'V3_STEP2_CALENDAR_VERIFIED'
-              : 'V3_STEP1_CALENDAR_VERIFIED',
+          status: RUN_MODE === 'STEP2_INSTALL_LIVE'
+            ? 'V3_STEP2_LIVE_SYNC_VERIFIED'
+            : RUN_MODE === 'STEP1_INSTALL_LIVE'
+              ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
+              : RUN_MODE === 'STEP2'
+                ? 'V3_STEP2_CALENDAR_VERIFIED'
+                : 'V3_STEP1_CALENDAR_VERIFIED',
           step1: step1.result || null,
           sourceHeadHashVerified: true,
           temporaryDeploymentDeleted: false,
@@ -399,11 +402,13 @@ async function main() {
       );
 
       console.log(
-        RUN_MODE === 'STEP1_INSTALL_LIVE'
-          ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
-          : RUN_MODE === 'STEP2'
-            ? 'V3_STEP2_CALENDAR_VERIFIED'
-            : 'V3_STEP1_CALENDAR_VERIFIED'
+        RUN_MODE === 'STEP2_INSTALL_LIVE'
+          ? 'V3_STEP2_LIVE_SYNC_VERIFIED'
+          : RUN_MODE === 'STEP1_INSTALL_LIVE'
+            ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
+            : RUN_MODE === 'STEP2'
+              ? 'V3_STEP2_CALENDAR_VERIFIED'
+              : 'V3_STEP1_CALENDAR_VERIFIED'
       );
       console.log(JSON.stringify(step1.result || {}));
       return;

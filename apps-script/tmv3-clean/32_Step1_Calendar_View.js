@@ -439,15 +439,25 @@ function tmv3_installStep1CalendarLiveSync() {
     created.push(calendarId);
   });
 
-  const initial = tmv3_step1CalendarRun('LIVE_SYNC_INSTALL_REFRESHED');
+  const fallbackTrigger = ScriptApp.newTrigger('tmv3_calendarReconciliationFallback')
+    .timeBased()
+    .everyHours(2)
+    .create();
+
+  const initial =
+    typeof tmv3_calendarStageRefresh_ === 'function'
+      ? tmv3_calendarStageRefresh_('LIVE_SYNC_INSTALL_REFRESHED')
+      : tmv3_step1CalendarRun('LIVE_SYNC_INSTALL_REFRESHED');
 
   const result = {
     status: initial.status === 'PASS' ? 'INSTALLED' : 'INSTALLED_WITH_REVIEW',
     mode: 'ONE_WAY_CALENDAR_TO_V3_SHEETS',
+    executionStage: tmv3_executionStage_(),
     handler: handler,
     calendarsExpected: expected.length,
     removedManagedTriggers: removed,
     createdCalendarTriggers: created,
+    reconciliationFallbackCreated: !!fallbackTrigger,
     calendarWritesPerformed: false,
     initialSync: initial,
     triggerStatus: tmv3_step1CalendarLiveSyncStatus()
@@ -477,11 +487,16 @@ function tmv3_step1CalendarLiveSyncStatus() {
     return active.indexOf(id) === -1;
   });
 
+  const fallbackCount = ScriptApp.getProjectTriggers().filter(function(trigger) {
+    return trigger.getHandlerFunction() === 'tmv3_calendarReconciliationFallback';
+  }).length;
+
   return {
     handler: handler,
     expectedCalendarIds: expected,
     activeCalendarIds: tmv3_unique_(active),
     missingCalendarIds: missing,
-    complete: missing.length === 0
+    reconciliationFallbackCount: fallbackCount,
+    complete: missing.length === 0 && fallbackCount === 1
   };
 }
