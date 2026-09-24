@@ -15,23 +15,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  run-one:
+  inspect:
     if: github.repository == 'consultpramodh/classicfireplace'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout canonical Task Mapping branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: task_mapping
           fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Configure clasp authorization
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
@@ -41,61 +36,36 @@ jobs:
           test -n "${CLASPRC_JSON:-}"
           umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-
-      - name: Verify live legacy runner exists
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/preinspect-today-live
-          mkdir -p /tmp/preinspect-today-live
-          (cd /tmp/preinspect-today-live && npx -y @google/clasp@3.3.0 clone 1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m --rootDir src)
-          grep -R -q "function runNextPreInspectActionFromAppsScript" /tmp/preinspect-today-live/src
-          grep -R -q "function runPreInspectScheduledPipeline" /tmp/preinspect-today-live/src
-          grep -R -q "PreInspect Task Mapping" /tmp/preinspect-today-live/src
-          echo "LIVE_LEGACY_PREINSPECT_RUNNER_VERIFIED"
-
-      - name: Configure remote runtime target
-        shell: bash
-        run: |
-          cat > .clasp.json <<'JSON'
-          {"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}
-          JSON
-
-      - name: Run exactly one legacy PreInspect action
+          printf '%s\n' '{"scriptId":"1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m","rootDir":"."}' > .clasp.json
+      - name: Capture live deployments and versions
         shell: bash
         run: |
           set -o pipefail
           mkdir -p /tmp/preinspect-today-result
-          echo "RUN_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" | tee /tmp/preinspect-today-result/result.txt
-          npx -y @google/clasp@3.3.0 run runNextPreInspectActionFromAppsScript 2>&1 | tee -a /tmp/preinspect-today-result/result.txt
-          code=${PIPESTATUS[0]}
-          echo "CLASP_EXIT_CODE=$code" | tee -a /tmp/preinspect-today-result/result.txt
-          exit $code
-
-      - name: Commit runtime evidence
+          echo "CAPTURE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/preinspect-today-result/result.txt
+          echo "===== DEPLOYMENTS =====" >> /tmp/preinspect-today-result/result.txt
+          npx -y @google/clasp@3.3.0 deployments --json 2>&1 | tee -a /tmp/preinspect-today-result/result.txt
+          echo "===== VERSIONS =====" >> /tmp/preinspect-today-result/result.txt
+          npx -y @google/clasp@3.3.0 versions --json 2>&1 | tee -a /tmp/preinspect-today-result/result.txt
+      - name: Commit diagnostic evidence
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p executions
           {
-            echo "# PreInspect Today Legacy Resolve — latest single action"
+            echo "# PreInspect Today Legacy Resolve — deployment diagnostic"
             echo
             echo "Trigger commit: $GITHUB_SHA"
             echo "Workflow run: $GITHUB_RUN_ID"
             echo "Recorded at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo
             echo '~~~text'
-            cat /tmp/preinspect-today-result/result.txt 2>/dev/null || echo "No runtime result file was produced."
+            cat /tmp/preinspect-today-result/result.txt 2>/dev/null || echo "No diagnostic result file was produced."
             echo '~~~'
           } > executions/preinspect-today-2026-09-24-latest.md
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add executions/preinspect-today-2026-09-24-latest.md
-          if git diff --cached --quiet; then
-            echo "No evidence change to commit."
-            exit 0
-          fi
-          git commit -m "ops: record PreInspect today legacy runtime result"
+          git commit -m "ops: record PreInspect legacy deployment diagnostic" || exit 0
           git push origin HEAD:task_mapping
