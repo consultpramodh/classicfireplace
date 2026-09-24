@@ -734,6 +734,13 @@ function tmv3_step7CreatePlan_(
     plan = 'REVIEW_CREATE_CUSTOMER_UNRESOLVED';
     blocker = 'Task CREATE requires a verified Customer.';
   } else if (
+    TMV3.VERTICALS[record.vertical].orderRequired &&
+    !expected.orderId
+  ) {
+    plan = 'REVIEW_CREATE_ORDER_UNRESOLVED';
+    blocker =
+      'Task CREATE requires the verified Order / Work Order relationship.';
+  } else if (
     expected.requestedByError
   ) {
     plan = 'REVIEW_CREATE_REQUESTED_BY_UNRESOLVED';
@@ -755,7 +762,14 @@ function tmv3_step7CreatePlan_(
       expected.locationStatus === 'CREATE_REQUIRED' &&
       !expected.locationId
     ) {
-      plan = 'CREATE_LOCATION_THEN_' + createVerb;
+      plan =
+        record.vertical === 'PreInspection'
+          ? (
+              'CREATE_LOCATION_THEN_' +
+              createVerb +
+              '__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8'
+            )
+          : 'CREATE_LOCATION_THEN_' + createVerb;
     } else if (record.vertical === 'PreInspection') {
       plan =
         createVerb +
