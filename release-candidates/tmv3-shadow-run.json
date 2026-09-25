@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_STEP7_CANARY_GOLDCON_R2",
+  "release": "TMV3_STEP7_CASES_AFTER_READ_GATE_FIX_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "CANARY_WRITE",
-  "writesEnabled": true,
-  "runMode": "CANARY_GOLDCON",
+  "mode": "SHADOW_READ_ONLY",
+  "writesEnabled": false,
+  "runMode": "STEP7_CASES",
   "batchOffset": 0,
   "batchLimit": 0
 }
