@@ -25,6 +25,7 @@ Canonical tracker: issue #23
 | Step 7 reconciliation | TESTING / VERIFY |
 | Canonical v1 schedule fallback for v2 PM defect | DONE / VERIFIED |
 | Install / Delivery title-only assignee resolution | DONE / VERIFIED |
+| Install Task 16735 assignment canary | DONE / VERIFIED |
 | Read-only HEAD verification transport | DONE / VERIFIED |
 | Existing-task guarded mutation path | BUILT / TESTING |
 | CREATE path | BUILT / CANARY PENDING |
@@ -47,9 +48,9 @@ No Striven mutation was made.
 
 ## Current active gate
 
-**Controlled CREATE canary**
+**Install Task 18394 assignment mismatch**
 
-First step is read-only candidate selection. A CREATE write is not approved until the exact transaction and duplicate-prevention evidence are previewed.
+Task `16735` is closed. The next single task is Task `18394`, using the same guarded legacy-rule assignment canary procedure.
 
 ## Required release sequence
 
@@ -70,8 +71,9 @@ A gate is complete only after the intended external result is read back from the
 
 ## Most recent proof
 
-- V3: `3.11.9-assignee-title-only-r1`
-- GitHub Actions run: `36183055729`
-- Evidence artifact: `10885545480`
-- Evidence: `test-evidence/2026-09-25-tmv3-title-only-assignee-verified.md`
-- Result: Task `18678` → `NO_CHANGE`
+- V3: `3.11.14-legacy-assignment-parity-r1`
+- Task: `16735`
+- Canary run: `36198082523`
+- Post-write verification run: `36198236398`
+- Evidence: `test-evidence/2026-09-25-tmv3-task-16735-assignment-canary-verified.md`
+- Result: assignment `MATCH` → `NO_CHANGE`
