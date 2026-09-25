@@ -10,45 +10,38 @@
 
 - System: **Task Mapping V3**
 - Source: `apps-script/tmv3-clean/`
-- V3 version: `3.11.9-assignee-title-only-r1`
+- V3 version: `3.11.14-legacy-assignment-parity-r1`
 - Execution stage: `7`
 - Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Mode: `SHADOW_READ_ONLY`
 
 ## Latest verified checkpoint
 
-**Task 18678 assignment false-positive: CLOSED**
+**Install Task 16735 assignment mismatch: CLOSED**
 
-The earlier `PATCH_ASSIGNMENTS` plan was caused by V3 reading narrative Calendar description text as assignee evidence.
+Legacy-rule assignment parity was applied and then verified with a single-task canary.
 
-The canonical Install / Delivery rule is now restored:
+Before:
+- desired assignment: `employee:15`
+- actual assignment: `employee:41`
+- plan: `PATCH_ASSIGNMENTS`
 
-- assignment names are parsed from Calendar **title only**;
-- description notes are ignored for assignment;
-- Aiden remains ignored;
-- short-token / phrase matching is bounded.
+Canary result:
+- employee 15 added
+- employee 41 preserved
+- no unrelated Task mutation
 
-Fresh live Step 7 now returns `NO_CHANGE` for Task `18678`.
-
-Verified fields:
-
-- Customer: `MATCH`
-- Order: `MATCH`
-- Location: `MATCH`
-- Requested By: `MATCH`
-- Start: `MATCH`
-- End: `MATCH`
-- Assignment check: `N/A`
-- Blocker: none
-- Read status: `FRESH_TASK_GET`
-
-No Striven mutation was executed.
+Fresh post-write verification:
+- desired: `employee:15`
+- actual: `employee:15,employee:41`
+- assignment check: `MATCH`
+- Step 7 plan: `NO_CHANGE`
+- blocker: none
 
 Evidence:
-
-- GitHub Actions run: `36183055729`
-- artifact: `10885545480`
-- evidence file: `test-evidence/2026-09-25-tmv3-title-only-assignee-verified.md`
+- canary run: `36198082523`
+- post-write run: `36198236398`
+- evidence file: `test-evidence/2026-09-25-tmv3-task-16735-assignment-canary-verified.md`
 
 ## Read-only verification transport
 
@@ -70,26 +63,15 @@ Verified outcome:
 
 ## Remaining release gates
 
-1. Fresh Step-7 scan and deterministic CREATE candidate selection.
-2. Exact CREATE transaction preview and approval.
-3. Controlled CREATE canary + Striven read-back + Calendar backlink verification.
-4. Controlled RECREATE canary under the same guarded procedure.
-5. Final four-vertical regression.
-6. Controlled production cutover.
-7. Verify first scheduled production cycle.
-8. Only then evaluate legacy retirement.
+1. Fix/verify Install Task `18394` assignment.
+2. Fix/verify Install Task `18690` assignment.
+3. Fix/verify Service Task `18540` assignment.
+4. Fresh Step-7 scan and deterministic CREATE candidate selection.
+5. Controlled CREATE canary + read-back + Calendar backlink verification.
+6. Controlled RECREATE canary.
+7. Final four-vertical regression.
+8. Controlled production cutover and first scheduled-cycle verification.
 
 ## Next exact action
 
-**Run fresh read-only Step 7 and identify the safest `CREATE_TASK` candidate.**
-
-Before any CREATE write, record:
-
-- vertical and Event ID;
-- customer/contact/location identity;
-- required order/work-order relationship, if applicable;
-- proposed Task type/name/dates/assignment;
-- duplicate-task search result;
-- durable-state duplicate guard result;
-- Calendar backlink plan;
-- exact expected read-back.
+**Fix and verify Install Task `18394` assignment only.**
