@@ -82,31 +82,60 @@ function tmv3_refreshMorningOps() {
         };
       }
 
-      scheduleByTime[timeKey][vertical].push(
-        customer + (task ? '\n' + task : '')
-      );
+      const taskUrl = tmv3_clean_(row['Existing Task Link']);
+      const calendarUrl = tmv3_clean_(row['Calendar Event Link']);
+      const linkUrl = taskUrl || calendarUrl;
+      const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
+      const issue = tmv3_clean_(row['Issue / Next Action']);
+      const locationReview = /CREATE REQUIRED/i.test(evidence);
+      const reviewNote = needsAttention
+        ? [
+            'REVIEW NEEDED',
+            '',
+            taskUrl ? ('Task: ' + task) : 'No Striven Task exists yet.',
+            'Issue: ' + (
+              locationReview
+                ? 'Customer-owned Location is unresolved.'
+                : (issue || 'Appointment requires review.')
+            ),
+            '',
+            'Next action: ' + (
+              locationReview
+                ? 'Verify the correct customer-owned Location before any relationship write.'
+                : (issue || 'Review and correct the source appointment, then rerun V3.')
+            )
+          ].join('\n')
+        : '';
+
+      scheduleByTime[timeKey][vertical].push({
+        display: customer + (task ? '\n' + task : ''),
+        url: linkUrl,
+        note: reviewNote
+      });
 
       if (needsAttention) {
         scheduleByTime[timeKey].flags.push('ATTENTION');
         attention++;
 
-        const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
-        const issue = tmv3_clean_(row['Issue / Next Action']);
-        const locationReview = /CREATE REQUIRED/i.test(evidence);
-
-        attentionRows.push([
-          locationReview ? 'CHECK' : 'ATTENTION',
-          timeLabel,
-          vertical,
-          customer,
-          locationReview
-            ? 'Customer-owned Location unresolved'
-            : (issue || 'Appointment requires attention'),
-          locationReview
-            ? 'Verify Location before any relationship write'
-            : (issue || 'Review appointment'),
-          eventId
-        ]);
+        attentionRows.push({
+          values: [
+            locationReview ? 'CHECK' : 'ATTENTION',
+            timeLabel,
+            vertical,
+            customer,
+            locationReview
+              ? 'Customer-owned Location unresolved'
+              : (issue || 'Appointment requires attention'),
+            locationReview
+              ? 'Verify Location before any relationship write'
+              : (issue || 'Review appointment')
+          ],
+          url: linkUrl,
+          note: reviewNote,
+          taskUrl: taskUrl,
+          calendarUrl: calendarUrl,
+          eventId: eventId
+        });
       }
 
       if (hasTask) mapped++;
@@ -144,10 +173,10 @@ function tmv3_refreshMorningOps() {
     const slot = scheduleByTime[timeKey];
     values.push([
       slot.label,
-      slot.Install.join('\n\n'),
-      slot.Delivery.join('\n\n'),
-      slot.Service.join('\n\n'),
-      slot.PreInspection.join('\n\n'),
+      slot.Install.map(function(x){ return x.display; }).join('\n\n'),
+      slot.Delivery.map(function(x){ return x.display; }).join('\n\n'),
+      slot.Service.map(function(x){ return x.display; }).join('\n\n'),
+      slot.PreInspection.map(function(x){ return x.display; }).join('\n\n'),
       slot.flags.length ? 'ATTENTION' : ''
     ]);
   });
@@ -159,8 +188,8 @@ function tmv3_refreshMorningOps() {
   if (!attentionRows.length) {
     values.push(['OK','','','','No attention items for today.','']);
   } else {
-    attentionRows.forEach(function(r) {
-      values.push(r.slice(0,6));
+    attentionRows.forEach(function(item) {
+      values.push(item.values.slice(0,6));
     });
   }
 
@@ -253,6 +282,41 @@ function tmv3_refreshMorningOps() {
     }
   }
 
+  // Make the snapshot actionable: task cells link to Striven; no-task items link to Calendar.
+  const verticalColumn = { Install: 2, Delivery: 3, Service: 4, PreInspection: 5 };
+  Object.keys(scheduleByTime).sort().forEach(function(timeKey, slotIndex) {
+    const slot = scheduleByTime[timeKey];
+    const rowNum = scheduleStart + slotIndex;
+
+    ['Install','Delivery','Service','PreInspection'].forEach(function(vertical) {
+      const entries = slot[vertical] || [];
+      if (!entries.length) return;
+
+      const cell = sh.getRange(rowNum, verticalColumn[vertical]);
+      const text = entries.map(function(x){ return x.display; }).join('\n\n');
+      const builder = SpreadsheetApp.newRichTextValue().setText(text);
+      let offset = 0;
+
+      entries.forEach(function(entry, idx) {
+        if (entry.url) {
+          builder.setLinkUrl(offset, offset + entry.display.length, entry.url);
+        }
+        offset += entry.display.length + (idx < entries.length - 1 ? 2 : 0);
+      });
+
+      cell.setRichTextValue(builder.build());
+
+      const notes = entries
+        .map(function(x){ return x.note; })
+        .filter(Boolean);
+      if (notes.length) {
+        cell.setNote(notes.join('\n\n--------------------\n\n'));
+      } else {
+        cell.setNote('');
+      }
+    });
+  });
+
   const attentionTitleRow = sectionRows[1];
   const attentionHeaderRow = attentionTitleRow + 1;
   const attentionDataStart = attentionHeaderRow + 1;
@@ -269,6 +333,21 @@ function tmv3_refreshMorningOps() {
       .setWrap(true)
       .setVerticalAlignment('middle');
   }
+
+  attentionRows.forEach(function(item, index) {
+    const rowNum = attentionDataStart + index;
+    const customerCell = sh.getRange(rowNum, 4);
+    if (item.url) {
+      customerCell.setRichTextValue(
+        SpreadsheetApp.newRichTextValue()
+          .setText(item.values[3])
+          .setLinkUrl(item.url)
+          .build()
+      );
+    }
+    customerCell.setNote(item.note || '');
+    sh.getRange(rowNum, 5).setNote(item.note || '');
+  });
 
   [90,180,180,180,180,300].forEach(function(px,index) {
     sh.setColumnWidth(index + 1, px);
