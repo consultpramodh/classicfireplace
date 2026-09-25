@@ -213,18 +213,44 @@ function buildTemporaryRunner(pre, token) {
     access: 'MYSELF'
   };
 
+  const canaryWrite =
+    RUN_MODE.indexOf('CANARY_') === 0 &&
+    RELEASE_MANIFEST.mode === 'CANARY_WRITE' &&
+    RELEASE_MANIFEST.writesEnabled === true;
+  let canaryModePatchCount = 0;
+
   const files = (pre.files || [])
     .filter(f => f.name !== 'appsscript' && f.name !== 'TMPV3_ShadowRunner')
     .map(f => {
       if (f.type !== 'SERVER_JS') return { ...f };
+
+      let source = String(f.source || '').replace(
+        /function\s+doPost\s*\(/g,
+        'function TMPV3_original_doPost('
+      );
+
+      if (canaryWrite) {
+        const patched = source.replace(
+          "const TMV3_MODE = 'SHADOW_READ_ONLY';",
+          "const TMV3_MODE = 'CANARY_WRITE';"
+        );
+        if (patched !== source) canaryModePatchCount++;
+        source = patched;
+      }
+
       return {
         ...f,
-        source: String(f.source || '').replace(
-          /function\s+doPost\s*\(/g,
-          'function TMPV3_original_doPost('
-        )
+        source
       };
     });
+
+  if (canaryWrite && canaryModePatchCount !== 1) {
+    fail(
+      'Canary temp-source mode patch expected exactly one TMV3_MODE anchor; found ' +
+      canaryModePatchCount +
+      '.'
+    );
+  }
 
   const source = `
 var TMPV3_SHADOW_TOKEN = ${JSON.stringify(token)};
@@ -1103,8 +1129,10 @@ async function main() {
       RUN_MODE === 'STEP7_CASES' ||
       RUN_MODE === 'PREVIEW_GOLDCON' ||
       RUN_MODE === 'PREVIEW_ROCCO' ||
+      RUN_MODE === 'PREVIEW_STEP7' ||
       RUN_MODE === 'CANARY_GOLDCON' ||
       RUN_MODE === 'CANARY_ROCCO' ||
+      RUN_MODE === 'CANARY_STEP7' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
       RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
@@ -1157,7 +1185,9 @@ async function main() {
         action,
         vertical:
           RUN_MODE === 'TASK_SCHEDULE' ? String(RELEASE_MANIFEST.vertical || '') :
-          (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
+          (RUN_MODE === 'CANARY_STEP7' || RUN_MODE === 'PREVIEW_STEP7')
+            ? String(RELEASE_MANIFEST.vertical || '')
+          : (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
           RUN_MODE === 'STEP7_INSTALL' ? 'Install' :
           RUN_MODE === 'STEP7_DELIVERY' ? 'Delivery' :
           RUN_MODE === 'STEP7_SERVICE' ? 'Service' :
@@ -1171,7 +1201,7 @@ async function main() {
             ? (RELEASE_MANIFEST.assignmentCases || [])
             : []
         ,eventId:
-          RUN_MODE === 'TASK_SCHEDULE'
+          (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'CANARY_STEP7' || RUN_MODE === 'PREVIEW_STEP7')
             ? String(RELEASE_MANIFEST.eventId || '')
             : (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
             ? '3lqqeba2r17067sjrm558kjmd1@google.com'
@@ -1179,7 +1209,8 @@ async function main() {
               ? '6ftlsr2e9fn31hpm6dj05cuthi@google.com'
               : '',
         taskId:
-          RUN_MODE === 'TASK_SCHEDULE' ? Number(RELEASE_MANIFEST.taskId || 0) :
+          (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'CANARY_STEP7' || RUN_MODE === 'PREVIEW_STEP7')
+            ? Number(RELEASE_MANIFEST.taskId || 0) :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
@@ -1189,7 +1220,9 @@ async function main() {
             RUN_MODE === 'PREVIEW_GOLDCON' ||
             RUN_MODE === 'CANARY_GOLDCON' ||
             RUN_MODE === 'PREVIEW_ROCCO' ||
-            RUN_MODE === 'CANARY_ROCCO'
+            RUN_MODE === 'CANARY_ROCCO' ||
+            RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'CANARY_STEP7'
           )
             ? String(RELEASE_MANIFEST.expectedPlan || 'NO_CHANGE')
             : ''
