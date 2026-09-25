@@ -324,25 +324,58 @@ function tmv3_assignmentTitleOnlyRegression() {
         description: 'John is mentioned only in notes.',
         guests: ''
       },
-      expected: [26]
+      expected: [26],
+      expectedPools: []
+    },
+    {
+      name: 'DELIVERY_TITLE_LEGACY_MULTI_ASSIGNEE',
+      eventRecord: {
+        vertical: 'Delivery',
+        title: 'Customer - Jay & SF / Pramodh',
+        description: '',
+        guests: ''
+      },
+      expected: [1, 6, 15],
+      expectedPools: []
+    },
+    {
+      name: 'PREINSPECTION_POOL_ONLY',
+      eventRecord: {
+        vertical: 'PreInspection',
+        title: 'Stephen - customer preinspection',
+        description: 'Stephen is inspecting this appointment.',
+        guests: 'stephen@classicfireplace.ca'
+      },
+      expected: [],
+      expectedPools: [8]
     }
   ];
 
   const results = cases.map(function(testCase) {
-    const actual = tmv3_desiredAssignment_(testCase.eventRecord)
-      .employeeIds
+    const desired = tmv3_desiredAssignment_(testCase.eventRecord);
+    const actual = (desired.employeeIds || [])
       .map(Number)
       .sort(function(a,b) { return a - b; });
-    const expected = testCase.expected
+    const actualPools = (desired.poolIds || [])
       .map(Number)
       .sort(function(a,b) { return a - b; });
-    const pass = JSON.stringify(actual) === JSON.stringify(expected);
+    const expected = (testCase.expected || [])
+      .map(Number)
+      .sort(function(a,b) { return a - b; });
+    const expectedPools = (testCase.expectedPools || [])
+      .map(Number)
+      .sort(function(a,b) { return a - b; });
+    const pass =
+      JSON.stringify(actual) === JSON.stringify(expected) &&
+      JSON.stringify(actualPools) === JSON.stringify(expectedPools);
 
     return {
       name: testCase.name,
       pass: pass,
       expected: expected,
-      actual: actual
+      actual: actual,
+      expectedPools: expectedPools,
+      actualPools: actualPools
     };
   });
 
