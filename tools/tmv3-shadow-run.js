@@ -570,6 +570,7 @@ async function main() {
         token,
         action,
         vertical:
+          RUN_MODE.indexOf('CANARY_') === 0 ? 'Install' :
           RUN_MODE === 'STEP7_INSTALL' ? 'Install' :
           RUN_MODE === 'STEP7_DELIVERY' ? 'Delivery' :
           RUN_MODE === 'STEP7_SERVICE' ? 'Service' :
