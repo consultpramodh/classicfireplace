@@ -189,6 +189,107 @@ function tmv3_step7ReconciliationRun(
   return result;
 }
 
+function tmv3_step7CreateCandidateScan(reason, refreshSources) {
+  tmv3_assertShadow_();
+
+  if (tmv3_executionStage_() < 7) {
+    throw new Error(
+      'Execution stage ' + tmv3_executionStage_() +
+      ' blocks Step 7 CREATE candidate scan.'
+    );
+  }
+
+  tmv3_resetRuntimeMetrics_();
+
+  const sourceSummary =
+    refreshSources === true
+      ? tmv3_step5RefreshTaskSources_()
+      : {
+          tasks: tmv3_rows_(TMV3.SHEETS.TASKS).length,
+          preInspectionTasks: 'ON_DEMAND_ONLY',
+          source: 'CACHED_TASK_SOURCES'
+        };
+
+  const step2Snapshot = tmv3_step2CalendarRecords_();
+  const step3Records = tmv3_step3BusinessAnchorRecords_(
+    step2Snapshot,
+    tmv3_step3AnchorIndex_()
+  );
+  const step4Records = tmv3_step4IdentityRecords_(
+    step3Records,
+    tmv3_step4IdentityIndex_()
+  );
+  const step5Records = tmv3_step5TaskRecords_(
+    step4Records,
+    tmv3_step5TaskIndex_()
+  );
+  const step6Records = tmv3_step6DecisionRecords_(step5Records);
+
+  // Critical API-budget rule:
+  // only CREATE / RECREATE dispositions advance into Step 7 planning here.
+  // Existing-task rows require fresh Task GETs and can exhaust Striven's
+  // per-minute budget before CREATE ownership checks are reached.
+  const candidates = step6Records.filter(function(record) {
+    const disposition = tmv3_clean_(
+      record && record.step6 && record.step6.disposition
+    );
+    return disposition === 'CREATE_TASK' || disposition === 'RECREATE_TASK';
+  });
+
+  const runtime = {
+    taskById: {},
+    contactByKey: {},
+    organizerByEmail: {}
+  };
+
+  const plans = tmv3_step7Plans_(candidates, runtime);
+  const eligible = plans.filter(function(plan) {
+    return (
+      (
+        String(plan.plan || '').indexOf('CREATE_TASK') !== -1 ||
+        String(plan.plan || '').indexOf('RECREATE_TASK') !== -1
+      ) &&
+      !tmv3_clean_(plan.blocker)
+    );
+  });
+
+  const result = {
+    version: TMV3.VERSION,
+    executionStage: tmv3_executionStage_(),
+    stage: 7,
+    status: 'PASS',
+    mode: 'CREATE_CANDIDATE_SCAN_ONLY',
+    reason: tmv3_clean_(reason || 'CREATE_CANDIDATE_SCAN'),
+    sourceSummary: sourceSummary,
+    candidateRecords: candidates.length,
+    plans: plans,
+    eligible: eligible,
+    runtime: tmv3_runtimeMetrics_(),
+    taskWritesPerformed: false,
+    calendarWritesPerformed: false,
+    strivenWritesPerformed: false
+  };
+
+  tmv3_audit_(
+    'SYSTEM',
+    '',
+    '',
+    'STEP7_CREATE_CANDIDATE_SCAN',
+    'PASS',
+    JSON.stringify({
+      candidateRecords: candidates.length,
+      eligible: eligible.length,
+      runtime: result.runtime,
+      taskWritesPerformed: false,
+      calendarWritesPerformed: false,
+      strivenWritesPerformed: false
+    })
+  );
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
 function tmv3_step7ReconciliationRunCached(reason, verticalFilter) {
   return tmv3_step7ReconciliationRun(
     reason || 'CACHED_TASK_SOURCES',
