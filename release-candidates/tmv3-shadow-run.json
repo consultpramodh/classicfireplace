@@ -1,9 +1,10 @@
 {
-  "release": "TMV3_3_11_8_ROCCO_ASSIGNMENT_PREVIEW_R1",
+  "release": "TMV3_3_11_9_ROCCO_ASSIGNMENT_FALSE_POSITIVE_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
   "runMode": "PREVIEW_ROCCO",
+  "expectedPlan": "NO_CHANGE",
   "batchOffset": 0,
   "batchLimit": 0
 }
