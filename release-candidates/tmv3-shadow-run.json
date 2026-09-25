@@ -1,7 +1,7 @@
 {
-  "release": "TMV3_STEP7_INSTALL_RECONCILIATION_R3",
+  "release": "TMV3_STEP7_DELIVERY_RECONCILIATION_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_INSTALL"
+  "runMode": "STEP7_DELIVERY"
 }
