@@ -1,8 +1,8 @@
-const TMV3_VERSION = '3.9.4-step7-canary-closed-r2';
+const TMV3_VERSION = '3.9.5-step7-canary-window-r3';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
-const TMV3_MODE = 'SHADOW_READ_ONLY';
+const TMV3_MODE = 'CANARY_WRITE';
 
 const TMV3 = Object.freeze({
   MODE: TMV3_MODE,
