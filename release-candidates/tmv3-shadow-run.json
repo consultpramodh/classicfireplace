@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_GOLDCON_TASK_SCHEMA_PROBE_R2",
+  "release": "TMV3_INSTALL_DUE_SAMPLES_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "GOLDCON_TASK_SCHEMA",
+  "runMode": "INSTALL_DUE_SAMPLES",
   "batchOffset": 0,
   "batchLimit": 0
 }
