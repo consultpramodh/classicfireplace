@@ -52,7 +52,12 @@ const TMV3_STEP7_HEADERS = Object.freeze([
   'Read Status'
 ]);
 
-function tmv3_step7ReconciliationRun(reason, refreshSources, verticalFilter) {
+function tmv3_step7ReconciliationRun(
+  reason,
+  refreshSources,
+  verticalFilter,
+  batchOptions
+) {
   tmv3_assertShadow_();
 
   if (tmv3_executionStage_() < 7) {
@@ -104,11 +109,33 @@ function tmv3_step7ReconciliationRun(reason, refreshSources, verticalFilter) {
   );
 
   const step6Records = tmv3_step6DecisionRecords_(step5Records);
-  const selected = filter
+  const selectedAll = filter
     ? step6Records.filter(function(record) {
         return record.vertical === filter;
       })
     : step6Records;
+
+  batchOptions = batchOptions || {};
+  const batchOffset = Math.max(0, Number(batchOptions.offset || 0));
+  const requestedLimit = Math.max(0, Number(batchOptions.limit || 0));
+  const batchEnabled = requestedLimit > 0;
+  const selected = batchEnabled
+    ? selectedAll.slice(batchOffset, batchOffset + requestedLimit)
+    : selectedAll;
+  const batch = {
+    enabled: batchEnabled,
+    offset: batchOffset,
+    limit: batchEnabled ? requestedLimit : selectedAll.length,
+    selected: selected.length,
+    totalAvailable: selectedAll.length,
+    nextOffset:
+      batchEnabled && batchOffset + selected.length < selectedAll.length
+        ? batchOffset + selected.length
+        : null,
+    complete:
+      !batchEnabled ||
+      batchOffset + selected.length >= selectedAll.length
+  };
 
   const runtime = {
     taskById: {},
@@ -117,7 +144,7 @@ function tmv3_step7ReconciliationRun(reason, refreshSources, verticalFilter) {
   };
 
   const plans = tmv3_step7Plans_(selected, runtime);
-  const write = tmv3_step7WritePlans_(plans, filter);
+  const write = tmv3_step7WritePlans_(plans, filter, batch);
   const verification = tmv3_step7Verify_(selected, plans);
   const counts = tmv3_step7Counts_(plans);
 
@@ -129,6 +156,7 @@ function tmv3_step7ReconciliationRun(reason, refreshSources, verticalFilter) {
     mode: 'RECONCILIATION_PLAN_ONLY',
     reason: tmv3_clean_(reason || 'MANUAL'),
     verticalFilter: filter || 'ALL',
+    batch: batch,
     sourceSummary: sourceSummary,
     counts: counts,
     write: write,
@@ -174,6 +202,29 @@ function tmv3_step7InstallReconciliationRun(reason) {
     reason || 'INSTALL_STEP7_VERIFY',
     true,
     'Install'
+  );
+}
+
+function tmv3_step7ReconciliationBatchRun(
+  reason,
+  verticalFilter,
+  offset,
+  limit,
+  refreshSources
+) {
+  const filter = tmv3_clean_(verticalFilter);
+  if (!filter) {
+    throw new Error('Step 7 batch run requires one vertical.');
+  }
+
+  return tmv3_step7ReconciliationRun(
+    reason || 'BATCHED_STEP7_VERIFY',
+    refreshSources === true,
+    filter,
+    {
+      offset: Number(offset || 0),
+      limit: Number(limit || 20)
+    }
   );
 }
 
@@ -1167,7 +1218,7 @@ function tmv3_step7EnsureSheet_() {
   return sh;
 }
 
-function tmv3_step7WritePlans_(plans, verticalFilter) {
+function tmv3_step7WritePlans_(plans, verticalFilter, batch) {
   const sh = tmv3_step7EnsureSheet_();
   const filter = tmv3_clean_(verticalFilter);
 
@@ -1228,11 +1279,17 @@ function tmv3_step7WritePlans_(plans, verticalFilter) {
       existing[0].length === TMV3_STEP7_HEADERS.length;
 
     if (headerMatches) {
+      const replacementKeys = {};
+      newRows.forEach(function(row) {
+        replacementKeys[tmv3_clean_(row[2])] = true;
+      });
+
       const preserved = existing.slice(1).filter(function(row) {
-        return (
-          tmv3_clean_(row[0]) &&
-          tmv3_clean_(row[0]) !== filter
-        );
+        const rowVertical = tmv3_clean_(row[0]);
+        if (!rowVertical) return false;
+        if (rowVertical !== filter) return true;
+        if (!(batch && batch.enabled)) return false;
+        return !replacementKeys[tmv3_clean_(row[2])];
       });
 
       rows = preserved.concat(newRows);
@@ -1279,6 +1336,7 @@ function tmv3_step7WritePlans_(plans, verticalFilter) {
   return {
     sheet: TMV3.SHEETS.RECONCILE,
     verticalFilter: filter || 'ALL',
+    batch: batch || { enabled:false },
     rowsWritten: newRows.length,
     totalRows: rows.length,
     preservedOtherVerticalRows: rows.length - newRows.length,

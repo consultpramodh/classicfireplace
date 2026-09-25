@@ -38,7 +38,11 @@ jobs:
         shell: bash
         run: |
           MODE="$(node -e "const m=require('./release-candidates/tmv3-shadow-run.json'); process.stdout.write(String(m.runMode||'FULL'))")"
+          BATCH_OFFSET="$(node -e "const m=require('./release-candidates/tmv3-shadow-run.json'); process.stdout.write(String(m.batchOffset||0))")"
+          BATCH_LIMIT="$(node -e "const m=require('./release-candidates/tmv3-shadow-run.json'); process.stdout.write(String(m.batchLimit||0))")"
           echo "TMV3_SHADOW_RUN_MODE=$MODE" >> "$GITHUB_ENV"
+          echo "TMV3_STEP7_BATCH_OFFSET=$BATCH_OFFSET" >> "$GITHUB_ENV"
+          echo "TMV3_STEP7_BATCH_LIMIT=$BATCH_LIMIT" >> "$GITHUB_ENV"
 
       - name: Run guarded V3 shadow verification
         env:

@@ -44,5 +44,19 @@ function tmv3_importConfigBundle(bundle) {
 }
 
 function tmv3_assertNoBusinessWrites() {
-  return { mode:TMV3.MODE, businessWritesEnabled:false, calendarWritesEnabled:false, taskCreateEnabled:false, taskPatchEnabled:false };
+  const legacyWrites = tmv3_writesEnabled_();
+  const manualWrites = tmv3_operationWritesEnabled_('MANUAL');
+  const automationWrites = tmv3_operationWritesEnabled_('AUTO');
+  const anyWrites = legacyWrites || manualWrites || automationWrites;
+
+  return {
+    mode: TMV3.MODE,
+    businessWritesEnabled: anyWrites,
+    calendarWritesEnabled: anyWrites,
+    taskCreateEnabled: manualWrites || automationWrites,
+    taskPatchEnabled: anyWrites,
+    manualWritesEnabled: manualWrites,
+    automationWritesEnabled: automationWrites,
+    assertionPass: !anyWrites
+  };
 }

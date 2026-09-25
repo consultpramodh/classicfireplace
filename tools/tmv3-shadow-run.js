@@ -8,6 +8,8 @@ const crypto = require('crypto');
 const V3_SCRIPT_ID = '1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
 const outDir = path.resolve(process.cwd(), 'autopatch-output-v3-shadow');
 const RUN_MODE = String(process.env.TMV3_SHADOW_RUN_MODE || 'FULL').toUpperCase();
+const BATCH_OFFSET = Math.max(0, Number(process.env.TMV3_STEP7_BATCH_OFFSET || 0));
+const BATCH_LIMIT = Math.max(0, Number(process.env.TMV3_STEP7_BATCH_LIMIT || 0));
 fs.mkdirSync(outDir, { recursive: true });
 
 function fail(message) {
@@ -297,11 +299,19 @@ function doPost(e) {
     }
 
     if (body.action === 'step7Reconcile') {
-      var step7 = tmv3_step7ReconciliationRun(
-        'GITHUB_STEP7_VERIFY',
-        true,
-        String(body.vertical || '')
-      );
+      var step7 = Number(body.batchLimit || 0) > 0
+        ? tmv3_step7ReconciliationBatchRun(
+            'GITHUB_STEP7_BATCH_VERIFY',
+            String(body.vertical || ''),
+            Number(body.batchOffset || 0),
+            Number(body.batchLimit || 0),
+            body.refreshSources === true
+          )
+        : tmv3_step7ReconciliationRun(
+            'GITHUB_STEP7_VERIFY',
+            true,
+            String(body.vertical || '')
+          );
       return TMPV3_shadowResponse_({
         ok:step7.status === 'PASS',
         status:'STEP7_RECONCILIATION_COMPLETE',
@@ -495,7 +505,10 @@ async function main() {
           RUN_MODE === 'STEP7_INSTALL' ? 'Install' :
           RUN_MODE === 'STEP7_DELIVERY' ? 'Delivery' :
           RUN_MODE === 'STEP7_SERVICE' ? 'Service' :
-          RUN_MODE === 'STEP7_PREINSPECTION' ? 'PreInspection' : ''
+          RUN_MODE === 'STEP7_PREINSPECTION' ? 'PreInspection' : '',
+        batchOffset: BATCH_OFFSET,
+        batchLimit: BATCH_LIMIT,
+        refreshSources: BATCH_OFFSET === 0
       });
 
       if (!step1.ok) {

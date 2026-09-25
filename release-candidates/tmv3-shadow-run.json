@@ -1,7 +1,9 @@
 {
-  "release": "TMV3_STEP7_PREINSPECTION_RECONCILIATION_R1",
+  "release": "TMV3_STEP7_SERVICE_BATCH_0_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_PREINSPECTION"
+  "runMode": "STEP7_SERVICE",
+  "batchOffset": 0,
+  "batchLimit": 12
 }

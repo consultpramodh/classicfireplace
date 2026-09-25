@@ -16,6 +16,13 @@ function tmv3_operationPolicy_() {
 function tmv3_operationWritesEnabled_(scope) {
   const policy = tmv3_operationPolicy_();
   const mode = tmv3_norm_(scope || '');
+  const externalWriteMode =
+    TMV3.MODE === 'CANARY_WRITE' ||
+    TMV3.MODE === 'PRODUCTION_WRITE';
+
+  // A policy flag may narrow an authorized write mode, but it must never
+  // elevate SHADOW_READ_ONLY into a write-capable mode.
+  if (!externalWriteMode) return false;
 
   if (mode === 'manual') {
     return policy.manualWritesEnabled === true;

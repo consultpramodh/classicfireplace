@@ -347,6 +347,10 @@ function tmv3_regressionHealth_() {
 
 function tmv3_triggerHealth_() {
   const installed = tmv3_listTriggers();
+  const calendarTriggerCount =
+    typeof tmv3_step1CalendarIds_ === 'function'
+      ? tmv3_step1CalendarIds_().length
+      : 0;
 
   const expectedCounts = {
     tmv3_dailySourceRefresh: 1,
@@ -358,7 +362,8 @@ function tmv3_triggerHealth_() {
     tmv3_refreshLinksSlot_1600: 1,
     tmv3_refreshLinksSlot_1800: 1,
     tmv3_installReminderCheck: 1,
-    tmv3_calendarEventUpdated: 4
+    tmv3_calendarEventUpdated: calendarTriggerCount,
+    tmv3_calendarReconciliationFallback: 1
   };
 
   const actualCounts = {};
@@ -387,11 +392,11 @@ function tmv3_triggerHealth_() {
     enabled: Object.keys(actualCounts).some(function(handler) {
       return expectedCounts[handler] !== undefined;
     }),
-    expectedCount: 17,
-    manualWritesEnabled:
-      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.manualWritesEnabled),
-    automationWritesEnabled:
-      !!(TMV3.OPERATIONS && TMV3.OPERATIONS.automationWritesEnabled)
+    expectedCount: Object.keys(expectedCounts).reduce(function(total, handler) {
+      return total + Number(expectedCounts[handler] || 0);
+    }, 0),
+    manualWritesEnabled: tmv3_operationWritesEnabled_('MANUAL'),
+    automationWritesEnabled: tmv3_operationWritesEnabled_('AUTO')
   };
 }
 
