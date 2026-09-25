@@ -24,6 +24,8 @@ Canonical tracker: issue #23
 | Calendar → decision stages | BUILT |
 | Step 7 reconciliation | TESTING / VERIFY |
 | Canonical v1 schedule fallback for v2 PM defect | DONE / VERIFIED |
+| Install / Delivery title-only assignee resolution | DONE / VERIFIED |
+| Read-only HEAD verification transport | DONE / VERIFIED |
 | Existing-task guarded mutation path | BUILT / TESTING |
 | CREATE path | BUILT / CANARY PENDING |
 | RECREATE path | BUILT / CANARY PENDING |
@@ -33,21 +35,26 @@ Canonical tracker: issue #23
 | Production cutover | BACKLOG |
 | Legacy retirement | BACKLOG |
 
-## Current active issue
+## Closed verification issue
 
-**Install Task 18678 assignment mismatch**
+**Install Task 18678 assignment false-positive — CLOSED**
 
-Latest verified Step-7 state:
+Fresh Step 7 now returns `NO_CHANGE`.
 
-- schedule: verified correct through canonical v1 fallback;
-- date patch: no longer required;
-- remaining plan: `PATCH_ASSIGNMENTS`.
+The previous `PATCH_ASSIGNMENTS` result came from narrative Calendar-description text and was not a real Striven assignment defect. V3 `3.11.9-assignee-title-only-r1` restores title-only assignment inference and preserves the existing Task assignment.
 
-This is now the first item on the critical path.
+No Striven mutation was made.
+
+## Current active gate
+
+**Controlled CREATE canary**
+
+First step is read-only candidate selection. A CREATE write is not approved until the exact transaction and duplicate-prevention evidence are previewed.
 
 ## Required release sequence
 
-`Task 18678 assignment verification`
+`fresh CREATE candidate selection`
+→ `exact CREATE preview / approval`
 → `CREATE canary`
 → `RECREATE canary`
 → `four-vertical regression`
@@ -55,16 +62,16 @@ This is now the first item on the critical path.
 → `first scheduled-cycle verification`
 → `legacy retirement review`
 
-## Current gate
+## Current gate rule
 
 Do not enable broad production writes while V3 remains `SHADOW_READ_ONLY`.
 
-A gate is complete only after the intended result is read back from the authoritative system and fresh reconciliation converges to the expected state.
+A gate is complete only after the intended external result is read back from the authoritative system and fresh reconciliation converges to the expected state.
 
 ## Most recent proof
 
-- V3: `3.11.8-v1-canonical-schedule-r1`
-- GitHub Actions run: `36180539726`
-- Evidence artifact: `10884600388`
-- Evidence: `test-evidence/2026-09-25-tmv3-canonical-pm-schedule-verified.md`
-- Result: PM schedule fallback **VERIFIED**
+- V3: `3.11.9-assignee-title-only-r1`
+- GitHub Actions run: `36183055729`
+- Evidence artifact: `10885545480`
+- Evidence: `test-evidence/2026-09-25-tmv3-title-only-assignee-verified.md`
+- Result: Task `18678` → `NO_CHANGE`
