@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_STEP7_SERVICE_BATCH_60_R1",
+  "release": "TMV3_STEP7_SERVICE_BATCH_72_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
   "runMode": "STEP7_SERVICE",
-  "batchOffset": 60,
+  "batchOffset": 72,
   "batchLimit": 12
 }
