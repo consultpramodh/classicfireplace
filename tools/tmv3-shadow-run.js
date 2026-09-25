@@ -116,6 +116,10 @@ async function getContent() {
   return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/content');
 }
 
+async function getDeployments() {
+  return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/deployments');
+}
+
 async function updateContent(content) {
   return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/content', {
     method: 'PUT',
@@ -656,6 +660,49 @@ async function main() {
     }
   }
   accessToken = await getGoogleAccessToken();
+
+  if (RUN_MODE === 'DEPLOYMENT_INVENTORY') {
+    const inventory = await getDeployments();
+    const deployments = Array.isArray(inventory.deployments)
+      ? inventory.deployments
+      : [];
+
+    const summary = deployments.map(d => ({
+      deploymentId: d.deploymentId || '',
+      versionNumber:
+        d.deploymentConfig && d.deploymentConfig.versionNumber !== undefined
+          ? d.deploymentConfig.versionNumber
+          : null,
+      description:
+        d.deploymentConfig && d.deploymentConfig.description
+          ? d.deploymentConfig.description
+          : '',
+      manifestFileName:
+        d.deploymentConfig && d.deploymentConfig.manifestFileName
+          ? d.deploymentConfig.manifestFileName
+          : '',
+      entryPointTypes: (d.entryPoints || []).map(ep =>
+        ep.webApp ? 'WEB_APP' :
+        ep.executionApi ? 'EXECUTION_API' :
+        ep.addOn ? 'ADD_ON' :
+        'OTHER'
+      )
+    }));
+
+    fs.writeFileSync(
+      path.join(outDir, 'deployment-inventory.json'),
+      JSON.stringify({
+        status:'V3_DEPLOYMENT_INVENTORY_COMPLETE',
+        count:summary.length,
+        deployments:summary,
+        capturedAt:new Date().toISOString()
+      }, null, 2)
+    );
+
+    console.log('V3_DEPLOYMENT_INVENTORY_COMPLETE');
+    console.log(JSON.stringify({count:summary.length, deployments:summary}));
+    return;
+  }
 
   const pre = await getContent();
   const preHash = canonicalHash(pre);
