@@ -376,6 +376,15 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'sheetPublish') {
+      var publishResult = tmv3_publishLatestStep7ToVisibleSheets();
+      return TMPV3_shadowResponse_({
+        ok:publishResult.status === 'STEP7_VISIBLE_SHEETS_SYNCED',
+        status:'SHEET_PUBLISH_COMPLETE',
+        result:publishResult
+      });
+    }
+
     if (body.action === 'step7CreateCandidates') {
       var createScan = tmv3_step7CreateCandidateScan(
         'GITHUB_STEP7_CREATE_CANDIDATE_SCAN',
@@ -970,6 +979,7 @@ async function main() {
       RUN_MODE === 'STEP7_DELIVERY' ||
       RUN_MODE === 'STEP7_SERVICE' ||
       RUN_MODE === 'STEP7_PREINSPECTION' ||
+      RUN_MODE === 'SHEET_PUBLISH' ||
       RUN_MODE === 'STEP7_CREATE_CANDIDATES' ||
       RUN_MODE === 'STEP7_CASES' ||
       RUN_MODE === 'PREVIEW_GOLDCON' ||
@@ -1005,6 +1015,8 @@ async function main() {
                       ? 'step7CanaryPreview'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
+                    : RUN_MODE === 'SHEET_PUBLISH'
+                      ? 'sheetPublish'
                     : RUN_MODE === 'STEP7_CREATE_CANDIDATES'
                       ? 'step7CreateCandidates'
                     : RUN_MODE === 'STEP7_CASES'
