@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_ROCCO_PREVIEW_AFTER_DATE_CONTRACT_R1",
+  "release": "TMV3_ROCCO_CANARY_EXEC_R2",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "SHADOW_READ_ONLY",
-  "writesEnabled": false,
-  "runMode": "PREVIEW_ROCCO",
+  "mode": "CANARY_WRITE",
+  "writesEnabled": true,
+  "runMode": "CANARY_ROCCO",
   "batchOffset": 0,
   "batchLimit": 0
 }
