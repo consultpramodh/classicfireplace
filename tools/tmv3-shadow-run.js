@@ -669,7 +669,10 @@ function TMPV3_shadowResponse_(obj) {
 async function postJson(url, payload) {
   const res = await fetch(url, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{
+      'Content-Type':'application/json',
+      Authorization:'Bearer ' + accessToken
+    },
     body:JSON.stringify(payload),
     redirect:'follow'
   });
@@ -845,9 +848,12 @@ async function main() {
         const headWebApp = (headDeployment.entryPoints || [])
           .map(ep => ep && ep.webApp)
           .filter(Boolean)[0] || {};
+        // HEAD/test web apps execute latest saved code through /dev.
+        // Access remains limited to an editor-authorized caller.
         url =
-          headWebApp.url ||
-          ('https://script.google.com/macros/s/' + deploymentId + '/exec');
+          'https://script.google.com/macros/s/' +
+          deploymentId +
+          '/dev';
       }
     }
 
