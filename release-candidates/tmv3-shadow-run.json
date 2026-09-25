@@ -1,12 +1,9 @@
 {
-  "release": "TMV3_3_11_8_ROCCO_CANONICAL_SCHEDULE_VERIFY_R1",
+  "release": "TMV3_3_11_8_ROCCO_ASSIGNMENT_PREVIEW_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEDULE",
-  "vertical": "Install",
-  "eventId": "6ftlsr2e9fn31hpm6dj05cuthi@google.com",
-  "taskId": 18678,
+  "runMode": "PREVIEW_ROCCO",
   "batchOffset": 0,
   "batchLimit": 0
 }
