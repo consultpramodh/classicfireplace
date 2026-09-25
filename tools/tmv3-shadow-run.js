@@ -160,6 +160,17 @@ async function createDeployment(versionNumber, description) {
   });
 }
 
+async function runScriptFunction(functionName, parameters) {
+  return api('/scripts/' + encodeURIComponent(V3_SCRIPT_ID) + ':run', {
+    method: 'POST',
+    body: JSON.stringify({
+      function: functionName,
+      parameters: parameters || [],
+      devMode: true
+    })
+  });
+}
+
 async function deleteDeployment(deploymentId) {
   if (!deploymentId) return;
   try {
@@ -194,6 +205,9 @@ function buildTemporaryRunner(pre, token) {
     access: 'ANYONE_ANONYMOUS',
     executeAs: 'USER_DEPLOYING'
   };
+  manifest.executionApi = {
+    access: 'MYSELF'
+  };
 
   const files = (pre.files || [])
     .filter(f => f.name !== 'appsscript' && f.name !== 'TMPV3_ShadowRunner')
@@ -210,6 +224,22 @@ function buildTemporaryRunner(pre, token) {
 
   const source = `
 var TMPV3_SHADOW_TOKEN = ${JSON.stringify(token)};
+
+function TMPV3_directStep7Preview(vertical, eventId, taskId, expectedPlan) {
+  var plan = tmv3_step7FreshPlanForTask_(
+    String(vertical || ''),
+    String(eventId || ''),
+    Number(taskId || 0)
+  );
+
+  return {
+    ok:
+      plan.plan === String(expectedPlan || '') &&
+      !tmv3_clean_(plan.blocker),
+    expectedPlan:String(expectedPlan || ''),
+    plan:plan
+  };
+}
 
 function doPost(e) {
   try {
@@ -735,6 +765,69 @@ async function main() {
     }
 
     await updateContent(temp);
+
+    if (RUN_MODE === 'DIRECT_STEP7_PREVIEW') {
+      const direct = await runScriptFunction(
+        'TMPV3_directStep7Preview',
+        [
+          String(RELEASE_MANIFEST.vertical || ''),
+          String(RELEASE_MANIFEST.eventId || ''),
+          Number(RELEASE_MANIFEST.taskId || 0),
+          String(RELEASE_MANIFEST.expectedPlan || '')
+        ]
+      );
+
+      const executionError =
+        direct && direct.error
+          ? direct.error
+          : null;
+      if (executionError) {
+        fail(
+          'Apps Script direct execution failed: ' +
+          JSON.stringify(executionError)
+        );
+      }
+
+      const result =
+        direct &&
+        direct.response &&
+        direct.response.result
+          ? direct.response.result
+          : null;
+
+      if (!result || result.ok !== true) {
+        fs.writeFileSync(
+          path.join(outDir, 'direct-step7-preview.json'),
+          JSON.stringify({status:'FAILED', raw:direct}, null, 2)
+        );
+        fail(
+          'Direct Step 7 preview did not confirm expected plan ' +
+          String(RELEASE_MANIFEST.expectedPlan || '') + '.'
+        );
+      }
+
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail('V3 source restore failed after direct Step 7 preview.');
+      }
+
+      fs.writeFileSync(
+        path.join(outDir, 'evidence.json'),
+        JSON.stringify({
+          status:'V3_DIRECT_STEP7_PREVIEW_VERIFIED',
+          result:result,
+          sourceHeadHashVerified:true,
+          temporaryDeploymentDeleted:false,
+          reusedHeadDeployment:false,
+          verifiedAt:new Date().toISOString()
+        }, null, 2)
+      );
+
+      console.log('V3_DIRECT_STEP7_PREVIEW_VERIFIED');
+      console.log(JSON.stringify(result));
+      return;
+    }
 
     let url = '';
 
