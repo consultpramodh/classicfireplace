@@ -228,6 +228,38 @@ function tmv3_step7ReconciliationBatchRun(
   );
 }
 
+function tmv3_step7FreshPlanForTask_(vertical, eventId, taskId) {
+  const wantedVertical = tmv3_clean_(vertical);
+  const wantedEventId = tmv3_clean_(eventId);
+  const wantedTaskId = String(Number(taskId || 0));
+
+  if (!TMV3.VERTICALS[wantedVertical] || !wantedEventId || wantedTaskId === '0') {
+    throw new Error('Fresh Step 7 plan requires vertical, Event ID, and Task ID.');
+  }
+
+  const step2 = tmv3_step2CalendarRecords_().filter(function(record) {
+    return record.vertical === wantedVertical &&
+      tmv3_clean_(record.eventId) === wantedEventId;
+  });
+  if (step2.length !== 1) {
+    throw new Error('Expected one current Calendar record for the Step 7 plan; found ' + step2.length + '.');
+  }
+
+  const step3 = tmv3_step3BusinessAnchorRecords_(step2, tmv3_step3AnchorIndex_());
+  const step4 = tmv3_step4IdentityRecords_(step3, tmv3_step4IdentityIndex_());
+  const step5 = tmv3_step5TaskRecords_(step4, tmv3_step5TaskIndex_());
+  const step6 = tmv3_step6DecisionRecords_(step5);
+  const runtime = { taskById:{}, contactByKey:{}, organizerByEmail:{} };
+  const plans = tmv3_step7Plans_(step6, runtime).filter(function(plan) {
+    return String(Number(plan.taskId || 0)) === wantedTaskId;
+  });
+
+  if (plans.length !== 1) {
+    throw new Error('Expected one fresh Step 7 plan for Task ' + wantedTaskId + '; found ' + plans.length + '.');
+  }
+  return plans[0];
+}
+
 function tmv3_step7Plans_(records, runtime) {
   const plans = [];
 

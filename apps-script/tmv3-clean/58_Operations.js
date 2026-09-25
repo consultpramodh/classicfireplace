@@ -1587,6 +1587,102 @@ function tmv3_refreshOperatorAfterManual_() {
   }
 }
 
+function tmv3_executeVerifiedStep7ExistingPlan(
+  vertical,
+  eventId,
+  taskId,
+  expectedPlan
+) {
+  tmv3_assertOperationWrite_('MANUAL');
+
+  const wantedVertical = tmv3_clean_(vertical);
+  const wantedEventId = tmv3_clean_(eventId);
+  const wantedTaskId = Number(taskId || 0);
+  const wantedPlan = tmv3_clean_(expectedPlan);
+  const allowed = [
+    'PATCH_DATES',
+    'PATCH_LOCATION',
+    'PATCH_REQUESTED_BY',
+    'PATCH_ASSIGNMENTS'
+  ];
+
+  if (!wantedTaskId || !wantedPlan || wantedPlan.indexOf('PATCH_') !== 0) {
+    throw new Error('Canary executor requires an exact Task ID and PATCH plan.');
+  }
+  if (!allowed.some(function(prefix) { return wantedPlan.indexOf(prefix) !== -1; })) {
+    throw new Error('Unsupported Step 7 mutation plan: ' + wantedPlan + '.');
+  }
+
+  const plan = tmv3_step7FreshPlanForTask_(
+    wantedVertical,
+    wantedEventId,
+    wantedTaskId
+  );
+  if (plan.plan !== wantedPlan) {
+    throw new Error('Fresh Step 7 plan changed from ' + wantedPlan + ' to ' + plan.plan + '.');
+  }
+  if (tmv3_clean_(plan.blocker)) {
+    throw new Error('Step 7 plan is blocked: ' + plan.blocker);
+  }
+  if (tmv3_norm_(plan.taskStatus) !== 'open' || plan.readStatus !== 'FRESH_TASK_GET') {
+    throw new Error('Step 7 Task is not a fresh-read open Task.');
+  }
+  if (plan.customerCheck !== 'MATCH' || plan.orderCheck === 'MISMATCH' || plan.locationCheck === 'MISMATCH') {
+    throw new Error('Step 7 relationship safety check failed.');
+  }
+
+  const eventRecord = tmv3_findFreshEventRecord_(wantedVertical, wantedEventId);
+  const refs = tmv3_referenceIndex_();
+  const state = tmv3_eventStateIndex_();
+  const records = tmv3_resolveEventRecords_(eventRecord, refs, state);
+  const matches = records.filter(function(record) {
+    return Number(record.taskId || 0) === wantedTaskId;
+  });
+  if (matches.length !== 1) {
+    throw new Error('Fresh resolver did not return exactly one matching Task row.');
+  }
+
+  const bundle = {
+    context:null,
+    eventRecord:eventRecord,
+    refs:refs,
+    state:state,
+    records:records,
+    resolved:matches[0]
+  };
+  const result = {
+    status:'CANARY_EXECUTED',
+    vertical:wantedVertical,
+    eventId:wantedEventId,
+    taskId:wantedTaskId,
+    plan:wantedPlan,
+    relationships:null,
+    dates:null,
+    assignments:null,
+    calendarLinks:null
+  };
+
+  if (/LOCATION|REQUESTED_BY/.test(wantedPlan)) {
+    result.relationships = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'RELATIONSHIPS');
+  }
+  if (/DATES/.test(wantedPlan)) {
+    result.dates = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'DATES');
+  }
+  if (/ASSIGNMENTS/.test(wantedPlan)) {
+    result.assignments = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'ASSIGNEE');
+  }
+  result.calendarLinks = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'LINKS');
+
+  const after = tmv3_step7FreshPlanForTask_(wantedVertical, wantedEventId, wantedTaskId);
+  if (after.plan !== 'NO_CHANGE' || tmv3_clean_(after.blocker)) {
+    throw new Error('Canary read-back did not converge to NO_CHANGE; fresh plan is ' + after.plan + '.');
+  }
+  result.status = 'CANARY_VERIFIED_NO_CHANGE';
+  result.readbackPlan = after;
+  tmv3_audit_(wantedVertical, wantedEventId, wantedTaskId, 'STEP7_CANARY', 'PASS', wantedPlan);
+  return result;
+}
+
 function tmv3_previewSelectedAction() {
   const bundle = tmv3_freshSelectedResolution_();
   const preview = tmv3_previewTaskMutation_(bundle.eventRecord, bundle.resolved, bundle.refs);
