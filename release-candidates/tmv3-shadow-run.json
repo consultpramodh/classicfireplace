@@ -1,11 +1,11 @@
 {
-  "release": "TMV3_3_11_12_FRESH_STEP7_ALL_R1",
+  "release": "TMV3_3_11_12_HEAD_EXEC_TRANSPORT_TEST_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_REFRESH_ALL",
+  "runMode": "SHEET_PUBLISH",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
-  "forceVersionedDeployment": true
+  "forceVersionedDeployment": false
 }
