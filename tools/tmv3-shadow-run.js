@@ -593,6 +593,120 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7AssignmentCanary') {
+      var assignVertical = String(body.vertical || '');
+      var assignEventId = String(body.eventId || '');
+      var assignTaskId = Number(body.taskId || 0);
+      var assignExpectedPlan = String(body.expectedPlan || '');
+
+      if (assignExpectedPlan !== 'PATCH_ASSIGNMENTS') {
+        throw new Error('Assignment canary requires PATCH_ASSIGNMENTS.');
+      }
+
+      var assignPlan = tmv3_step7FreshPlanForTask_(
+        assignVertical,
+        assignEventId,
+        assignTaskId
+      );
+
+      if (assignPlan.plan !== assignExpectedPlan) {
+        throw new Error(
+          'Fresh assignment plan changed from ' +
+          assignExpectedPlan +
+          ' to ' +
+          assignPlan.plan +
+          '.'
+        );
+      }
+      if (tmv3_clean_(assignPlan.blocker)) {
+        throw new Error('Assignment canary blocked: ' + assignPlan.blocker);
+      }
+      if (
+        tmv3_norm_(assignPlan.taskStatus) !== 'open' ||
+        assignPlan.readStatus !== 'FRESH_TASK_GET'
+      ) {
+        throw new Error('Assignment canary requires a fresh-read open Task.');
+      }
+      if (
+        assignPlan.customerCheck !== 'MATCH' ||
+        assignPlan.orderCheck === 'MISMATCH' ||
+        assignPlan.locationCheck === 'MISMATCH'
+      ) {
+        throw new Error('Assignment canary relationship safety check failed.');
+      }
+
+      var assignEvent = tmv3_findFreshEventRecord_(
+        assignVertical,
+        assignEventId
+      );
+      var assignRefs = tmv3_referenceIndex_();
+      var assignState = tmv3_eventStateIndex_();
+      var assignRecords = tmv3_resolveEventRecords_(
+        assignEvent,
+        assignRefs,
+        assignState
+      );
+      var assignMatches = assignRecords.filter(function(record) {
+        return Number(record.taskId || 0) === assignTaskId;
+      });
+
+      if (assignMatches.length !== 1) {
+        throw new Error(
+          'Assignment canary resolver expected one Task row; found ' +
+          assignMatches.length +
+          '.'
+        );
+      }
+
+      var assignBundle = {
+        context:null,
+        eventRecord:assignEvent,
+        refs:assignRefs,
+        state:assignState,
+        records:assignRecords,
+        resolved:assignMatches[0]
+      };
+
+      var assignmentResult = tmv3_executeExistingTaskSync_(
+        assignBundle,
+        'MANUAL',
+        'ASSIGNEE'
+      );
+
+      var assignAfter = tmv3_step7FreshPlanForTask_(
+        assignVertical,
+        assignEventId,
+        assignTaskId
+      );
+
+      if (
+        assignAfter.plan !== 'NO_CHANGE' ||
+        tmv3_clean_(assignAfter.blocker)
+      ) {
+        throw new Error(
+          'Assignment canary read-back did not converge to NO_CHANGE; fresh plan is ' +
+          assignAfter.plan +
+          '.'
+        );
+      }
+
+      tmv3_audit_(
+        assignVertical,
+        assignEventId,
+        assignTaskId,
+        'STEP7_ASSIGNMENT_CANARY',
+        'PASS',
+        assignExpectedPlan
+      );
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'STEP7_ASSIGNMENT_CANARY_COMPLETE',
+        assignment:assignmentResult,
+        readbackPlan:assignAfter
+      });
+    }
+
     if (body.action === 'step7Canary') {
       var canary = tmv3_executeVerifiedStep7ExistingPlan(
         String(body.vertical || ''),
@@ -1041,7 +1155,10 @@ async function main() {
     // which can hit Apps Script resource/rate limits. Canary writes continue
     // to require the isolated versioned-deployment path.
     if (
-      RUN_MODE.indexOf('CANARY_') !== 0 &&
+      (
+        RUN_MODE.indexOf('CANARY_') !== 0 ||
+        RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+      ) &&
       RELEASE_MANIFEST.forceVersionedDeployment !== true
     ) {
       const inventory = await getDeployments();
@@ -1212,6 +1329,7 @@ async function main() {
       RUN_MODE === 'CANARY_GOLDCON' ||
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'CANARY_STEP7' ||
+      RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
       RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
@@ -1239,6 +1357,8 @@ async function main() {
                     ? 'step6Decision'
                     : RUN_MODE.indexOf('PREVIEW_') === 0
                       ? 'step7CanaryPreview'
+                    : RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+                      ? 'step7AssignmentCanary'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
                     : RUN_MODE === 'SHEET_PUBLISH'
@@ -1264,7 +1384,11 @@ async function main() {
         action,
         vertical:
           RUN_MODE === 'TASK_SCHEDULE' ? String(RELEASE_MANIFEST.vertical || '') :
-          (RUN_MODE === 'CANARY_STEP7' || RUN_MODE === 'PREVIEW_STEP7')
+          (
+            RUN_MODE === 'CANARY_STEP7' ||
+            RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+          )
             ? String(RELEASE_MANIFEST.vertical || '')
           : (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
           RUN_MODE === 'STEP7_INSTALL' ? 'Install' :
@@ -1280,7 +1404,12 @@ async function main() {
             ? (RELEASE_MANIFEST.assignmentCases || [])
             : []
         ,eventId:
-          (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'CANARY_STEP7' || RUN_MODE === 'PREVIEW_STEP7')
+          (
+            RUN_MODE === 'TASK_SCHEDULE' ||
+            RUN_MODE === 'CANARY_STEP7' ||
+            RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+          )
             ? String(RELEASE_MANIFEST.eventId || '')
             : (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
             ? '3lqqeba2r17067sjrm558kjmd1@google.com'
@@ -1288,7 +1417,12 @@ async function main() {
               ? '6ftlsr2e9fn31hpm6dj05cuthi@google.com'
               : '',
         taskId:
-          (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'CANARY_STEP7' || RUN_MODE === 'PREVIEW_STEP7')
+          (
+            RUN_MODE === 'TASK_SCHEDULE' ||
+            RUN_MODE === 'CANARY_STEP7' ||
+            RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+          )
             ? Number(RELEASE_MANIFEST.taskId || 0) :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
@@ -1301,7 +1435,8 @@ async function main() {
             RUN_MODE === 'PREVIEW_ROCCO' ||
             RUN_MODE === 'CANARY_ROCCO' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
-            RUN_MODE === 'CANARY_STEP7'
+            RUN_MODE === 'CANARY_STEP7' ||
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
           )
             ? String(RELEASE_MANIFEST.expectedPlan || 'NO_CHANGE')
             : ''
