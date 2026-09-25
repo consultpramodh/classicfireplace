@@ -20,8 +20,8 @@ function tmv3_buildTaskPatchPayload_(eventRecord, resolved, currentTask) {
   const cfg = TMV3.VERTICALS[eventRecord.vertical];
   const payload = {
     Id: Number(currentTask['Task ID']),
-    StartDateTime: tmv3_iso_(eventRecord.start),
-    DueDateTime: tmv3_iso_(eventRecord.end)
+    StartDateTime: tmv3_strivenTaskDateTime_(eventRecord.start),
+    DueDateTime: tmv3_strivenTaskDateTime_(eventRecord.end)
   };
 
   const locationId = Number(resolved.locationId || 0);
@@ -278,8 +278,8 @@ function tmv3_previewTaskMutation_(eventRecord, resolved, refs) {
         technicianFields: 'DO_NOT_PREFILL'
       },
       event: {
-        startDateTime: tmv3_iso_(eventRecord.start),
-        dueDateTime: tmv3_iso_(eventRecord.end)
+        startDateTime: tmv3_strivenTaskDateTime_(eventRecord.start),
+        dueDateTime: tmv3_strivenTaskDateTime_(eventRecord.end)
       },
       customerId: Number(resolved.customerId),
       locationId: Number(resolved.locationId),

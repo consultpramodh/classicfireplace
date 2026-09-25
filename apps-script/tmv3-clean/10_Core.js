@@ -41,6 +41,17 @@ function tmv3_iso_(date) {
   return Utilities.formatDate(date, 'America/Toronto', "yyyy-MM-dd'T'HH:mm:ssXXX");
 }
 
+// External Striven Task date write contract.
+// Striven's Task PATCH/POST parser requires an explicit 12-hour clock marker;
+// V3 keeps ISO internally and converts only at the API boundary.
+function tmv3_strivenTaskDateTime_(value) {
+  const date = tmv3_parseDateTime_(value);
+  if (!date) {
+    throw new Error('Invalid Striven Task date/time value: ' + tmv3_clean_(value));
+  }
+  return Utilities.formatDate(date, TMV3_TIMEZONE, 'MM/dd/yyyy hh:mm:ss a');
+}
+
 function tmv3_parseDateTime_(value) {
   if (!value) return null;
   if (value instanceof Date) {

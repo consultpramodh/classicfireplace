@@ -581,8 +581,8 @@ function tmv3_assertResolvedOwnership_(bundle) {
 function tmv3_selectedDatePayload_(bundle) {
   return {
     Id: Number(bundle.resolved.taskId),
-    StartDateTime: tmv3_iso_(bundle.eventRecord.start),
-    DueDateTime: tmv3_iso_(bundle.eventRecord.end)
+    StartDateTime: tmv3_strivenTaskDateTime_(bundle.eventRecord.start),
+    DueDateTime: tmv3_strivenTaskDateTime_(bundle.eventRecord.end)
   };
 }
 
@@ -1383,8 +1383,8 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope) {
   const action = status === 'READY RECREATE' ? 'RECREATE' : 'CREATE';
   const source = tmv3_buildCreateSource_(bundle, action);
   const request = {
-    startDateTime: tmv3_iso_(bundle.eventRecord.start),
-    dueDateTime: tmv3_iso_(bundle.eventRecord.end),
+    startDateTime: tmv3_strivenTaskDateTime_(bundle.eventRecord.start),
+    dueDateTime: tmv3_strivenTaskDateTime_(bundle.eventRecord.end),
     calendarNotes:
       bundle.eventRecord.vertical === 'PreInspection'
         ? null
