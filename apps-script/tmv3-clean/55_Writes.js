@@ -20,8 +20,8 @@ function tmv3_buildTaskPatchPayload_(eventRecord, resolved, currentTask) {
   const cfg = TMV3.VERTICALS[eventRecord.vertical];
   const payload = {
     Id: Number(currentTask['Task ID']),
-    startDateTime: tmv3_iso_(eventRecord.start),
-    dueDateTime: tmv3_iso_(eventRecord.end)
+    StartDateTime: tmv3_iso_(eventRecord.start),
+    DueDateTime: tmv3_iso_(eventRecord.end)
   };
 
   const locationId = Number(resolved.locationId || 0);
@@ -107,8 +107,6 @@ function tmv3_safeTaskPatchPayload_(payload, taskId) {
     Id: true,
     StartDateTime: true,
     DueDateTime: true,
-    startDateTime: true,
-    dueDateTime: true,
     SalesOrder: true,
     Location: true,
     RequestedBy: true,
@@ -116,14 +114,32 @@ function tmv3_safeTaskPatchPayload_(payload, taskId) {
     Description: true
   };
 
+  // Striven's Task PATCH contract uses PascalCase date fields.
+  // Normalize any internal lower-camel aliases before the external write.
+  const normalized = Object.assign({}, payload || {});
+  if (
+    normalized.startDateTime !== undefined &&
+    normalized.StartDateTime === undefined
+  ) {
+    normalized.StartDateTime = normalized.startDateTime;
+  }
+  if (
+    normalized.dueDateTime !== undefined &&
+    normalized.DueDateTime === undefined
+  ) {
+    normalized.DueDateTime = normalized.dueDateTime;
+  }
+  delete normalized.startDateTime;
+  delete normalized.dueDateTime;
+
   const safe = { Id: Number(taskId) };
 
-  Object.keys(payload || {}).forEach(function(key) {
+  Object.keys(normalized).forEach(function(key) {
     if (!allowed[key]) {
       throw new Error('Blocked unknown Task PATCH field: ' + key);
     }
     if (key === 'Id') return;
-    const value = payload[key];
+    const value = normalized[key];
     if (value === undefined || value === null || value === '') return;
     safe[key] = value;
   });
