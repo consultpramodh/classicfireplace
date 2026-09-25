@@ -399,6 +399,33 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'assignmentParityCases') {
+      var assignmentCases = (body.cases || []).map(function(testCase) {
+        var plan = tmv3_step7FreshPlanForTask_(
+          String(testCase.vertical || ''),
+          String(testCase.eventId || ''),
+          Number(testCase.taskId || 0)
+        );
+        return {
+          vertical:String(testCase.vertical || ''),
+          eventId:String(testCase.eventId || ''),
+          taskId:Number(testCase.taskId || 0),
+          desiredAssignment:String(plan.desiredAssignment || ''),
+          actualAssignment:String(plan.actualAssignment || ''),
+          assignmentCheck:String(plan.assignmentCheck || ''),
+          plan:String(plan.plan || ''),
+          blocker:String(plan.blocker || ''),
+          engineVersion:String(plan.engineVersion || '')
+        };
+      });
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'ASSIGNMENT_PARITY_CASES_COMPLETE',
+        cases:assignmentCases
+      });
+    }
+
     if (body.action === 'step7Cases') {
       var wanted = {};
       (body.taskIds || []).forEach(function(id) {
@@ -1072,6 +1099,7 @@ async function main() {
       RUN_MODE === 'STEP7_PREINSPECTION' ||
       RUN_MODE === 'SHEET_PUBLISH' ||
       RUN_MODE === 'STEP7_CREATE_CANDIDATES' ||
+      RUN_MODE === 'ASSIGNMENT_CASES' ||
       RUN_MODE === 'STEP7_CASES' ||
       RUN_MODE === 'PREVIEW_GOLDCON' ||
       RUN_MODE === 'PREVIEW_ROCCO' ||
@@ -1110,6 +1138,8 @@ async function main() {
                       ? 'sheetPublish'
                     : RUN_MODE === 'STEP7_CREATE_CANDIDATES'
                       ? 'step7CreateCandidates'
+                    : RUN_MODE === 'ASSIGNMENT_CASES'
+                      ? 'assignmentParityCases'
                     : RUN_MODE === 'STEP7_CASES'
                       ? 'step7Cases'
                       : RUN_MODE.indexOf('STEP7') === 0
@@ -1135,7 +1165,11 @@ async function main() {
         batchOffset: BATCH_OFFSET,
         batchLimit: BATCH_LIMIT,
         refreshSources: RELEASE_MANIFEST.refreshSources === true,
-        taskIds: RUN_MODE === 'STEP7_CASES' ? [17881,18618,18678,18597] : []
+        taskIds: RUN_MODE === 'STEP7_CASES' ? [17881,18618,18678,18597] : [],
+        cases:
+          RUN_MODE === 'ASSIGNMENT_CASES'
+            ? (RELEASE_MANIFEST.assignmentCases || [])
+            : []
         ,eventId:
           RUN_MODE === 'TASK_SCHEDULE'
             ? String(RELEASE_MANIFEST.eventId || '')
@@ -1224,6 +1258,7 @@ async function main() {
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
             RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
             RUN_MODE === 'TASK_SCHEDULE' ||
+            RUN_MODE === 'ASSIGNMENT_CASES' ||
             RUN_MODE === 'STEP7_CASES' ||
             RUN_MODE.indexOf('PREVIEW_') === 0
               ? step1
@@ -1259,6 +1294,8 @@ async function main() {
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
                       : RUN_MODE.indexOf('CANARY_') === 0
                         ? 'V3_' + RUN_MODE + '_VERIFIED'
+                      : RUN_MODE === 'ASSIGNMENT_CASES'
+                        ? 'V3_ASSIGNMENT_CASES_VERIFIED'
                       : RUN_MODE === 'STEP7_CASES'
                         ? 'V3_STEP7_CASES_VERIFIED'
                         : RUN_MODE.indexOf('STEP7_') === 0
