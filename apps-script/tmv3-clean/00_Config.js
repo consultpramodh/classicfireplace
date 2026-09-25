@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.15-assignment-feature-parity-r2';
+const TMV3_VERSION = '3.11.16-daily-api-budget-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -20,6 +20,12 @@ const TMV3 = Object.freeze({
     automationWritesEnabled: false,
     autoMaxWritesPerRun: 10,
     installRemindersEnabled: true
+  }),
+  API_BUDGET: Object.freeze({
+    planDailyLimit: 5000,
+    v3DailySoftLimit: 1200,
+    reserveForOtherWorkflows: 3800,
+    propertyPrefix: 'TMV3_STRIVEN_API_BUDGET'
   }),
   SHEETS: Object.freeze({
     MORNING: 'Morning Ops',

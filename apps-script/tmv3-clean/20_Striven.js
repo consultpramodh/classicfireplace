@@ -1,20 +1,145 @@
 var TMV3_RUNTIME_METRICS = {
   strivenApiCalls: 0,
-  strivenApiFailures: 0
+  strivenApiFailures: 0,
+  strivenApiBudgetBlocks: 0
 };
 
 function tmv3_resetRuntimeMetrics_() {
   TMV3_RUNTIME_METRICS = {
     strivenApiCalls: 0,
-    strivenApiFailures: 0
+    strivenApiFailures: 0,
+    strivenApiBudgetBlocks: 0
   };
 }
 
 function tmv3_runtimeMetrics_() {
   return {
     strivenApiCalls: Number(TMV3_RUNTIME_METRICS.strivenApiCalls || 0),
-    strivenApiFailures: Number(TMV3_RUNTIME_METRICS.strivenApiFailures || 0)
+    strivenApiFailures: Number(TMV3_RUNTIME_METRICS.strivenApiFailures || 0),
+    strivenApiBudgetBlocks: Number(TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks || 0),
+    dailyBudget: tmv3_strivenApiBudgetStatus_()
   };
+}
+
+function tmv3_strivenApiBudgetConfig_() {
+  return TMV3.API_BUDGET || {
+    planDailyLimit: 5000,
+    v3DailySoftLimit: 1200,
+    reserveForOtherWorkflows: 3800,
+    propertyPrefix: 'TMV3_STRIVEN_API_BUDGET'
+  };
+}
+
+function tmv3_strivenApiBudgetDate_() {
+  return Utilities.formatDate(
+    new Date(),
+    TMV3_TIMEZONE || Session.getScriptTimeZone() || 'America/Toronto',
+    'yyyy-MM-dd'
+  );
+}
+
+function tmv3_strivenApiBudgetKeys_() {
+  const prefix = String(
+    tmv3_strivenApiBudgetConfig_().propertyPrefix ||
+    'TMV3_STRIVEN_API_BUDGET'
+  );
+
+  return {
+    date: prefix + '_DATE',
+    count: prefix + '_COUNT',
+    exhaustedDate: prefix + '_EXHAUSTED_DATE',
+    exhaustedReason: prefix + '_EXHAUSTED_REASON'
+  };
+}
+
+function tmv3_strivenApiBudgetStatus_() {
+  const cfg = tmv3_strivenApiBudgetConfig_();
+  const keys = tmv3_strivenApiBudgetKeys_();
+  const props = PropertiesService.getScriptProperties();
+  const today = tmv3_strivenApiBudgetDate_();
+  const storedDate = String(props.getProperty(keys.date) || '');
+  const count = storedDate === today
+    ? Number(props.getProperty(keys.count) || 0)
+    : 0;
+  const exhausted =
+    String(props.getProperty(keys.exhaustedDate) || '') === today;
+  const softLimit = Number(cfg.v3DailySoftLimit || 1200);
+
+  return {
+    date: today,
+    count: count,
+    softLimit: softLimit,
+    remaining: Math.max(0, softLimit - count),
+    planDailyLimit: Number(cfg.planDailyLimit || 5000),
+    reserveForOtherWorkflows: Number(cfg.reserveForOtherWorkflows || 0),
+    exhausted: exhausted,
+    exhaustedReason: exhausted
+      ? String(props.getProperty(keys.exhaustedReason) || '')
+      : ''
+  };
+}
+
+function tmv3_reserveStrivenApiCall_(label) {
+  const cfg = tmv3_strivenApiBudgetConfig_();
+  const keys = tmv3_strivenApiBudgetKeys_();
+  const props = PropertiesService.getScriptProperties();
+  const status = tmv3_strivenApiBudgetStatus_();
+
+  if (status.exhausted || status.count >= status.softLimit) {
+    TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks =
+      Number(TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks || 0) + 1;
+
+    throw new Error(
+      'TMV3_STRIVEN_API_DAILY_GUARD: blocked ' +
+      String(label || 'Striven API call') +
+      '. V3 daily usage=' + status.count +
+      '/' + status.softLimit +
+      '; reserved for other workflows=' +
+      Number(cfg.reserveForOtherWorkflows || 0) +
+      (status.exhaustedReason
+        ? '; Striven reported: ' + status.exhaustedReason
+        : '')
+    );
+  }
+
+  const nextCount = status.count + 1;
+  const values = {};
+  values[keys.date] = status.date;
+  values[keys.count] = String(nextCount);
+  props.setProperties(values, false);
+
+  return {
+    date: status.date,
+    count: nextCount,
+    softLimit: status.softLimit
+  };
+}
+
+function tmv3_markStrivenDailyLimitExhausted_(reason) {
+  const keys = tmv3_strivenApiBudgetKeys_();
+  const props = PropertiesService.getScriptProperties();
+  const values = {};
+  values[keys.exhaustedDate] = tmv3_strivenApiBudgetDate_();
+  values[keys.exhaustedReason] = String(reason || '').slice(0, 500);
+  props.setProperties(values, false);
+}
+
+function tmv3_isStrivenDailyLimitResponse_(code, text) {
+  const body = String(text || '').toLowerCase();
+  return (
+    Number(code) === 429 &&
+    (
+      body.indexOf('daily api usage limit') !== -1 ||
+      body.indexOf('5000 api calls per day') !== -1
+    )
+  );
+}
+
+// Public diagnostic. Does not call Striven.
+function tmv3_strivenApiBudgetStatus() {
+  const status = tmv3_strivenApiBudgetStatus_();
+  Logger.log(JSON.stringify(status, null, 2));
+  return status;
 }
 
 function tmv3_token_() {
@@ -24,6 +149,8 @@ function tmv3_token_() {
 
   const clientId = tmv3_property_(TMV3.PROPERTIES.CLIENT_ID, true);
   const clientSecret = tmv3_property_(TMV3.PROPERTIES.CLIENT_SECRET, true);
+
+  tmv3_reserveStrivenApiCall_('TOKEN_REFRESH');
 
   const response = UrlFetchApp.fetch(TMV3.API_BASE + '/accesstoken', {
     method: 'post',
@@ -42,7 +169,17 @@ function tmv3_token_() {
     TMV3_RUNTIME_METRICS.strivenApiFailures =
       Number(TMV3_RUNTIME_METRICS.strivenApiFailures || 0) + 1;
 
-    throw new Error('Striven authentication failed HTTP ' + code + '.');
+    const tokenErrorText = response.getContentText() || '';
+    if (tmv3_isStrivenDailyLimitResponse_(code, tokenErrorText)) {
+      tmv3_markStrivenDailyLimitExhausted_(tokenErrorText);
+    }
+
+    throw new Error(
+      'Striven authentication failed HTTP ' +
+      code +
+      ': ' +
+      tokenErrorText.slice(0, 600)
+    );
   }
 
   const body = JSON.parse(response.getContentText() || '{}');
@@ -62,15 +199,19 @@ function tmv3_token_() {
 }
 
 function tmv3_fetchJson_(url, options) {
-  TMV3_RUNTIME_METRICS.strivenApiCalls =
-    Number(TMV3_RUNTIME_METRICS.strivenApiCalls || 0) + 1;
-
   const opts = options || {};
   opts.muteHttpExceptions = true;
   opts.headers = Object.assign({
     Authorization: 'Bearer ' + tmv3_token_(),
     Accept: 'application/json'
   }, opts.headers || {});
+
+  tmv3_reserveStrivenApiCall_(
+    String(opts.method || 'get').toUpperCase() + ' ' + String(url || '')
+  );
+
+  TMV3_RUNTIME_METRICS.strivenApiCalls =
+    Number(TMV3_RUNTIME_METRICS.strivenApiCalls || 0) + 1;
 
   const response = UrlFetchApp.fetch(url, opts);
   const code = response.getResponseCode();
@@ -82,6 +223,13 @@ function tmv3_fetchJson_(url, options) {
   } catch (err) {}
 
   if (code < 200 || code >= 300) {
+    TMV3_RUNTIME_METRICS.strivenApiFailures =
+      Number(TMV3_RUNTIME_METRICS.strivenApiFailures || 0) + 1;
+
+    if (tmv3_isStrivenDailyLimitResponse_(code, text)) {
+      tmv3_markStrivenDailyLimitExhausted_(text);
+    }
+
     throw new Error(
       'Striven request failed HTTP ' +
       code +
