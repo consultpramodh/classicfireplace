@@ -14,9 +14,39 @@
 function tmv3_refreshMorningOps() {
   const sh = tmv3_sheet_(TMV3.SHEETS.MORNING);
   const verticals = ['Install','Delivery','Service','PreInspection'];
-  const todayKey = Utilities.formatDate(new Date(), TMV3_TIMEZONE, 'yyyy-MM-dd');
-  const allRows = [];
+  const today = new Date();
+  const todayKey = Utilities.formatDate(today, TMV3_TIMEZONE, 'yyyy-MM-dd');
+  const scheduleByTime = {};
+  const attentionRows = [];
   const summaries = [];
+  let totalAppointments = 0;
+  let totalMapped = 0;
+  let totalAttention = 0;
+  let totalNoTask = 0;
+
+  function customerName_(row) {
+    const calendarCustomer = tmv3_clean_(row['Calendar Customer']);
+    const nameMatch = calendarCustomer.match(/(?:^|\n)Name:\s*([^\n]+)/i);
+    return (
+      (nameMatch && tmv3_clean_(nameMatch[1])) ||
+      tmv3_clean_(row['Calendar Event']).split('\n')[0] ||
+      '(unnamed event)'
+    );
+  }
+
+  function taskLabel_(row) {
+    const taskText = tmv3_clean_(row['Task']);
+    const taskMatch = taskText.match(/Task\s*#?\s*(\d+)/i);
+    if (taskMatch) return '#' + taskMatch[1];
+    if (!taskText || /^NOT RUN/i.test(taskText)) return 'NO TASK';
+    return taskText.split('\n')[0];
+  }
+
+  function rowNeedsAttention_(row) {
+    const mapping = tmv3_clean_(row['Mapping Status']).toUpperCase();
+    const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
+    return /NOT_RUN|REVIEW|BLOCKED/.test(mapping) || /CREATE REQUIRED/i.test(evidence);
+  }
 
   verticals.forEach(function(vertical) {
     const rows = tmv3_rows_(TMV3.VERTICALS[vertical].sheet).filter(function(row) {
@@ -24,189 +54,238 @@ function tmv3_refreshMorningOps() {
       return d && Utilities.formatDate(d, TMV3_TIMEZONE, 'yyyy-MM-dd') === todayKey;
     });
 
-    const eventIds = {};
+    const unique = {};
     let mapped = 0;
     let attention = 0;
 
     rows.forEach(function(row) {
       const eventId = tmv3_clean_(row['Event ID']);
-      if (eventId) eventIds[eventId] = true;
+      if (eventId && unique[eventId]) return;
+      if (eventId) unique[eventId] = true;
 
-      const mapping = tmv3_clean_(row['Mapping Status']).toUpperCase();
-      const task = tmv3_clean_(row['Task']);
-      const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
-      const needsAttention =
-        /NOT_RUN|REVIEW|BLOCKED/.test(mapping) ||
-        /CREATE REQUIRED/i.test(evidence);
+      const start = tmv3_parseDateTime_(row['Calendar Start']);
+      const timeKey = start ? Utilities.formatDate(start, TMV3_TIMEZONE, 'HH:mm') : '99:99';
+      const timeLabel = start ? Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') : 'Unscheduled';
+      const customer = customerName_(row);
+      const task = taskLabel_(row);
+      const needsAttention = rowNeedsAttention_(row);
+      const hasTask = task !== 'NO TASK';
 
-      if (task && !/^NOT RUN/i.test(task)) mapped++;
-      if (needsAttention) attention++;
+      if (!scheduleByTime[timeKey]) {
+        scheduleByTime[timeKey] = {
+          label: timeLabel,
+          Install: [],
+          Delivery: [],
+          Service: [],
+          PreInspection: [],
+          flags: []
+        };
+      }
 
-      allRows.push({
-        vertical: vertical,
-        row: row,
-        needsAttention: needsAttention
-      });
+      scheduleByTime[timeKey][vertical].push(
+        customer + (task ? '\n' + task : '')
+      );
+
+      if (needsAttention) {
+        scheduleByTime[timeKey].flags.push('ATTENTION');
+        attention++;
+
+        const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
+        const issue = tmv3_clean_(row['Issue / Next Action']);
+        const locationReview = /CREATE REQUIRED/i.test(evidence);
+
+        attentionRows.push([
+          locationReview ? 'CHECK' : 'ATTENTION',
+          timeLabel,
+          vertical,
+          customer,
+          locationReview
+            ? 'Customer-owned Location unresolved'
+            : (issue || 'Appointment requires attention'),
+          locationReview
+            ? 'Verify Location before any relationship write'
+            : (issue || 'Review appointment'),
+          eventId
+        ]);
+      }
+
+      if (hasTask) mapped++;
+      else totalNoTask++;
     });
+
+    const appointments = Object.keys(unique).length;
+    totalAppointments += appointments;
+    totalMapped += mapped;
+    totalAttention += attention;
 
     summaries.push({
       vertical: vertical,
-      appointments: Object.keys(eventIds).length,
+      appointments: appointments,
       mapped: mapped,
       attention: attention
     });
   });
 
-  allRows.sort(function(a,b) {
-    const ad = tmv3_parseDateTime_(a.row['Calendar Start']);
-    const bd = tmv3_parseDateTime_(b.row['Calendar Start']);
-    return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
-  });
-
   const values = [];
-  values.push(['MORNING OPS — TODAY']);
+  values.push(['MORNING OPS — TODAY','','','','','']);
   values.push([
-    Utilities.formatDate(new Date(), TMV3_TIMEZONE, 'EEEE, MMMM d, yyyy') +
-    ' · ' + TMV3.MODE
+    Utilities.formatDate(today, TMV3_TIMEZONE, 'EEEE, MMMM d, yyyy'),
+    '','','','',TMV3.MODE
   ]);
   values.push([]);
-  values.push(["TODAY'S WORKFLOW"]);
-  values.push(['Vertical','Appointments','Task mapped','Needs attention']);
-
-  summaries.forEach(function(s) {
-    values.push([s.vertical,s.appointments,s.mapped,s.attention]);
-  });
-
+  values.push(['TODAY',totalAppointments,'MAPPED',totalMapped,'ATTENTION',totalAttention]);
+  values.push(['NO TASK',totalNoTask,'INSTALL',(summaries[0] || {}).appointments || 0,'DELIVERY',(summaries[1] || {}).appointments || 0]);
+  values.push(['SERVICE',(summaries[2] || {}).appointments || 0,'PREINSPECTION',(summaries[3] || {}).appointments || 0,'','']);
   values.push([]);
-  values.push(["TODAY'S APPOINTMENTS"]);
-  values.push([
-    'Time','Vertical','Customer / Event','Task','Status',
-    'Attention / Next Action','Event ID'
-  ]);
+  values.push(["TODAY'S SCHEDULE",'','','','','']);
+  values.push(['Time','Install','Delivery','Service','PreInspection','Flag']);
 
-  allRows.forEach(function(item) {
-    const row = item.row;
-    const start = tmv3_parseDateTime_(row['Calendar Start']);
-    const calendarCustomer = tmv3_clean_(row['Calendar Customer']);
-    const nameMatch = calendarCustomer.match(/(?:^|\n)Name:\s*([^\n]+)/i);
-    const customer =
-      (nameMatch && tmv3_clean_(nameMatch[1])) ||
-      tmv3_clean_(row['Calendar Event']).split('\n')[0] ||
-      '(unnamed event)';
-
-    const taskText = tmv3_clean_(row['Task']);
-    const taskMatch = taskText.match(/Task\s*#?\s*(\d+)/i);
-    const taskLabel = taskMatch
-      ? 'Task #' + taskMatch[1]
-      : (/^NOT RUN/i.test(taskText) || !taskText ? 'No task' : taskText.split('\n')[0]);
-
-    const mapping = tmv3_clean_(row['Mapping Status']).replace(/^STEP\s*6\s*[—-]\s*/i,'');
-    const taskStatus = tmv3_clean_(row['Task Status']);
-    const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
-    const issue = tmv3_clean_(row['Issue / Next Action']);
-
-    let attention = 'None';
-    if (/CREATE REQUIRED/i.test(evidence)) {
-      attention = 'Review customer-owned location evidence';
-    } else if (/NOT_RUN|REVIEW|BLOCKED/i.test(mapping)) {
-      attention = issue || mapping;
-    }
-
+  Object.keys(scheduleByTime).sort().forEach(function(timeKey) {
+    const slot = scheduleByTime[timeKey];
     values.push([
-      start ? Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') : '',
-      item.vertical,
-      customer,
-      taskLabel,
-      [taskStatus,mapping].filter(Boolean).join(' · '),
-      attention,
-      tmv3_clean_(row['Event ID'])
+      slot.label,
+      slot.Install.join('\n\n'),
+      slot.Delivery.join('\n\n'),
+      slot.Service.join('\n\n'),
+      slot.PreInspection.join('\n\n'),
+      slot.flags.length ? 'ATTENTION' : ''
     ]);
   });
 
-  const attentionRows = allRows.filter(function(item) {
-    return item.needsAttention;
-  });
-
   values.push([]);
-  values.push(["TODAY'S ATTENTION"]);
-  values.push([
-    'Priority','Vertical','Time','Customer / Event',
-    'Issue','Next Action','Event ID'
-  ]);
+  values.push(['NEEDS ATTENTION','','','','','']);
+  values.push(['Priority','Time','Vertical','Customer / Event','Issue','Next Action']);
 
   if (!attentionRows.length) {
-    values.push(['OK','','','','No attention items for today.','','']);
+    values.push(['OK','','','','No attention items for today.','']);
   } else {
-    attentionRows.forEach(function(item) {
-      const row = item.row;
-      const start = tmv3_parseDateTime_(row['Calendar Start']);
-      const calendarCustomer = tmv3_clean_(row['Calendar Customer']);
-      const nameMatch = calendarCustomer.match(/(?:^|\n)Name:\s*([^\n]+)/i);
-      const customer =
-        (nameMatch && tmv3_clean_(nameMatch[1])) ||
-        tmv3_clean_(row['Calendar Event']).split('\n')[0] ||
-        '(unnamed event)';
-      const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
-      const issue = tmv3_clean_(row['Issue / Next Action']);
-
-      const locationReview = /CREATE REQUIRED/i.test(evidence);
-
-      values.push([
-        locationReview ? 'CHECK' : 'ATTENTION',
-        item.vertical,
-        start ? Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') : '',
-        customer,
-        locationReview
-          ? 'Location evidence is unresolved for the customer'
-          : (issue || 'Appointment requires attention'),
-        locationReview
-          ? 'Verify customer-owned location before any relationship write'
-          : (issue || 'Review appointment'),
-        tmv3_clean_(row['Event ID'])
-      ]);
+    attentionRows.forEach(function(r) {
+      values.push(r.slice(0,6));
     });
   }
 
+  // Full-grid reset: Morning Ops must never retain stale rows/columns from an older layout.
   sh.getRange(1,1,sh.getMaxRows(),sh.getMaxColumns())
     .breakApart()
-    .clearContent();
+    .clearContent()
+    .clearFormat();
 
-  if (sh.getMaxRows() < values.length) {
-    sh.insertRowsAfter(sh.getMaxRows(), values.length - sh.getMaxRows());
-  }
   if (sh.getMaxColumns() < 7) {
     sh.insertColumnsAfter(sh.getMaxColumns(), 7 - sh.getMaxColumns());
   }
+  if (sh.getMaxRows() < values.length) {
+    sh.insertRowsAfter(sh.getMaxRows(), values.length - sh.getMaxRows());
+  }
 
-  const width = 7;
-  const normalized = values.map(function(r) {
-    const out = r.slice();
-    while (out.length < width) out.push('');
-    return out;
-  });
+  sh.getRange(1,1,values.length,6).setValues(values);
 
-  sh.getRange(1,1,normalized.length,width).setValues(normalized);
+  // Visual snapshot layout.
+  sh.setHiddenGridlines(true);
   sh.setFrozenRows(2);
-  sh.showColumns(1,Math.min(6,sh.getMaxColumns()));
-  if (sh.getMaxColumns() >= 7) sh.hideColumns(7,1);
+  sh.showColumns(1,6);
+  if (sh.getMaxColumns() > 6) {
+    sh.hideColumns(7,sh.getMaxColumns() - 6);
+  }
 
-  const widths = [90,115,230,130,185,330];
-  widths.forEach(function(width,index) {
-    if (index + 1 <= sh.getMaxColumns()) sh.setColumnWidth(index + 1,width);
+  sh.getRange(1,1,1,6).merge()
+    .setBackground('#1f1f1f')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setFontSize(16)
+    .setHorizontalAlignment('left')
+    .setVerticalAlignment('middle');
+
+  sh.getRange(2,1,1,5).merge()
+    .setBackground('#1f1f1f')
+    .setFontColor('#e6e6e6')
+    .setFontWeight('bold');
+  sh.getRange(2,6)
+    .setBackground('#1f1f1f')
+    .setFontColor('#e6e6e6')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('right');
+
+  const sectionRows = [8, values.findIndex(function(r){ return r[0] === 'NEEDS ATTENTION'; }) + 1]
+    .filter(function(r){ return r > 0; });
+  sectionRows.forEach(function(rowNum) {
+    sh.getRange(rowNum,1,1,6).merge()
+      .setBackground('#e9edf2')
+      .setFontWeight('bold')
+      .setFontSize(11);
   });
 
-  sh.getRange(1,1,normalized.length,Math.min(6,sh.getMaxColumns()))
-    .setWrap(true)
-    .setVerticalAlignment('middle');
-  sh.getRange(1,1,1,6).setFontWeight('bold');
-  sh.autoResizeRows(1,normalized.length);
+  // KPI blocks.
+  sh.getRange(4,1,1,2).setBackground('#dceeff');
+  sh.getRange(4,3,1,2).setBackground('#def3e4');
+  sh.getRange(4,5,1,2).setBackground('#ffe5bd');
+  sh.getRange(5,1,1,2).setBackground(totalNoTask ? '#ffd9d9' : '#def3e4');
+  sh.getRange(5,3,2,4).setBackground('#f3f4f6');
+  sh.getRange(4,1,3,6)
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle')
+    .setWrap(true);
+
+  const scheduleHeaderRow = 9;
+  sh.getRange(scheduleHeaderRow,1,1,6)
+    .setBackground('#2f3742')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+
+  const scheduleStart = 10;
+  const scheduleEnd = scheduleStart + Object.keys(scheduleByTime).length - 1;
+  if (scheduleEnd >= scheduleStart) {
+    sh.getRange(scheduleStart,2,scheduleEnd-scheduleStart+1,1).setBackground('#e8f1ff');
+    sh.getRange(scheduleStart,3,scheduleEnd-scheduleStart+1,1).setBackground('#eaf7ec');
+    sh.getRange(scheduleStart,4,scheduleEnd-scheduleStart+1,1).setBackground('#f4ecff');
+    sh.getRange(scheduleStart,5,scheduleEnd-scheduleStart+1,1).setBackground('#fff5dc');
+    sh.getRange(scheduleStart,1,scheduleEnd-scheduleStart+1,6)
+      .setVerticalAlignment('middle')
+      .setWrap(true);
+
+    for (let r = scheduleStart; r <= scheduleEnd; r++) {
+      const flag = tmv3_clean_(sh.getRange(r,6).getValue());
+      if (flag === 'ATTENTION') {
+        sh.getRange(r,1,1,6).setFontWeight('bold');
+        sh.getRange(r,6).setBackground('#ffd59a');
+      }
+    }
+  }
+
+  const attentionTitleRow = sectionRows[1];
+  const attentionHeaderRow = attentionTitleRow + 1;
+  const attentionDataStart = attentionHeaderRow + 1;
+  sh.getRange(attentionHeaderRow,1,1,6)
+    .setBackground('#2f3742')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold');
+
+  for (let i = 0; i < Math.max(1, attentionRows.length); i++) {
+    const rowNum = attentionDataStart + i;
+    const priority = tmv3_clean_(sh.getRange(rowNum,1).getValue());
+    sh.getRange(rowNum,1,1,6)
+      .setBackground(priority === 'ATTENTION' ? '#ffe0c2' : '#fff2bf')
+      .setWrap(true)
+      .setVerticalAlignment('middle');
+  }
+
+  [90,180,180,180,180,300].forEach(function(px,index) {
+    sh.setColumnWidth(index + 1, px);
+  });
+
+  sh.setRowHeight(1, 30);
+  sh.setRowHeight(2, 24);
+  sh.autoResizeRows(3, Math.max(1, values.length - 2));
 
   return {
-    status: 'TODAY_ONLY',
+    status: 'TODAY_SNAPSHOT',
     date: todayKey,
     mode: TMV3.MODE,
-    appointments: summaries.reduce(function(sum,s){ return sum + s.appointments; },0),
-    attention: attentionRows.length,
+    appointments: totalAppointments,
+    mapped: totalMapped,
+    attention: totalAttention,
+    noTask: totalNoTask,
     verticals: summaries
   };
 }
@@ -857,12 +936,31 @@ function tmv3_acknowledgeSelectedMorningOps() {
   }
 
   const row = sh.getActiveRange().getRow();
-  if (row < 13) {
-    throw new Error('Select one of today\'s appointment or attention rows.');
+  const vertical = tmv3_clean_(sh.getRange(row, 3).getValue());
+  const customer = tmv3_clean_(sh.getRange(row, 4).getValue());
+
+  if (!vertical || !customer) {
+    throw new Error('Select a row in NEEDS ATTENTION.');
   }
 
-  const vertical = tmv3_clean_(sh.getRange(row, 2).getValue());
-  const eventId = tmv3_clean_(sh.getRange(row, 7).getValue());
+  const sourceRows = tmv3_rows_(TMV3.VERTICALS[vertical].sheet);
+  const todayKey = Utilities.formatDate(new Date(), TMV3_TIMEZONE, 'yyyy-MM-dd');
+  const matches = sourceRows.filter(function(sourceRow) {
+    const d = tmv3_parseDateTime_(sourceRow['Calendar Start']);
+    const sameDay = d && Utilities.formatDate(d, TMV3_TIMEZONE, 'yyyy-MM-dd') === todayKey;
+    const calendarCustomer = tmv3_clean_(sourceRow['Calendar Customer']);
+    const nameMatch = calendarCustomer.match(/(?:^|\n)Name:\s*([^\n]+)/i);
+    const sourceCustomer =
+      (nameMatch && tmv3_clean_(nameMatch[1])) ||
+      tmv3_clean_(sourceRow['Calendar Event']).split('\n')[0];
+    return sameDay && sourceCustomer === customer;
+  });
+
+  if (matches.length !== 1) {
+    throw new Error('Could not resolve this attention row to exactly one today event.');
+  }
+
+  const eventId = tmv3_clean_(matches[0]['Event ID']);
 
   if (!vertical || !eventId) {
     throw new Error('Selected row has no V3 Event identity.');
@@ -940,12 +1038,31 @@ function tmv3_clearAcknowledgementSelectedMorningOps() {
   }
 
   const row = sh.getActiveRange().getRow();
-  if (row < 13) {
-    throw new Error('Select one of today\'s appointment or attention rows.');
+  const vertical = tmv3_clean_(sh.getRange(row, 3).getValue());
+  const customer = tmv3_clean_(sh.getRange(row, 4).getValue());
+
+  if (!vertical || !customer) {
+    throw new Error('Select a row in NEEDS ATTENTION.');
   }
 
-  const vertical = tmv3_clean_(sh.getRange(row, 2).getValue());
-  const eventId = tmv3_clean_(sh.getRange(row, 7).getValue());
+  const sourceRows = tmv3_rows_(TMV3.VERTICALS[vertical].sheet);
+  const todayKey = Utilities.formatDate(new Date(), TMV3_TIMEZONE, 'yyyy-MM-dd');
+  const matches = sourceRows.filter(function(sourceRow) {
+    const d = tmv3_parseDateTime_(sourceRow['Calendar Start']);
+    const sameDay = d && Utilities.formatDate(d, TMV3_TIMEZONE, 'yyyy-MM-dd') === todayKey;
+    const calendarCustomer = tmv3_clean_(sourceRow['Calendar Customer']);
+    const nameMatch = calendarCustomer.match(/(?:^|\n)Name:\s*([^\n]+)/i);
+    const sourceCustomer =
+      (nameMatch && tmv3_clean_(nameMatch[1])) ||
+      tmv3_clean_(sourceRow['Calendar Event']).split('\n')[0];
+    return sameDay && sourceCustomer === customer;
+  });
+
+  if (matches.length !== 1) {
+    throw new Error('Could not resolve this attention row to exactly one today event.');
+  }
+
+  const eventId = tmv3_clean_(matches[0]['Event ID']);
 
   const stateSheet = tmv3_sheet_(TMV3.SHEETS.STATE);
   const values = stateSheet.getDataRange().getValues();
