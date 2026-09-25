@@ -14,31 +14,57 @@ Canonical tracker: issue #23
 | Legacy Delivery routing/workflow | LIVE / MONITORING |
 | Legacy Service routing/workflow | LIVE / MONITORING |
 | PreInspection workflow | LIVE / MONITORING |
-| PreInspection Requested By = Calendar organizer / Striven employee | LIVE / MONITORING |
-| Guarded GitHub AutoPatch deployment pipeline | LIVE / MONITORING |
+| Guarded GitHub / clasp deployment + read-back pipeline | LIVE / MONITORING |
 
-## Active work items
+## V3 current state
 
-| Issue | Feature | Status |
-|---|---|---|
-| #32 | TM2 shadow runtime verification | TESTING / VERIFY |
-| #33 | Automated execution-log collection | IN PROGRESS |
-| #34 | Complete legacy dependency inventory | PLANNED |
-| #35 | Classify functions by migration role | PLANNED |
-| #36 | Build TM2 behavior-equivalent resolvers/planners | PLANNED |
-| #37 | Compare legacy vs TM2 outcomes for parity | BACKLOG |
-| #38 | Controlled TM2 canary writes | BACKLOG |
-| #39 | One-workflow-at-a-time TM2 cutover | BACKLOG |
-| #40 | PreInspection completion → correct Sales Order handoff | BACKLOG |
-| #41 | Clean up noncanonical branches | GOOD TO HAVE |
-| #42 | Unified mapping-health observability dashboard | IDEA |
+| Feature | Status |
+|---|---|
+| V3 architecture / module layout | DONE |
+| Calendar → decision stages | BUILT |
+| Step 7 reconciliation | TESTING / VERIFY |
+| Canonical v1 schedule fallback for v2 PM defect | DONE / VERIFIED |
+| Existing-task guarded mutation path | BUILT / TESTING |
+| CREATE path | BUILT / CANARY PENDING |
+| RECREATE path | BUILT / CANARY PENDING |
+| Calendar backlink verification | BUILT / FINAL CANARY PENDING |
+| Automated production writes | BLOCKED BY RELEASE GATES |
+| Final four-vertical regression | PLANNED |
+| Production cutover | BACKLOG |
+| Legacy retirement | BACKLOG |
 
-## Required migration sequence
+## Current active issue
 
-`#32` → `#34` → `#35` → `#36` → `#37` → `#38` → `#39`
+**Install Task 18678 assignment mismatch**
 
-#33 supports the entire sequence by removing manual log collection. #40 is a separate PreInspection business enhancement and must preserve the rule that a PreInspection task does not require a Sales Order at creation.
+Latest verified Step-7 state:
+
+- schedule: verified correct through canonical v1 fallback;
+- date patch: no longer required;
+- remaining plan: `PATCH_ASSIGNMENTS`.
+
+This is now the first item on the critical path.
+
+## Required release sequence
+
+`Task 18678 assignment verification`
+→ `CREATE canary`
+→ `RECREATE canary`
+→ `four-vertical regression`
+→ `controlled production cutover`
+→ `first scheduled-cycle verification`
+→ `legacy retirement review`
 
 ## Current gate
 
-Do not enable production TM2 writes or cutover routing until runtime verification and legacy-vs-TM2 parity are proven.
+Do not enable broad production writes while V3 remains `SHADOW_READ_ONLY`.
+
+A gate is complete only after the intended result is read back from the authoritative system and fresh reconciliation converges to the expected state.
+
+## Most recent proof
+
+- V3: `3.11.8-v1-canonical-schedule-r1`
+- GitHub Actions run: `36180539726`
+- Evidence artifact: `10884600388`
+- Evidence: `test-evidence/2026-09-25-tmv3-canonical-pm-schedule-verified.md`
+- Result: PM schedule fallback **VERIFIED**
