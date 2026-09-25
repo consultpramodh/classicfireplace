@@ -722,11 +722,13 @@ async function main() {
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
           RUN_MODE === 'GOLDCON_TASK_SCHEMA' ? 18618 : 0,
         expectedPlan:
-          (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
-            ? 'PATCH_DATES'
-            : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
-              ? 'PATCH_LOCATION_AND_DATES_AND_ASSIGNMENTS'
-              : ''
+          RUN_MODE === 'PREVIEW_GOLDCON'
+            ? 'NO_CHANGE'
+            : RUN_MODE === 'CANARY_GOLDCON'
+              ? 'NO_CHANGE'
+              : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
+                ? 'PATCH_LOCATION_AND_DATES_AND_ASSIGNMENTS'
+                : ''
       });
 
       if (!step1.ok) {
