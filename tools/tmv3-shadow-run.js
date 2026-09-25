@@ -214,7 +214,10 @@ function buildTemporaryRunner(pre, token) {
   };
 
   const canaryWrite =
-    RUN_MODE.indexOf('CANARY_') === 0 &&
+    (
+      RUN_MODE.indexOf('CANARY_') === 0 ||
+      RUN_MODE === 'DIRECT_STEP7_CANARY'
+    ) &&
     RELEASE_MANIFEST.mode === 'CANARY_WRITE' &&
     RELEASE_MANIFEST.writesEnabled === true;
   let canaryModePatchCount = 0;
@@ -269,6 +272,15 @@ function TMPV3_directStep7Preview(vertical, eventId, taskId, expectedPlan) {
     expectedPlan:String(expectedPlan || ''),
     plan:plan
   };
+}
+
+function TMPV3_directStep7Canary(vertical, eventId, taskId, expectedPlan) {
+  return tmv3_executeVerifiedStep7ExistingPlan(
+    String(vertical || ''),
+    String(eventId || ''),
+    Number(taskId || 0),
+    String(expectedPlan || '')
+  );
 }
 
 function doPost(e) {
@@ -779,7 +791,10 @@ async function postJson(url, payload) {
 }
 
 async function main() {
-  if (RUN_MODE.indexOf('CANARY_') === 0) {
+  if (
+    RUN_MODE.indexOf('CANARY_') === 0 ||
+    RUN_MODE === 'DIRECT_STEP7_CANARY'
+  ) {
     if (
       RELEASE_MANIFEST.mode !== 'CANARY_WRITE' ||
       RELEASE_MANIFEST.writesEnabled !== true
@@ -951,6 +966,70 @@ async function main() {
       );
 
       console.log('V3_DIRECT_STEP7_PREVIEW_VERIFIED');
+      console.log(JSON.stringify(result));
+      return;
+    }
+
+    if (RUN_MODE === 'DIRECT_STEP7_CANARY') {
+      const direct = await runScriptFunction(
+        'TMPV3_directStep7Canary',
+        [
+          String(RELEASE_MANIFEST.vertical || ''),
+          String(RELEASE_MANIFEST.eventId || ''),
+          Number(RELEASE_MANIFEST.taskId || 0),
+          String(RELEASE_MANIFEST.expectedPlan || '')
+        ]
+      );
+
+      const executionError =
+        direct && direct.error
+          ? direct.error
+          : null;
+      if (executionError) {
+        fail(
+          'Apps Script direct canary execution failed: ' +
+          JSON.stringify(executionError)
+        );
+      }
+
+      const result =
+        direct &&
+        direct.response &&
+        direct.response.result
+          ? direct.response.result
+          : null;
+
+      if (!result || result.status !== 'CANARY_VERIFIED_NO_CHANGE') {
+        fs.mkdirSync(outDir, {recursive:true});
+        fs.writeFileSync(
+          path.join(outDir, 'direct-step7-canary.json'),
+          JSON.stringify({status:'FAILED', raw:direct}, null, 2)
+        );
+        fail(
+          'Direct Step 7 canary did not converge to NO_CHANGE.'
+        );
+      }
+
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail('V3 source restore failed after direct Step 7 canary.');
+      }
+
+      fs.mkdirSync(outDir, {recursive:true});
+      fs.writeFileSync(
+        path.join(outDir, 'evidence.json'),
+        JSON.stringify({
+          status:'V3_DIRECT_STEP7_CANARY_VERIFIED',
+          result:result,
+          sourceHeadHashVerified:true,
+          temporaryDeploymentDeleted:false,
+          reusedHeadDeployment:false,
+          verifiedAt:new Date().toISOString()
+        }, null, 2)
+      );
+
+      console.log('V3_DIRECT_STEP7_CANARY_VERIFIED');
       console.log(JSON.stringify(result));
       return;
     }
