@@ -120,6 +120,10 @@ async function getDeployments() {
   return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/deployments');
 }
 
+async function getVersions() {
+  return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/versions?pageSize=200');
+}
+
 function findHeadWebAppDeployment(inventory) {
   const deployments = Array.isArray(inventory && inventory.deployments)
     ? inventory.deployments
@@ -722,6 +726,43 @@ async function main() {
     }
   }
   accessToken = await getGoogleAccessToken();
+
+  if (RUN_MODE === 'VERSION_INVENTORY') {
+    const inventory = await getVersions();
+    const versions = Array.isArray(inventory.versions)
+      ? inventory.versions
+      : [];
+
+    fs.mkdirSync(outDir, {recursive:true});
+    fs.writeFileSync(
+      path.join(outDir, 'version-inventory.json'),
+      JSON.stringify({
+        status:'V3_VERSION_INVENTORY_COMPLETE',
+        count:versions.length,
+        nextPageToken:inventory.nextPageToken || '',
+        minVersion:versions.length
+          ? Math.min.apply(null, versions.map(v => Number(v.versionNumber || 0)))
+          : null,
+        maxVersion:versions.length
+          ? Math.max.apply(null, versions.map(v => Number(v.versionNumber || 0)))
+          : null,
+        capturedAt:new Date().toISOString()
+      }, null, 2)
+    );
+
+    console.log('V3_VERSION_INVENTORY_COMPLETE');
+    console.log(JSON.stringify({
+      count:versions.length,
+      nextPageToken:inventory.nextPageToken || '',
+      minVersion:versions.length
+        ? Math.min.apply(null, versions.map(v => Number(v.versionNumber || 0)))
+        : null,
+      maxVersion:versions.length
+        ? Math.max.apply(null, versions.map(v => Number(v.versionNumber || 0)))
+        : null
+    }));
+    return;
+  }
 
   if (RUN_MODE === 'DEPLOYMENT_INVENTORY') {
     const inventory = await getDeployments();
