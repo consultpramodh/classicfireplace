@@ -717,6 +717,7 @@ async function main() {
               ? '6ftlsr2e9fn31hpm6dj05cuthi@google.com'
               : '',
         taskId:
+          RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
           RUN_MODE === 'GOLDCON_TASK_SCHEMA' ? 18618 : 0,
