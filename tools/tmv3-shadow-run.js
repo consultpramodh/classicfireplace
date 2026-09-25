@@ -358,6 +358,83 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7CanaryPreview') {
+      var previewVertical = String(body.vertical || '');
+      var previewEventId = String(body.eventId || '');
+      var previewTaskId = Number(body.taskId || 0);
+      var previewExpectedPlan = String(body.expectedPlan || '');
+      var previewPlan = tmv3_step7FreshPlanForTask_(
+        previewVertical,
+        previewEventId,
+        previewTaskId
+      );
+
+      if (previewPlan.plan !== previewExpectedPlan) {
+        throw new Error(
+          'Fresh Step 7 preview changed from ' +
+          previewExpectedPlan +
+          ' to ' +
+          previewPlan.plan +
+          '.'
+        );
+      }
+      if (tmv3_clean_(previewPlan.blocker)) {
+        throw new Error('Step 7 preview is blocked: ' + previewPlan.blocker);
+      }
+
+      var previewEventRecord = tmv3_findFreshEventRecord_(
+        previewVertical,
+        previewEventId
+      );
+      var previewRefs = tmv3_referenceIndex_();
+      var previewState = tmv3_eventStateIndex_();
+      var previewRecords = tmv3_resolveEventRecords_(
+        previewEventRecord,
+        previewRefs,
+        previewState
+      );
+      var previewMatches = previewRecords.filter(function(record) {
+        return Number(record.taskId || 0) === previewTaskId;
+      });
+      if (previewMatches.length !== 1) {
+        throw new Error(
+          'Fresh preview resolver did not return exactly one matching Task row.'
+        );
+      }
+
+      var previewBundle = {
+        context:null,
+        eventRecord:previewEventRecord,
+        refs:previewRefs,
+        state:previewState,
+        records:previewRecords,
+        resolved:previewMatches[0]
+      };
+
+      var mutationPreview = {
+        relationships:
+          /LOCATION|REQUESTED_BY/.test(previewExpectedPlan)
+            ? tmv3_selectedRelationshipPayload_(previewBundle)
+            : null,
+        dates:
+          /DATES/.test(previewExpectedPlan)
+            ? tmv3_selectedDatePayload_(previewBundle)
+            : null,
+        assignments:
+          /ASSIGNMENTS/.test(previewExpectedPlan)
+            ? tmv3_desiredAssignment_(previewEventRecord)
+            : null,
+        calendarLinks:true
+      };
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'STEP7_CANARY_PREVIEW_COMPLETE',
+        plan:previewPlan,
+        mutationPreview:mutationPreview
+      });
+    }
+
     if (body.action === 'step7Canary') {
       var canary = tmv3_executeVerifiedStep7ExistingPlan(
         String(body.vertical || ''),
@@ -532,6 +609,8 @@ async function main() {
       RUN_MODE === 'STEP7_SERVICE' ||
       RUN_MODE === 'STEP7_PREINSPECTION' ||
       RUN_MODE === 'STEP7_CASES' ||
+      RUN_MODE === 'PREVIEW_GOLDCON' ||
+      RUN_MODE === 'PREVIEW_ROCCO' ||
       RUN_MODE === 'CANARY_GOLDCON' ||
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'TASK_SCHEMA'
@@ -556,6 +635,8 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
+                    : RUN_MODE.indexOf('PREVIEW_') === 0
+                      ? 'step7CanaryPreview'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
                     : RUN_MODE === 'STEP7_CASES'
@@ -570,7 +651,7 @@ async function main() {
         token,
         action,
         vertical:
-          RUN_MODE.indexOf('CANARY_') === 0 ? 'Install' :
+          (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
           RUN_MODE === 'STEP7_INSTALL' ? 'Install' :
           RUN_MODE === 'STEP7_DELIVERY' ? 'Delivery' :
           RUN_MODE === 'STEP7_SERVICE' ? 'Service' :
@@ -580,18 +661,18 @@ async function main() {
         refreshSources: BATCH_OFFSET === 0,
         taskIds: RUN_MODE === 'STEP7_CASES' ? [17881,18618,18678,18597] : []
         ,eventId:
-          RUN_MODE === 'CANARY_GOLDCON'
+          (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
             ? '3lqqeba2r17067sjrm558kjmd1@google.com'
-            : RUN_MODE === 'CANARY_ROCCO'
+            : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
               ? '6ftlsr2e9fn31hpm6dj05cuthi@google.com'
               : '',
         taskId:
-          RUN_MODE === 'CANARY_GOLDCON' ? 18618 :
-          RUN_MODE === 'CANARY_ROCCO' ? 18678 : 0,
+          (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
+          (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 : 0,
         expectedPlan:
-          RUN_MODE === 'CANARY_GOLDCON'
+          (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
             ? 'PATCH_LOCATION_AND_DATES'
-            : RUN_MODE === 'CANARY_ROCCO'
+            : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
               ? 'PATCH_LOCATION_AND_DATES_AND_ASSIGNMENTS'
               : ''
       });
