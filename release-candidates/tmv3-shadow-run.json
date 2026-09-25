@@ -1,10 +1,9 @@
 {
-  "release": "TMV3_3_11_9_ROCCO_HEAD_DEV_VERIFY_R1",
+  "release": "TMV3_3_11_9_FRESH_STEP7_CREATE_SELECTION_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "PREVIEW_ROCCO",
-  "expectedPlan": "NO_CHANGE",
+  "runMode": "STEP7",
   "batchOffset": 0,
   "batchLimit": 0
 }
