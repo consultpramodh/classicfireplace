@@ -465,6 +465,34 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'installDueSamples') {
+      var sampleRows = tmv3_rows_(TMV3.SHEETS.TASKS)
+        .filter(function(row) {
+          var typeName = String(row['Task Type'] || '').toLowerCase();
+          var dueText = String(row['Due'] || '');
+          var m = dueText.match(/T(\\d{2}):(\\d{2})/);
+          return typeName.indexOf('install') !== -1 && m && Number(m[1]) >= 12;
+        })
+        .slice(0, 8)
+        .map(function(row) {
+          var id = Number(row['Task ID'] || 0);
+          var fresh = id ? tmv3_rawTaskById_(id) : {};
+          return {
+            taskId:id,
+            taskType:row['Task Type'] || '',
+            cachedDue:row['Due'] || '',
+            freshStart:fresh.startDateTime || fresh.StartDateTime || '',
+            freshDue:fresh.dueDateTime || fresh.DueDateTime || '',
+            freshType:(fresh.type && (fresh.type.name || fresh.type.Name)) || ''
+          };
+        });
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'INSTALL_DUE_SAMPLES_COMPLETE',
+        samples:sampleRows
+      });
+    }
+
     if (body.action === 'taskSchemaProbe') {
       var probeTaskId = Number(body.taskId || 17881);
       var rawTask = tmv3_fetchJson_(
@@ -631,7 +659,8 @@ async function main() {
       RUN_MODE === 'CANARY_GOLDCON' ||
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'TASK_SCHEMA' ||
-      RUN_MODE === 'GOLDCON_TASK_SCHEMA'
+      RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
+      RUN_MODE === 'INSTALL_DUE_SAMPLES'
     ) {
       const action =
         (
@@ -661,7 +690,9 @@ async function main() {
                       ? 'step7Cases'
                       : RUN_MODE.indexOf('STEP7') === 0
                         ? 'step7Reconcile'
-                      : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
+                      : RUN_MODE === 'INSTALL_DUE_SAMPLES'
+                    ? 'installDueSamples'
+                    : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
 
