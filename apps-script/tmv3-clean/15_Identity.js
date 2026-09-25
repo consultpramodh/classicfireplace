@@ -86,23 +86,32 @@ function tmv3_resolveIdentity_(eventRecord, cfg, refs, order) {
 
     const orderLocationId = tmv3_clean_(order['Location ID']);
     if (orderLocationId) {
-      location = (refs.locationsByCustomer[customerId] || []).filter(function(r) {
-        return tmv3_clean_(r['Location ID']) === orderLocationId;
-      })[0] || null;
+      const orderLocation =
+        refs.locationById && refs.locationById[orderLocationId]
+          ? refs.locationById[orderLocationId]
+          : null;
 
-      if (!location) {
-        return tmv3_identityFail_(
-          'BLOCKED',
-          'ORDER_LOCATION_OWNERSHIP_CONFLICT',
-          cfg.orderLabel + ' Location is not owned by the resolved Customer.',
-          customer,
-          null,
-          null,
-          evidence
-        );
+      if (orderLocation) {
+        if (tmv3_clean_(orderLocation['Customer ID']) !== customerId) {
+          return tmv3_identityFail_(
+            'BLOCKED',
+            'ORDER_LOCATION_OWNERSHIP_CONFLICT',
+            cfg.orderLabel + ' Location resolves to a Location owned by a different Customer.',
+            customer,
+            null,
+            null,
+            evidence
+          );
+        }
+
+        location = orderLocation;
+        evidence.push('LOCATION_FROM_' + tmv3_normCode_(cfg.orderLabel));
+      } else {
+        // Missing source evidence is not the same as a proven ownership
+        // conflict. Fall back only to the normal customer-owned Location
+        // resolver, which still requires a strong address match.
+        evidence.push('ORDER_LOCATION_ID_NOT_IN_LOCATION_SOURCE');
       }
-
-      evidence.push('LOCATION_FROM_' + tmv3_normCode_(cfg.orderLabel));
     }
 
     if (!location) {
