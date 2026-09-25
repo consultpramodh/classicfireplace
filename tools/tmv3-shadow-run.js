@@ -319,6 +319,42 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7Cases') {
+      var wanted = {};
+      (body.taskIds || []).forEach(function(id) {
+        wanted[String(Number(id || 0))] = true;
+      });
+      var cases = tmv3_rows_(TMV3.SHEETS.RECONCILE)
+        .filter(function(row) {
+          return wanted[String(Number(row['Task ID'] || 0))] === true;
+        })
+        .map(function(row) {
+          return {
+            vertical:String(row['Vertical'] || ''),
+            eventId:String(row['Event ID'] || ''),
+            logicalKey:String(row['Logical Key'] || ''),
+            taskId:Number(row['Task ID'] || 0),
+            taskStatus:String(row['Task Status'] || ''),
+            customerCheck:String(row['Customer Check'] || ''),
+            orderCheck:String(row['Order Check'] || ''),
+            locationCheck:String(row['Location Check'] || ''),
+            requestedByCheck:String(row['Requested By Check'] || ''),
+            startCheck:String(row['Start Check'] || ''),
+            endCheck:String(row['End Check'] || ''),
+            assignmentCheck:String(row['Assignment Check'] || ''),
+            plan:String(row['Relationship Plan'] || ''),
+            blocker:String(row['Blocker'] || ''),
+            readStatus:String(row['Read Status'] || '')
+          };
+        });
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'STEP7_CASES_COMPLETE',
+        requested:Object.keys(wanted),
+        cases:cases
+      });
+    }
+
     if (body.action === 'taskSchemaProbe') {
       var rawTask = tmv3_fetchJson_(
         TMV3.API_BASE + '/v2/tasks/17881',
@@ -470,6 +506,7 @@ async function main() {
       RUN_MODE === 'STEP7_DELIVERY' ||
       RUN_MODE === 'STEP7_SERVICE' ||
       RUN_MODE === 'STEP7_PREINSPECTION' ||
+      RUN_MODE === 'STEP7_CASES' ||
       RUN_MODE === 'TASK_SCHEMA'
     ) {
       const action =
@@ -492,8 +529,10 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
-                    : RUN_MODE.indexOf('STEP7') === 0
-                      ? 'step7Reconcile'
+                    : RUN_MODE === 'STEP7_CASES'
+                      ? 'step7Cases'
+                      : RUN_MODE.indexOf('STEP7') === 0
+                        ? 'step7Reconcile'
                       : RUN_MODE === 'TASK_SCHEMA'
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
@@ -508,7 +547,8 @@ async function main() {
           RUN_MODE === 'STEP7_PREINSPECTION' ? 'PreInspection' : '',
         batchOffset: BATCH_OFFSET,
         batchLimit: BATCH_LIMIT,
-        refreshSources: BATCH_OFFSET === 0
+        refreshSources: BATCH_OFFSET === 0,
+        taskIds: RUN_MODE === 'STEP7_CASES' ? [17881,18618,18678,18597] : []
       });
 
       if (!step1.ok) {
@@ -552,14 +592,19 @@ async function main() {
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                       : RUN_MODE === 'STEP6'
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
-                        : RUN_MODE.indexOf('STEP7_') === 0
-                          ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
+                        : RUN_MODE === 'STEP7_CASES'
+                          ? 'V3_STEP7_CASES_VERIFIED'
+                          : RUN_MODE.indexOf('STEP7_') === 0
+                            ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
                           : RUN_MODE === 'STEP7'
                             ? 'V3_STEP7_RECONCILIATION_VERIFIED'
                             : RUN_MODE === 'TASK_SCHEMA'
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
-          step1: RUN_MODE === 'TASK_SCHEMA' ? step1 : (step1.result || null),
+          step1:
+            RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'STEP7_CASES'
+              ? step1
+              : (step1.result || null),
           sourceHeadHashVerified: true,
           temporaryDeploymentDeleted: false,
           verifiedAt: new Date().toISOString()
@@ -589,15 +634,19 @@ async function main() {
                     ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                     : RUN_MODE === 'STEP6'
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
-                      : RUN_MODE.indexOf('STEP7_') === 0
-                        ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
+                      : RUN_MODE === 'STEP7_CASES'
+                        ? 'V3_STEP7_CASES_VERIFIED'
+                        : RUN_MODE.indexOf('STEP7_') === 0
+                          ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
                         : RUN_MODE === 'STEP7'
                           ? 'V3_STEP7_RECONCILIATION_VERIFIED'
                           : RUN_MODE === 'TASK_SCHEMA'
                       ? 'V3_TASK_SCHEMA_PROBED'
                       : 'V3_STEP1_CALENDAR_VERIFIED'
       );
-      console.log(JSON.stringify(step1.result || {}));
+      console.log(JSON.stringify(
+        RUN_MODE === 'STEP7_CASES' ? step1 : (step1.result || {})
+      ));
       return;
     }
 
