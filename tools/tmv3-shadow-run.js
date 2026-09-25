@@ -1043,7 +1043,7 @@ async function main() {
           RUN_MODE === 'STEP7_PREINSPECTION' ? 'PreInspection' : '',
         batchOffset: BATCH_OFFSET,
         batchLimit: BATCH_LIMIT,
-        refreshSources: BATCH_OFFSET === 0,
+        refreshSources: RELEASE_MANIFEST.refreshSources === true,
         taskIds: RUN_MODE === 'STEP7_CASES' ? [17881,18618,18678,18597] : []
         ,eventId:
           RUN_MODE === 'TASK_SCHEDULE'
