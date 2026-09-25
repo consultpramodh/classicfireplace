@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_GOLDCON_NO_CHANGE_VERIFY_R1",
+  "release": "TMV3_GOLDCON_LINKS_ONLY_EXEC_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "SHADOW_READ_ONLY",
-  "writesEnabled": false,
-  "runMode": "PREVIEW_GOLDCON",
+  "mode": "CANARY_WRITE",
+  "writesEnabled": true,
+  "runMode": "CANARY_GOLDCON",
   "batchOffset": 0,
   "batchLimit": 0
 }
