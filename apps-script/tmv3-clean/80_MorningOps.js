@@ -167,7 +167,7 @@ function tmv3_refreshMorningOps() {
     });
   }
 
-  sh.getRange(1,1,Math.min(100,sh.getMaxRows()),Math.min(15,sh.getMaxColumns()))
+  sh.getRange(1,1,sh.getMaxRows(),sh.getMaxColumns())
     .breakApart()
     .clearContent();
 
