@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_STEP7_PREINSPECTION_BATCH_12_R1",
+  "release": "TMV3_STEP7_INSTALL_CASES_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_PREINSPECTION",
-  "batchOffset": 12,
-  "batchLimit": 12
+  "runMode": "STEP7_CASES",
+  "batchOffset": 0,
+  "batchLimit": 0
 }
