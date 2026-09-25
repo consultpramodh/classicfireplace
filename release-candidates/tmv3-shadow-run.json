@@ -1,9 +1,10 @@
 {
-  "release": "TMV3_3_11_12_VISIBLE_SHEET_SYNC_VERIFY_R2",
+  "release": "TMV3_3_11_12_FRESH_STEP7_INSTALL_B1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "SHEET_PUBLISH",
+  "runMode": "STEP7_INSTALL",
   "batchOffset": 0,
-  "batchLimit": 0
+  "batchLimit": 40,
+  "refreshSources": true
 }
