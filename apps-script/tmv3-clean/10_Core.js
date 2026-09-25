@@ -315,8 +315,19 @@ function tmv3_upsertState_(records) {
 }
 
 function tmv3_assertShadow_() {
-  if (TMV3.MODE !== 'SHADOW_READ_ONLY') {
-    throw new Error('V3 business write blocked: mode is not SHADOW_READ_ONLY.');
+  const allowedReadPipelineModes = [
+    'SHADOW_READ_ONLY',
+    'CANARY_WRITE',
+    'PRODUCTION_WRITE'
+  ];
+
+  if (allowedReadPipelineModes.indexOf(TMV3.MODE) === -1) {
+    throw new Error(
+      'V3 read/planning pipeline blocked: unsupported mode "' +
+      String(TMV3.MODE || '') +
+      '".'
+    );
   }
+
   return true;
 }
