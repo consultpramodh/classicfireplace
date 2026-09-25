@@ -120,6 +120,21 @@ async function getDeployments() {
   return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/deployments');
 }
 
+function findHeadWebAppDeployment(inventory) {
+  const deployments = Array.isArray(inventory && inventory.deployments)
+    ? inventory.deployments
+    : [];
+
+  return deployments.find(d => {
+    const cfg = d.deploymentConfig || {};
+    const hasVersion =
+      cfg.versionNumber !== undefined &&
+      cfg.versionNumber !== null;
+    const webApp = (d.entryPoints || []).find(ep => ep && ep.webApp);
+    return !hasVersion && !!webApp;
+  }) || null;
+}
+
 async function updateContent(content) {
   return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/content', {
     method: 'PUT',
@@ -711,6 +726,7 @@ async function main() {
   const tempHash = canonicalHash(temp);
 
   let deploymentId = '';
+  let usingHeadDeployment = false;
 
   try {
     const fresh = await getContent();
@@ -719,30 +735,65 @@ async function main() {
     }
 
     await updateContent(temp);
-    const version = await createVersion('TMV3 temporary shadow runner');
 
-    await updateContent(pre);
-    const restored = await getContent();
-    if (canonicalHash(restored) !== preHash) {
-      fail('V3 source restore failed before shadow execution.');
+    let url = '';
+
+    // Read-only verification reuses the existing HEAD web-app deployment.
+    // This avoids creating an Apps Script version/deployment for every probe,
+    // which can hit Apps Script resource/rate limits. Canary writes continue
+    // to require the isolated versioned-deployment path.
+    if (RUN_MODE.indexOf('CANARY_') !== 0) {
+      const inventory = await getDeployments();
+      const headDeployment = findHeadWebAppDeployment(inventory);
+
+      if (headDeployment) {
+        usingHeadDeployment = true;
+        deploymentId = headDeployment.deploymentId || '';
+        const headWebApp = (headDeployment.entryPoints || [])
+          .map(ep => ep && ep.webApp)
+          .filter(Boolean)[0] || {};
+        url =
+          headWebApp.url ||
+          ('https://script.google.com/macros/s/' + deploymentId + '/exec');
+      }
     }
 
-    const deployment = await createDeployment(
-      version.versionNumber,
-      'TMV3 temporary shadow runner'
-    );
+    if (!url) {
+      const version = await createVersion('TMV3 temporary shadow runner');
 
-    deploymentId = deployment.deploymentId;
-    if (!deploymentId) fail('Temporary shadow deployment ID missing.');
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail('V3 source restore failed before shadow execution.');
+      }
 
-    const url =
-      (
-        deployment.entryPoints &&
-        deployment.entryPoints[0] &&
-        deployment.entryPoints[0].webApp &&
-        deployment.entryPoints[0].webApp.url
-      ) ||
-      ('https://script.google.com/macros/s/' + deploymentId + '/exec');
+      const deployment = await createDeployment(
+        version.versionNumber,
+        'TMV3 temporary shadow runner'
+      );
+
+      deploymentId = deployment.deploymentId;
+      if (!deploymentId) fail('Temporary shadow deployment ID missing.');
+
+      url =
+        (
+          deployment.entryPoints &&
+          deployment.entryPoints[0] &&
+          deployment.entryPoints[0].webApp &&
+          deployment.entryPoints[0].webApp.url
+        ) ||
+        ('https://script.google.com/macros/s/' + deploymentId + '/exec');
+    }
+
+    async function restoreHeadSourceBeforeParityCheck() {
+      if (!usingHeadDeployment) return;
+
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail('V3 source restore failed after HEAD shadow execution.');
+      }
+    }
 
     if (
       RUN_MODE === 'STEP1' ||
@@ -857,6 +908,8 @@ async function main() {
           ((step1.result && step1.result.status) || step1.status || 'UNKNOWN')
         );
       }
+
+      await restoreHeadSourceBeforeParityCheck();
 
       const finalHead = await getContent();
       if (canonicalHash(finalHead) !== preHash) {
@@ -1014,6 +1067,8 @@ async function main() {
       );
     }
 
+    await restoreHeadSourceBeforeParityCheck();
+
     const finalHead = await getContent();
     if (canonicalHash(finalHead) !== preHash) {
       fail('V3 source parity failed after shadow execution.');
@@ -1051,7 +1106,9 @@ async function main() {
     }));
 
   } finally {
-    await deleteDeployment(deploymentId);
+    if (!usingHeadDeployment) {
+      await deleteDeployment(deploymentId);
+    }
 
     try {
       const current = await getContent();
@@ -1066,7 +1123,8 @@ async function main() {
     if (fs.existsSync(evidencePath)) {
       try {
         const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
-        evidence.temporaryDeploymentDeleted = true;
+        evidence.temporaryDeploymentDeleted = !usingHeadDeployment;
+        evidence.reusedHeadDeployment = usingHeadDeployment;
         fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2));
       } catch {}
     }
