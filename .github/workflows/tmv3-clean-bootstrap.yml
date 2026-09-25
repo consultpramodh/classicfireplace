@@ -114,8 +114,11 @@ jobs:
           (cd "$WORK" && npx -y "@google/clasp@$CLASP_VERSION" push --force)
           PUSHED=1
 
-          echo "Creating immutable V3 source version."
-          (cd "$WORK" && npx -y "@google/clasp@$CLASP_VERSION" create-version "$RELEASE") || true
+          # Apps Script supports at most 200 versions and this project has
+          # reached that cap. Routine source verification must not consume a
+          # version. Git commit SHA + PRE_SOURCE + remote hash parity are the
+          # rollback/checkpoint evidence for shadow V3 source updates.
+          echo "Skipping Apps Script version creation; source is verified by remote re-clone + hashes."
 
           echo "Re-cloning V3 for remote parity verification."
           (cd "$VERIFY" && npx -y "@google/clasp@$CLASP_VERSION" clone "$SCRIPT_ID" --rootDir src)
