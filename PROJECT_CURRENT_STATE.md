@@ -102,13 +102,12 @@ Production readiness is not yet proven until controlled live canaries and the fi
 
 ## Remaining critical path
 
-1. Fix and verify the next genuine legacy-rule assignment mismatch: Install Task `18394`.
-2. Fix and verify Install Task `18690`.
-3. Fix and verify Service Task `18540`.
-4. Identify and preview one deterministic `CREATE_TASK` candidate from a fresh read-only Step-7 run.
-5. Execute controlled CREATE and RECREATE canaries with authoritative read-back.
-6. Run final four-vertical V3 regression.
-7. Only if those gates pass, perform controlled production cutover and verify the first scheduled cycle.
+1. **Finish the Assignment Reconciliation feature as one feature-level gate** using exact legacy behavior across Install, Delivery, Service, and PreInspection.
+2. Run assignment regression coverage plus a fresh current-data scan; individual Tasks are validation examples only, not separate project items.
+3. Mark Assignment Reconciliation `DONE / VERIFIED` only when no unexpected assignment plans remain.
+4. Move to the next feature gate: guarded CREATE/RECREATE behavior with authoritative read-back and Calendar backlink verification.
+5. Run the final four-vertical V3 regression.
+6. Only if those feature gates pass, perform controlled production cutover and verify the first scheduled cycle.
 
 ## Current completion classification
 
@@ -130,11 +129,15 @@ Production readiness is not yet proven until controlled live canaries and the fi
 
 ## Exact next action
 
-**Fix and verify Install Task `18394` assignment using the legacy title-based assignment rule.**
+**Complete the Assignment Reconciliation feature.**
 
-Task `16735` is closed: employee 15 was added, existing employee 41 was preserved, fresh Step 7 converged to `NO_CHANGE`, and the Sheet now reflects the verified result.
+Feature acceptance:
 
-Evidence:
-- canary run `36198082523`
-- post-write verification run `36198236398`
-- `test-evidence/2026-09-25-tmv3-task-16735-assignment-canary-verified.md`
+- Install / Delivery use the legacy title-based assignee resolver; Aiden remains ignored.
+- Install preserves unrelated/manual existing employees when adding the intended installer.
+- Delivery follows the legacy delivery cleanup behavior and does not remove unrelated manual employees.
+- Service derives the technician from the technician Calendar, removes `To Be Assigned` only after the intended technician is established, and removes only conflicting known Service technicians.
+- PreInspection remains assigned to Pool 8; organizer/employee is `Requested By`, not `Assigned To`.
+- A regression matrix and a fresh current-data scan must show no unexpected assignment mutations.
+
+Task `16735` is retained only as live canary evidence that the Install assignment write path works and converges to `NO_CHANGE`.
