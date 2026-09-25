@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.13-api-safe-step7-batch-r1';
+const TMV3_VERSION = '3.11.14-legacy-assignment-parity-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -67,7 +67,7 @@ const TMV3 = Object.freeze({
         { employeeId: 18, name: 'John Hoang', patterns: ['john', 'john hoang'] },
         { employeeId: 26, name: 'Matthew Thompson', patterns: ['matt', 'matthew', 'matthew thompson'] },
         { employeeId: 1, name: 'Jay Scott', patterns: ['jay', 'jay scott'] },
-        { employeeId: 15, name: 'Stephen Foley', patterns: ['sf', 'stephen', 'stephen foley'] },
+        { employeeId: 15, name: 'Stephen Foley', patterns: ['sf', 'stephen', 'steven', 'stephen foley', 'steven foley'] },
         { employeeId: 20, name: 'Spencer', patterns: ['spencer'] },
         { employeeId: 9, name: 'Thang', patterns: ['thang'] },
         { employeeId: 6, name: 'Pramodh', patterns: ['pramodh'] },
@@ -91,6 +91,11 @@ const TMV3 = Object.freeze({
       defaultPoolName: 'To Be Assigned',
       assignees: [
         { employeeId: 18, name: 'John Hoang', patterns: ['john', 'john hoang'] },
+        { employeeId: 1, name: 'Jay Scott', patterns: ['jay', 'jay scott'] },
+        { employeeId: 15, name: 'Stephen Foley', patterns: ['sf', 'stephen', 'steven', 'stephen foley', 'steven foley'] },
+        { employeeId: 20, name: 'Spencer', patterns: ['spencer'] },
+        { employeeId: 9, name: 'Thang', patterns: ['thang'] },
+        { employeeId: 6, name: 'Pramodh', patterns: ['pramodh'] },
         { employeeId: 26, name: 'Matthew Thompson', patterns: ['matt', 'matthew', 'matthew thompson'] },
         { employeeId: null, name: 'Aiden', patterns: ['aiden'], ignoreAssignment: true }
       ]
