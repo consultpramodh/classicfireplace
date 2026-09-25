@@ -12,27 +12,10 @@ function tmv3_desiredAssignment_(eventRecord) {
   }
 
   if (eventRecord.vertical === 'PreInspection') {
-    const employees = [];
-    const text = tmv3_norm_(
-      [
-        eventRecord.title,
-        eventRecord.description,
-        eventRecord.guests
-      ].join(' ')
-    );
-
-    (cfg.knownInspectors || []).forEach(function(p) {
-      if (
-        (p.patterns || []).some(function(q) {
-          return text.indexOf(tmv3_norm_(q)) !== -1;
-        })
-      ) {
-        employees.push(Number(p.employeeId));
-      }
-    });
-
+    // Legacy rule: PreInspection stays assigned to Pool 8.
+    // The Calendar organizer is Requested By, not Assigned To.
     return {
-      employeeIds: tmv3_unique_(employees),
+      employeeIds: [],
       poolIds: [Number(cfg.defaultPoolId)]
     };
   }
