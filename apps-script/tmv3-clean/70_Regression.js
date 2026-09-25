@@ -397,3 +397,143 @@ function tmv3_assignmentTitleOnlyRegression() {
   };
 }
 
+/************************************************************
+ * TM V3 — LEGACY ASSIGNMENT PARITY REGRESSION
+ *
+ * Existing manual employee assignments are preserved.
+ * Delivery / Service manage only Pool 4 ("To Be Assigned").
+ ************************************************************/
+function tmv3_assignmentLegacyParityRegression() {
+  const cases = [
+    {
+      name:'INSTALL_PRESERVE_MANUAL_EMPLOYEE',
+      record:{vertical:'Install'},
+      desired:{employeeIds:[15],poolIds:[]},
+      actual:[
+        {type:'employee',id:15},
+        {type:'employee',id:41}
+      ],
+      expected:'MATCH'
+    },
+    {
+      name:'DELIVERY_PRESERVE_OTHER_EMPLOYEE',
+      record:{vertical:'Delivery'},
+      desired:{employeeIds:[18],poolIds:[]},
+      actual:[
+        {type:'employee',id:18},
+        {type:'employee',id:26}
+      ],
+      expected:'MATCH'
+    },
+    {
+      name:'DELIVERY_REMOVE_ONLY_TO_BE_ASSIGNED',
+      record:{vertical:'Delivery'},
+      desired:{employeeIds:[18],poolIds:[]},
+      actual:[
+        {type:'employee',id:18},
+        {type:'employee',id:26},
+        {type:'pool',id:4}
+      ],
+      expected:'MISMATCH',
+      expectedConflicts:['pool|4']
+    },
+    {
+      name:'SERVICE_PRESERVE_OTHER_TECHNICIAN',
+      record:{vertical:'Service'},
+      desired:{employeeIds:[26],poolIds:[]},
+      actual:[
+        {type:'employee',id:26},
+        {type:'employee',id:38}
+      ],
+      expected:'MATCH'
+    },
+    {
+      name:'SERVICE_REMOVE_ONLY_TO_BE_ASSIGNED',
+      record:{vertical:'Service'},
+      desired:{employeeIds:[26],poolIds:[]},
+      actual:[
+        {type:'employee',id:26},
+        {type:'employee',id:38},
+        {type:'pool',id:4}
+      ],
+      expected:'MISMATCH',
+      expectedConflicts:['pool|4']
+    },
+    {
+      name:'SERVICE_POOL_WITHOUT_TECH_BLOCKS',
+      record:{vertical:'Service'},
+      desired:{employeeIds:[],poolIds:[]},
+      actual:[{type:'pool',id:4}],
+      expected:'BLOCKED',
+      expectedBlocker:true
+    },
+    {
+      name:'PREINSPECTION_POOL8_ONLY',
+      record:{vertical:'PreInspection'},
+      desired:{employeeIds:[],poolIds:[8]},
+      actual:[{type:'pool',id:8}],
+      expected:'MATCH'
+    }
+  ];
+
+  const results = cases.map(function(testCase) {
+    const result = tmv3_step7AssignmentCheck_(
+      testCase.record,
+      testCase.desired,
+      testCase.actual
+    );
+
+    const conflicts = (result.conflicts || []).slice().sort();
+    const expectedConflicts = (testCase.expectedConflicts || []).slice().sort();
+
+    const pass =
+      result.status === testCase.expected &&
+      JSON.stringify(conflicts) === JSON.stringify(expectedConflicts) &&
+      (
+        testCase.expectedBlocker !== true ||
+        !!tmv3_clean_(result.blocker)
+      );
+
+    return {
+      name:testCase.name,
+      pass:pass,
+      expected:testCase.expected,
+      actual:result.status,
+      expectedConflicts:expectedConflicts,
+      actualConflicts:conflicts,
+      blocker:result.blocker || ''
+    };
+  });
+
+  const failures = results.filter(function(result) {
+    return !result.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 legacy assignment parity regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    cases:results.length,
+    results:results
+  };
+}
+
+function tmv3_assignmentFeatureRegression() {
+  const source = tmv3_assignmentTitleOnlyRegression();
+  const parity = tmv3_assignmentLegacyParityRegression();
+
+  return {
+    status:
+      source.status === 'PASS' && parity.status === 'PASS'
+        ? 'PASS'
+        : 'REVIEW',
+    source:source,
+    parity:parity,
+    totalCases:Number(source.cases || 0) + Number(parity.cases || 0)
+  };
+}

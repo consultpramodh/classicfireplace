@@ -444,45 +444,10 @@ function tmv3_reconcileTaskAssignments_(eventRecord, taskId, scope, options) {
     });
   }
 
-  // Service calendars have one authoritative technician. Remove only known
-  // Service technicians that conflict with the current Calendar technician.
-  if (eventRecord.vertical === 'Service' && (desired.employeeIds || []).length) {
-    const serviceIds = [26, 38, 39];
-    const desiredIds = desired.employeeIds.map(Number);
-    current.slice().forEach(function(item) {
-      if (
-        item.type === 'employee' &&
-        serviceIds.indexOf(Number(item.id)) !== -1 &&
-        desiredIds.indexOf(Number(item.id)) === -1
-      ) {
-        tmv3_operationAssignmentRequest_(taskId, item, 'delete', scope);
-        removed.push(item);
-        current = current.filter(function(x) {
-          return !(x.type === 'employee' && Number(x.id) === Number(item.id));
-        });
-      }
-    });
-  }
-
-  // Delivery uses the two known delivery assignees. Do not remove any other
-  // manually assigned employee outside that proven set.
-  if (eventRecord.vertical === 'Delivery' && (desired.employeeIds || []).length) {
-    const deliveryIds = [18, 26];
-    const desiredIds = desired.employeeIds.map(Number);
-    current.slice().forEach(function(item) {
-      if (
-        item.type === 'employee' &&
-        deliveryIds.indexOf(Number(item.id)) !== -1 &&
-        desiredIds.indexOf(Number(item.id)) === -1
-      ) {
-        tmv3_operationAssignmentRequest_(taskId, item, 'delete', scope);
-        removed.push(item);
-        current = current.filter(function(x) {
-          return !(x.type === 'employee' && Number(x.id) === Number(item.id));
-        });
-      }
-    });
-  }
+  // Legacy parity: Install / Delivery / Service employee assignment
+  // writes are additive. Preserve existing employee assignments.
+  // Delivery / Service remove only Pool 4 (To Be Assigned), and only
+  // after the intended employee has been established above.
 
   if (eventRecord.vertical === 'PreInspection') {
     // Pool 8 is mandatory. New tasks must not inherit the historical legacy

@@ -909,6 +909,13 @@ function tmv3_step7ExistingAction_(
     };
   }
 
+  if (assignmentCheck && assignmentCheck.blocker) {
+    return {
+      plan: 'REVIEW_ASSIGNMENT_UNRESOLVED',
+      blocker: assignmentCheck.blocker
+    };
+  }
+
   const changes = [];
 
   if (checks.location === 'MISSING') {
@@ -1250,62 +1257,61 @@ function tmv3_step7AssignmentCheck_(
     poolIds: []
   };
 
-  const required = [];
-
-  (desired.employeeIds || []).forEach(function(id) {
-    required.push('employee|' + Number(id));
+  const actual = (actualAssignments || []).map(function(item) {
+    return tmv3_clean_(item.type) + '|' + Number(item.id || 0);
   });
 
-  (desired.poolIds || []).forEach(function(id) {
-    required.push('pool|' + Number(id));
+  const desiredEmployeeIds = (desired.employeeIds || []).map(Number);
+  const desiredPoolIds = (desired.poolIds || []).map(Number);
+
+  // Legacy Delivery / Service parity:
+  // existing employee assignments are preserved. The only managed
+  // conflicting assignment is Pool 4 ("To Be Assigned").
+  if (
+    (record.vertical === 'Delivery' || record.vertical === 'Service') &&
+    actual.indexOf('pool|4') !== -1 &&
+    !desiredEmployeeIds.length
+  ) {
+    return {
+      status: 'BLOCKED',
+      missing: [],
+      conflicts: ['pool|4'],
+      blocker:
+        'To Be Assigned pool exists but no valid intended employee was resolved from the legacy assignment source.'
+    };
+  }
+
+  const required = [];
+
+  desiredEmployeeIds.forEach(function(id) {
+    required.push('employee|' + id);
+  });
+
+  desiredPoolIds.forEach(function(id) {
+    required.push('pool|' + id);
   });
 
   if (!required.length) {
     return {
       status: 'N/A',
       missing: [],
-      conflicts: []
+      conflicts: [],
+      blocker: ''
     };
   }
-
-  const actual = (actualAssignments || []).map(function(item) {
-    return tmv3_clean_(item.type) + '|' + Number(item.id || 0);
-  });
 
   const missing = required.filter(function(key) {
     return actual.indexOf(key) === -1;
   });
 
   const conflicts = [];
-  const desiredEmployeeIds = (desired.employeeIds || []).map(Number);
 
-  if (record.vertical === 'Service') {
-    [26,38,39].forEach(function(id) {
-      if (
-        actual.indexOf('employee|' + id) !== -1 &&
-        desiredEmployeeIds.indexOf(id) === -1
-      ) {
-        conflicts.push('employee|' + id);
-      }
-    });
-  }
-
-  if (record.vertical === 'Delivery') {
-    [18,26].forEach(function(id) {
-      if (
-        actual.indexOf('employee|' + id) !== -1 &&
-        desiredEmployeeIds.indexOf(id) === -1
-      ) {
-        conflicts.push('employee|' + id);
-      }
-    });
-
-    if (
-      desiredEmployeeIds.length &&
-      actual.indexOf('pool|4') !== -1
-    ) {
-      conflicts.push('pool|4');
-    }
+  if (
+    (record.vertical === 'Delivery' || record.vertical === 'Service') &&
+    desiredEmployeeIds.length &&
+    actual.indexOf('pool|4') !== -1
+  ) {
+    conflicts.push('pool|4');
   }
 
   if (
@@ -1321,7 +1327,8 @@ function tmv3_step7AssignmentCheck_(
         ? 'MISMATCH'
         : 'MATCH',
     missing: missing,
-    conflicts: conflicts
+    conflicts: conflicts,
+    blocker: ''
   };
 }
 
