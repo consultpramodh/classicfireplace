@@ -1,9 +1,12 @@
 {
-  "release": "TMV3_3_11_9_ROCCO_TITLE_ONLY_VERIFY_R2",
+  "release": "TMV3_3_11_9_ROCCO_DIRECT_STEP7_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "PREVIEW_ROCCO",
+  "runMode": "DIRECT_STEP7_PREVIEW",
+  "vertical": "Install",
+  "eventId": "6ftlsr2e9fn31hpm6dj05cuthi@google.com",
+  "taskId": 18678,
   "expectedPlan": "NO_CHANGE",
   "batchOffset": 0,
   "batchLimit": 0
