@@ -25,7 +25,8 @@ Canonical tracker: issue #23
 | Step 7 reconciliation | TESTING / VERIFY |
 | Canonical v1 schedule fallback for v2 PM defect | DONE / VERIFIED |
 | Install / Delivery title-only assignee resolution | DONE / VERIFIED |
-| Install Task 16735 assignment canary | DONE / VERIFIED |
+| Assignment Reconciliation — legacy parity across all verticals | TESTING / VERIFY |
+| Install Task 16735 assignment canary (feature evidence) | DONE / VERIFIED |
 | Read-only HEAD verification transport | DONE / VERIFIED |
 | Existing-task guarded mutation path | BUILT / TESTING |
 | CREATE path | BUILT / CANARY PENDING |
@@ -48,16 +49,24 @@ No Striven mutation was made.
 
 ## Current active gate
 
-**Install Task 18394 assignment mismatch**
+**Assignment Reconciliation feature**
 
-Task `16735` is closed. The next single task is Task `18394`, using the same guarded legacy-rule assignment canary procedure.
+The unit of work is the feature, not individual Task examples.
+
+Current feature proof includes:
+- title-only Install / Delivery assignee resolution;
+- PreInspection Pool-8-only assignment semantics;
+- Service technician-calendar semantics;
+- guarded assignment write/read-back;
+- Task `16735` live canary proving the Install write path.
+
+Remaining work is feature-level regression and current-data validation across all four verticals.
 
 ## Required release sequence
 
-`fresh CREATE candidate selection`
-→ `exact CREATE preview / approval`
-→ `CREATE canary`
-→ `RECREATE canary`
+`finish Assignment Reconciliation feature`
+→ `assignment regression + current-data validation`
+→ `CREATE / RECREATE feature verification`
 → `four-vertical regression`
 → `controlled production cutover`
 → `first scheduled-cycle verification`
