@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_15_ASSIGNMENT_FEATURE_VERIFY_R2",
+  "release": "TMV3_3_11_15_ASSIGNMENT_CURRENT_DATA_SCAN_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "ASSIGNMENT_FEATURE_VERIFY",
+  "runMode": "STEP7_REFRESH_ALL",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
