@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.10.5-morning-action-links-r1';
+const TMV3_VERSION = '3.10.6-step7-links-only-canary-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';

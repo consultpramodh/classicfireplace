@@ -1613,11 +1613,17 @@ function tmv3_executeVerifiedStep7ExistingPlan(
     'PATCH_ASSIGNMENTS'
   ];
 
-  if (!wantedTaskId || !wantedPlan || wantedPlan.indexOf('PATCH_') !== 0) {
-    throw new Error('Canary executor requires an exact Task ID and PATCH plan.');
+  if (!wantedTaskId || !wantedPlan) {
+    throw new Error('Canary executor requires an exact Task ID and expected plan.');
   }
-  if (!allowed.some(function(prefix) { return wantedPlan.indexOf(prefix) !== -1; })) {
-    throw new Error('Unsupported Step 7 mutation plan: ' + wantedPlan + '.');
+  if (
+    wantedPlan !== 'NO_CHANGE' &&
+    (
+      wantedPlan.indexOf('PATCH_') !== 0 ||
+      !allowed.some(function(prefix) { return wantedPlan.indexOf(prefix) !== -1; })
+    )
+  ) {
+    throw new Error('Unsupported Step 7 canary plan: ' + wantedPlan + '.');
   }
 
   const plan = tmv3_step7FreshPlanForTask_(
@@ -1669,6 +1675,8 @@ function tmv3_executeVerifiedStep7ExistingPlan(
     calendarLinks:null
   };
 
+  // NO_CHANGE is an allowed links-only canary: it proves the Task is already
+  // correct while still repairing/verifying the managed Calendar backlink.
   if (/LOCATION|REQUESTED_BY/.test(wantedPlan)) {
     result.relationships = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'RELATIONSHIPS');
   }
