@@ -721,7 +721,7 @@ async function main() {
           RUN_MODE === 'GOLDCON_TASK_SCHEMA' ? 18618 : 0,
         expectedPlan:
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
-            ? 'PATCH_LOCATION_AND_DATES'
+            ? 'PATCH_DATES'
             : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
               ? 'PATCH_LOCATION_AND_DATES_AND_ASSIGNMENTS'
               : ''
