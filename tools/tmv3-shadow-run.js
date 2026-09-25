@@ -372,6 +372,47 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7CreateCandidates') {
+      var createScan = tmv3_step7ReconciliationRun(
+        'GITHUB_STEP7_CREATE_CANDIDATE_SCAN',
+        true,
+        ''
+      );
+
+      var createCandidates = tmv3_rows_(TMV3.SHEETS.RECONCILE)
+        .filter(function(row) {
+          return String(row['Relationship Plan'] || '') === 'CREATE_TASK' &&
+            !String(row['Blocker'] || '').trim();
+        })
+        .map(function(row) {
+          return {
+            vertical:String(row['Vertical'] || ''),
+            eventId:String(row['Event ID'] || ''),
+            logicalKey:String(row['Logical Key'] || ''),
+            event:String(row['Event'] || ''),
+            disposition:String(row['Disposition'] || ''),
+            expectedCustomerId:String(row['Expected Customer ID'] || ''),
+            expectedOrderId:String(row['Expected Order ID'] || ''),
+            expectedLocationId:String(row['Expected Location ID'] || ''),
+            expectedRequestedById:String(row['Expected Requested By ID'] || ''),
+            expectedRequestedByType:String(row['Expected Requested By Type'] || ''),
+            desiredAssignment:String(row['Desired Assignment'] || ''),
+            plan:String(row['Relationship Plan'] || ''),
+            writeGate:String(row['Write Gate'] || ''),
+            evidence:String(row['Evidence'] || ''),
+            sourceTaskIds:String(row['Source Task IDs'] || ''),
+            readStatus:String(row['Read Status'] || '')
+          };
+        });
+
+      return TMPV3_shadowResponse_({
+        ok:createScan.status === 'PASS',
+        status:'STEP7_CREATE_CANDIDATES_COMPLETE',
+        scan:createScan,
+        candidates:createCandidates
+      });
+    }
+
     if (body.action === 'step7Cases') {
       var wanted = {};
       (body.taskIds || []).forEach(function(id) {
@@ -912,6 +953,7 @@ async function main() {
       RUN_MODE === 'STEP7_DELIVERY' ||
       RUN_MODE === 'STEP7_SERVICE' ||
       RUN_MODE === 'STEP7_PREINSPECTION' ||
+      RUN_MODE === 'STEP7_CREATE_CANDIDATES' ||
       RUN_MODE === 'STEP7_CASES' ||
       RUN_MODE === 'PREVIEW_GOLDCON' ||
       RUN_MODE === 'PREVIEW_ROCCO' ||
@@ -946,6 +988,8 @@ async function main() {
                       ? 'step7CanaryPreview'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
+                    : RUN_MODE === 'STEP7_CREATE_CANDIDATES'
+                      ? 'step7CreateCandidates'
                     : RUN_MODE === 'STEP7_CASES'
                       ? 'step7Cases'
                       : RUN_MODE.indexOf('STEP7') === 0
