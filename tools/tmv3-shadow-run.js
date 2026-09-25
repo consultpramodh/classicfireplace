@@ -466,6 +466,67 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskScheduleProbe') {
+      var scheduleVertical = String(body.vertical || '');
+      var scheduleEventId = String(body.eventId || '');
+      var scheduleTaskId = Number(body.taskId || 0);
+
+      if (!TMV3.VERTICALS[scheduleVertical]) {
+        throw new Error('Task schedule probe requires a valid vertical.');
+      }
+      if (!scheduleEventId || !scheduleTaskId) {
+        throw new Error('Task schedule probe requires Event ID and Task ID.');
+      }
+
+      var scheduleEvent = tmv3_findFreshEventRecord_(
+        scheduleVertical,
+        scheduleEventId
+      );
+      var scheduleV2 = tmv3_getTaskById_(scheduleTaskId);
+      var scheduleV1 = tmv3_getCanonicalV1TaskSchedule_(scheduleTaskId);
+      var scheduleCheck = tmv3_taskScheduleCheck_(
+        scheduleVertical,
+        scheduleEvent.start,
+        scheduleEvent.end,
+        scheduleTaskId,
+        scheduleV2
+      );
+      var schedulePlan = tmv3_step7FreshPlanForTask_(
+        scheduleVertical,
+        scheduleEventId,
+        scheduleTaskId
+      );
+
+      var scheduleOk =
+        scheduleCheck.startCheck === 'MATCH' &&
+        scheduleCheck.endCheck === 'MATCH' &&
+        scheduleCheck.canonicalRead !== 'FAILED' &&
+        scheduleCheck.canonicalRead !== 'FIELDS_MISSING';
+
+      return TMPV3_shadowResponse_({
+        ok:scheduleOk,
+        status:'TASK_SCHEDULE_PROBE_COMPLETE',
+        vertical:scheduleVertical,
+        eventId:scheduleEventId,
+        taskId:scheduleTaskId,
+        calendar:{
+          start:scheduleEvent.start ? tmv3_iso_(scheduleEvent.start) : '',
+          end:scheduleEvent.end ? tmv3_iso_(scheduleEvent.end) : ''
+        },
+        v2:{
+          start:String(scheduleV2['Start'] || ''),
+          due:String(scheduleV2['Due'] || '')
+        },
+        v1:{
+          start:String(scheduleV1.startDateTime || ''),
+          due:String(scheduleV1.dueDateTime || ''),
+          source:String(scheduleV1.source || '')
+        },
+        check:scheduleCheck,
+        step7Plan:schedulePlan
+      });
+    }
+
     if (body.action === 'installDueSamples') {
       var sampleRows = tmv3_rows_(TMV3.SHEETS.TASKS)
         .filter(function(row) {
@@ -661,7 +722,8 @@ async function main() {
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
-      RUN_MODE === 'INSTALL_DUE_SAMPLES'
+      RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
+      RUN_MODE === 'TASK_SCHEDULE'
     ) {
       const action =
         (
@@ -693,6 +755,8 @@ async function main() {
                         ? 'step7Reconcile'
                       : RUN_MODE === 'INSTALL_DUE_SAMPLES'
                     ? 'installDueSamples'
+                    : RUN_MODE === 'TASK_SCHEDULE'
+                      ? 'taskScheduleProbe'
                     : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
@@ -701,6 +765,7 @@ async function main() {
         token,
         action,
         vertical:
+          RUN_MODE === 'TASK_SCHEDULE' ? String(RELEASE_MANIFEST.vertical || '') :
           (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
           RUN_MODE === 'STEP7_INSTALL' ? 'Install' :
           RUN_MODE === 'STEP7_DELIVERY' ? 'Delivery' :
@@ -711,12 +776,15 @@ async function main() {
         refreshSources: BATCH_OFFSET === 0,
         taskIds: RUN_MODE === 'STEP7_CASES' ? [17881,18618,18678,18597] : []
         ,eventId:
-          (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
+          RUN_MODE === 'TASK_SCHEDULE'
+            ? String(RELEASE_MANIFEST.eventId || '')
+            : (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
             ? '3lqqeba2r17067sjrm558kjmd1@google.com'
             : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
               ? '6ftlsr2e9fn31hpm6dj05cuthi@google.com'
               : '',
         taskId:
+          RUN_MODE === 'TASK_SCHEDULE' ? Number(RELEASE_MANIFEST.taskId || 0) :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
@@ -782,13 +850,16 @@ async function main() {
                             ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
                           : RUN_MODE === 'STEP7'
                             ? 'V3_STEP7_RECONCILIATION_VERIFIED'
-                            : RUN_MODE === 'TASK_SCHEMA'
+                            : RUN_MODE === 'TASK_SCHEDULE'
+                          ? 'V3_TASK_SCHEDULE_VERIFIED'
+                        : RUN_MODE === 'TASK_SCHEMA'
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1:
             RUN_MODE === 'TASK_SCHEMA' ||
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
             RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
+            RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'STEP7_CASES' ||
             RUN_MODE.indexOf('PREVIEW_') === 0
               ? step1
@@ -830,6 +901,8 @@ async function main() {
                           ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
                         : RUN_MODE === 'STEP7'
                           ? 'V3_STEP7_RECONCILIATION_VERIFIED'
+                          : RUN_MODE === 'TASK_SCHEDULE'
+                            ? 'V3_TASK_SCHEDULE_VERIFIED'
                           : RUN_MODE === 'TASK_SCHEMA'
                       ? 'V3_TASK_SCHEMA_PROBED'
                       : 'V3_STEP1_CALENDAR_VERIFIED'
