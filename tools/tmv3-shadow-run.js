@@ -795,7 +795,7 @@ async function main() {
             : RUN_MODE === 'CANARY_GOLDCON'
               ? 'NO_CHANGE'
               : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
-                ? 'PATCH_DATES_AND_ASSIGNMENTS'
+                ? 'PATCH_ASSIGNMENTS'
                 : ''
       });
 
