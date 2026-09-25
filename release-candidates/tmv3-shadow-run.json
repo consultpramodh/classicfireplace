@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_9_FRESH_STEP7_CREATE_SELECTION_R1",
+  "release": "TMV3_3_11_9_CREATE_CANDIDATE_SCAN_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7",
+  "runMode": "STEP7_CREATE_CANDIDATES",
   "batchOffset": 0,
   "batchLimit": 0
 }
