@@ -961,6 +961,85 @@ async function main() {
       }
     }
 
+    if (RUN_MODE === 'STEP7_REFRESH_ALL') {
+      const batches = [
+        { vertical:'Install', offset:0, limit:40, refreshSources:true },
+        { vertical:'Install', offset:40, limit:40, refreshSources:false },
+        { vertical:'Delivery', offset:0, limit:20, refreshSources:false },
+        { vertical:'Service', offset:0, limit:35, refreshSources:false },
+        { vertical:'Service', offset:35, limit:35, refreshSources:false },
+        { vertical:'PreInspection', offset:0, limit:100, refreshSources:false },
+        { vertical:'PreInspection', offset:100, limit:100, refreshSources:false },
+        { vertical:'PreInspection', offset:200, limit:100, refreshSources:false }
+      ];
+
+      const results = [];
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        const response = await postJson(url, {
+          token,
+          action:'step7Reconcile',
+          vertical:batch.vertical,
+          batchOffset:batch.offset,
+          batchLimit:batch.limit,
+          refreshSources:batch.refreshSources
+        });
+
+        results.push({
+          vertical:batch.vertical,
+          offset:batch.offset,
+          limit:batch.limit,
+          ok:response.ok === true,
+          status:response.status || '',
+          result:response.result || null
+        });
+
+        if (!response.ok) {
+          fs.writeFileSync(
+            path.join(outDir, 'step7-refresh-all-failure.json'),
+            JSON.stringify({batch, response, results}, null, 2)
+          );
+          fail(
+            'Fresh Step 7 workbook refresh failed at ' +
+            batch.vertical + ' offset ' + batch.offset + ': ' +
+            ((response.result && response.result.status) || response.status || 'UNKNOWN')
+          );
+        }
+
+        if (
+          (batch.vertical === 'Install' && batch.offset === 0) ||
+          batch.vertical === 'Service'
+        ) {
+          await new Promise(resolve => setTimeout(resolve, 20000));
+        }
+      }
+
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail('V3 source restore failed after full Step 7 workbook refresh.');
+      }
+
+      const evidence = {
+        status:'V3_STEP7_REFRESH_ALL_VERIFIED',
+        version:'3.11.12-visible-sheet-sync-r2',
+        batches:results,
+        sourceHeadHashVerified:true,
+        temporaryDeploymentDeleted:false,
+        verifiedAt:new Date().toISOString()
+      };
+
+      fs.writeFileSync(
+        path.join(outDir, 'evidence.json'),
+        JSON.stringify(evidence, null, 2)
+      );
+
+      console.log('V3_STEP7_REFRESH_ALL_VERIFIED');
+      console.log(JSON.stringify(evidence));
+      return;
+    }
+
     if (
       RUN_MODE === 'STEP1' ||
       RUN_MODE === 'STEP1_INSTALL_LIVE' ||
@@ -975,6 +1054,7 @@ async function main() {
       RUN_MODE === 'STEP5' ||
       RUN_MODE === 'STEP6' ||
       RUN_MODE === 'STEP7' ||
+      RUN_MODE === 'STEP7_REFRESH_ALL' ||
       RUN_MODE === 'STEP7_INSTALL' ||
       RUN_MODE === 'STEP7_DELIVERY' ||
       RUN_MODE === 'STEP7_SERVICE' ||
