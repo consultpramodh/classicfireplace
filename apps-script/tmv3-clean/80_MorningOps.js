@@ -161,11 +161,11 @@ function tmv3_refreshMorningOps() {
     Utilities.formatDate(today, TMV3_TIMEZONE, 'EEEE, MMMM d, yyyy'),
     '','','','',TMV3.MODE
   ]);
-  values.push([]);
+  values.push(['','','','','','']);
   values.push(['TODAY',totalAppointments,'MAPPED',totalMapped,'ATTENTION',totalAttention]);
   values.push(['NO TASK',totalNoTask,'INSTALL',(summaries[0] || {}).appointments || 0,'DELIVERY',(summaries[1] || {}).appointments || 0]);
   values.push(['SERVICE',(summaries[2] || {}).appointments || 0,'PREINSPECTION',(summaries[3] || {}).appointments || 0,'','']);
-  values.push([]);
+  values.push(['','','','','','']);
   values.push(["TODAY'S SCHEDULE",'','','','','']);
   values.push(['Time','Install','Delivery','Service','PreInspection','Flag']);
 
@@ -181,7 +181,7 @@ function tmv3_refreshMorningOps() {
     ]);
   });
 
-  values.push([]);
+  values.push(['','','','','','']);
   values.push(['NEEDS ATTENTION','','','','','']);
   values.push(['Priority','Time','Vertical','Customer / Event','Issue','Next Action']);
 
