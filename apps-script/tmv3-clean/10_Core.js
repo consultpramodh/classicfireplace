@@ -76,6 +76,25 @@ function tmv3_parseDateTime_(value) {
   return isNaN(fallback.getTime()) ? null : fallback;
 }
 
+
+function tmv3_sameCalendarDate_(a, b) {
+  const left = tmv3_parseDateTime_(a);
+  const right = tmv3_parseDateTime_(b);
+  if (!left || !right) return false;
+
+  return (
+    Utilities.formatDate(left, TMV3_TIMEZONE, 'yyyy-MM-dd') ===
+    Utilities.formatDate(right, TMV3_TIMEZONE, 'yyyy-MM-dd')
+  );
+}
+
+function tmv3_taskDueDateOnly_(vertical, task) {
+  return (
+    tmv3_clean_(vertical) === 'Install' &&
+    Number(task && task['Task Type ID'] || 0) === 92
+  );
+}
+
 function tmv3_hash_(value) {
   const bytes = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,

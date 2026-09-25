@@ -656,10 +656,16 @@ function tmv3_step7ExistingTaskPlan_(
     record.start,
     actual['Start']
   );
-  const endCheck = tmv3_step7DateCheck_(
-    record.end,
-    actual['Due']
-  );
+  const endCheck = tmv3_taskDueDateOnly_(record.vertical, actual)
+    ? (
+        tmv3_sameCalendarDate_(record.end, actual['Due'])
+          ? 'MATCH'
+          : 'MISMATCH'
+      )
+    : tmv3_step7DateCheck_(
+        record.end,
+        actual['Due']
+      );
 
   const assignmentCheck = tmv3_step7AssignmentCheck_(
     record,

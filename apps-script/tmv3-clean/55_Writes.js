@@ -20,8 +20,8 @@ function tmv3_buildTaskPatchPayload_(eventRecord, resolved, currentTask) {
   const cfg = TMV3.VERTICALS[eventRecord.vertical];
   const payload = {
     Id: Number(currentTask['Task ID']),
-    StartDateTime: tmv3_iso_(eventRecord.start),
-    DueDateTime: tmv3_iso_(eventRecord.end)
+    startDateTime: tmv3_iso_(eventRecord.start),
+    dueDateTime: tmv3_iso_(eventRecord.end)
   };
 
   const locationId = Number(resolved.locationId || 0);
