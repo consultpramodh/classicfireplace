@@ -397,9 +397,25 @@ function doPost(e) {
         return Number(record.taskId || 0) === previewTaskId;
       });
       if (previewMatches.length !== 1) {
-        throw new Error(
-          'Fresh preview resolver did not return exactly one matching Task row.'
-        );
+        return TMPV3_shadowResponse_({
+          ok:true,
+          status:'STEP7_CANARY_PREVIEW_RESOLVER_DIAGNOSTIC',
+          canaryReady:false,
+          plan:previewPlan,
+          resolverMatchCount:previewMatches.length,
+          resolverRecords:previewRecords.map(function(record) {
+            return {
+              status:String(record.status || ''),
+              taskId:Number(record.taskId || 0),
+              customerId:String(record.customerId || ''),
+              locationId:String(record.locationId || ''),
+              contactId:String(record.contactId || ''),
+              orderId:String(record.orderId || ''),
+              issue:String(record.issue || ''),
+              nextAction:String(record.nextAction || '')
+            };
+          })
+        });
       }
 
       var previewBundle = {
