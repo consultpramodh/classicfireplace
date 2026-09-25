@@ -14,124 +14,199 @@
 function tmv3_refreshMorningOps() {
   const sh = tmv3_sheet_(TMV3.SHEETS.MORNING);
   const verticals = ['Install','Delivery','Service','PreInspection'];
-  const stateRows = tmv3_rows_(TMV3.SHEETS.STATE);
-  const stateByEvent = tmv3_morningStateByEvent_(stateRows);
-  const auditRows = tmv3_rows_(TMV3.SHEETS.AUDIT);
-  const lastRun = tmv3_lastSuccessfulRun_(auditRows);
-  const config = tmv3_configCapabilities_();
-  const missingConfig = Object.keys(config).filter(function(key) {
-    return !config[key].present;
-  });
-
-  const all = [];
+  const todayKey = Utilities.formatDate(new Date(), TMV3_TIMEZONE, 'yyyy-MM-dd');
+  const allRows = [];
   const summaries = [];
 
   verticals.forEach(function(vertical) {
-    const rows = tmv3_rows_(TMV3.VERTICALS[vertical].sheet);
-    const eventIds = {};
-    let verified = 0;
-    let needsAttention = 0;
-    let blocked = 0;
-    let oldestMinutes = null;
+    const rows = tmv3_rows_(TMV3.VERTICALS[vertical].sheet).filter(function(row) {
+      const d = tmv3_parseDateTime_(row['Calendar Start']);
+      return d && Utilities.formatDate(d, TMV3_TIMEZONE, 'yyyy-MM-dd') === todayKey;
+    });
 
-    rows.forEach(function(row, rowIndex) {
-      row.__operatorRow = rowIndex + 2;
+    const eventIds = {};
+    let mapped = 0;
+    let attention = 0;
+
+    rows.forEach(function(row) {
       const eventId = tmv3_clean_(row['Event ID']);
       if (eventId) eventIds[eventId] = true;
 
-      const verification = tmv3_clean_(row['Verification']);
-      const status = tmv3_clean_(row['Status']).toUpperCase();
-      const isVerified =
-        verification.indexOf('CALENDAR ↔ STRIVEN PASS') === 0 &&
-        status === 'MATCHED';
+      const mapping = tmv3_clean_(row['Mapping Status']).toUpperCase();
+      const task = tmv3_clean_(row['Task']);
+      const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
+      const needsAttention =
+        /NOT_RUN|REVIEW|BLOCKED/.test(mapping) ||
+        /CREATE REQUIRED/i.test(evidence);
 
-      if (isVerified) verified++;
+      if (task && !/^NOT RUN/i.test(task)) mapped++;
+      if (needsAttention) attention++;
 
-      const needs =
-        ['MATCHED','IGNORED'].indexOf(status) === -1;
-
-      if (needs) {
-        needsAttention++;
-        if (status === 'BLOCKED' || status === 'NOT MATCHED') blocked++;
-
-        const state = stateByEvent[vertical + '|' + eventId] || {};
-        const ageMinutes = tmv3_minutesSince_(state['First Detected At']);
-        if (ageMinutes !== null) {
-          oldestMinutes =
-            oldestMinutes === null
-              ? ageMinutes
-              : Math.max(oldestMinutes, ageMinutes);
-        }
-      }
-
-      const state = stateByEvent[vertical + '|' + eventId] || {};
-      all.push(tmv3_morningExceptionRecord_(vertical, row, state));
+      allRows.push({
+        vertical: vertical,
+        row: row,
+        needsAttention: needsAttention
+      });
     });
-
-    const appointmentCount = Object.keys(eventIds).length || rows.length;
 
     summaries.push({
       vertical: vertical,
-      appointments: appointmentCount,
-      taskRows: rows.length,
-      verified: verified,
-      needsAttention: needsAttention,
-      blocked: blocked,
-      oldestMinutes: oldestMinutes,
-      status:
-        verified === appointmentCount &&
-        needsAttention === 0 &&
-        appointmentCount > 0
-          ? 'HEALTHY'
-          : (
-              lastRun
-                ? (blocked ? 'ATTENTION' : (needsAttention ? 'REVIEW' : 'CHECK'))
-                : 'BASELINE'
-            )
+      appointments: Object.keys(eventIds).length,
+      mapped: mapped,
+      attention: attention
     });
   });
 
-  const exceptions = all
-    .filter(function(item) {
-      return item.needsAttention;
-    })
-    .sort(tmv3_morningExceptionSort_)
-    .slice(0, 15);
-
-  const regression = tmv3_regressionHealth_();
-  const failures = tmv3_recentTechnicalFailures_(auditRows, 24);
-  const triggers = tmv3_triggerHealth_();
-  const readiness = tmv3_morningReadiness_({
-    lastRun: lastRun,
-    missingConfig: missingConfig,
-    regression: regression,
-    failures: failures,
-    triggers: triggers,
-    summaries: summaries
+  allRows.sort(function(a,b) {
+    const ad = tmv3_parseDateTime_(a.row['Calendar Start']);
+    const bd = tmv3_parseDateTime_(b.row['Calendar Start']);
+    return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
   });
 
-  tmv3_writeMorningHeader_(sh, readiness, lastRun);
-  tmv3_writeMorningWorkflowHealth_(sh, summaries);
-  tmv3_writeMorningExceptions_(sh, exceptions);
-  tmv3_writeMorningAutomation_(sh, {
-    lastRun: lastRun,
-    missingConfig: missingConfig,
-    regression: regression,
-    failures: failures,
-    triggers: triggers
+  const values = [];
+  values.push(['MORNING OPS — TODAY']);
+  values.push([
+    Utilities.formatDate(new Date(), TMV3_TIMEZONE, 'EEEE, MMMM d, yyyy') +
+    ' · ' + TMV3.MODE
+  ]);
+  values.push([]);
+  values.push(["TODAY'S WORKFLOW"]);
+  values.push(['Vertical','Appointments','Task mapped','Needs attention']);
+
+  summaries.forEach(function(s) {
+    values.push([s.vertical,s.appointments,s.mapped,s.attention]);
   });
-  tmv3_writeMorningReadiness_(sh, readiness);
-  tmv3_writeMorningSinceRun_(sh, stateRows, lastRun, summaries, failures);
-  tmv3_writeMorningPipeline_(sh, auditRows, lastRun);
+
+  values.push([]);
+  values.push(["TODAY'S APPOINTMENTS"]);
+  values.push([
+    'Time','Vertical','Customer / Event','Task','Status',
+    'Attention / Next Action','Event ID'
+  ]);
+
+  allRows.forEach(function(item) {
+    const row = item.row;
+    const start = tmv3_parseDateTime_(row['Calendar Start']);
+    const calendarCustomer = tmv3_clean_(row['Calendar Customer']);
+    const nameMatch = calendarCustomer.match(/(?:^|\n)Name:\s*([^\n]+)/i);
+    const customer =
+      (nameMatch && tmv3_clean_(nameMatch[1])) ||
+      tmv3_clean_(row['Calendar Event']).split('\n')[0] ||
+      '(unnamed event)';
+
+    const taskText = tmv3_clean_(row['Task']);
+    const taskMatch = taskText.match(/Task\s*#?\s*(\d+)/i);
+    const taskLabel = taskMatch
+      ? 'Task #' + taskMatch[1]
+      : (/^NOT RUN/i.test(taskText) || !taskText ? 'No task' : taskText.split('\n')[0]);
+
+    const mapping = tmv3_clean_(row['Mapping Status']).replace(/^STEP\s*6\s*[—-]\s*/i,'');
+    const taskStatus = tmv3_clean_(row['Task Status']);
+    const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
+    const issue = tmv3_clean_(row['Issue / Next Action']);
+
+    let attention = 'None';
+    if (/CREATE REQUIRED/i.test(evidence)) {
+      attention = 'Review customer-owned location evidence';
+    } else if (/NOT_RUN|REVIEW|BLOCKED/i.test(mapping)) {
+      attention = issue || mapping;
+    }
+
+    values.push([
+      start ? Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') : '',
+      item.vertical,
+      customer,
+      taskLabel,
+      [taskStatus,mapping].filter(Boolean).join(' · '),
+      attention,
+      tmv3_clean_(row['Event ID'])
+    ]);
+  });
+
+  const attentionRows = allRows.filter(function(item) {
+    return item.needsAttention;
+  });
+
+  values.push([]);
+  values.push(["TODAY'S ATTENTION"]);
+  values.push([
+    'Priority','Vertical','Time','Customer / Event',
+    'Issue','Next Action','Event ID'
+  ]);
+
+  if (!attentionRows.length) {
+    values.push(['OK','','','','No attention items for today.','','']);
+  } else {
+    attentionRows.forEach(function(item) {
+      const row = item.row;
+      const start = tmv3_parseDateTime_(row['Calendar Start']);
+      const calendarCustomer = tmv3_clean_(row['Calendar Customer']);
+      const nameMatch = calendarCustomer.match(/(?:^|\n)Name:\s*([^\n]+)/i);
+      const customer =
+        (nameMatch && tmv3_clean_(nameMatch[1])) ||
+        tmv3_clean_(row['Calendar Event']).split('\n')[0] ||
+        '(unnamed event)';
+      const evidence = tmv3_clean_(row['Task Customer / IDs (Evidence)']);
+      const issue = tmv3_clean_(row['Issue / Next Action']);
+
+      const locationReview = /CREATE REQUIRED/i.test(evidence);
+
+      values.push([
+        locationReview ? 'CHECK' : 'ATTENTION',
+        item.vertical,
+        start ? Utilities.formatDate(start, TMV3_TIMEZONE, 'h:mm a') : '',
+        customer,
+        locationReview
+          ? 'Location evidence is unresolved for the customer'
+          : (issue || 'Appointment requires attention'),
+        locationReview
+          ? 'Verify customer-owned location before any relationship write'
+          : (issue || 'Review appointment'),
+        tmv3_clean_(row['Event ID'])
+      ]);
+    });
+  }
+
+  sh.getRange(1,1,Math.min(100,sh.getMaxRows()),Math.min(15,sh.getMaxColumns()))
+    .breakApart()
+    .clearContent();
+
+  if (sh.getMaxRows() < values.length) {
+    sh.insertRowsAfter(sh.getMaxRows(), values.length - sh.getMaxRows());
+  }
+  if (sh.getMaxColumns() < 7) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), 7 - sh.getMaxColumns());
+  }
+
+  const width = 7;
+  const normalized = values.map(function(r) {
+    const out = r.slice();
+    while (out.length < width) out.push('');
+    return out;
+  });
+
+  sh.getRange(1,1,normalized.length,width).setValues(normalized);
+  sh.setFrozenRows(2);
+  sh.showColumns(1,Math.min(6,sh.getMaxColumns()));
+  if (sh.getMaxColumns() >= 7) sh.hideColumns(7,1);
+
+  const widths = [90,115,230,130,185,330];
+  widths.forEach(function(width,index) {
+    if (index + 1 <= sh.getMaxColumns()) sh.setColumnWidth(index + 1,width);
+  });
+
+  sh.getRange(1,1,normalized.length,Math.min(6,sh.getMaxColumns()))
+    .setWrap(true)
+    .setVerticalAlignment('middle');
+  sh.getRange(1,1,1,6).setFontWeight('bold');
+  sh.autoResizeRows(1,normalized.length);
 
   return {
-    status: readiness.overallStatus,
+    status: 'TODAY_ONLY',
+    date: todayKey,
     mode: TMV3.MODE,
-    lastSuccessfulRun: lastRun ? tmv3_iso_(lastRun) : null,
-    missingConfig: missingConfig,
-    regression: regression,
-    failures24h: failures.length,
-    exceptionsShown: exceptions.length,
+    appointments: summaries.reduce(function(sum,s){ return sum + s.appointments; },0),
+    attention: attentionRows.length,
     verticals: summaries
   };
 }
@@ -782,12 +857,12 @@ function tmv3_acknowledgeSelectedMorningOps() {
   }
 
   const row = sh.getActiveRange().getRow();
-  if (row < 17 || row > 31) {
-    throw new Error('Select one of the visible exception rows.');
+  if (row < 13) {
+    throw new Error('Select one of today\'s appointment or attention rows.');
   }
 
-  const vertical = tmv3_clean_(sh.getRange(row, 9).getValue());
-  const eventId = tmv3_clean_(sh.getRange(row, 10).getValue());
+  const vertical = tmv3_clean_(sh.getRange(row, 2).getValue());
+  const eventId = tmv3_clean_(sh.getRange(row, 7).getValue());
 
   if (!vertical || !eventId) {
     throw new Error('Selected row has no V3 Event identity.');
@@ -865,12 +940,12 @@ function tmv3_clearAcknowledgementSelectedMorningOps() {
   }
 
   const row = sh.getActiveRange().getRow();
-  if (row < 17 || row > 31) {
-    throw new Error('Select one of the visible exception rows.');
+  if (row < 13) {
+    throw new Error('Select one of today\'s appointment or attention rows.');
   }
 
-  const vertical = tmv3_clean_(sh.getRange(row, 9).getValue());
-  const eventId = tmv3_clean_(sh.getRange(row, 10).getValue());
+  const vertical = tmv3_clean_(sh.getRange(row, 2).getValue());
+  const eventId = tmv3_clean_(sh.getRange(row, 7).getValue());
 
   const stateSheet = tmv3_sheet_(TMV3.SHEETS.STATE);
   const values = stateSheet.getDataRange().getValues();
