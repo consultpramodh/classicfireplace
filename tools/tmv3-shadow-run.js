@@ -13,6 +13,7 @@ const BATCH_LIMIT = Math.max(0, Number(process.env.TMV3_STEP7_BATCH_LIMIT || 0))
 const RELEASE_MANIFEST = JSON.parse(
   fs.readFileSync(path.resolve(process.cwd(), 'release-candidates/tmv3-shadow-run.json'), 'utf8')
 );
+const PROBE_TASK_ID = Math.max(0, Number(RELEASE_MANIFEST.taskId || 17881));
 fs.mkdirSync(outDir, { recursive: true });
 
 function fail(message) {
