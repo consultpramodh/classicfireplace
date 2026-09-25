@@ -1,10 +1,9 @@
 {
-  "release": "TMV3_3_11_10_CREATE_CANDIDATE_SCAN_R3_VERSIONED",
+  "release": "TMV3_VERSION_INVENTORY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_CREATE_CANDIDATES",
+  "runMode": "VERSION_INVENTORY",
   "batchOffset": 0,
-  "batchLimit": 0,
-  "forceVersionedDeployment": true
+  "batchLimit": 0
 }
