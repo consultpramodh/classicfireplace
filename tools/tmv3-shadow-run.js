@@ -970,14 +970,18 @@ async function main() {
 
     if (RUN_MODE === 'STEP7_REFRESH_ALL') {
       const batches = [
-        { vertical:'Install', offset:0, limit:40, refreshSources:true },
-        { vertical:'Install', offset:40, limit:40, refreshSources:false },
+        { vertical:'Install', offset:0, limit:30, refreshSources:true },
+        { vertical:'Install', offset:30, limit:30, refreshSources:false },
         { vertical:'Delivery', offset:0, limit:20, refreshSources:false },
-        { vertical:'Service', offset:0, limit:35, refreshSources:false },
-        { vertical:'Service', offset:35, limit:35, refreshSources:false },
-        { vertical:'PreInspection', offset:0, limit:100, refreshSources:false },
-        { vertical:'PreInspection', offset:100, limit:100, refreshSources:false },
-        { vertical:'PreInspection', offset:200, limit:100, refreshSources:false }
+        { vertical:'Service', offset:0, limit:25, refreshSources:false },
+        { vertical:'Service', offset:25, limit:25, refreshSources:false },
+        { vertical:'Service', offset:50, limit:25, refreshSources:false },
+        { vertical:'Service', offset:75, limit:25, refreshSources:false },
+        { vertical:'Service', offset:100, limit:25, refreshSources:false },
+        { vertical:'PreInspection', offset:0, limit:75, refreshSources:false },
+        { vertical:'PreInspection', offset:75, limit:75, refreshSources:false },
+        { vertical:'PreInspection', offset:150, limit:75, refreshSources:false },
+        { vertical:'PreInspection', offset:225, limit:75, refreshSources:false }
       ];
 
       const results = [];
@@ -1015,10 +1019,10 @@ async function main() {
         }
 
         if (
-          (batch.vertical === 'Install' && batch.offset === 0) ||
+          batch.vertical === 'Install' ||
           batch.vertical === 'Service'
         ) {
-          await new Promise(resolve => setTimeout(resolve, 20000));
+          await new Promise(resolve => setTimeout(resolve, 8000));
         }
       }
 
@@ -1030,7 +1034,7 @@ async function main() {
 
       const evidence = {
         status:'V3_STEP7_REFRESH_ALL_VERIFIED',
-        version:'3.11.12-visible-sheet-sync-r2',
+        version:'3.11.13-api-safe-step7-batch-r1',
         batches:results,
         sourceHeadHashVerified:true,
         temporaryDeploymentDeleted:false,
