@@ -466,8 +466,9 @@ function doPost(e) {
     }
 
     if (body.action === 'taskSchemaProbe') {
+      var probeTaskId = Number(body.taskId || 17881);
       var rawTask = tmv3_fetchJson_(
-        TMV3.API_BASE + '/v2/tasks/17881',
+        TMV3.API_BASE + '/v2/tasks/' + encodeURIComponent(probeTaskId),
         { method:'get' }
       ) || {};
       var fieldValues = {};
@@ -479,7 +480,7 @@ function doPost(e) {
       return TMPV3_shadowResponse_({
         ok:true,
         status:'TASK_SCHEMA_PROBE_COMPLETE',
-        taskId:17881,
+        taskId:probeTaskId,
         keys:Object.keys(rawTask).sort(),
         relevant:fieldValues
       });
@@ -629,7 +630,8 @@ async function main() {
       RUN_MODE === 'PREVIEW_ROCCO' ||
       RUN_MODE === 'CANARY_GOLDCON' ||
       RUN_MODE === 'CANARY_ROCCO' ||
-      RUN_MODE === 'TASK_SCHEMA'
+      RUN_MODE === 'TASK_SCHEMA' ||
+      RUN_MODE === 'GOLDCON_TASK_SCHEMA'
     ) {
       const action =
         (
@@ -659,7 +661,7 @@ async function main() {
                       ? 'step7Cases'
                       : RUN_MODE.indexOf('STEP7') === 0
                         ? 'step7Reconcile'
-                      : RUN_MODE === 'TASK_SCHEMA'
+                      : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
 
@@ -684,7 +686,8 @@ async function main() {
               : '',
         taskId:
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
-          (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 : 0,
+          (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
+          RUN_MODE === 'GOLDCON_TASK_SCHEMA' ? 18618 : 0,
         expectedPlan:
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
             ? 'PATCH_LOCATION_AND_DATES'
@@ -749,6 +752,7 @@ async function main() {
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1:
             RUN_MODE === 'TASK_SCHEMA' ||
+            RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
             RUN_MODE === 'STEP7_CASES' ||
             RUN_MODE.indexOf('PREVIEW_') === 0
               ? step1
