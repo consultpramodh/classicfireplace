@@ -1,105 +1,84 @@
 # Task Mapping — Latest Checkpoint
 
-**Checkpoint date:** 2026-09-12 (America/Toronto)
+**Checkpoint date:** 2026-09-25 (America/Toronto)
 
 ## Canonical branch
 
 `task_mapping` is the single canonical Task Mapping branch.
 
-## Scope
+## Active rewrite
 
-The cleanup/rewrite covers:
+- System: **Task Mapping V3**
+- Source: `apps-script/tmv3-clean/`
+- V3 version: `3.11.8-v1-canonical-schedule-r1`
+- Execution stage: `7`
+- Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
+- Mode: `SHADOW_READ_ONLY`
 
-1. Install
-2. Delivery
-3. Service
-4. PreInspection
-5. shared scheduler/report/cache/resolution/planning/execution/link/verification modules
+V3 covers Install, Delivery, Service, PreInspection, and shared resolution/reconciliation/verification modules.
 
-## Active production behavior
+## Latest verified checkpoint
 
-Latest verified business release remains:
+**Canonical PM schedule fallback: PASS**
 
-`R3.4.22 — R30 Requested By Router Fix`
+GitHub Actions run: `36180539726`
 
-The legacy 36-file implementation remains the live routed system. TM2 has not taken over any production workflow.
+Evidence artifact: `10884600388`
 
-## Zero-touch AutoPatch status
+Evidence file:
 
-`CLASPRC_JSON` is configured in GitHub Actions and the first fully automated guarded deployment completed successfully.
+`test-evidence/2026-09-25-tmv3-canonical-pm-schedule-verified.md`
 
-GitHub Actions run: `34710451571`
+Verified case:
 
-Result:
+- Install Task `18678`
+- Calendar schedule: 2:00 PM–5:00 PM
+- Striven v2 exposed: 2:00 AM–5:00 AM
+- canonical Striven v1 exposed: 2:00 PM–5:00 PM
+- V3 fallback source: `V1_DESIRED_START_END`
+- `Start Check = MATCH`
+- `End Check = MATCH`
+- Step 7 removed the incorrect date-patch requirement
+- global write gate remained read-only
+- source parity after temporary execution: PASS
+- temporary verification deployment deleted
 
-`DEPLOYED_SHADOW_SOURCE_VERIFIED`
+## Current unresolved item
 
-Verified facts:
+Fresh Step 7 for Task `18678` now returns:
 
-- PRE live clone contained 36 legacy files;
-- freshness clone immediately before push matched PRE;
-- 19 new `TM2_` files were added;
-- POST live clone contained 55 files;
-- all 36 legacy files were hash-identical to PRE;
-- all 19 TM2 files were hash-identical to the GitHub candidate;
-- no rollback was required;
-- workflow job conclusion was SUCCESS.
+`PATCH_ASSIGNMENTS`
 
-Evidence is recorded in:
+The schedule problem is closed. The assignment mismatch is the next active issue.
 
-- `executions/tm2-shadow-r0-2026-09-12.json`
-- `test-evidence/2026-09-12-tm2-shadow-r0-deployed.md`
+## Current safety state
 
-The GitHub Actions PRE-source/evidence artifact is ID `10303171560`, SHA-256 `f21cfb049821ff8ccfe9676b576bb766e6d5859b97531458425c0258eb25be2f`.
+No broad V3 production cutover has occurred.
 
-## Current TM2 state
+- `SHADOW_READ_ONLY` remains active.
+- Automation business writes remain disabled.
+- CREATE/RECREATE production use remains gated.
+- A controlled write must be previewed, executed, read back, and reconciled before it can count as verified.
 
-TM2 R0 is present in the existing Apps Script project but remains inert:
+## Remaining release gates
 
-- `SHADOW_READ_ONLY`;
-- Striven writes disabled;
-- Calendar writes disabled;
-- CREATE/RECREATE disabled;
-- TM2 trigger installation disabled;
-- Install cutover false;
-- Delivery cutover false;
-- Service cutover false;
-- PreInspection cutover false;
-- legacy menus/triggers unchanged.
+1. Resolve and verify Task 18678 assignment.
+2. Controlled CREATE canary.
+3. Controlled RECREATE canary.
+4. Final four-vertical regression.
+5. Controlled production cutover.
+6. Verify first scheduled production cycle.
+7. Only then evaluate legacy retirement.
 
-Repository candidate source is under:
+## Next exact action
 
-`apps-script/tm2-shadow/`
+**Assignment reconciliation for Install Task 18678.**
 
-## Runtime verification
+Acceptance criteria:
 
-`SHADOW_RUNTIME_VERIFIED = PENDING`
-
-The source push/read-back has been proven. The next proof is actual read-only execution of:
-
-- `tm2_connectivityAudit()`
-- `tm2_diagnostics()`
-- `tm2_shadowRunAll()`
-
-Automating those functions requires remote Apps Script execution support. First determine whether the existing project can use clasp/Apps Script API execution safely without changing its Cloud-project association or requiring a risky production authorization migration.
-
-## Source parity
-
-- TM2 source parity: VERIFIED.
-- Legacy PRE source: captured in the Actions artifact.
-- Permanent public GitHub archive of the exact 36-file legacy source: PENDING sensitive-content screening.
-
-Do not publish raw legacy source until credentials, Script Properties, private report identifiers/URLs, customer PII, and other operationally sensitive values are screened.
-
-## Exact next action
-
-1. Probe/configure zero-touch read-only TM2 runtime execution without rerouting any legacy workflow.
-2. If safe remote execution is available, run `tm2_connectivityAudit()`, `tm2_diagnostics()`, and `tm2_shadowRunAll()` automatically and record the results.
-3. Build the complete legacy inventory from the freshly captured PRE source: files, functions, callers/callees, menus, triggers, sheets, Calendar operations, Striven reports/API writes, workflow ownership, relationship rules, assignment rules, recovery rules, guards and fingerprints.
-4. Classify every legacy function as `CANONICAL / ADAPTER / LEGACY-USED / LEGACY-UNUSED / UNKNOWN`.
-5. Expand TM2 one workflow at a time from scaffolding to behavior-equivalent read-only planning and compare its decisions against the current legacy implementation.
-6. Do not enable TM2 writes or workflow cutover until read-only parity and affected-workflow regression checks pass.
-
-## Repository housekeeping
-
-`task_mapping` remains canonical. Temporary `task_mapping_autopatch_stage*` refs created during connector setup are noncanonical and unused; remove them when branch-delete access is available.
+- current verified date/time remains unchanged;
+- desired assignee is derived deterministically from the Calendar event;
+- any canary mutation is limited to assignment;
+- fresh Striven read-back matches the desired assignment;
+- fresh Step-7 plan converges to `NO_CHANGE`;
+- no unrelated mutation occurs.
