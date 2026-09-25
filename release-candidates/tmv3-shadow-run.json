@@ -1,18 +1,11 @@
 {
-  "release": "TMV3_3_11_14_TASK16735_POST_CANARY_VERIFY_R1",
+  "release": "TMV3_3_11_15_ASSIGNMENT_FEATURE_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "ASSIGNMENT_CASES",
+  "runMode": "ASSIGNMENT_FEATURE_VERIFY",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
-  "forceVersionedDeployment": false,
-  "assignmentCases": [
-    {
-      "vertical": "Install",
-      "eventId": "7vl3u03pbbpe3t1i7sflhu35p5@google.com",
-      "taskId": 16735
-    }
-  ]
+  "forceVersionedDeployment": false
 }
