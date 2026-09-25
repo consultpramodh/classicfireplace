@@ -267,3 +267,100 @@ function tmv3_v3RegressionFamily_(status) {
 function tmv3_regressionKey_(vertical, eventId) {
   return tmv3_clean_(vertical) + '|' + tmv3_clean_(eventId);
 }
+
+/************************************************************
+ * TM V3 — ASSIGNMENT SOURCE REGRESSION
+ *
+ * Install / Delivery assignees come from Calendar TITLE only.
+ * Narrative description/notes must never create assignments.
+ ************************************************************/
+function tmv3_assignmentTitleOnlyRegression() {
+  const cases = [
+    {
+      name: 'INSTALL_DESCRIPTION_REFERENCE_IGNORED',
+      eventRecord: {
+        vertical: 'Install',
+        title: 'Customer - SO 585199',
+        description: 'Please test the fireplace and let SF know the results.',
+        guests: ''
+      },
+      expected: []
+    },
+    {
+      name: 'INSTALL_TITLE_MULTI_ASSIGNEE',
+      eventRecord: {
+        vertical: 'Install',
+        title: 'Customer - John + SF',
+        description: 'Thang is mentioned only in notes.',
+        guests: ''
+      },
+      expected: [15, 18]
+    },
+    {
+      name: 'INSTALL_AIDEN_IGNORED',
+      eventRecord: {
+        vertical: 'Install',
+        title: 'Customer - John & Aiden 2-3',
+        description: '',
+        guests: ''
+      },
+      expected: [18]
+    },
+    {
+      name: 'DELIVERY_DESCRIPTION_REFERENCE_IGNORED',
+      eventRecord: {
+        vertical: 'Delivery',
+        title: 'Customer delivery 2-3',
+        description: 'Call John after delivery.',
+        guests: ''
+      },
+      expected: []
+    },
+    {
+      name: 'DELIVERY_TITLE_MATTHEW',
+      eventRecord: {
+        vertical: 'Delivery',
+        title: 'Customer - Matthew Thompson',
+        description: 'John is mentioned only in notes.',
+        guests: ''
+      },
+      expected: [26]
+    }
+  ];
+
+  const results = cases.map(function(testCase) {
+    const actual = tmv3_desiredAssignment_(testCase.eventRecord)
+      .employeeIds
+      .map(Number)
+      .sort(function(a,b) { return a - b; });
+    const expected = testCase.expected
+      .map(Number)
+      .sort(function(a,b) { return a - b; });
+    const pass = JSON.stringify(actual) === JSON.stringify(expected);
+
+    return {
+      name: testCase.name,
+      pass: pass,
+      expected: expected,
+      actual: actual
+    };
+  });
+
+  const failures = results.filter(function(result) {
+    return !result.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 assignment title-only regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status: 'PASS',
+    cases: results.length,
+    results: results
+  };
+}
+
