@@ -10,7 +10,7 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.9-assignee-title-only-r1`
+- V3 version: `3.11.14-legacy-assignment-parity-r1`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 
@@ -102,13 +102,13 @@ Production readiness is not yet proven until controlled live canaries and the fi
 
 ## Remaining critical path
 
-1. Identify and preview one deterministic `CREATE_TASK` candidate from a fresh read-only Step-7 run.
-2. After exact transaction approval, execute one controlled CREATE canary with Striven read-back and Calendar backlink verification.
-3. Identify and execute one controlled RECREATE canary under the same guarded procedure.
-4. Run final four-vertical V3 regression.
-5. Reconcile remaining REVIEW/patch cases.
-6. Only if those gates pass, perform a controlled production cutover from `SHADOW_READ_ONLY`.
-7. Verify the first scheduled production cycle before considering legacy retirement.
+1. Fix and verify the next genuine legacy-rule assignment mismatch: Install Task `18394`.
+2. Fix and verify Install Task `18690`.
+3. Fix and verify Service Task `18540`.
+4. Identify and preview one deterministic `CREATE_TASK` candidate from a fresh read-only Step-7 run.
+5. Execute controlled CREATE and RECREATE canaries with authoritative read-back.
+6. Run final four-vertical V3 regression.
+7. Only if those gates pass, perform controlled production cutover and verify the first scheduled cycle.
 
 ## Current completion classification
 
@@ -130,6 +130,11 @@ Production readiness is not yet proven until controlled live canaries and the fi
 
 ## Exact next action
 
-**Run a fresh read-only Step-7 reconciliation and select the safest deterministic `CREATE_TASK` candidate.**
+**Fix and verify Install Task `18394` assignment using the legacy title-based assignment rule.**
 
-Do not create anything until the exact customer/location/order/task payload and duplicate-prevention evidence are previewed and bound to the canary transaction.
+Task `16735` is closed: employee 15 was added, existing employee 41 was preserved, fresh Step 7 converged to `NO_CHANGE`, and the Sheet now reflects the verified result.
+
+Evidence:
+- canary run `36198082523`
+- post-write verification run `36198236398`
+- `test-evidence/2026-09-25-tmv3-task-16735-assignment-canary-verified.md`
