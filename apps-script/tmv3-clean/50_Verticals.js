@@ -37,12 +37,11 @@ function tmv3_desiredAssignment_(eventRecord) {
     };
   }
 
-  const text = tmv3_norm_(
-    [
-      eventRecord.title,
-      eventRecord.description
-    ].join(' ')
-  );
+  // Install / Delivery parity rule:
+  // assignment names must be explicit in the Calendar event TITLE.
+  // Description/notes are narrative context and must never create an
+  // assignment instruction (for example, "Let SF know the results").
+  const title = tmv3_norm_(eventRecord.title);
 
   const ids = [];
 
@@ -51,7 +50,9 @@ function tmv3_desiredAssignment_(eventRecord) {
 
     if (
       (p.patterns || []).some(function(q) {
-        return text.indexOf(tmv3_norm_(q)) !== -1;
+        const pattern = tmv3_norm_(q);
+        return pattern &&
+          (' ' + title + ' ').indexOf(' ' + pattern + ' ') !== -1;
       })
     ) {
       ids.push(Number(p.employeeId));
