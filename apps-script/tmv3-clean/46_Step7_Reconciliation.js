@@ -83,12 +83,28 @@ function tmv3_step7ReconciliationRun(
           source: 'CACHED_TASK_SOURCES'
         };
 
+  batchOptions = batchOptions || {};
+  const batchOffset = Math.max(0, Number(batchOptions.offset || 0));
+  const requestedLimit = Math.max(0, Number(batchOptions.limit || 0));
+  const batchEnabled = requestedLimit > 0;
+
   const allStep2Snapshot = tmv3_step2CalendarRecords_();
-  const step2Snapshot = filter
+  const filteredStep2Snapshot = filter
     ? allStep2Snapshot.filter(function(record) {
         return record.vertical === filter;
       })
     : allStep2Snapshot;
+
+  // API-budget rule: for batched Step 7 runs, slice the Calendar input
+  // BEFORE identity/task resolution. Previously batching happened after
+  // Step 4/5, so a 35-row Service batch still resolved all Service events
+  // and could exceed Striven's 100-calls/minute ceiling.
+  const step2Snapshot = batchEnabled
+    ? filteredStep2Snapshot.slice(
+        batchOffset,
+        batchOffset + requestedLimit
+      )
+    : filteredStep2Snapshot;
 
   const step3Refs = tmv3_step3AnchorIndex_();
   const step3Records = tmv3_step3BusinessAnchorRecords_(
@@ -109,32 +125,22 @@ function tmv3_step7ReconciliationRun(
   );
 
   const step6Records = tmv3_step6DecisionRecords_(step5Records);
-  const selectedAll = filter
-    ? step6Records.filter(function(record) {
-        return record.vertical === filter;
-      })
-    : step6Records;
-
-  batchOptions = batchOptions || {};
-  const batchOffset = Math.max(0, Number(batchOptions.offset || 0));
-  const requestedLimit = Math.max(0, Number(batchOptions.limit || 0));
-  const batchEnabled = requestedLimit > 0;
-  const selected = batchEnabled
-    ? selectedAll.slice(batchOffset, batchOffset + requestedLimit)
-    : selectedAll;
+  const selected = step6Records;
   const batch = {
     enabled: batchEnabled,
     offset: batchOffset,
-    limit: batchEnabled ? requestedLimit : selectedAll.length,
-    selected: selected.length,
-    totalAvailable: selectedAll.length,
+    limit: batchEnabled ? requestedLimit : filteredStep2Snapshot.length,
+    selected: step2Snapshot.length,
+    step7Rows: selected.length,
+    totalAvailable: filteredStep2Snapshot.length,
     nextOffset:
-      batchEnabled && batchOffset + selected.length < selectedAll.length
-        ? batchOffset + selected.length
+      batchEnabled &&
+      batchOffset + step2Snapshot.length < filteredStep2Snapshot.length
+        ? batchOffset + step2Snapshot.length
         : null,
     complete:
       !batchEnabled ||
-      batchOffset + selected.length >= selectedAll.length
+      batchOffset + step2Snapshot.length >= filteredStep2Snapshot.length
   };
 
   const runtime = {
