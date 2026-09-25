@@ -784,6 +784,7 @@ async function main() {
           step1:
             RUN_MODE === 'TASK_SCHEMA' ||
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
+            RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
             RUN_MODE === 'STEP7_CASES' ||
             RUN_MODE.indexOf('PREVIEW_') === 0
               ? step1
