@@ -465,6 +465,7 @@ function tmv3_assignmentLegacyParityRegression() {
       desired:{employeeIds:[],poolIds:[]},
       actual:[{type:'pool',id:4}],
       expected:'BLOCKED',
+      expectedConflicts:['pool|4'],
       expectedBlocker:true
     },
     {
