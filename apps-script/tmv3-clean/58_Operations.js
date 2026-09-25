@@ -581,8 +581,8 @@ function tmv3_assertResolvedOwnership_(bundle) {
 function tmv3_selectedDatePayload_(bundle) {
   return {
     Id: Number(bundle.resolved.taskId),
-    StartDateTime: tmv3_iso_(bundle.eventRecord.start),
-    DueDateTime: tmv3_iso_(bundle.eventRecord.end)
+    startDateTime: tmv3_iso_(bundle.eventRecord.start),
+    dueDateTime: tmv3_iso_(bundle.eventRecord.end)
   };
 }
 

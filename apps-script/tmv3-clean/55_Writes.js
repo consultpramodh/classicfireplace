@@ -107,6 +107,8 @@ function tmv3_safeTaskPatchPayload_(payload, taskId) {
     Id: true,
     StartDateTime: true,
     DueDateTime: true,
+    startDateTime: true,
+    dueDateTime: true,
     SalesOrder: true,
     Location: true,
     RequestedBy: true,
