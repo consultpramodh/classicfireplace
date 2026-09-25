@@ -457,6 +457,9 @@ async function main() {
       RUN_MODE === 'STEP6' ||
       RUN_MODE === 'STEP7' ||
       RUN_MODE === 'STEP7_INSTALL' ||
+      RUN_MODE === 'STEP7_DELIVERY' ||
+      RUN_MODE === 'STEP7_SERVICE' ||
+      RUN_MODE === 'STEP7_PREINSPECTION' ||
       RUN_MODE === 'TASK_SCHEMA'
     ) {
       const action =
@@ -479,7 +482,7 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
-                    : (RUN_MODE === 'STEP7' || RUN_MODE === 'STEP7_INSTALL')
+                    : RUN_MODE.indexOf('STEP7') === 0
                       ? 'step7Reconcile'
                       : RUN_MODE === 'TASK_SCHEMA'
                     ? 'taskSchemaProbe'
@@ -488,7 +491,11 @@ async function main() {
       const step1 = await postJson(url, {
         token,
         action,
-        vertical: RUN_MODE === 'STEP7_INSTALL' ? 'Install' : ''
+        vertical:
+          RUN_MODE === 'STEP7_INSTALL' ? 'Install' :
+          RUN_MODE === 'STEP7_DELIVERY' ? 'Delivery' :
+          RUN_MODE === 'STEP7_SERVICE' ? 'Service' :
+          RUN_MODE === 'STEP7_PREINSPECTION' ? 'PreInspection' : ''
       });
 
       if (!step1.ok) {
@@ -532,8 +539,8 @@ async function main() {
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                       : RUN_MODE === 'STEP6'
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
-                        : RUN_MODE === 'STEP7_INSTALL'
-                          ? 'V3_STEP7_INSTALL_RECONCILIATION_VERIFIED'
+                        : RUN_MODE.indexOf('STEP7_') === 0
+                          ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
                           : RUN_MODE === 'STEP7'
                             ? 'V3_STEP7_RECONCILIATION_VERIFIED'
                             : RUN_MODE === 'TASK_SCHEMA'
@@ -569,8 +576,8 @@ async function main() {
                     ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                     : RUN_MODE === 'STEP6'
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
-                      : RUN_MODE === 'STEP7_INSTALL'
-                        ? 'V3_STEP7_INSTALL_RECONCILIATION_VERIFIED'
+                      : RUN_MODE.indexOf('STEP7_') === 0
+                        ? 'V3_' + RUN_MODE + '_RECONCILIATION_VERIFIED'
                         : RUN_MODE === 'STEP7'
                           ? 'V3_STEP7_RECONCILIATION_VERIFIED'
                           : RUN_MODE === 'TASK_SCHEMA'
