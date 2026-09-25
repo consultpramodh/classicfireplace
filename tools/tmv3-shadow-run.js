@@ -437,6 +437,15 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'assignmentFeatureRegression') {
+      var regression = tmv3_assignmentFeatureRegression();
+      return TMPV3_shadowResponse_({
+        ok:regression.status === 'PASS',
+        status:'ASSIGNMENT_FEATURE_REGRESSION_COMPLETE',
+        result:regression
+      });
+    }
+
     if (body.action === 'assignmentParityCases') {
       var assignmentCases = (body.cases || []).map(function(testCase) {
         var plan = tmv3_step7FreshPlanForTask_(
@@ -1321,6 +1330,7 @@ async function main() {
       RUN_MODE === 'STEP7_PREINSPECTION' ||
       RUN_MODE === 'SHEET_PUBLISH' ||
       RUN_MODE === 'STEP7_CREATE_CANDIDATES' ||
+      RUN_MODE === 'ASSIGNMENT_FEATURE_VERIFY' ||
       RUN_MODE === 'ASSIGNMENT_CASES' ||
       RUN_MODE === 'STEP7_CASES' ||
       RUN_MODE === 'PREVIEW_GOLDCON' ||
@@ -1365,6 +1375,8 @@ async function main() {
                       ? 'sheetPublish'
                     : RUN_MODE === 'STEP7_CREATE_CANDIDATES'
                       ? 'step7CreateCandidates'
+                    : RUN_MODE === 'ASSIGNMENT_FEATURE_VERIFY'
+                      ? 'assignmentFeatureRegression'
                     : RUN_MODE === 'ASSIGNMENT_CASES'
                       ? 'assignmentParityCases'
                     : RUN_MODE === 'STEP7_CASES'
@@ -1505,6 +1517,7 @@ async function main() {
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
             RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
             RUN_MODE === 'TASK_SCHEDULE' ||
+            RUN_MODE === 'ASSIGNMENT_FEATURE_VERIFY' ||
             RUN_MODE === 'ASSIGNMENT_CASES' ||
             RUN_MODE === 'STEP7_CASES' ||
             RUN_MODE.indexOf('PREVIEW_') === 0
@@ -1541,6 +1554,8 @@ async function main() {
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
                       : RUN_MODE.indexOf('CANARY_') === 0
                         ? 'V3_' + RUN_MODE + '_VERIFIED'
+                      : RUN_MODE === 'ASSIGNMENT_FEATURE_VERIFY'
+                        ? 'V3_ASSIGNMENT_FEATURE_VERIFIED'
                       : RUN_MODE === 'ASSIGNMENT_CASES'
                         ? 'V3_ASSIGNMENT_CASES_VERIFIED'
                       : RUN_MODE === 'STEP7_CASES'
