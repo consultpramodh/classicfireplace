@@ -833,6 +833,12 @@ async function main() {
 
     await updateContent(temp);
 
+    // Allow Apps Script deployment metadata a short propagation window before
+    // invoking the HEAD web-app entrypoint.
+    if (RUN_MODE !== 'DIRECT_STEP7_PREVIEW') {
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+
     if (RUN_MODE === 'DIRECT_STEP7_PREVIEW') {
       const direct = await runScriptFunction(
         'TMPV3_directStep7Preview',
@@ -915,12 +921,13 @@ async function main() {
         const headWebApp = (headDeployment.entryPoints || [])
           .map(ep => ep && ep.webApp)
           .filter(Boolean)[0] || {};
-        // HEAD/test web apps execute latest saved code through /dev.
-        // Access remains limited to an editor-authorized caller.
+        // Use the existing HEAD deployment without creating a new
+        // immutable Apps Script version. The temporary manifest exposes the
+        // guarded token endpoint; source is restored after execution.
         url =
           'https://script.google.com/macros/s/' +
           deploymentId +
-          '/dev';
+          '/exec';
       }
     }
 
