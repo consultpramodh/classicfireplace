@@ -1,9 +1,10 @@
 {
-  "release": "TMV3_GOLDCON_CAMELCASE_DATE_CANARY_R1",
+  "release": "TMV3_TASK18618_RAW_SCHEMA_PROBE_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "CANARY_WRITE",
-  "writesEnabled": true,
-  "runMode": "CANARY_GOLDCON",
+  "mode": "SHADOW_READ_ONLY",
+  "writesEnabled": false,
+  "runMode": "TASK_SCHEMA",
   "batchOffset": 0,
-  "batchLimit": 0
+  "batchLimit": 0,
+  "taskId": 18618
 }
