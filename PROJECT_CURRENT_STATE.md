@@ -10,72 +10,87 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.8-v1-canonical-schedule-r1`
+- V3 version: `3.11.9-assignee-title-only-r1`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 
-The four verticals remain:
-
-1. Install
-2. Delivery
-3. Service
-4. PreInspection
+The four verticals remain Install, Delivery, Service, and PreInspection.
 
 ## Current V3 architecture
 
-Canonical runtime order:
-
 `CALENDAR → NORMALIZE/ELIGIBILITY → BUSINESS ANCHOR → IDENTITY → TASK RESOLUTION → TASK DECISION → RECONCILIATION → EXECUTE → READ-BACK VERIFY → CALENDAR LINK VERIFY → COMPLETE`
 
-V3 source is consolidated under the existing module set. Do **not** add Step 8/9/10 Apps Script files. Extend or consolidate existing modules.
+V3 remains consolidated under the existing module set. Do **not** add Step 8/9/10 Apps Script files.
 
 ## Current safety state
 
-V3 is **not in production-write mode**.
+V3 is not in production-write mode.
 
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: disabled
 - Scheduled Stage-7 business writes: gated
 - CREATE/RECREATE production cutover: not approved
-- Legacy production behavior remains the rollback/business continuity path
-- Manual-write policy flags cannot elevate the project while the global mode remains `SHADOW_READ_ONLY`
+- Legacy production behavior remains the rollback/business-continuity path
 
-## Latest verified result — PM schedule defect
+## Verified fixes — 2026-09-25
 
-**Status: VERIFIED FIXED**
+### Canonical PM Task schedule
+
+**VERIFIED**
+
+For Install Task `18678`, Striven v2 exposed a PM appointment as an AM schedule. V3 now falls back to canonical Striven v1 `DesiredStartDate / DesiredEndDate` when v2 disagrees with Calendar.
+
+Verified:
+
+- Calendar start/end: `MATCH / MATCH`
+- source: `V1_DESIRED_START_END`
+- incorrect date patch removed
+- evidence: `test-evidence/2026-09-25-tmv3-canonical-pm-schedule-verified.md`
+
+### Install / Delivery assignee inference
+
+**VERIFIED**
+
+The apparent Task `18678` assignment mismatch was a V3 false positive. V3 was incorrectly treating narrative Calendar-description text as assignment evidence.
+
+Release `3.11.9-assignee-title-only-r1` restores the canonical rule:
+
+- Install / Delivery assignment names come from the **Calendar event title only**;
+- description notes do not create assignments;
+- normalized whole-token / whole-phrase matching is used;
+- Aiden remains ignored;
+- Service and PreInspection keep their separate assignment rules.
+
+Fresh live Step 7 for Task `18678` now returns:
+
+- Customer: `MATCH`
+- Order: `MATCH`
+- Location: `MATCH`
+- Requested By: `MATCH`
+- Start: `MATCH`
+- End: `MATCH`
+- Desired assignment: none
+- Existing assignment: preserved
+- Assignment check: `N/A`
+- Final plan: `NO_CHANGE`
+- Blocker: none
+- Read status: `FRESH_TASK_GET`
+
+No Striven assignment mutation was made.
 
 Evidence:
 
-- V3 release: `3.11.8-v1-canonical-schedule-r1`
-- GitHub Actions run: `36180539726`
-- Evidence artifact: `10884600388`
-- Evidence file: `test-evidence/2026-09-25-tmv3-canonical-pm-schedule-verified.md`
-- Install Task: `18678`
+- GitHub Actions run: `36183055729`
+- artifact: `10885545480`
+- file: `test-evidence/2026-09-25-tmv3-title-only-assignee-verified.md`
 
-Verified behavior:
+## Read-only runtime verifier
 
-- Calendar schedule: 2:00 PM–5:00 PM
-- Striven v2 exposed the same appointment as 2:00 AM–5:00 AM
-- V3 detected the v2 disagreement
-- V3 read canonical Striven v1 `DesiredStartDate / DesiredEndDate`
-- Canonical v1 schedule matched Calendar at 2:00 PM–5:00 PM
-- `Start Check = MATCH`
-- `End Check = MATCH`
-- schedule source = `V1_DESIRED_START_END`
-- Step 7 no longer proposes a date patch
-- source-head parity after the temporary verification execution: PASS
-- temporary verification deployment: deleted
-- no Striven or Calendar business mutation was executed
+Read-only V3 verification now reuses the Apps Script HEAD/test web-app deployment through the authenticated `/dev` endpoint.
 
-## Current active defect
+This removes the previous need to create one temporary Apps Script version/deployment for every read-only probe and avoids the observed `RESOURCE_EXHAUSTED` deployment path.
 
-The same fresh Step-7 read now resolves the schedule correctly but still returns:
-
-`PATCH_ASSIGNMENTS`
-
-Therefore the PM date defect is closed. The **next active defect is the assignment mismatch for Task 18678**.
-
-This assignment issue must be handled independently from the now-verified schedule logic.
+The runner still restores the exact pre-run source and verifies source-head hash parity after execution.
 
 ## Write-path readiness
 
@@ -83,15 +98,15 @@ Existing-task reconciliation is implemented with guarded fresh-read / fresh-plan
 
 CREATE/RECREATE implementation is present with duplicate prevention, durable Task-ID capture, read-back checks, Calendar backlink handling, and PreInspection-specific safety rules.
 
-However, production readiness is **not yet proven** until controlled live canaries and the final regression pass are complete.
+Production readiness is not yet proven until controlled live canaries and the final regression pass complete.
 
 ## Remaining critical path
 
-1. Resolve and verify the Task 18678 assignment mismatch.
-2. Run one controlled CREATE canary with full Striven read-back and Calendar backlink verification.
-3. Run one controlled RECREATE canary with full Striven read-back and Calendar backlink verification.
-4. Run final four-vertical V3 regression using the current source.
-5. Reconcile any remaining REVIEW/patch cases.
+1. Identify and preview one deterministic `CREATE_TASK` candidate from a fresh read-only Step-7 run.
+2. After exact transaction approval, execute one controlled CREATE canary with Striven read-back and Calendar backlink verification.
+3. Identify and execute one controlled RECREATE canary under the same guarded procedure.
+4. Run final four-vertical V3 regression.
+5. Reconcile remaining REVIEW/patch cases.
 6. Only if those gates pass, perform a controlled production cutover from `SHADOW_READ_ONLY`.
 7. Verify the first scheduled production cycle before considering legacy retirement.
 
@@ -102,10 +117,12 @@ However, production readiness is **not yet proven** until controlled live canari
 | V3 architecture | BUILT |
 | Stage-7 reconciliation engine | BUILT / ACTIVE VERIFICATION |
 | Canonical PM schedule fallback | VERIFIED |
+| Title-only Install/Delivery assignment resolution | VERIFIED |
 | Existing-task guarded mutation path | BUILT |
 | CREATE path | BUILT / LIVE CANARY PENDING |
 | RECREATE path | BUILT / LIVE CANARY PENDING |
 | Calendar backlink path | BUILT / FINAL CANARY PENDING |
+| Read-only runtime verification transport | VERIFIED |
 | Automation production writes | GATED |
 | Final four-vertical regression | PENDING |
 | Production cutover | NOT APPROVED |
@@ -113,12 +130,6 @@ However, production readiness is **not yet proven** until controlled live canari
 
 ## Exact next action
 
-**Fix and verify the Task 18678 assignment mismatch without changing the verified schedule.**
+**Run a fresh read-only Step-7 reconciliation and select the safest deterministic `CREATE_TASK` candidate.**
 
-The acceptance condition is:
-
-- schedule remains `MATCH / MATCH`;
-- desired assignment is deterministic;
-- assignment mutation, if authorized in a controlled canary, reads back correctly;
-- fresh Step-7 plan converges to `NO_CHANGE`;
-- no unrelated fields are changed.
+Do not create anything until the exact customer/location/order/task payload and duplicate-prevention evidence are previewed and bound to the canary transaction.
