@@ -734,6 +734,8 @@ async function main() {
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                       : RUN_MODE === 'STEP6'
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                        : RUN_MODE.indexOf('PREVIEW_') === 0
+                          ? 'V3_' + RUN_MODE + '_VERIFIED'
                         : RUN_MODE.indexOf('CANARY_') === 0
                           ? 'V3_' + RUN_MODE + '_VERIFIED'
                         : RUN_MODE === 'STEP7_CASES'
@@ -746,7 +748,9 @@ async function main() {
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1:
-            RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'STEP7_CASES'
+            RUN_MODE === 'TASK_SCHEMA' ||
+            RUN_MODE === 'STEP7_CASES' ||
+            RUN_MODE.indexOf('PREVIEW_') === 0
               ? step1
               : (step1.result || null),
           sourceHeadHashVerified: true,
