@@ -382,7 +382,18 @@ async function postJson(url, payload) {
   let json = {};
 
   try { json = JSON.parse(text); }
-  catch { fail('Temporary V3 runner did not return JSON.'); }
+  catch {
+    const diagnostic = {
+      status: res.status,
+      contentType: res.headers.get('content-type') || '',
+      finalUrl: String(res.url || '').replace(/([?&](?:token|authuser)=[^&]*)/gi, ''),
+      bodyPrefix: text.slice(0, 500).replace(/\s+/g, ' ').trim()
+    };
+    fail(
+      'Temporary V3 runner did not return JSON: ' +
+      JSON.stringify(diagnostic)
+    );
+  }
 
   if (!res.ok) fail('Temporary V3 runner HTTP ' + res.status + '.');
   return json;
