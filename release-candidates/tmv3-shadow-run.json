@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_TASK18618_RAW_SCHEMA_PROBE_R2",
+  "release": "TMV3_TASK18618_RAW_SCHEMA_PROBE_R3",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "GOLDCON_TASK_SCHEMA",
+  "runMode": "TASK_SCHEMA",
   "batchOffset": 0,
   "batchLimit": 0,
   "taskId": 18618
