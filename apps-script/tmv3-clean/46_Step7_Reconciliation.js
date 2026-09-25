@@ -145,6 +145,7 @@ function tmv3_step7ReconciliationRun(
 
   const plans = tmv3_step7Plans_(selected, runtime);
   const write = tmv3_step7WritePlans_(plans, filter, batch);
+  const visibleWrite = tmv3_publishLatestStep7ToVisibleSheets();
   const verification = tmv3_step7Verify_(selected, plans);
   const counts = tmv3_step7Counts_(plans);
 
@@ -160,6 +161,7 @@ function tmv3_step7ReconciliationRun(
     sourceSummary: sourceSummary,
     counts: counts,
     write: write,
+    visibleWrite: visibleWrite,
     verification: verification,
     runtime: tmv3_runtimeMetrics_(),
     reconciliationPlanned: true,
@@ -1490,6 +1492,180 @@ function tmv3_step7WritePlans_(plans, verticalFilter, batch) {
     totalRows: rows.length,
     preservedOtherVerticalRows: rows.length - newRows.length,
     hidden: true
+  };
+}
+
+function tmv3_step7OperatorNextAction_(plans) {
+  const list = (plans || []).map(function(plan) {
+    return tmv3_clean_(plan);
+  }).filter(Boolean);
+
+  if (!list.length) return 'No Step 7 reconciliation result published yet.';
+  if (list.every(function(plan) { return plan === 'NO_CHANGE'; })) {
+    return 'Verified by Step 7 — no change required.';
+  }
+  if (list.some(function(plan) { return /^REVIEW_|READ_FAILED|DIRECT_TASK_READ_FAILED/.test(plan); })) {
+    return 'Step 7 requires review before any write.';
+  }
+  if (list.some(function(plan) { return plan.indexOf('CREATE_LOCATION_THEN_') === 0; })) {
+    return 'Step 7 requires customer-owned Location creation before Task creation.';
+  }
+  if (list.some(function(plan) { return plan.indexOf('RECREATE_TASK') !== -1; })) {
+    return 'Step 7 verified a guarded Task recreation candidate.';
+  }
+  if (list.some(function(plan) { return plan.indexOf('CREATE_TASK') !== -1; })) {
+    return 'Step 7 verified a guarded Task creation candidate.';
+  }
+  if (list.some(function(plan) { return plan.indexOf('PATCH_') === 0; })) {
+    return 'Step 7 identified a guarded existing-Task correction.';
+  }
+  if (list.some(function(plan) { return plan.indexOf('VERIFY_ONLY') === 0; })) {
+    return 'Step 7 verified historical coverage — no automatic write.';
+  }
+  return 'Step 7 reconciliation published. Review the plan shown here.';
+}
+
+function tmv3_publishLatestStep7ToVisibleSheets() {
+  const reconcileRows = tmv3_rows_(TMV3.SHEETS.RECONCILE);
+  const byEvent = {};
+
+  reconcileRows.forEach(function(row) {
+    const vertical = tmv3_clean_(row['Vertical']);
+    const eventId = tmv3_clean_(row['Event ID']);
+    if (!vertical || !eventId) return;
+
+    const key = vertical + '|' + eventId;
+    if (!byEvent[key]) byEvent[key] = [];
+    byEvent[key].push(row);
+  });
+
+  const written = {};
+  let publishedRows = 0;
+
+  Object.keys(TMV3.VERTICALS).forEach(function(vertical) {
+    const sheetName = TMV3.VERTICALS[vertical].sheet;
+    const sh = tmv3_sheet_(sheetName);
+    const lastRow = sh.getLastRow();
+    const lastColumn = sh.getLastColumn();
+
+    if (lastRow < 2 || lastColumn < 1) {
+      written[vertical] = 0;
+      return;
+    }
+
+    const values = sh.getRange(1,1,lastRow,lastColumn).getValues();
+    const headers = values[0].map(tmv3_clean_);
+    const eventIx = headers.indexOf('Event ID');
+    const mappingIx = headers.indexOf('Mapping Status');
+    const issueIx = headers.indexOf('Issue / Next Action');
+
+    if (eventIx < 0 || mappingIx < 0 || issueIx < 0) {
+      throw new Error(
+        'Operator sheet ' + sheetName +
+        ' is missing Event ID / Mapping Status / Issue columns.'
+      );
+    }
+
+    let changed = 0;
+
+    for (let i = 1; i < values.length; i++) {
+      const eventId = tmv3_clean_(values[i][eventIx]);
+      if (!eventId) continue;
+
+      const plans = byEvent[vertical + '|' + eventId] || [];
+      if (!plans.length) continue;
+
+      const planNames = tmv3_unique_(
+        plans.map(function(plan) {
+          return tmv3_clean_(plan['Relationship Plan']);
+        }).filter(Boolean)
+      );
+
+      const blockers = tmv3_unique_(
+        plans.map(function(plan) {
+          return tmv3_clean_(plan['Blocker']);
+        }).filter(Boolean)
+      );
+
+      const engineVersions = tmv3_unique_(
+        plans.map(function(plan) {
+          return tmv3_clean_(plan['Engine Version']);
+        }).filter(Boolean)
+      );
+
+      values[i][mappingIx] =
+        'STEP 7 — ' +
+        (planNames.length ? planNames.join(' + ') : 'NO PLAN');
+
+      values[i][issueIx] =
+        blockers.length
+          ? blockers.join(' | ')
+          : tmv3_step7OperatorNextAction_(planNames);
+
+      // Keep a visible, non-invasive proof of which engine produced this
+      // projection without changing the operator column structure.
+      const checklistIx = headers.indexOf('Data Checklist');
+      if (checklistIx >= 0 && engineVersions.length) {
+        const existing = tmv3_clean_(values[i][checklistIx])
+          .replace(/\n?V3 Engine:\s*[^\n]+/gi, '')
+          .trim();
+        values[i][checklistIx] =
+          (existing ? existing + '\n' : '') +
+          'V3 Engine: ' +
+          engineVersions.join(', ');
+      }
+
+      changed++;
+      publishedRows++;
+    }
+
+    if (changed) {
+      sh.getRange(1,1,values.length,values[0].length).setValues(values);
+    }
+
+    written[vertical] = changed;
+  });
+
+  const overview = tmv3_sheet_(TMV3.SHEETS.OVERVIEW);
+  overview.getRange('B2').setValue(
+    'V3 ' + TMV3.VERSION + ' — STAGE ' + tmv3_executionStage_() +
+    ' — VISIBLE SHEET SYNCED'
+  );
+  overview.getRange('B4').setValue(
+    TMV3.MODE + ' — WORKBOOK UPDATES ENABLED; BUSINESS WRITES GATED'
+  );
+  overview.getRange('B5').setValue(
+    'Visible operator tabs are projected from the latest Step 7 reconciliation.'
+  );
+  overview.getRange('B6').setValue(
+    'Mapping Status and Issue / Next Action now show the latest published Step 7 plan.'
+  );
+  overview.getRange('B14').setValue(
+    'Step 7 visible-sheet publication active; guarded CREATE/RECREATE verification remains next.'
+  );
+  overview.getRange('B16').setValue(
+    'Operator tabs reflect the latest TM Reconcile publication; TM Reconcile remains the detailed evidence source.'
+  );
+
+  const morning = tmv3_refreshMorningOps();
+
+  tmv3_audit_(
+    'SYSTEM','','','STEP7_VISIBLE_SHEET_PUBLISH','PASS',
+    JSON.stringify({
+      version: TMV3.VERSION,
+      reconcileRows: reconcileRows.length,
+      publishedRows: publishedRows,
+      written: written
+    })
+  );
+
+  return {
+    status:'STEP7_VISIBLE_SHEETS_SYNCED',
+    version:TMV3.VERSION,
+    reconcileRows:reconcileRows.length,
+    publishedRows:publishedRows,
+    written:written,
+    morningOps:morning
   };
 }
 
