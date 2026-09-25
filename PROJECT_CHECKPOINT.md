@@ -63,15 +63,14 @@ Verified outcome:
 
 ## Remaining release gates
 
-1. Fix/verify Install Task `18394` assignment.
-2. Fix/verify Install Task `18690` assignment.
-3. Fix/verify Service Task `18540` assignment.
-4. Fresh Step-7 scan and deterministic CREATE candidate selection.
-5. Controlled CREATE canary + read-back + Calendar backlink verification.
-6. Controlled RECREATE canary.
-7. Final four-vertical regression.
-8. Controlled production cutover and first scheduled-cycle verification.
+1. Complete and verify the **Assignment Reconciliation feature** across all four verticals using legacy behavior.
+2. Run feature-level assignment regression plus fresh current-data validation.
+3. Complete guarded CREATE/RECREATE feature verification with read-back and Calendar backlink proof.
+4. Run final four-vertical regression.
+5. Controlled production cutover and first scheduled-cycle verification.
 
 ## Next exact action
 
-**Fix and verify Install Task `18394` assignment only.**
+**Finish Assignment Reconciliation as a feature-level gate.**
+
+Individual Tasks such as `16735`, `18394`, `18690`, and `18540` are test/canary cases only; they are not separate project milestones.
