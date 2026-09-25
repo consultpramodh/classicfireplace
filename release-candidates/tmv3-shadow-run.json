@@ -1,9 +1,10 @@
 {
-  "release": "TMV3_ROCCO_POST_FAIL_PREVIEW_R1",
+  "release": "TMV3_ROCCO_RAW_TASK_PROBE_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "PREVIEW_ROCCO",
+  "runMode": "TASK_SCHEMA",
   "batchOffset": 0,
-  "batchLimit": 0
+  "batchLimit": 0,
+  "taskId": 18678
 }
