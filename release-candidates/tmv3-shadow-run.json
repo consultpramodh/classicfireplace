@@ -1,38 +1,15 @@
 {
-  "release": "TMV3_3_11_14_LEGACY_ASSIGNMENT_CASES_R1",
+  "release": "TMV3_3_11_14_TASK16735_ASSIGNMENT_PREVIEW_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "ASSIGNMENT_CASES",
+  "runMode": "PREVIEW_STEP7",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "assignmentCases": [
-    {
-      "vertical": "Install",
-      "eventId": "7vl3u03pbbpe3t1i7sflhu35p5@google.com",
-      "taskId": 16735
-    },
-    {
-      "vertical": "Install",
-      "eventId": "3p8l49su7va751htg82nqm7auh@google.com",
-      "taskId": 18394
-    },
-    {
-      "vertical": "Install",
-      "eventId": "2r77hs4209ccuv6qfhgjosl7vk@google.com",
-      "taskId": 18690
-    },
-    {
-      "vertical": "Service",
-      "eventId": "0rvd7o7mvod6k6ld1clkdkv7jl@google.com",
-      "taskId": 18540
-    },
-    {
-      "vertical": "PreInspection",
-      "eventId": "n161s97ac3eu04bvc17k2m106c@google.com",
-      "taskId": 18534
-    }
-  ]
+  "vertical": "Install",
+  "eventId": "7vl3u03pbbpe3t1i7sflhu35p5@google.com",
+  "taskId": 16735,
+  "expectedPlan": "PATCH_ASSIGNMENTS"
 }
