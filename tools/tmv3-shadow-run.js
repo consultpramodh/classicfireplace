@@ -852,7 +852,10 @@ async function main() {
     // This avoids creating an Apps Script version/deployment for every probe,
     // which can hit Apps Script resource/rate limits. Canary writes continue
     // to require the isolated versioned-deployment path.
-    if (RUN_MODE.indexOf('CANARY_') !== 0) {
+    if (
+      RUN_MODE.indexOf('CANARY_') !== 0 &&
+      RELEASE_MANIFEST.forceVersionedDeployment !== true
+    ) {
       const inventory = await getDeployments();
       const headDeployment = findHeadWebAppDeployment(inventory);
 
