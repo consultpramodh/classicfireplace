@@ -652,20 +652,15 @@ function tmv3_step7ExistingTaskPlan_(
     }
   }
 
-  const startCheck = tmv3_step7DateCheck_(
+  const scheduleCheck = tmv3_taskScheduleCheck_(
+    record.vertical,
     record.start,
-    actual['Start']
+    record.end,
+    taskId,
+    actual
   );
-  const endCheck = tmv3_taskDueDateOnly_(record.vertical, actual)
-    ? (
-        tmv3_sameCalendarDate_(record.end, actual['Due'])
-          ? 'MATCH'
-          : 'MISMATCH'
-      )
-    : tmv3_step7DateCheck_(
-        record.end,
-        actual['Due']
-      );
+  const startCheck = scheduleCheck.startCheck;
+  const endCheck = scheduleCheck.endCheck;
 
   const assignmentCheck = tmv3_step7AssignmentCheck_(
     record,
@@ -683,15 +678,27 @@ function tmv3_step7ExistingTaskPlan_(
     assignment: assignmentCheck.status
   };
 
-  const action = tmv3_step7ExistingAction_(
-    record,
-    disposition,
-    expected,
-    actual,
-    checks,
-    assignmentCheck,
-    historical
-  );
+  let action;
+  if (
+    checks.start === 'CANONICAL_READ_FAILED' ||
+    checks.end === 'CANONICAL_READ_FAILED'
+  ) {
+    action = {
+      plan: 'REVIEW_DATE_CANONICAL_READ_FAILED',
+      blocker:
+        'v2 Task schedule disagrees with Calendar and canonical v1 DesiredStartDate/DesiredEndDate could not be verified. Date mutation is blocked.'
+    };
+  } else {
+    action = tmv3_step7ExistingAction_(
+      record,
+      disposition,
+      expected,
+      actual,
+      checks,
+      assignmentCheck,
+      historical
+    );
+  }
 
   return tmv3_step7PlanRow_({
     record: record,
@@ -705,9 +712,10 @@ function tmv3_step7ExistingTaskPlan_(
       locationId: tmv3_clean_(actual['Location ID']),
       requestedById: tmv3_clean_(requestedBy.id),
       requestedByType: tmv3_clean_(requestedBy.type),
-      start: tmv3_clean_(actual['Start']),
-      due: tmv3_clean_(actual['Due']),
-      assignment: tmv3_step7AssignmentText_(actualAssignments)
+      start: tmv3_clean_(scheduleCheck.start),
+      due: tmv3_clean_(scheduleCheck.due),
+      assignment: tmv3_step7AssignmentText_(actualAssignments),
+      scheduleSource: scheduleCheck.source || 'V2_TASK_MODEL'
     },
     desiredAssignment: tmv3_step7DesiredAssignmentText_(
       desiredAssignment
@@ -717,7 +725,8 @@ function tmv3_step7ExistingTaskPlan_(
     blocker: action.blocker,
     evidence: tmv3_step7Evidence_(record, [
       'FRESH_TASK_GET',
-      'TASK_ID_' + taskId
+      'TASK_ID_' + taskId,
+      'TASK_SCHEDULE_' + (scheduleCheck.source || 'V2_TASK_MODEL')
     ]),
     sourceTaskIds: sourceTaskIds,
     readStatus: 'FRESH_TASK_GET'
@@ -1030,6 +1039,7 @@ function tmv3_step7PlanRow_(input) {
     calendarEnd: record.end ? tmv3_iso_(record.end) : '',
     taskDue: actual.due || '',
     endCheck: checks.end || '',
+    scheduleSource: actual.scheduleSource || 'V2_TASK_MODEL',
     desiredAssignment: input.desiredAssignment || '',
     actualAssignment: actual.assignment || '',
     assignmentCheck: checks.assignment || '',

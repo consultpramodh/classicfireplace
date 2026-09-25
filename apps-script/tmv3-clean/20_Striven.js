@@ -842,6 +842,111 @@ function tmv3_getTaskById_(taskId) {
   return tmv3_normalizeV2TaskModel_(raw || {});
 }
 
+
+/**
+ * Canonical Task schedule fallback.
+ *
+ * Striven v2 Task start/due values have a proven PM representation defect.
+ * The legacy R4.6 workflow verified /v1/tasks/{id} DesiredStartDate /
+ * DesiredEndDate as the canonical schedule model. V3 calls this only when
+ * the v2 schedule disagrees with Calendar.
+ */
+function tmv3_getCanonicalV1TaskSchedule_(taskId) {
+  const id = Number(taskId || 0);
+  if (!id) throw new Error('A positive Task ID is required for canonical v1 schedule read.');
+
+  const raw = tmv3_fetchJson_(
+    TMV3.API_BASE + '/v1/tasks/' + encodeURIComponent(id),
+    { method: 'get' }
+  ) || {};
+
+  const start =
+    raw.desiredStartDate !== undefined ? raw.desiredStartDate :
+    (raw.DesiredStartDate !== undefined ? raw.DesiredStartDate :
+    (raw.startDate !== undefined ? raw.startDate : raw.StartDate));
+
+  const due =
+    raw.desiredEndDate !== undefined ? raw.desiredEndDate :
+    (raw.DesiredEndDate !== undefined ? raw.DesiredEndDate :
+    (raw.dueDate !== undefined ? raw.dueDate : raw.DueDate));
+
+  return {
+    taskId: id,
+    startDateTime: start || null,
+    dueDateTime: due || null,
+    source: 'V1_DESIRED_START_END'
+  };
+}
+
+function tmv3_taskScheduleCheck_(vertical, calendarStart, calendarEnd, taskId, v2Task) {
+  const task = v2Task || {};
+  const dueDateOnly = tmv3_taskDueDateOnly_(vertical, task);
+  const v2Start = task['Start'];
+  const v2Due = task['Due'];
+
+  const v2StartMatch = tmv3_sameMinute_(calendarStart, v2Start);
+  const v2DueMatch = dueDateOnly
+    ? tmv3_sameCalendarDate_(calendarEnd, v2Due)
+    : tmv3_sameMinute_(calendarEnd, v2Due);
+
+  if (v2StartMatch && v2DueMatch) {
+    return {
+      startCheck: 'MATCH',
+      endCheck: 'MATCH',
+      start: v2Start,
+      due: v2Due,
+      source: 'V2_TASK_MODEL',
+      canonicalRead: 'NOT_NEEDED'
+    };
+  }
+
+  let canonical;
+  try {
+    canonical = tmv3_getCanonicalV1TaskSchedule_(taskId);
+  } catch (err) {
+    return {
+      startCheck: v2StartMatch ? 'MATCH' : 'CANONICAL_READ_FAILED',
+      endCheck: v2DueMatch ? 'MATCH' : 'CANONICAL_READ_FAILED',
+      start: v2Start,
+      due: v2Due,
+      source: 'V2_MISMATCH_V1_READ_FAILED',
+      canonicalRead: 'FAILED',
+      error: String(err && err.message || err)
+    };
+  }
+
+  if (!canonical.startDateTime || !canonical.dueDateTime) {
+    return {
+      startCheck: v2StartMatch ? 'MATCH' : 'CANONICAL_READ_FAILED',
+      endCheck: v2DueMatch ? 'MATCH' : 'CANONICAL_READ_FAILED',
+      start: v2Start,
+      due: v2Due,
+      source: 'V2_MISMATCH_V1_FIELDS_MISSING',
+      canonicalRead: 'FIELDS_MISSING',
+      error: 'Canonical v1 Task response did not expose DesiredStartDate and DesiredEndDate.'
+    };
+  }
+
+  const canonicalStartMatch =
+    tmv3_sameMinute_(calendarStart, canonical.startDateTime);
+  const canonicalDueMatch = dueDateOnly
+    ? tmv3_sameCalendarDate_(calendarEnd, canonical.dueDateTime)
+    : tmv3_sameMinute_(calendarEnd, canonical.dueDateTime);
+
+  return {
+    startCheck: canonicalStartMatch ? 'MATCH' : 'MISMATCH',
+    endCheck: canonicalDueMatch ? 'MATCH' : 'MISMATCH',
+    start: canonical.startDateTime,
+    due: canonical.dueDateTime,
+    source: canonical.source || 'V1_DESIRED_START_END',
+    canonicalRead: 'VERIFIED',
+    v2: {
+      start: v2Start || '',
+      due: v2Due || ''
+    }
+  };
+}
+
 function tmv3_searchPreInspectionTasks_(customer) {
   const customerId = Number(tmv3_clean_(customer && customer['Customer ID']) || 0);
   if (!customerId) throw new Error('PreInspection task search requires Customer ID.');

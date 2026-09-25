@@ -628,18 +628,33 @@ function tmv3_verifyTaskPatch_(bundle, readback, mode) {
   const eventRecord = bundle.eventRecord;
   const cfg = TMV3.VERTICALS[eventRecord.vertical];
 
+  let scheduleVerification = null;
   if (mode === 'DATES' || mode === 'ALL') {
-    if (!tmv3_sameMinute_(eventRecord.start, readback['Start'])) {
-      issues.push('Start date/time read-back mismatch');
-    }
-    const dueMatches = tmv3_taskDueDateOnly_(eventRecord.vertical, readback)
-      ? tmv3_sameCalendarDate_(eventRecord.end, readback['Due'])
-      : tmv3_sameMinute_(eventRecord.end, readback['Due']);
-    if (!dueMatches) {
+    scheduleVerification = tmv3_taskScheduleCheck_(
+      eventRecord.vertical,
+      eventRecord.start,
+      eventRecord.end,
+      resolved.taskId,
+      readback
+    );
+
+    if (scheduleVerification.startCheck !== 'MATCH') {
       issues.push(
-        tmv3_taskDueDateOnly_(eventRecord.vertical, readback)
-          ? 'Due date read-back mismatch'
-          : 'Due date/time read-back mismatch'
+        scheduleVerification.startCheck === 'CANONICAL_READ_FAILED'
+          ? 'Start date/time canonical v1 read-back unavailable'
+          : 'Start date/time read-back mismatch'
+      );
+    }
+
+    if (scheduleVerification.endCheck !== 'MATCH') {
+      issues.push(
+        scheduleVerification.endCheck === 'CANONICAL_READ_FAILED'
+          ? 'Due date/time canonical v1 read-back unavailable'
+          : (
+              tmv3_taskDueDateOnly_(eventRecord.vertical, readback)
+                ? 'Due date read-back mismatch'
+                : 'Due date/time read-back mismatch'
+            )
       );
     }
   }
@@ -679,7 +694,8 @@ function tmv3_verifyTaskPatch_(bundle, readback, mode) {
     status: 'VERIFIED',
     taskId: Number(resolved.taskId),
     mode: mode,
-    readback: readback
+    readback: readback,
+    scheduleVerification: scheduleVerification
   };
 }
 
