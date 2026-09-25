@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_POST_GOLDCON_SHADOW_R2",
+  "release": "TMV3_ROCCO_PREVIEW_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "PREVIEW_GOLDCON",
+  "runMode": "PREVIEW_ROCCO",
   "batchOffset": 0,
   "batchLimit": 0
 }
