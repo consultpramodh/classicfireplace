@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_14_TASK16735_ASSIGNMENT_PREVIEW_R1",
+  "release": "TMV3_3_11_14_TASK16735_ASSIGNMENT_CANARY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "SHADOW_READ_ONLY",
-  "writesEnabled": false,
-  "runMode": "PREVIEW_STEP7",
+  "mode": "CANARY_WRITE",
+  "writesEnabled": true,
+  "runMode": "CANARY_STEP7",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
