@@ -10,6 +10,9 @@ const outDir = path.resolve(process.cwd(), 'autopatch-output-v3-shadow');
 const RUN_MODE = String(process.env.TMV3_SHADOW_RUN_MODE || 'FULL').toUpperCase();
 const BATCH_OFFSET = Math.max(0, Number(process.env.TMV3_STEP7_BATCH_OFFSET || 0));
 const BATCH_LIMIT = Math.max(0, Number(process.env.TMV3_STEP7_BATCH_LIMIT || 0));
+const RELEASE_MANIFEST = JSON.parse(
+  fs.readFileSync(path.resolve(process.cwd(), 'release-candidates/tmv3-shadow-run.json'), 'utf8')
+);
 fs.mkdirSync(outDir, { recursive: true });
 
 function fail(message) {
@@ -355,6 +358,20 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7Canary') {
+      var canary = tmv3_executeVerifiedStep7ExistingPlan(
+        String(body.vertical || ''),
+        String(body.eventId || ''),
+        Number(body.taskId || 0),
+        String(body.expectedPlan || '')
+      );
+      return TMPV3_shadowResponse_({
+        ok:canary.status === 'CANARY_VERIFIED_NO_CHANGE',
+        status:'STEP7_CANARY_COMPLETE',
+        result:canary
+      });
+    }
+
     if (body.action === 'taskSchemaProbe') {
       var rawTask = tmv3_fetchJson_(
         TMV3.API_BASE + '/v2/tasks/17881',
@@ -446,6 +463,14 @@ async function postJson(url, payload) {
 }
 
 async function main() {
+  if (RUN_MODE.indexOf('CANARY_') === 0) {
+    if (
+      RELEASE_MANIFEST.mode !== 'CANARY_WRITE' ||
+      RELEASE_MANIFEST.writesEnabled !== true
+    ) {
+      fail('Canary run requires mode CANARY_WRITE and writesEnabled true.');
+    }
+  }
   accessToken = await getGoogleAccessToken();
 
   const pre = await getContent();
@@ -507,6 +532,8 @@ async function main() {
       RUN_MODE === 'STEP7_SERVICE' ||
       RUN_MODE === 'STEP7_PREINSPECTION' ||
       RUN_MODE === 'STEP7_CASES' ||
+      RUN_MODE === 'CANARY_GOLDCON' ||
+      RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'TASK_SCHEMA'
     ) {
       const action =
@@ -529,6 +556,8 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
+                    : RUN_MODE.indexOf('CANARY_') === 0
+                      ? 'step7Canary'
                     : RUN_MODE === 'STEP7_CASES'
                       ? 'step7Cases'
                       : RUN_MODE.indexOf('STEP7') === 0
@@ -549,6 +578,21 @@ async function main() {
         batchLimit: BATCH_LIMIT,
         refreshSources: BATCH_OFFSET === 0,
         taskIds: RUN_MODE === 'STEP7_CASES' ? [17881,18618,18678,18597] : []
+        ,eventId:
+          RUN_MODE === 'CANARY_GOLDCON'
+            ? '3lqqeba2r17067sjrm558kjmd1@google.com'
+            : RUN_MODE === 'CANARY_ROCCO'
+              ? '6ftlsr2e9fn31hpm6dj05cuthi@google.com'
+              : '',
+        taskId:
+          RUN_MODE === 'CANARY_GOLDCON' ? 18618 :
+          RUN_MODE === 'CANARY_ROCCO' ? 18678 : 0,
+        expectedPlan:
+          RUN_MODE === 'CANARY_GOLDCON'
+            ? 'PATCH_LOCATION_AND_DATES'
+            : RUN_MODE === 'CANARY_ROCCO'
+              ? 'PATCH_LOCATION_AND_DATES_AND_ASSIGNMENTS'
+              : ''
       });
 
       if (!step1.ok) {
@@ -592,6 +636,8 @@ async function main() {
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                       : RUN_MODE === 'STEP6'
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                        : RUN_MODE.indexOf('CANARY_') === 0
+                          ? 'V3_' + RUN_MODE + '_VERIFIED'
                         : RUN_MODE === 'STEP7_CASES'
                           ? 'V3_STEP7_CASES_VERIFIED'
                           : RUN_MODE.indexOf('STEP7_') === 0
@@ -634,6 +680,8 @@ async function main() {
                     ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                     : RUN_MODE === 'STEP6'
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                      : RUN_MODE.indexOf('CANARY_') === 0
+                        ? 'V3_' + RUN_MODE + '_VERIFIED'
                       : RUN_MODE === 'STEP7_CASES'
                         ? 'V3_STEP7_CASES_VERIFIED'
                         : RUN_MODE.indexOf('STEP7_') === 0
