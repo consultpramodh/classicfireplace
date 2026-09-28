@@ -9,9 +9,9 @@
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "63iufnr6gha82sel586o4iptg0@google.com",
+  "eventId": "6thvbtf65kfoe397mpoj80lpms@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "JANA_FINALIZED_LINK_STANDARD",
+  "requestTag": "SEP30_NICO_PREINSPECTION_WRITE",
   "allowedDate": "2026-09-30"
 }
