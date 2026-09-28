@@ -132,6 +132,15 @@ function tmv3_step7ValidateExecutionContract_(contract) {
     throw new Error('Blocked Step 7 execution contract must not expose executable actions.');
   }
 
+  if (
+    contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1 &&
+    !tmv3_clean_(contract.expectedLocationAddress)
+  ) {
+    throw new Error(
+      'Step 7 CREATE_LOCATION contract is missing the verified Calendar job-site address.'
+    );
+  }
+
   return contract;
 }
 
@@ -571,6 +580,10 @@ function tmv3_step7Expected_(record, runtime, verifyContactOwnership) {
     customerId: customerId,
     locationId: locationId,
     locationStatus: tmv3_clean_(step4.locationStatus),
+    locationAddress:
+      tmv3_clean_(step4.locationStatus) === 'CREATE_REQUIRED'
+        ? tmv3_clean_(record.location)
+        : '',
     identityContactId: identityContactId,
     orderId: orderId,
     requestedById: '',
@@ -1284,6 +1297,7 @@ function tmv3_step7PlanRow_(input) {
     orderCheck:checks.order || '',
     expectedLocationId:expected.locationId || '',
     locationStatus:expected.locationStatus || '',
+    expectedLocationAddress:expected.locationAddress || '',
     actualLocationId:actual.locationId || '',
     locationCheck:checks.location || '',
     expectedRequestedById:expected.requestedById || '',
