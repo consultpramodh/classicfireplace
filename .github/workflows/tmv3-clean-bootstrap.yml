@@ -59,6 +59,7 @@ jobs:
           SCRIPT_ID="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.scriptId||''))" "$MANIFEST")"
           SOURCE_DIR="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.sourceDirectory||''))" "$MANIFEST")"
           CLASP_VERSION="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.claspVersion||'3.3.0'))" "$MANIFEST")"
+          EXPECTED_LIVE_COMMIT="$(node -e "const m=require(process.argv[1]); process.stdout.write(String(m.expectedLiveCommit||''))" "$MANIFEST")"
 
           if [ -z "$SPREADSHEET_ID" ] || [ -z "$SOURCE_DIR" ]; then
             echo "Manifest is incomplete."
@@ -111,11 +112,18 @@ jobs:
             EXPECTED_PRE_ROOT="$TMP/expected-pre"
             mkdir -p "$EXPECTED_PRE_ROOT"
 
-            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
-              git archive HEAD^ "$SOURCE_DIR" | tar -x -C "$EXPECTED_PRE_ROOT"
+            BASELINE_COMMIT="$EXPECTED_LIVE_COMMIT"
+            if [ -z "$BASELINE_COMMIT" ]; then
+              BASELINE_COMMIT="HEAD^"
+            fi
+
+            if git rev-parse --verify "$BASELINE_COMMIT" >/dev/null 2>&1; then
+              echo "Expected live baseline commit: $BASELINE_COMMIT"
+              git archive "$BASELINE_COMMIT" "$SOURCE_DIR" | tar -x -C "$EXPECTED_PRE_ROOT"
               EXPECTED_PRE="$EXPECTED_PRE_ROOT/$SOURCE_DIR"
             else
-              EXPECTED_PRE="$GITHUB_WORKSPACE/$SOURCE_DIR"
+              echo "Configured expected live baseline commit is unavailable: $BASELINE_COMMIT"
+              exit 1
             fi
 
             find "$EXPECTED_PRE" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/repo-pre-files.txt"
