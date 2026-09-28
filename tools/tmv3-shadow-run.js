@@ -731,6 +731,32 @@ function doPost(e) {
     if (body.action === 'step7EventWriteFresh') {
       var freshVertical = String(body.vertical || '');
       var freshEventId = String(body.eventId || '');
+      var allowedDate = String(body.allowedDate || '');
+      var freshEventForScope = tmv3_findFreshEventRecord_(
+        freshVertical,
+        freshEventId
+      );
+
+      if (freshVertical !== 'PreInspection') {
+        throw new Error(
+          'TEST_WRITE scope is limited to PreInspection.'
+        );
+      }
+
+      if (allowedDate) {
+        var freshLocalDate = Utilities.formatDate(
+          freshEventForScope.start,
+          TMV3_TIMEZONE,
+          'yyyy-MM-dd'
+        );
+        if (freshLocalDate !== allowedDate) {
+          throw new Error(
+            'TEST_WRITE date scope blocked Event ' + freshEventId +
+            ': expected ' + allowedDate + ', got ' + freshLocalDate + '.'
+          );
+        }
+      }
+
       var freshPlans = tmv3_step7FreshPlansForEvent_(
         freshVertical,
         freshEventId
@@ -1578,6 +1604,10 @@ async function main() {
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
           RUN_MODE === 'GOLDCON_TASK_SCHEMA' ? 18618 : 0,
+        allowedDate:
+          RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+            ? String(RELEASE_MANIFEST.allowedDate || '')
+            : '',
         expectedPlan:
           (
             RUN_MODE === 'PREVIEW_GOLDCON' ||
