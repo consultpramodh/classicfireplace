@@ -529,7 +529,10 @@ function doPost(e) {
         previewTaskId
       );
 
-      if (previewPlan.plan !== previewExpectedPlan) {
+      if (
+        previewExpectedPlan &&
+        previewPlan.plan !== previewExpectedPlan
+      ) {
         throw new Error(
           'Fresh Step 7 preview changed from ' +
           previewExpectedPlan +
