@@ -3,13 +3,13 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEMA",
+  "runMode": "STEP7_REFRESH_ALL",
   "batchOffset": 0,
   "batchLimit": 0,
-  "refreshSources": false,
+  "refreshSources": true,
   "forceVersionedDeployment": false,
-  "vertical": "PreInspection",
-  "eventId": "1l5b7esesg1opive3ohfamb8vb@google.com",
-  "taskId": 18744,
+  "vertical": "",
+  "eventId": "",
+  "taskId": 0,
   "expectedPlan": ""
 }
