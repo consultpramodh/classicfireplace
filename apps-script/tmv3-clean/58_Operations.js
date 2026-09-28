@@ -1201,98 +1201,10 @@ function tmv3_setExistingFieldValue_(field, value) {
 }
 
 function tmv3_pushPreInspectionField854_(bundle, scope, options) {
-  options = options || {};
-  tmv3_assertOperationWrite_(scope);
-  if (bundle.eventRecord.vertical !== 'PreInspection') {
-    throw new Error('Field 854 is only valid for PreInspection.');
-  }
-
-  tmv3_assertResolvedRecordWritable_(bundle.resolved, { requireTask: true });
-  const taskId = Number(bundle.resolved.taskId);
-  const desired = options.desiredValue !== undefined
-    ? tmv3_clean_(options.desiredValue)
-    : tmv3_stripAuthoredCalendarNotes_(bundle.eventRecord.description);
-
-  if (!desired) {
-    return {
-      status: 'NOT_NEEDED',
-      taskId: taskId,
-      reason: 'Calendar has no authored Install Notes to push.'
-    };
-  }
-
-  const beforeRaw = tmv3_rawTaskById_(taskId);
-  const beforeFields = tmv3_infoCustomFieldsRaw_(beforeRaw);
-  const beforeTarget = beforeFields.filter(function(field) {
-    return tmv3_fieldId_(field) === 854;
-  });
-
-  if (beforeTarget.length !== 1) {
-    throw new Error(
-      'Field 854 write blocked: expected one existing Field 854, found ' +
-      beforeTarget.length + '.'
-    );
-  }
-
-  const beforeNon854 = {};
-  beforeFields.forEach(function(field) {
-    const id = tmv3_fieldId_(field);
-    if (id && id !== 854) beforeNon854[id] = JSON.stringify(tmv3_fieldValue_(field));
-  });
-
-  const merged = JSON.parse(JSON.stringify(beforeFields));
-  const target = merged.filter(function(field) {
-    return tmv3_fieldId_(field) === 854;
-  })[0];
-  tmv3_setExistingFieldValue_(target, desired);
-
-  tmv3_fetchJson_(
-    TMV3.API_BASE + '/v2/tasks/' + encodeURIComponent(taskId),
-    {
-      method: 'patch',
-      contentType: 'application/json',
-      payload: JSON.stringify({ Id: taskId, InfoCustomFields: merged })
-    }
-  );
-
-  const afterRaw = tmv3_rawTaskById_(taskId);
-  const afterFields = tmv3_infoCustomFieldsRaw_(afterRaw);
-  const afterTarget = afterFields.filter(function(field) {
-    return tmv3_fieldId_(field) === 854;
-  });
-
-  if (afterTarget.length !== 1) {
-    throw new Error('Field 854 read-back failed: target field missing after PATCH.');
-  }
-
-  const actual = tmv3_clean_(tmv3_fieldValue_(afterTarget[0]));
-  if (actual !== tmv3_clean_(desired)) {
-    throw new Error('Field 854 read-back failed: value differs from Calendar notes.');
-  }
-
-  afterFields.forEach(function(field) {
-    const id = tmv3_fieldId_(field);
-    if (!id || id === 854) return;
-    if (!Object.prototype.hasOwnProperty.call(beforeNon854, id)) {
-      throw new Error('Field 854 PATCH added unexpected custom field ' + id + '.');
-    }
-    if (beforeNon854[id] !== JSON.stringify(tmv3_fieldValue_(field))) {
-      throw new Error('Field 854 PATCH changed non-854 custom field ' + id + '.');
-    }
-  });
-
-  if (Object.keys(beforeNon854).length !== afterFields.filter(function(field) {
-    const id = tmv3_fieldId_(field);
-    return id && id !== 854;
-  }).length) {
-    throw new Error('Field 854 PATCH changed the non-854 field set.');
-  }
-
   return {
-    status: 'FIELD_854_VERIFIED',
-    taskId: taskId,
-    fieldId: 854,
-    non854FieldsPreserved: true
+    status:'NOT_MANAGED_TECHNICIAN_OWNED',
+    fieldId:854,
+    taskId:Number(bundle && bundle.resolved && bundle.resolved.taskId || 0)
   };
 }
 
