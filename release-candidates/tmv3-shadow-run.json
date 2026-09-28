@@ -3,13 +3,13 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
-  "runMode": "CANARY_EVENT_WRITE",
+  "runMode": "CANARY_EVENT_WRITE_FRESH",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": true,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "3oc4edc9ldfrd3tdktd17i317l@google.com",
+  "eventId": "63iufnr6gha82sel586o4iptg0@google.com",
   "taskId": 0,
   "expectedPlan": ""
 }
