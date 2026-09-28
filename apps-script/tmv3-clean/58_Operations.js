@@ -2803,3 +2803,329 @@ function tmv3_runCalendarLinksForReady_AUTO() {
   };
 }
 
+
+
+/************************************************************
+ * TM V3 — PRE-INSPECTION MISSING-DETAIL NOTIFICATION PREVIEW
+ *
+ * Current policy:
+ * - Missing-data checks only. Formatting differences alone never notify.
+ * - At least one Sales Order reference anywhere in the event is sufficient.
+ * - Recipient is the Calendar event creator, not the Calendar owner.
+ * - EMAIL DELIVERY IS INTENTIONALLY DISABLED. These functions only build
+ *   preview data / HTML for verification.
+ ************************************************************/
+
+function tmv3_preInspectionGuestEmails_(eventRecord) {
+  return tmv3_unique_(
+    String(eventRecord && eventRecord.guests || '')
+      .split(',')
+      .map(function(value) { return tmv3_norm_(value); })
+      .filter(Boolean)
+  );
+}
+
+function tmv3_preInspectionHasSalesOrderReference_(eventRecord) {
+  const record = eventRecord || {};
+  if (tmv3_clean_(record.orderNumber)) return true;
+
+  const haystack = [
+    record.title || '',
+    record.descriptionClean || '',
+    record.rawDescription || '',
+    record.location || ''
+  ].join(' ');
+
+  // Accept labelled SO / Sales Order / Order references, including compact
+  // slash notation such as SO#5853/67/80/85. We only care that the event
+  // carries at least one Sales Order reference; no specific formatting is
+  // required.
+  return /\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*\d{4,8}(?:\s*\/\s*\d{2,8})*/i.test(
+    String(haystack || '')
+  );
+}
+
+function tmv3_preInspectionCreatorEmail_(eventRecord) {
+  const sources = []
+    .concat(eventRecord && eventRecord.sourceCreators || [])
+    .concat(String(eventRecord && eventRecord.creator || '').split(','))
+    .map(function(value) { return tmv3_clean_(value).toLowerCase(); })
+    .filter(Boolean);
+
+  const company = sources.filter(function(email) {
+    return /@classicfireplace\.ca$/i.test(email);
+  });
+
+  return (company[0] || sources[0] || '');
+}
+
+function tmv3_preInspectionCreatorFirstName_(email) {
+  const local = tmv3_clean_(email).split('@')[0] || '';
+  if (!local) return 'there';
+
+  const token = local
+    .split(/[._\-]+/)
+    .filter(Boolean)[0] || '';
+
+  return token
+    ? token.charAt(0).toUpperCase() + token.slice(1).toLowerCase()
+    : 'there';
+}
+
+function tmv3_preInspectionMissingDetailAssessment_(eventRecord) {
+  const record = eventRecord || {};
+  const cfg = TMV3.VERTICALS.PreInspection;
+  const title = tmv3_clean_(record.title);
+
+  const titleCustomerNumber =
+    tmv3_extractCustomerNumberForVertical_('PreInspection', title);
+  const titlePhone = tmv3_extractPhone_(title);
+  const titleCustomerName =
+    tmv3_preInspectionCalendarCustomerName_(title, titleCustomerNumber);
+
+  const guests = tmv3_preInspectionGuestEmails_(record);
+  const requiredStephen = tmv3_norm_(
+    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca'
+  );
+  const requiredPreInspects = tmv3_norm_(cfg.primaryCalendarId || '');
+
+  const missing = [];
+
+  if (!titleCustomerNumber) {
+    missing.push({
+      code:'CUSTOMER_NUMBER',
+      field:'Title',
+      message:'Customer # is missing from the title'
+    });
+  }
+
+  if (!titleCustomerName) {
+    missing.push({
+      code:'CUSTOMER_NAME',
+      field:'Title',
+      message:'Customer Name is missing from the title'
+    });
+  }
+
+  if (!titlePhone) {
+    missing.push({
+      code:'PHONE',
+      field:'Title',
+      message:'Phone number is missing from the title'
+    });
+  }
+
+  if (!tmv3_clean_(record.location)) {
+    missing.push({
+      code:'LOCATION',
+      field:'Location',
+      message:'Job-site address is missing from the event'
+    });
+  }
+
+  if (!tmv3_preInspectionHasSalesOrderReference_(record)) {
+    missing.push({
+      code:'SALES_ORDER',
+      field:'Description',
+      message:'At least one Sales Order # is missing from the event'
+    });
+  }
+
+  if (requiredStephen && guests.indexOf(requiredStephen) === -1) {
+    missing.push({
+      code:'STEPHEN_GUEST',
+      field:'Guests',
+      message:'Stephen Foley is missing as a guest — please add him to the event'
+    });
+  }
+
+  if (requiredPreInspects && guests.indexOf(requiredPreInspects) === -1) {
+    missing.push({
+      code:'CF_PREINSPECTS_GUEST',
+      field:'Guests',
+      message:'CF Preinspects is missing as a guest — please add it to the event'
+    });
+  }
+
+  return {
+    eventId: record.eventId || '',
+    title: title,
+    creatorEmail: tmv3_preInspectionCreatorEmail_(record),
+    missing: missing,
+    shouldNotify: missing.length > 0
+  };
+}
+
+function tmv3_preInspectionHtmlEscape_(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function tmv3_preInspectionDisplayGuests_(eventRecord) {
+  const guests = tmv3_preInspectionGuestEmails_(eventRecord);
+  if (!guests.length) return 'No guests added';
+
+  return guests.map(function(email) {
+    if (email === tmv3_norm_(TMV3.VERTICALS.PreInspection.secondaryOwnerEmail)) {
+      return 'Stephen Foley';
+    }
+    if (email === tmv3_norm_(TMV3.VERTICALS.PreInspection.primaryCalendarId)) {
+      return 'CF Preinspects';
+    }
+    return email;
+  }).join('<br>');
+}
+
+function tmv3_preInspectionMissingFields_(assessment) {
+  const fields = {};
+  (assessment.missing || []).forEach(function(item) {
+    fields[item.field] = true;
+  });
+  return fields;
+}
+
+function tmv3_preInspectionComparisonRowsHtml_(eventRecord, assessment) {
+  const fields = tmv3_preInspectionMissingFields_(assessment);
+  const rows = [];
+
+  if (fields.Title) {
+    rows.push(
+      '<tr>' +
+        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">Title</td>' +
+        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">' +
+          tmv3_preInspectionHtmlEscape_(eventRecord.title || '—') +
+        '</td>' +
+        '<td valign="top" style="padding:12px;color:#2f6b36;border-bottom:1px solid #dddddd;">Customer # - Customer Name - Phone Number</td>' +
+      '</tr>'
+    );
+  }
+
+  if (fields.Description) {
+    rows.push(
+      '<tr>' +
+        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">Description</td>' +
+        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">' +
+          tmv3_preInspectionHtmlEscape_(
+            eventRecord.descriptionClean || eventRecord.rawDescription || 'No description'
+          ) +
+        '</td>' +
+        '<td valign="top" style="padding:12px;color:#2f6b36;border-bottom:1px solid #dddddd;"><strong>Sales Order #:</strong> SO#<br><strong>Notes:</strong> Notes about the Pre-Inspection</td>' +
+      '</tr>'
+    );
+  }
+
+  if (fields.Location) {
+    rows.push(
+      '<tr>' +
+        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">Location</td>' +
+        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">' +
+          tmv3_preInspectionHtmlEscape_(eventRecord.location || 'No location entered') +
+        '</td>' +
+        '<td valign="top" style="padding:12px;color:#2f6b36;border-bottom:1px solid #dddddd;">Full job-site address</td>' +
+      '</tr>'
+    );
+  }
+
+  if (fields.Guests) {
+    rows.push(
+      '<tr>' +
+        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;">Guests</td>' +
+        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;">' +
+          tmv3_preInspectionDisplayGuests_(eventRecord) +
+        '</td>' +
+        '<td valign="top" style="padding:12px;color:#2f6b36;">Stephen Foley<br>CF Preinspects</td>' +
+      '</tr>'
+    );
+  }
+
+  return rows.join('');
+}
+
+function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
+  const assessment = tmv3_preInspectionMissingDetailAssessment_(eventRecord);
+  if (!assessment.shouldNotify) return null;
+
+  const creatorEmail = assessment.creatorEmail;
+  const firstName = tmv3_preInspectionCreatorFirstName_(creatorEmail);
+  const missingItemsHtml = assessment.missing.map(function(item) {
+    return '<div>❌ ' + tmv3_preInspectionHtmlEscape_(item.message) + '</div>';
+  }).join('');
+
+  const when =
+    Utilities.formatDate(eventRecord.start, TMV3_TIMEZONE, 'MMM d, yyyy') +
+    ' · ' +
+    Utilities.formatDate(eventRecord.start, TMV3_TIMEZONE, 'h:mm a') +
+    ' – ' +
+    Utilities.formatDate(eventRecord.end, TMV3_TIMEZONE, 'h:mm a');
+
+  const html =
+    '<!doctype html><html lang="en"><body style="margin:0;padding:0;background:#f4f3f1;font-family:Arial,Helvetica,sans-serif;color:#222;">' +
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" style="padding:20px 12px;">' +
+    '<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background:#ffffff;">' +
+    '<tr><td style="background:#202020;border-top:4px solid #b42b2f;padding:18px 24px;">' +
+      '<div style="font-size:18px;font-weight:700;color:#ffffff;">Pre-Inspection Update Required</div>' +
+      '<div style="font-size:12px;color:#aaaaaa;margin-top:3px;">Classic Fireplace &amp; BBQ Store</div>' +
+    '</td></tr>' +
+    '<tr><td style="padding:20px 24px 12px;">' +
+      '<div style="font-size:14px;line-height:21px;">Hi <strong>' + tmv3_preInspectionHtmlEscape_(firstName) + '</strong>,</div>' +
+      '<div style="font-size:14px;line-height:21px;margin-top:8px;">This appointment is missing required Pre-Inspection details. Please update the items below.</div>' +
+      '<div style="margin-top:12px;background:#fff5f5;border-left:4px solid #b42b2f;padding:11px 13px;font-size:13px;line-height:22px;color:#8f2024;">' +
+        missingItemsHtml +
+      '</div>' +
+    '</td></tr>' +
+    '<tr><td style="padding:0 24px 14px;"><table width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f6f5f3;border:1px solid #e2e0dc;"><tr><td style="padding:12px 14px;">' +
+      '<div style="font-size:15px;font-weight:700;">' + tmv3_preInspectionHtmlEscape_(eventRecord.title || '(Untitled event)') + '</div>' +
+      '<div style="font-size:12px;color:#666;margin-top:4px;">' + tmv3_preInspectionHtmlEscape_(when) + '</div>' +
+      (eventRecord.location ? '<div style="font-size:12px;color:#666;margin-top:4px;">' + tmv3_preInspectionHtmlEscape_(eventRecord.location) + '</div>' : '') +
+    '</td></tr></table></td></tr>' +
+    '<tr><td style="padding:0 24px 20px;"><table width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;border:1px solid #dddddd;font-size:13px;">' +
+      '<tr>' +
+        '<td width="18%" style="background:#f3f3f3;padding:10px 12px;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;"></td>' +
+        '<td width="41%" style="background:#fff1f1;color:#9b1c1f;font-weight:700;padding:10px 12px;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">What it is now</td>' +
+        '<td width="41%" style="background:#f1f8f1;color:#28632f;font-weight:700;padding:10px 12px;border-bottom:1px solid #dddddd;">What it should be</td>' +
+      '</tr>' +
+      tmv3_preInspectionComparisonRowsHtml_(eventRecord, assessment) +
+    '</table></td></tr>' +
+    '<tr><td style="padding:0 24px 22px;"><div style="font-size:14px;">Thank you.</div></td></tr>' +
+    '<tr><td style="background:#202020;padding:12px 24px;text-align:center;"><div style="font-size:12px;font-weight:700;color:#ffffff;">Classic Fireplace &amp; BBQ Store</div></td></tr>' +
+    '</table></td></tr></table></body></html>';
+
+  return {
+    eventId: eventRecord.eventId || '',
+    recipient: creatorEmail,
+    subject: 'Pre-Inspection Update Required',
+    missing: assessment.missing,
+    htmlBody: html,
+    emailDeliveryEnabled: false
+  };
+}
+
+function tmv3_preInspectionMissingDetailPreviewFromRecords_(records) {
+  const preInspection = (records || []).filter(function(record) {
+    return record && record.vertical === 'PreInspection';
+  });
+
+  const previews = preInspection
+    .map(tmv3_preInspectionMissingDetailEmailPreview_)
+    .filter(Boolean);
+
+  return {
+    status:'PREVIEW_ONLY_NO_EMAILS',
+    checked:preInspection.length,
+    wouldNotify:previews.length,
+    previews:previews
+  };
+}
+
+function tmv3_previewPreInspectionMissingDetailEmails() {
+  const result = tmv3_preInspectionMissingDetailPreviewFromRecords_(
+    tmv3_step1CalendarRecords_()
+  );
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}

@@ -66,7 +66,11 @@ function tmv3_step1CalendarRun(reason) {
     logicalEvents: records.length,
     counts: tmv3_step1Counts_(records),
     write: write,
-    readBack: verify
+    readBack: verify,
+    preInspectionMissingDetails:
+      typeof tmv3_preInspectionMissingDetailPreviewFromRecords_ === 'function'
+        ? tmv3_preInspectionMissingDetailPreviewFromRecords_(records)
+        : { status:'UNAVAILABLE', checked:0, wouldNotify:0, previews:[] }
   };
 
   tmv3_audit_(

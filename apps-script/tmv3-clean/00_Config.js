@@ -19,7 +19,8 @@ const TMV3 = Object.freeze({
     manualWritesEnabled: true,
     automationWritesEnabled: false,
     autoMaxWritesPerRun: 10,
-    installRemindersEnabled: true
+    installRemindersEnabled: true,
+    preInspectionMissingDetailEmailsEnabled: false
   }),
   API_BUDGET: Object.freeze({
     planDailyLimit: 5000,

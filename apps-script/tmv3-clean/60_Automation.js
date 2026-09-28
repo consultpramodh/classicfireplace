@@ -41,6 +41,7 @@ function onOpen() {
     .addSubMenu(
       ui.createMenu('Reminders')
         .addItem('Send Missing SO Reminder Emails Now', 'tmv3_sendInstallMissingSoRemindersNow')
+        .addItem('Preview Pre-Inspection Missing Detail Emails', 'tmv3_previewPreInspectionMissingDetailEmails')
     )
     .addSubMenu(
       ui.createMenu('Automation')
