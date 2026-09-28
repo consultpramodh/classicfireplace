@@ -3045,6 +3045,13 @@ function tmv3_preInspectionComparisonRowsHtml_(eventRecord, assessment) {
   return rows.join('');
 }
 
+function tmv3_preInspectionNotificationCc_() {
+  return [
+    'jay@classicfireplace.ca',
+    'thang@classicfireplace.ca'
+  ];
+}
+
 function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
   const assessment = tmv3_preInspectionMissingDetailAssessment_(eventRecord);
   if (!assessment.shouldNotify) return null;
@@ -3097,10 +3104,12 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
   return {
     eventId: eventRecord.eventId || '',
     recipient: creatorEmail,
+    cc: tmv3_preInspectionNotificationCc_(),
     subject: 'Pre-Inspection Update Required',
     missing: assessment.missing,
     htmlBody: html,
-    emailDeliveryEnabled: false
+    emailDeliveryEnabled: false,
+    approvalRequiredBeforeSend: true
   };
 }
 
