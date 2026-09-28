@@ -1,7 +1,7 @@
 {
   "release": "TMV3_3_11_19_REVIEW_RECOVERY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "TEST_WRITE",
+  "mode": "CANARY_WRITE",
   "writesEnabled": true,
   "runMode": "CANARY_EVENT_WRITE_FRESH",
   "batchOffset": 0,
@@ -12,6 +12,6 @@
   "eventId": "63iufnr6gha82sel586o4iptg0@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "PREINSPECTION_SEP30_TEST_WRITE_JANA",
+  "requestTag": "JANA_RERUN_AFTER_CALENDAR_LINK_FIX",
   "allowedDate": "2026-09-30"
 }
