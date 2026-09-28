@@ -224,6 +224,8 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
   const evidence = [];
   const warnings = [];
 
+  let wrongVerticalLinkedTask = null;
+
   if (record.existingTaskId) {
     const linkedId = tmv3_clean_(record.existingTaskId);
     let linked = refs.taskById[linkedId] || null;
@@ -251,20 +253,20 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
       linked &&
       !tmv3_taskFitsVertical_(linked, record.vertical, cfg)
     ) {
-      return tmv3_step5Decision_(
-        'REVIEW',
-        'CALENDAR_LINKED_TASK_WRONG_TYPE',
-        'Calendar Task link resolves to a Task that does not fit the ' +
-          record.vertical + ' vertical.',
-        [linked],
-        0,
-        evidence
+      wrongVerticalLinkedTask = linked;
+      warnings.push(
+        'Calendar Task link points to Task ' + linkedId +
+        ', which does not fit the ' + record.vertical +
+        ' vertical. The stale link was ignored for resolution.'
       );
+      evidence.push('CALENDAR_TASK_LINK_WRONG_VERTICAL_IGNORED');
+      linked = null;
     }
 
-    candidates = linked ? [linked] : [];
+    if (linked) candidates = [linked];
+  }
 
-  } else if (orderId) {
+  if (!candidates.length && orderId) {
     candidates = (refs.tasksByOrder[orderId] || [])
       .filter(function(task) {
         return tmv3_taskFitsVertical_(task, record.vertical, cfg);
@@ -272,7 +274,11 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
 
     evidence.push('TASKS_FROM_VERIFIED_BUSINESS_ANCHOR');
 
-  } else if (customerId && locationId) {
+  } else if (
+    !candidates.length &&
+    customerId &&
+    locationId
+  ) {
     candidates = (refs.tasksByCustomer[customerId] || [])
       .filter(function(task) {
         return (
@@ -282,6 +288,23 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
       });
 
     evidence.push('TASKS_FROM_VERIFIED_CUSTOMER_LOCATION');
+  }
+
+  if (
+    wrongVerticalLinkedTask &&
+    !candidates.length &&
+    !orderId &&
+    !(customerId && locationId)
+  ) {
+    return tmv3_step5Decision_(
+      'REVIEW',
+      'CALENDAR_LINKED_TASK_WRONG_TYPE_NO_SAFE_FALLBACK',
+      'Calendar Task link is for another vertical and no verified Order or Customer + Location fallback is available.',
+      [wrongVerticalLinkedTask],
+      0,
+      evidence,
+      warnings
+    );
   }
 
   const open = candidates.filter(function(task) {

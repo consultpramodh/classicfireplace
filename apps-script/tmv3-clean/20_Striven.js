@@ -1351,13 +1351,15 @@ function tmv3_resolveOrganizerEmployee_(eventRecord) {
 }
 
 
-function tmv3_getCustomerContacts_(customerId) {
+function tmv3_getCustomerContacts_(customerId, options) {
   const id = Number(customerId || 0);
   if (!id) throw new Error('Customer ID is required for contact lookup.');
 
+  options = options || {};
+  const forceFresh = options.forceFresh === true;
   const cache = CacheService.getScriptCache();
   const cacheKey = 'TMV3_CUSTOMER_CONTACTS_' + id;
-  const cached = cache.get(cacheKey);
+  const cached = forceFresh ? null : cache.get(cacheKey);
 
   if (cached) {
     try { return JSON.parse(cached); } catch (ignored) {}
@@ -1377,9 +1379,11 @@ function tmv3_getCustomerContacts_(customerId) {
       return !!item['Contact ID'];
     });
 
-  try {
-    cache.put(cacheKey, JSON.stringify(contacts), 1800);
-  } catch (ignored) {}
+  if (!forceFresh) {
+    try {
+      cache.put(cacheKey, JSON.stringify(contacts), 1800);
+    } catch (ignored) {}
+  }
 
   return contacts;
 }
@@ -1418,11 +1422,32 @@ function tmv3_getContactById_(contactId, expectedCustomerId) {
     ])
   );
 
+  let scopedCustomerEvidence = false;
+  let scopedLookupError = '';
+
+  if (
+    expected &&
+    directCustomerId !== expected &&
+    nestedOwnerId !== expected
+  ) {
+    try {
+      scopedCustomerEvidence = tmv3_getCustomerContacts_(
+        Number(expected),
+        { forceFresh:true }
+      ).some(function(item) {
+        return String(item['Contact ID'] || '') === String(id);
+      });
+    } catch (err) {
+      scopedLookupError = String(err && err.message || err);
+    }
+  }
+
   contact.__ownershipVerified =
     !!expected &&
     (
       directCustomerId === expected ||
-      nestedOwnerId === expected
+      nestedOwnerId === expected ||
+      scopedCustomerEvidence
     );
 
   contact.__ownershipEvidence =
@@ -1430,9 +1455,17 @@ function tmv3_getContactById_(contactId, expectedCustomerId) {
       ? (
           directCustomerId === expected
             ? 'CONTACT_DIRECT_CUSTOMER_ID'
-            : 'CONTACT_NESTED_OWNER_ID'
+            : (
+                nestedOwnerId === expected
+                  ? 'CONTACT_NESTED_OWNER_ID'
+                  : 'CONTACT_CUSTOMER_SCOPED_LIST'
+              )
         )
       : 'CONTACT_OWNER_NOT_PROVEN';
+
+  if (scopedLookupError) {
+    contact.__ownershipLookupError = scopedLookupError;
+  }
 
   return contact;
 }

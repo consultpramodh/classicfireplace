@@ -783,6 +783,51 @@ function tmv3_issue1SingleDecisionAuthorityRegression() {
     JSON.stringify(noChange.actions)
   );
 
+  const wrongLinkFallback = tmv3_step5ResolveStandardTask_(
+    {
+      vertical:'Delivery',
+      existingTaskId:'100',
+      step3:{ anchor:{ orderId:'20' } },
+      step4:{
+        customer:{ 'Customer ID':'1' },
+        location:{ 'Location ID':'10' }
+      }
+    },
+    {
+      taskById:{
+        '100':{
+          'Task ID':'100',
+          'Task Type':'Installation',
+          'Name':'Installation',
+          'Status':'Open'
+        }
+      },
+      tasksByOrder:{
+        '20':[{
+          'Task ID':'200',
+          'Task Type':'Delivery',
+          'Name':'Delivery',
+          'Status':'Open',
+          'Customer ID':'1',
+          'Location ID':'10',
+          'Order ID':'20'
+        }]
+      },
+      tasksByCustomer:{}
+    }
+  );
+
+  check(
+    'WRONG_VERTICAL_CALENDAR_LINK_SAFE_FALLBACK',
+    wrongLinkFallback.disposition === 'MATCHED' &&
+      wrongLinkFallback.tasks.length === 1 &&
+      String(wrongLinkFallback.tasks[0]['Task ID']) === '200' &&
+      wrongLinkFallback.evidence.indexOf(
+        'CALENDAR_TASK_LINK_WRONG_VERTICAL_IGNORED'
+      ) !== -1,
+    JSON.stringify(wrongLinkFallback)
+  );
+
   const assignment = tmv3_assignmentFeatureRegression();
 
   check(
