@@ -639,7 +639,17 @@ function tmv3_step7ActionsForMode_(contract, mode) {
 
 function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
   const changed = tmv3_step7PlanChangedResult_(selection);
-  if (changed) return changed;
+  if (changed) {
+    tmv3_audit_(
+      changed.vertical || 'SYSTEM',
+      changed.eventId || '',
+      changed.taskId || '',
+      'STEP7_PLAN_GUARD',
+      'NO_WRITE',
+      JSON.stringify(changed)
+    );
+    return changed;
+  }
 
   const contract = tmv3_step7ValidateExecutionContract_(
     selection.contract
@@ -659,13 +669,27 @@ function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
   if (
     contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
   ) {
-    return {
+    const blockedLocationCreate = {
       status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY',
       vertical:contract.vertical,
       eventId:contract.eventId,
       taskId:contract.taskId || '',
-      plan:contract.plan
+      plan:contract.plan,
+      reason:
+        'Step 7 requires creation of a new Customer Location, but V3 has no ' +
+        'verified Striven customer-location create endpoint/payload/read-back contract. ' +
+        'No Task POST is authorized until Location creation is independently verified.',
+      nextAction:'VERIFY_AND_IMPLEMENT_CUSTOMER_LOCATION_CREATE_CAPABILITY'
     };
+    tmv3_audit_(
+      contract.vertical,
+      contract.eventId,
+      contract.taskId || '',
+      'STEP7_CREATE_LOCATION_GUARD',
+      'NO_WRITE',
+      JSON.stringify(blockedLocationCreate)
+    );
+    return blockedLocationCreate;
   }
 
   const bundle = tmv3_step7BundleFromContract_(contract);
@@ -2053,6 +2077,19 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
     after.plan !== 'NO_CHANGE' ||
     tmv3_clean_(after.blocker)
   ) {
+    tmv3_audit_(
+      contract.vertical,
+      contract.eventId,
+      newTaskId,
+      action + '_TASK',
+      'ATTENTION',
+      JSON.stringify({
+        expectedTerminalPlan:'NO_CHANGE',
+        freshPlan:after.plan,
+        blocker:after.blocker || '',
+        createdTaskId:newTaskId
+      })
+    );
     throw new Error(
       'CREATE read-back did not converge to Step 7 NO_CHANGE; ' +
       'fresh plan is ' + after.plan + '.'
@@ -2206,6 +2243,19 @@ function tmv3_executeExistingTaskSync_(
       tmv3_clean_(after.blocker)
     )
   ) {
+    tmv3_audit_(
+      contract.vertical,
+      contract.eventId,
+      taskId,
+      'STEP7_' + String(mode || 'ALL'),
+      'ATTENTION',
+      JSON.stringify({
+        expectedTerminalPlan:'NO_CHANGE',
+        freshPlan:after.plan,
+        blocker:after.blocker || '',
+        executedActions:actions
+      })
+    );
     throw new Error(
       'Step 7 read-back did not converge to NO_CHANGE; ' +
       'fresh plan is ' + after.plan + '.'
@@ -2272,7 +2322,7 @@ function tmv3_executeVerifiedStep7ExistingPlan(
   const previousPlan = tmv3_clean_(expectedPlan);
 
   if (previousPlan && previousPlan !== contract.plan) {
-    return {
+    const changed = {
       status:'PLAN_CHANGED_NO_WRITE',
       previousPlan:previousPlan,
       freshPlan:contract.plan,
@@ -2281,6 +2331,15 @@ function tmv3_executeVerifiedStep7ExistingPlan(
       eventId:contract.eventId,
       taskId:contract.taskId
     };
+    tmv3_audit_(
+      contract.vertical,
+      contract.eventId,
+      contract.taskId || '',
+      'STEP7_PLAN_GUARD',
+      'NO_WRITE',
+      JSON.stringify(changed)
+    );
+    return changed;
   }
 
   return tmv3_executeFreshStep7Selection_(
@@ -2294,19 +2353,58 @@ function tmv3_executeVerifiedStep7ExistingPlan(
 }
 
 function tmv3_previewSelectedAction() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const preview = tmv3_previewTaskMutation_(bundle.eventRecord, bundle.resolved, bundle.refs);
+  const selection = tmv3_step7FreshSelectedContract_();
+  const contract = tmv3_step7ValidateExecutionContract_(
+    selection.contract
+  );
+  const publishedPlan = tmv3_clean_(selection.previousPlan);
+  const planChanged =
+    !publishedPlan ||
+    publishedPlan !== tmv3_clean_(contract.plan);
+  const locationCreatePending =
+    (contract.actions || []).indexOf(
+      TMV3_STEP7_ACTION.CREATE_LOCATION
+    ) !== -1;
+
   const output = {
-    mode: 'READ_ONLY',
-    vertical: bundle.eventRecord.vertical,
-    eventId: bundle.eventRecord.eventId,
-    status: bundle.resolved.status,
-    dataChecklist: bundle.resolved.dataChecklist,
-    issue: bundle.resolved.issue,
-    nextAction: bundle.resolved.nextAction,
-    mutationPreview: preview,
-    manualWritesEnabled: tmv3_operationWritesEnabled_('MANUAL'),
-    automationWritesEnabled: tmv3_operationWritesEnabled_('AUTO')
+    mode:'READ_ONLY',
+    authority:'STEP7_CANONICAL_CONTRACT',
+    vertical:contract.vertical,
+    eventId:contract.eventId,
+    taskId:contract.taskId || '',
+    publishedPlan:publishedPlan,
+    plan:contract.plan,
+    planChanged:planChanged,
+    blocker:contract.blocker || '',
+    actions:(contract.actions || []).slice(),
+    identifiers:{
+      customerId:contract.expectedCustomerId || '',
+      locationId:contract.expectedLocationId || '',
+      orderId:contract.expectedOrderId || '',
+      requestedById:contract.expectedRequestedById || '',
+      requestedByType:contract.expectedRequestedByType || ''
+    },
+    schedule:{
+      start:contract.expectedStart || '',
+      due:contract.expectedDue || ''
+    },
+    desiredAssignment:{
+      employeeIds:(contract.desiredAssignmentEmployeeIds || []).slice(),
+      poolIds:(contract.desiredAssignmentPoolIds || []).slice()
+    },
+    mutationPreview:{
+      authorizedByPlan:
+        !planChanged &&
+        !tmv3_clean_(contract.blocker) &&
+        (contract.actions || []).length > 0 &&
+        !locationCreatePending,
+      externalWriteCurrentlyEnabled:
+        tmv3_operationWritesEnabled_('MANUAL'),
+      locationCreatePending:locationCreatePending,
+      expectedTerminalPlan:'NO_CHANGE'
+    },
+    manualWritesEnabled:tmv3_operationWritesEnabled_('MANUAL'),
+    automationWritesEnabled:tmv3_operationWritesEnabled_('AUTO')
   };
   Logger.log(JSON.stringify(output, null, 2));
   return output;
@@ -2379,7 +2477,7 @@ function tmv3_createOrRecreateSelectedTask() {
     ) !== -1;
 
   if (!isCreate) {
-    return {
+    const notAuthorized = {
       status:'STEP7_ACTION_NOT_AUTHORIZED_NO_WRITE',
       plan:contract.plan,
       eventId:contract.eventId,
@@ -2387,6 +2485,15 @@ function tmv3_createOrRecreateSelectedTask() {
       reason:
         'Fresh Step 7 does not authorize CREATE / RECREATE for this row.'
     };
+    tmv3_audit_(
+      contract.vertical,
+      contract.eventId,
+      contract.taskId || '',
+      'STEP7_CREATE_GUARD',
+      'NO_WRITE',
+      JSON.stringify(notAuthorized)
+    );
+    return notAuthorized;
   }
 
   const result = tmv3_executeFreshStep7Selection_(

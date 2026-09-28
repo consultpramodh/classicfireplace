@@ -239,12 +239,22 @@ function tmv3_previewCalendarLinks_(eventRecord, resolved) {
   };
 }
 
+function tmv3_assertLegacyCalendarMutationDisabled_(helperName) {
+  throw new Error(
+    'STEP7_AUTHORITY_REQUIRED: legacy direct Calendar mutation helper ' +
+    String(helperName || 'UNKNOWN') +
+    ' is disabled. Use the Step 7 executor (for example tmv3_fixSelectedCalendarLinks).'
+  );
+}
+
 function tmv3_writeCalendarLinks_(eventRecord, resolved) {
+  tmv3_assertLegacyCalendarMutationDisabled_('tmv3_writeCalendarLinks_');
   return tmv3_writeCalendarLinksForEvent_(eventRecord, [resolved]);
 }
 
 
 function tmv3_writeCalendarLinksForEvent_(eventRecord, resolvedRecords) {
+  tmv3_assertLegacyCalendarMutationDisabled_('tmv3_writeCalendarLinksForEvent_');
   tmv3_assertBusinessWritesEnabled_();
 
   const records = Array.isArray(resolvedRecords)

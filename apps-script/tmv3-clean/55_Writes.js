@@ -12,6 +12,14 @@ function tmv3_assertBusinessWritesEnabled_() {
   }
 }
 
+function tmv3_assertLegacyMutationHelperDisabled_(helperName) {
+  throw new Error(
+    'STEP7_AUTHORITY_REQUIRED: legacy direct Task mutation helper ' +
+    String(helperName || 'UNKNOWN') +
+    ' is disabled. Use the canonical Step 7 executor in 58_Operations.js.'
+  );
+}
+
 function tmv3_buildTaskPatchPayload_(eventRecord, resolved, currentTask) {
   if (!eventRecord || !resolved || !currentTask) {
     throw new Error('Event, resolved identity and current Task are required.');
@@ -148,6 +156,7 @@ function tmv3_safeTaskPatchPayload_(payload, taskId) {
 }
 
 function tmv3_patchTaskById_(taskId, payload) {
+  tmv3_assertLegacyMutationHelperDisabled_('tmv3_patchTaskById_');
   tmv3_assertBusinessWritesEnabled_();
 
   const id = Number(taskId || 0);
@@ -176,6 +185,7 @@ function tmv3_patchTaskById_(taskId, payload) {
 }
 
 function tmv3_addAssignment_(taskId, id, type, name) {
+  tmv3_assertLegacyMutationHelperDisabled_('tmv3_addAssignment_');
   tmv3_assertBusinessWritesEnabled_();
 
   return tmv3_fetchJson_(
@@ -193,6 +203,7 @@ function tmv3_addAssignment_(taskId, id, type, name) {
 }
 
 function tmv3_applyAssignmentPlan_(taskId, plan) {
+  tmv3_assertLegacyMutationHelperDisabled_('tmv3_applyAssignmentPlan_');
   tmv3_assertBusinessWritesEnabled_();
 
   const results = [];

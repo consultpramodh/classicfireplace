@@ -791,6 +791,32 @@ function tmv3_issue1SingleDecisionAuthorityRegression() {
     'cases=' + assignment.totalCases
   );
 
+  let legacyTaskGuard = '';
+  try {
+    tmv3_assertLegacyMutationHelperDisabled_('REGRESSION_TEST');
+  } catch (err) {
+    legacyTaskGuard = String(err && err.message || err);
+  }
+
+  check(
+    'LEGACY_TASK_MUTATION_HELPERS_FAIL_CLOSED',
+    legacyTaskGuard.indexOf('STEP7_AUTHORITY_REQUIRED') !== -1,
+    legacyTaskGuard
+  );
+
+  let legacyCalendarGuard = '';
+  try {
+    tmv3_assertLegacyCalendarMutationDisabled_('REGRESSION_TEST');
+  } catch (err) {
+    legacyCalendarGuard = String(err && err.message || err);
+  }
+
+  check(
+    'LEGACY_CALENDAR_MUTATION_HELPERS_FAIL_CLOSED',
+    legacyCalendarGuard.indexOf('STEP7_AUTHORITY_REQUIRED') !== -1,
+    legacyCalendarGuard
+  );
+
   const failures = cases.filter(function(item) {
     return !item.pass;
   });
