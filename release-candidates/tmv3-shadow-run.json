@@ -6,10 +6,11 @@
   "runMode": "CANARY_EVENT_WRITE_FRESH",
   "batchOffset": 0,
   "batchLimit": 0,
-  "refreshSources": true,
+  "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
   "eventId": "63iufnr6gha82sel586o4iptg0@google.com",
   "taskId": 0,
-  "expectedPlan": ""
+  "expectedPlan": "",
+  "requestTag": "JANA_RERUN_AFTER_LIVE_SYNC"
 }
