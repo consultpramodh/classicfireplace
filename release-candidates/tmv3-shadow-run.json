@@ -5,7 +5,7 @@
   "writesEnabled": false,
   "runMode": "STEP7_PREINSPECTION",
   "batchOffset": 0,
-  "batchLimit": 0,
+  "batchLimit": 15,
   "refreshSources": false,
   "forceVersionedDeployment": false
 }
