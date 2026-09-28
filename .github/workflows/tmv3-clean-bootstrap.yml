@@ -104,6 +104,7 @@ jobs:
             mkdir -p "$PRE"
             (cd "$PRE" && npx -y "@google/clasp@$CLASP_VERSION" clone "$SCRIPT_ID" --rootDir src)
             HAD_PRE=1
+            cp -R "$PRE" "$OUT/PRE_SOURCE"
             printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID" > "$WORK/.clasp.json"
           fi
 
