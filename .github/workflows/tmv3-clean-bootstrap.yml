@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: task_mapping
-          fetch-depth: 1
+          fetch-depth: 2
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -107,20 +107,30 @@ jobs:
           fi
 
           if [ "$HAD_PRE" = "1" ]; then
-            echo "Verifying live PRE source matches task_mapping before any push."
-            find "$GITHUB_WORKSPACE/$SOURCE_DIR" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/repo-pre-files.txt"
+            echo "Verifying live PRE source matches the parent commit before any push."
+            EXPECTED_PRE_ROOT="$TMP/expected-pre"
+            mkdir -p "$EXPECTED_PRE_ROOT"
+
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              git archive HEAD^ "$SOURCE_DIR" | tar -x -C "$EXPECTED_PRE_ROOT"
+              EXPECTED_PRE="$EXPECTED_PRE_ROOT/$SOURCE_DIR"
+            else
+              EXPECTED_PRE="$GITHUB_WORKSPACE/$SOURCE_DIR"
+            fi
+
+            find "$EXPECTED_PRE" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/repo-pre-files.txt"
             find "$PRE/src" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/live-pre-files.txt"
 
             if ! diff -u "$TMP/repo-pre-files.txt" "$TMP/live-pre-files.txt"; then
-              echo "LIVE_SOURCE_DRIFT: file inventory differs. No Apps Script write attempted."
+              echo "LIVE_SOURCE_DRIFT: live file inventory differs from expected PRE source. No Apps Script write attempted."
               exit 1
             fi
 
             while IFS= read -r file; do
-              EXPECTED="$(sha256sum "$GITHUB_WORKSPACE/$SOURCE_DIR/$file" | awk '{print $1}')"
+              EXPECTED="$(sha256sum "$EXPECTED_PRE/$file" | awk '{print $1}')"
               ACTUAL="$(sha256sum "$PRE/src/$file" | awk '{print $1}')"
               if [ "$EXPECTED" != "$ACTUAL" ]; then
-                echo "LIVE_SOURCE_DRIFT: hash mismatch for $file. No Apps Script write attempted."
+                echo "LIVE_SOURCE_DRIFT: live hash mismatch for $file against expected PRE source. No Apps Script write attempted."
                 exit 1
               fi
             done < "$TMP/repo-pre-files.txt"
