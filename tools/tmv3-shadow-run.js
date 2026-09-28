@@ -1184,7 +1184,8 @@ async function main() {
     if (
       (
         RUN_MODE.indexOf('CANARY_') !== 0 ||
-        RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+        RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+        RUN_MODE === 'CANARY_STEP7'
       ) &&
       RELEASE_MANIFEST.forceVersionedDeployment !== true
     ) {
