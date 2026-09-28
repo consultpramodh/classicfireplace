@@ -700,7 +700,6 @@ function tmv3_step5SyncChecklist_(record, tasks) {
     'Location ' + locationSync,
     'Date / Time ' + timeSync,
     'Assignee ' + assigneeSync,
-    'Notes ⏳',
     'Task Link ' + taskLinkSync
   ].join('\n');
 }
