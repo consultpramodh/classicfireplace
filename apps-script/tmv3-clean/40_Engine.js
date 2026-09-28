@@ -1701,12 +1701,29 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
     };
   }
 
+  // Business rule: if this Customer already has exactly one OPEN
+  // PreInspection Task (Type 105), reuse it and patch it to the current
+  // Calendar appointment rather than creating another Task. The Customer
+  // match is already exact because candidates are filtered by Customer ID
+  // above. Multiple OPEN PreInspection Tasks for the same Customer remain
+  // review-only because choosing between them would be ambiguous.
+  if (open.length === 1) {
+    return {
+      status: 'MATCHED',
+      task: open[0].task,
+      reason: 'Exactly one OPEN PreInspection Task exists for this Customer. Reuse it and patch the appointment details.',
+      evidence: tmv3_preInspectionCandidateEvidence_(open[0]).concat([
+        'SINGLE_OPEN_PREINSPECTION_FOR_CUSTOMER_REUSED'
+      ])
+    };
+  }
+
   const sameDay = open.filter(function(c) { return c.sameDay; });
   if (sameDay.length) {
     return {
       status: 'REVIEW',
-      reason: 'Same-day OPEN PreInspection candidate(s) exist, but none is strong enough to link automatically.',
-      errorCode: 'WEAK_SAME_DAY_PREINSPECTION_TASK'
+      reason: 'Multiple OPEN PreInspection Tasks exist for this Customer and at least one is on the same day. Select the correct Task before writing.',
+      errorCode: 'MULTIPLE_OPEN_PREINSPECTION_TASKS_SAME_DAY'
     };
   }
 
@@ -1714,8 +1731,8 @@ function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
   if (sameLocation.length) {
     return {
       status: 'REVIEW',
-      reason: 'OPEN PreInspection candidate(s) already use this Customer + Location. Duplicate creation is blocked.',
-      errorCode: 'SAME_LOCATION_PREINSPECTION_TASK'
+      reason: 'Multiple OPEN PreInspection Tasks exist for this Customer and at least one uses this Location. Select the correct Task before writing.',
+      errorCode: 'MULTIPLE_OPEN_PREINSPECTION_TASKS_SAME_LOCATION'
     };
   }
 
