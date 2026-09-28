@@ -1390,27 +1390,49 @@ function tmv3_getContactById_(contactId, expectedCustomerId) {
 
   const raw = tmv3_fetchJson_(
     TMV3.API_BASE + '/v1/contacts/' + encodeURIComponent(id),
-    { method: 'get' }
+    { method:'get' }
   ) || {};
 
-  const contact = tmv3_normalizeApiContact_(raw, expectedCustomerId || '');
-  const expected = String(Number(expectedCustomerId || 0) || '');
+  // Fresh ownership must come from fields actually returned by Striven.
+  // Never backfill the expected Customer ID into the model before proving it.
+  const contact = tmv3_normalizeApiContact_(raw, '');
+  const expected = String(
+    Number(expectedCustomerId || 0) || ''
+  );
 
-  if (expected) {
-    const directCustomerId = tmv3_clean_(contact['Customer ID']);
-    const text = JSON.stringify(raw);
+  const directCustomerId = tmv3_clean_(
+    contact['Customer ID']
+  );
 
-    contact.__ownershipVerified =
+  const ownerObject =
+    raw.customer ||
+    raw.Customer ||
+    raw.account ||
+    raw.Account ||
+    {};
+
+  const nestedOwnerId = tmv3_clean_(
+    tmv3_first_(ownerObject, [
+      'id','Id','customerId','CustomerId',
+      'accountId','AccountId'
+    ])
+  );
+
+  contact.__ownershipVerified =
+    !!expected &&
+    (
       directCustomerId === expected ||
-      new RegExp(
-        '(?:customerId|accountId|id)\\D{0,8}' +
-        expected +
-        '(?:\\D|$)',
-        'i'
-      ).test(text);
-  } else {
-    contact.__ownershipVerified = false;
-  }
+      nestedOwnerId === expected
+    );
+
+  contact.__ownershipEvidence =
+    contact.__ownershipVerified
+      ? (
+          directCustomerId === expected
+            ? 'CONTACT_DIRECT_CUSTOMER_ID'
+            : 'CONTACT_NESTED_OWNER_ID'
+        )
+      : 'CONTACT_OWNER_NOT_PROVEN';
 
   return contact;
 }

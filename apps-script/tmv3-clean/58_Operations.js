@@ -255,12 +255,30 @@ function tmv3_step7FreshSelectedContract_() {
 }
 
 function tmv3_step7PlanChangedResult_(selection) {
-  const previous = tmv3_clean_(selection && selection.previousPlan);
+  const previous = tmv3_clean_(
+    selection && selection.previousPlan
+  );
   const fresh = tmv3_clean_(
-    selection && selection.contract && selection.contract.plan
+    selection &&
+    selection.contract &&
+    selection.contract.plan
   );
 
-  if (!previous || previous === fresh) return null;
+  if (!previous) {
+    return {
+      status:'PLAN_CHANGED_NO_WRITE',
+      previousPlan:'',
+      freshPlan:fresh,
+      reason:
+        'No previously published Step 7 plan exists for this exact Event/Task row. ' +
+        'Refresh V3 before execution.',
+      vertical:selection.contract.vertical,
+      eventId:selection.contract.eventId,
+      taskId:selection.contract.taskId || ''
+    };
+  }
+
+  if (previous === fresh) return null;
 
   return {
     status:'PLAN_CHANGED_NO_WRITE',
@@ -333,20 +351,35 @@ function tmv3_step7BundleFromContract_(contract) {
 }
 
 function tmv3_step7FreshLocationOwnership_(contract) {
-  const locationId = tmv3_clean_(contract.expectedLocationId);
-  const customerId = tmv3_clean_(contract.expectedCustomerId);
+  const locationId = tmv3_clean_(
+    contract.expectedLocationId
+  );
+  const customerId = tmv3_clean_(
+    contract.expectedCustomerId
+  );
+
   if (!locationId) return { status:'N/A' };
 
+  // The Customer-number map is also freshly read from Striven so a stale
+  // Source Customers sheet cannot manufacture Location ownership.
   const customerNumberToId = {};
-  tmv3_rows_(TMV3.SHEETS.CUSTOMERS).forEach(function(row) {
-    const number = tmv3_clean_(row['Customer Number']);
-    const id = tmv3_clean_(row['Customer ID']);
-    if (number && id) customerNumberToId[number] = id;
-  });
 
-  const matches = tmv3_reportRows_(TMV3.PROPERTIES.LOCATIONS)
+  tmv3_reportRows_(TMV3.PROPERTIES.CUSTOMERS)
+    .map(tmv3_normalizeCustomer_)
+    .forEach(function(row) {
+      const number = tmv3_clean_(row[1]);
+      const id = tmv3_clean_(row[0]);
+      if (number && id) customerNumberToId[number] = id;
+    });
+
+  const matches = tmv3_reportRows_(
+    TMV3.PROPERTIES.LOCATIONS
+  )
     .map(function(row) {
-      return tmv3_normalizeLocation_(row, customerNumberToId);
+      return tmv3_normalizeLocation_(
+        row,
+        customerNumberToId
+      );
     })
     .filter(function(row) {
       return tmv3_clean_(row[0]) === locationId;
@@ -361,8 +394,9 @@ function tmv3_step7FreshLocationOwnership_(contract) {
 
   if (tmv3_clean_(matches[0][1]) !== customerId) {
     throw new Error(
-      'Fresh Location ownership mismatch: Location ' + locationId +
-      ' does not belong to Customer ' + customerId + '.'
+      'Fresh Location ownership mismatch: Location ' +
+      locationId + ' does not belong to Customer ' +
+      customerId + '.'
     );
   }
 
@@ -1816,6 +1850,16 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
     );
   }
 
+  if (
+    isCreate &&
+    (contract.sourceTaskIdList || []).length
+  ) {
+    throw new Error(
+      'CREATE blocked because Step 7 still exposes existing source Task IDs: ' +
+      contract.sourceTaskIdList.join(',') + '.'
+    );
+  }
+
   const persisted = tmv3_existingPersistedTaskForEvent_(
     contract.vertical,
     contract.eventId
@@ -2325,6 +2369,26 @@ function tmv3_fixSelectedCalendarLinks() {
 
 function tmv3_createOrRecreateSelectedTask() {
   const selection = tmv3_step7FreshSelectedContract_();
+  const contract = selection.contract;
+  const isCreate =
+    contract.actions.indexOf(
+      TMV3_STEP7_ACTION.CREATE_TASK
+    ) !== -1 ||
+    contract.actions.indexOf(
+      TMV3_STEP7_ACTION.RECREATE_TASK
+    ) !== -1;
+
+  if (!isCreate) {
+    return {
+      status:'STEP7_ACTION_NOT_AUTHORIZED_NO_WRITE',
+      plan:contract.plan,
+      eventId:contract.eventId,
+      taskId:contract.taskId || '',
+      reason:
+        'Fresh Step 7 does not authorize CREATE / RECREATE for this row.'
+    };
+  }
+
   const result = tmv3_executeFreshStep7Selection_(
     selection,
     'MANUAL',
