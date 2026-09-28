@@ -1,11 +1,11 @@
 {
-  "release": "TMV3_3_11_17_SINGLE_DECISION_AUTHORITY_R1",
+  "release": "TMV3_3_11_18_SINGLE_AUTHORITY_HARDENING_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_PREINSPECTION",
+  "runMode": "ISSUE1_REGRESSION",
   "batchOffset": 0,
-  "batchLimit": 15,
+  "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false
 }
