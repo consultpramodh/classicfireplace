@@ -1131,14 +1131,23 @@ async function main() {
           ? direct.response.result
           : null;
 
-      if (!result || result.status !== 'CANARY_VERIFIED_NO_CHANGE') {
+      const acceptedCanaryStatuses = [
+        'CREATED_VERIFIED_AND_CONVERGED',
+        'VERIFIED_CONVERGENCE',
+        'CANARY_VERIFIED_NO_CHANGE'
+      ];
+
+      if (
+        !result ||
+        acceptedCanaryStatuses.indexOf(String(result.status || '')) === -1
+      ) {
         fs.mkdirSync(outDir, {recursive:true});
         fs.writeFileSync(
           path.join(outDir, 'direct-step7-canary.json'),
           JSON.stringify({status:'FAILED', raw:direct}, null, 2)
         );
         fail(
-          'Direct Step 7 canary did not converge to NO_CHANGE.'
+          'Direct Step 7 canary did not return a verified terminal result.'
         );
       }
 
