@@ -2135,7 +2135,15 @@ function tmv3_ensureStep7LocationUnlocked_(
         return Number(location['Location ID'] || 0) === knownId;
       });
 
-      if (known.length === 1) {
+      if (
+        known.length === 1 &&
+        tmv3_addressStrongMatch_(
+          tmv3_addressParts_(contract.expectedLocationAddress),
+          tmv3_addressParts_(
+            tmv3_locationFullAddress_(known[0])
+          )
+        )
+      ) {
         tmv3_writeDurableWriteGuard_(
           guardKey,
           'VERIFIED',
