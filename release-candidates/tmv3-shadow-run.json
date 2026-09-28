@@ -1,18 +1,18 @@
 {
-  "release": "TMV3_3_11_19_REVIEW_RECOVERY_R1",
+  "release": "TMV3_3_11_20_LIVE_HARDENING_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "CANARY_WRITE",
-  "writesEnabled": true,
-  "runMode": "CANARY_EVENT_WRITE_FRESH",
+  "mode": "SHADOW_READ_ONLY",
+  "writesEnabled": false,
+  "runMode": "LIVE_HARDENING_REGRESSION",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "vertical": "PreInspection",
-  "eventId": "4itl540iit2ot4da907scv5uuu@google.com",
+  "vertical": "",
+  "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "SEP30_ERIN_RECREATE_WITH_ON_DEMAND_HISTORY",
-  "allowedDate": "2026-09-30",
-  "testWriteApiSoftLimit": 1450
+  "requestTag": "LIVE_HARDENING_READ_ONLY_REGRESSION",
+  "allowedDate": "",
+  "testWriteApiSoftLimit": 1200
 }
