@@ -1,15 +1,15 @@
 {
   "release": "TMV3_3_11_19_REVIEW_RECOVERY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "SHADOW_READ_ONLY",
-  "writesEnabled": false,
-  "runMode": "SHEET_PUBLISH",
+  "mode": "CANARY_WRITE",
+  "writesEnabled": true,
+  "runMode": "CANARY_EVENT_WRITE",
   "batchOffset": 0,
   "batchLimit": 0,
-  "refreshSources": false,
+  "refreshSources": true,
   "forceVersionedDeployment": false,
-  "vertical": "",
-  "eventId": "",
+  "vertical": "PreInspection",
+  "eventId": "1kvnstldjo16hj97sss08v3668@google.com",
   "taskId": 0,
   "expectedPlan": ""
 }
