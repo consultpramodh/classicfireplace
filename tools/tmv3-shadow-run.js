@@ -1464,6 +1464,8 @@ async function main() {
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'CANARY_STEP7' ||
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+      RUN_MODE === 'CANARY_EVENT_WRITE' ||
+      RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
       RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
@@ -1552,7 +1554,9 @@ async function main() {
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
-            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
           )
             ? String(RELEASE_MANIFEST.eventId || '')
             : (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
