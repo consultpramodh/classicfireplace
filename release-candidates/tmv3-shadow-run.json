@@ -1,15 +1,15 @@
 {
   "release": "TMV3_3_11_19_REVIEW_RECOVERY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "CANARY_WRITE",
-  "writesEnabled": true,
-  "runMode": "CANARY_STEP7",
+  "mode": "SHADOW_READ_ONLY",
+  "writesEnabled": false,
+  "runMode": "PREVIEW_STEP7",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
   "eventId": "1l5b7esesg1opive3ohfamb8vb@google.com",
-  "taskId": 0,
-  "expectedPlan": "CREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8"
+  "taskId": 18744,
+  "expectedPlan": ""
 }
