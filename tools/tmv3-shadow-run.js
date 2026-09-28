@@ -253,6 +253,26 @@ function buildTemporaryRunner(pre, token) {
             'v3DailySoftLimit: ' + testSoftLimit + ','
           );
         }
+
+        // The live PreInspection RECREATE path may still rely only on the
+        // shared Task cache, which intentionally excludes on-demand Type 105
+        // history. Patch only the temporary canary source so completed
+        // PreInspection history is proven by Customer + Location before a
+        // replacement Task is created.
+        if (
+          f.name === '58_Operations' &&
+          source.indexOf('function tmv3_findRecreateSourceTask_(bundle)') !== -1
+        ) {
+          source = source.replace(
+            '  const candidates = [];\n\n  (bundle.refs.tasks || []).forEach(function(task) {',
+            '  let candidates = [];\n\n  (bundle.refs.tasks || []).forEach(function(task) {'
+          );
+
+          source = source.replace(
+            "  if (candidates.length !== 1) {\n    throw new Error(\n      'RECREATE requires exactly one completed source Task; found ' +\n      candidates.length + '.'\n    );\n  }\n\n  return tmv3_replacementSourceSnapshot_(candidates[0]['Task ID']);",
+            "  if (vertical === 'PreInspection' && candidates.length === 0) {\n    const customer = tmv3_customerFromRefs_(bundle.refs, resolved.customerId);\n    if (!customer) {\n      throw new Error('RECREATE requires verified PreInspection Customer before history lookup.');\n    }\n    candidates = tmv3_searchPreInspectionTasks_(customer).filter(function(task) {\n      return (\n        tmv3_taskIsCompleted_(task['Status']) &&\n        String(task['Customer ID'] || '') === String(resolved.customerId || '') &&\n        String(task['Location ID'] || '') === String(resolved.locationId || '')\n      );\n    });\n  }\n\n  if (candidates.length !== 1) {\n    throw new Error(\n      'RECREATE requires exactly one completed source Task; found ' +\n      candidates.length + '.'\n    );\n  }\n\n  return tmv3_replacementSourceSnapshot_(candidates[0]['Task ID']);"
+          );
+        }
       }
 
       return {
