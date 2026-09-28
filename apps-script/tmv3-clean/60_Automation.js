@@ -53,6 +53,7 @@ function onOpen() {
       ui.createMenu('Diagnostics')
         .addItem('Run Full Shadow Verification', 'tmv3_shadowRun')
         .addItem('Health Check', 'tmv3_healthCheck')
+        .addItem('Run Live Hardening Regression', 'tmv3_liveHardeningRegression')
         .addItem('Acknowledge Selected Exception', 'tmv3_acknowledgeSelectedMorningOps')
         .addItem('Clear Selected Acknowledgement', 'tmv3_clearAcknowledgementSelectedMorningOps')
     )
