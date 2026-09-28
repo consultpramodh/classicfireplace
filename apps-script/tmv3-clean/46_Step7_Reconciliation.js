@@ -80,44 +80,11 @@ function tmv3_step7AuthoredNotes_(record) {
 }
 
 function tmv3_step7PreInspectionField854State_(record, rawTask) {
-  if (!record || record.vertical !== 'PreInspection') {
-    return { desired:'', actual:'', check:'N/A', patchRequired:false, blocker:'' };
-  }
-
-  const desired = tmv3_step7AuthoredNotes_(record);
-  if (!desired) {
-    return { desired:'', actual:'', check:'N/A', patchRequired:false, blocker:'' };
-  }
-
-  const fields = rawTask && (rawTask.infoCustomFields || rawTask.InfoCustomFields);
-  const list = Array.isArray(fields) ? fields : [];
-  const target = list.filter(function(field) {
-    return Number(tmv3_first_(field || {}, ['id','Id','customFieldId','CustomFieldId']) || 0) === 854;
-  });
-
-  if (target.length !== 1) {
-    return {
-      desired:desired,
-      actual:'',
-      check:'UNVERIFIED',
-      patchRequired:false,
-      blocker:'PreInspection Field 854 cannot be reconciled because the fresh Task read did not expose exactly one Field 854.'
-    };
-  }
-
-  const field = target[0] || {};
-  const value =
-    field.value !== undefined ? field.value :
-    (field.Value !== undefined ? field.Value :
-    (field.valueText !== undefined ? field.valueText :
-    (field.ValueText !== undefined ? field.ValueText : '')));
-  const actual = tmv3_clean_(value);
-
   return {
-    desired:desired,
-    actual:actual,
-    check:actual === tmv3_clean_(desired) ? 'MATCH' : 'MISMATCH',
-    patchRequired:actual !== tmv3_clean_(desired),
+    desired:'',
+    actual:'',
+    check:'TECHNICIAN_OWNED',
+    patchRequired:false,
     blocker:''
   };
 }
@@ -1116,7 +1083,7 @@ function tmv3_step7CreatePlan_(
 ) {
   const expected = tmv3_step7Expected_(record, runtime, true);
   const desiredAssignment = tmv3_desiredAssignment_(record);
-  const desiredField854 = tmv3_step7AuthoredNotes_(record);
+  const desiredField854 = '';
 
   let plan;
   let blocker = '';
@@ -1178,9 +1145,6 @@ function tmv3_step7CreatePlan_(
       actions.push(TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS);
     }
 
-    if (record.vertical === 'PreInspection' && desiredField854) {
-      actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
-    }
     actions.push(TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS);
   }
 
@@ -1216,7 +1180,7 @@ function tmv3_step7CreatePlan_(
     desiredAssignmentObject:desiredAssignment,
     desiredField854:desiredField854,
     actualField854:'',
-    field854Check:desiredField854 ? 'CREATE_PENDING' : 'N/A',
+    field854Check:'TECHNICIAN_OWNED',
     actions:actions,
     plan:plan,
     blocker:blocker,
