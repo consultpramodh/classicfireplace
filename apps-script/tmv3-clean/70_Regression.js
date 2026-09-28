@@ -538,3 +538,274 @@ function tmv3_assignmentFeatureRegression() {
     totalCases:Number(source.cases || 0) + Number(parity.cases || 0)
   };
 }
+
+
+/************************************************************
+ * TM V3 — ISSUE 1 SINGLE DECISION AUTHORITY REGRESSION
+ ************************************************************/
+function tmv3_issue1ContractFixture_(overrides) {
+  return Object.assign({
+    vertical:'Install',
+    eventId:'evt-test',
+    calendarId:'cal-test',
+    logicalKey:'Install|evt-test',
+    disposition:'MATCH_EXISTING_OPEN',
+    taskId:123,
+    taskStatus:'Open',
+    expectedCustomerId:'10',
+    actualCustomerId:'10',
+    customerCheck:'MATCH',
+    expectedOrderId:'20',
+    actualOrderId:'20',
+    orderCheck:'MATCH',
+    expectedLocationId:'30',
+    locationStatus:'MATCHED',
+    actualLocationId:'30',
+    locationCheck:'MATCH',
+    expectedRequestedById:'40',
+    expectedRequestedByType:'contact',
+    actualRequestedById:'40',
+    actualRequestedByType:'contact',
+    requestedByCheck:'MATCH',
+    contactOwnership:'VERIFIED',
+    expectedStart:'2026-09-28T13:00:00.000Z',
+    expectedDue:'2026-09-28T14:00:00.000Z',
+    startCheck:'MATCH',
+    endCheck:'MATCH',
+    desiredAssignmentEmployeeIds:[18],
+    desiredAssignmentPoolIds:[],
+    assignmentCheck:'MATCH',
+    desiredField854:'',
+    field854Check:'N/A',
+    plan:'NO_CHANGE',
+    actions:[TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS],
+    writeGate:'SHADOW_ONLY__NO_WRITES',
+    blocker:'',
+    sourceTaskIds:'123',
+    sourceTaskIdList:['123'],
+    engineVersion:TMV3.VERSION,
+    plannedAt:new Date(),
+    readStatus:'FRESH_TASK_GET',
+    freshTaskReadStatus:'FRESH_TASK_GET',
+    inputFingerprint:'fp-test',
+    calendarUpdatedAt:''
+  }, overrides || {});
+}
+
+function tmv3_issue1SingleDecisionAuthorityRegression() {
+  const cases = [];
+
+  function check(name, pass, evidence) {
+    cases.push({
+      name:name,
+      pass:!!pass,
+      evidence:evidence || ''
+    });
+  }
+
+  const review = tmv3_issue1ContractFixture_({
+    plan:'REVIEW_NO_AUTOMATIC_MUTATION',
+    blocker:'Step 7 requires review.',
+    actions:[]
+  });
+
+  check(
+    'STEP7_REVIEW_BEATS_OLD_READY',
+    !!review.blocker && review.actions.length === 0,
+    review.plan
+  );
+
+  const blocked = tmv3_issue1ContractFixture_({
+    plan:'REVIEW_CONTACT_OWNERSHIP',
+    blocker:'Ownership failed.',
+    actions:[]
+  });
+
+  check(
+    'STEP7_BLOCKER_NO_ACTIONS',
+    !!blocked.blocker && blocked.actions.length === 0,
+    blocked.plan
+  );
+
+  const changed = tmv3_step7PlanChangedResult_({
+    previousPlan:'PATCH_ASSIGNMENTS',
+    contract:tmv3_issue1ContractFixture_({
+      plan:'NO_CHANGE'
+    })
+  });
+
+  check(
+    'STALE_PLAN_CHANGED_NO_WRITE',
+    changed &&
+      changed.status === 'PLAN_CHANGED_NO_WRITE',
+    changed && changed.freshPlan
+  );
+
+  const dateOnly = tmv3_issue1ContractFixture_({
+    plan:'PATCH_DATES',
+    actions:[
+      TMV3_STEP7_ACTION.PATCH_DATES,
+      TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS
+    ]
+  });
+
+  check(
+    'DATE_PATCH_EXACT_ACTION',
+    JSON.stringify(
+      tmv3_step7ActionsForMode_(dateOnly, 'DATES')
+    ) === JSON.stringify([
+      TMV3_STEP7_ACTION.PATCH_DATES
+    ]),
+    JSON.stringify(dateOnly.actions)
+  );
+
+  const locationMismatch = tmv3_issue1ContractFixture_({
+    plan:'REVIEW_RELATIONSHIP_CONFLICT',
+    locationCheck:'MISMATCH',
+    blocker:'Location mismatch.',
+    actions:[]
+  });
+
+  check(
+    'LOCATION_MISMATCH_NO_ACTIONS',
+    locationMismatch.actions.length === 0 &&
+      !!locationMismatch.blocker,
+    locationMismatch.plan
+  );
+
+  const contactFailure = tmv3_issue1ContractFixture_({
+    plan:'REVIEW_CONTACT_OWNERSHIP',
+    contactOwnership:'UNVERIFIED',
+    blocker:'Contact ownership failed.',
+    actions:[]
+  });
+
+  check(
+    'CONTACT_OWNERSHIP_FAILURE_NO_ACTIONS',
+    contactFailure.actions.length === 0 &&
+      contactFailure.contactOwnership === 'UNVERIFIED',
+    contactFailure.plan
+  );
+
+  const multiA = tmv3_issue1ContractFixture_({
+    vertical:'Service',
+    logicalKey:'Service|evt-multi',
+    eventId:'evt-multi',
+    taskId:501,
+    sourceTaskIds:'501,502',
+    sourceTaskIdList:['501','502']
+  });
+
+  const multiB = tmv3_issue1ContractFixture_({
+    vertical:'Service',
+    logicalKey:'Service|evt-multi',
+    eventId:'evt-multi',
+    taskId:502,
+    sourceTaskIds:'501,502',
+    sourceTaskIdList:['501','502']
+  });
+
+  check(
+    'MULTI_SERVICE_EXACT_TASK_ROWS',
+    multiA.taskId !== multiB.taskId &&
+      multiA.logicalKey === multiB.logicalKey &&
+      multiA.sourceTaskIdList.length === 2 &&
+      multiB.sourceTaskIdList.length === 2,
+    multiA.taskId + ',' + multiB.taskId
+  );
+
+  const pre = tmv3_issue1ContractFixture_({
+    vertical:'PreInspection',
+    logicalKey:'PreInspection|evt-pre',
+    expectedOrderId:'',
+    actualOrderId:'',
+    orderCheck:'MATCH_NOT_ATTACHED',
+    expectedRequestedById:'15',
+    expectedRequestedByType:'employee',
+    desiredAssignmentEmployeeIds:[],
+    desiredAssignmentPoolIds:[8],
+    plan:'NO_CHANGE'
+  });
+
+  check(
+    'PREINSPECTION_INVARIANTS_CONTRACT',
+    pre.expectedOrderId === '' &&
+      pre.expectedRequestedByType === 'employee' &&
+      JSON.stringify(
+        pre.desiredAssignmentPoolIds
+      ) === '[8]',
+    JSON.stringify({
+      order:pre.expectedOrderId,
+      requestedByType:pre.expectedRequestedByType,
+      pools:pre.desiredAssignmentPoolIds
+    })
+  );
+
+  const locationCreate = tmv3_issue1ContractFixture_({
+    taskId:'',
+    disposition:'CREATE_TASK',
+    plan:'CREATE_LOCATION_THEN_CREATE_TASK',
+    locationStatus:'CREATE_REQUIRED',
+    expectedLocationId:'',
+    actions:[
+      TMV3_STEP7_ACTION.CREATE_LOCATION,
+      TMV3_STEP7_ACTION.CREATE_TASK,
+      TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS
+    ],
+    readStatus:'NO_TASK_READ_REQUIRED',
+    freshTaskReadStatus:'NO_TASK_READ_REQUIRED'
+  });
+
+  check(
+    'CREATE_LOCATION_CAPABILITY_EXPLICITLY_UNSUPPORTED',
+    locationCreate.actions.indexOf(
+      TMV3_STEP7_ACTION.CREATE_LOCATION
+    ) !== -1,
+    locationCreate.plan
+  );
+
+  const noChange = tmv3_issue1ContractFixture_();
+
+  check(
+    'NO_CHANGE_TASK_MUTATION_NONE',
+    tmv3_step7ActionsForMode_(
+      noChange,
+      'DATES'
+    ).length === 0 &&
+    tmv3_step7ActionsForMode_(
+      noChange,
+      'RELATIONSHIPS'
+    ).length === 0 &&
+    tmv3_step7ActionsForMode_(
+      noChange,
+      'ASSIGNEE'
+    ).length === 0,
+    JSON.stringify(noChange.actions)
+  );
+
+  const assignment = tmv3_assignmentFeatureRegression();
+
+  check(
+    'ASSIGNMENT_PARITY_UNCHANGED',
+    assignment.status === 'PASS',
+    'cases=' + assignment.totalCases
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 Issue 1 single-authority regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    cases:cases.length,
+    results:cases,
+    assignmentRegression:assignment
+  };
+}

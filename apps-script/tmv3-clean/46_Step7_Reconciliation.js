@@ -52,6 +52,162 @@ const TMV3_STEP7_HEADERS = Object.freeze([
   'Read Status'
 ]);
 
+const TMV3_STEP7_ACTION = Object.freeze({
+  PATCH_DATES:'PATCH_DATES',
+  PATCH_LOCATION:'PATCH_LOCATION',
+  PATCH_ORDER:'PATCH_ORDER',
+  PATCH_REQUESTED_BY:'PATCH_REQUESTED_BY',
+  PATCH_ASSIGNMENTS:'PATCH_ASSIGNMENTS',
+  PATCH_FIELD854:'PATCH_FIELD854',
+  VERIFY_CALENDAR_LINKS:'VERIFY_CALENDAR_LINKS',
+  CREATE_LOCATION:'CREATE_LOCATION',
+  CREATE_TASK:'CREATE_TASK',
+  RECREATE_TASK:'RECREATE_TASK'
+});
+
+const TMV3_STEP7_ACTION_VALUES = Object.freeze(
+  Object.keys(TMV3_STEP7_ACTION).map(function(key) {
+    return TMV3_STEP7_ACTION[key];
+  })
+);
+
+function tmv3_step7AuthoredNotes_(record) {
+  if (!record || record.vertical !== 'PreInspection') return '';
+  return tmv3_stripManagedLinkBlocks_(record.description || '')
+    .replace(/<!--\s*PREINSPECT_STRIVEN_TASK_LINK_START\s*-->[\s\S]*?<!--\s*PREINSPECT_STRIVEN_TASK_LINK_END\s*-->/gi, '')
+    .replace(/(?:\r?\n\s*){3,}/g, '\n\n')
+    .trim();
+}
+
+function tmv3_step7PreInspectionField854State_(record, rawTask) {
+  if (!record || record.vertical !== 'PreInspection') {
+    return { desired:'', actual:'', check:'N/A', patchRequired:false, blocker:'' };
+  }
+
+  const desired = tmv3_step7AuthoredNotes_(record);
+  if (!desired) {
+    return { desired:'', actual:'', check:'N/A', patchRequired:false, blocker:'' };
+  }
+
+  const fields = rawTask && (rawTask.infoCustomFields || rawTask.InfoCustomFields);
+  const list = Array.isArray(fields) ? fields : [];
+  const target = list.filter(function(field) {
+    return Number(tmv3_first_(field || {}, ['id','Id','customFieldId','CustomFieldId']) || 0) === 854;
+  });
+
+  if (target.length !== 1) {
+    return {
+      desired:desired,
+      actual:'',
+      check:'UNVERIFIED',
+      patchRequired:false,
+      blocker:'PreInspection Field 854 cannot be reconciled because the fresh Task read did not expose exactly one Field 854.'
+    };
+  }
+
+  const field = target[0] || {};
+  const value =
+    field.value !== undefined ? field.value :
+    (field.Value !== undefined ? field.Value :
+    (field.valueText !== undefined ? field.valueText :
+    (field.ValueText !== undefined ? field.ValueText : '')));
+  const actual = tmv3_clean_(value);
+
+  return {
+    desired:desired,
+    actual:actual,
+    check:actual === tmv3_clean_(desired) ? 'MATCH' : 'MISMATCH',
+    patchRequired:actual !== tmv3_clean_(desired),
+    blocker:''
+  };
+}
+
+function tmv3_step7ValidateExecutionContract_(contract) {
+  if (!contract || typeof contract !== 'object') {
+    throw new Error('Step 7 execution contract is required.');
+  }
+
+  const required = [
+    'vertical','eventId','logicalKey','disposition','plan',
+    'actions','engineVersion','inputFingerprint'
+  ];
+
+  required.forEach(function(key) {
+    if (
+      contract[key] === undefined ||
+      contract[key] === null ||
+      (key !== 'actions' && tmv3_clean_(contract[key]) === '')
+    ) {
+      throw new Error('Step 7 execution contract is missing ' + key + '.');
+    }
+  });
+
+  if (!TMV3.VERTICALS[contract.vertical]) {
+    throw new Error('Step 7 execution contract has an unknown vertical.');
+  }
+
+  if (!Array.isArray(contract.actions)) {
+    throw new Error('Step 7 execution contract actions must be an array.');
+  }
+
+  const seen = {};
+  contract.actions.forEach(function(action) {
+    if (TMV3_STEP7_ACTION_VALUES.indexOf(action) === -1) {
+      throw new Error('Step 7 execution contract has unsupported action ' + action + '.');
+    }
+    if (seen[action]) {
+      throw new Error('Step 7 execution contract contains duplicate action ' + action + '.');
+    }
+    seen[action] = true;
+  });
+
+  if (tmv3_clean_(contract.blocker) && contract.actions.length) {
+    throw new Error('Blocked Step 7 execution contract must not expose executable actions.');
+  }
+
+  return contract;
+}
+
+function tmv3_step7FreshPlansForEvent_(vertical, eventId) {
+  const wantedVertical = tmv3_clean_(vertical);
+  const wantedEventId = tmv3_clean_(eventId);
+
+  if (!TMV3.VERTICALS[wantedVertical] || !wantedEventId) {
+    throw new Error('Fresh Step 7 event planning requires vertical and Event ID.');
+  }
+
+  const freshEvent = tmv3_findFreshEventRecord_(wantedVertical, wantedEventId);
+  const step2 = tmv3_step2CalendarRecords_([freshEvent]);
+  const step3 = tmv3_step3BusinessAnchorRecords_(step2, tmv3_step3AnchorIndex_());
+  const step4 = tmv3_step4IdentityRecords_(step3, tmv3_step4IdentityIndex_());
+  const step5 = tmv3_step5TaskRecords_(step4, tmv3_step5TaskIndex_());
+  const step6 = tmv3_step6DecisionRecords_(step5);
+  const runtime = { taskById:{}, contactByKey:{}, organizerByEmail:{} };
+
+  return tmv3_step7Plans_(step6, runtime);
+}
+
+function tmv3_step7FreshExecutionContract_(vertical, eventId, taskId) {
+  const wantedTaskId = Number(taskId || 0);
+  const plans = tmv3_step7FreshPlansForEvent_(vertical, eventId);
+  const matches = plans.filter(function(plan) {
+    return wantedTaskId
+      ? Number(plan.taskId || 0) === wantedTaskId
+      : !Number(plan.taskId || 0);
+  });
+
+  if (matches.length !== 1) {
+    throw new Error(
+      'Expected one fresh canonical Step 7 execution contract for ' +
+      tmv3_clean_(vertical) + ' Event ' + tmv3_clean_(eventId) +
+      (wantedTaskId ? ' Task ' + wantedTaskId : '') +
+      '; found ' + matches.length + '.'
+    );
+  }
+
+  return tmv3_step7ValidateExecutionContract_(matches[0]);
+}
+
 function tmv3_step7ReconciliationRun(
   reason,
   refreshSources,
@@ -338,35 +494,11 @@ function tmv3_step7ReconciliationBatchRun(
 }
 
 function tmv3_step7FreshPlanForTask_(vertical, eventId, taskId) {
-  const wantedVertical = tmv3_clean_(vertical);
-  const wantedEventId = tmv3_clean_(eventId);
-  const wantedTaskId = String(Number(taskId || 0));
-
-  if (!TMV3.VERTICALS[wantedVertical] || !wantedEventId || wantedTaskId === '0') {
-    throw new Error('Fresh Step 7 plan requires vertical, Event ID, and Task ID.');
+  const wantedTaskId = Number(taskId || 0);
+  if (!wantedTaskId) {
+    throw new Error('Fresh Step 7 plan requires a positive Task ID.');
   }
-
-  const step2 = tmv3_step2CalendarRecords_().filter(function(record) {
-    return record.vertical === wantedVertical &&
-      tmv3_clean_(record.eventId) === wantedEventId;
-  });
-  if (step2.length !== 1) {
-    throw new Error('Expected one current Calendar record for the Step 7 plan; found ' + step2.length + '.');
-  }
-
-  const step3 = tmv3_step3BusinessAnchorRecords_(step2, tmv3_step3AnchorIndex_());
-  const step4 = tmv3_step4IdentityRecords_(step3, tmv3_step4IdentityIndex_());
-  const step5 = tmv3_step5TaskRecords_(step4, tmv3_step5TaskIndex_());
-  const step6 = tmv3_step6DecisionRecords_(step5);
-  const runtime = { taskById:{}, contactByKey:{}, organizerByEmail:{} };
-  const plans = tmv3_step7Plans_(step6, runtime).filter(function(plan) {
-    return String(Number(plan.taskId || 0)) === wantedTaskId;
-  });
-
-  if (plans.length !== 1) {
-    throw new Error('Expected one fresh Step 7 plan for Task ' + wantedTaskId + '; found ' + plans.length + '.');
-  }
-  return plans[0];
+  return tmv3_step7FreshExecutionContract_(vertical, eventId, wantedTaskId);
 }
 
 function tmv3_step7Plans_(records, runtime) {
@@ -777,6 +909,11 @@ function tmv3_step7ExistingTaskPlan_(
     actualAssignments
   );
 
+  const field854State = tmv3_step7PreInspectionField854State_(
+    record,
+    fresh.raw
+  );
+
   const checks = {
     customer: customerCheck,
     order: orderCheck,
@@ -805,6 +942,7 @@ function tmv3_step7ExistingTaskPlan_(
       actual,
       checks,
       assignmentCheck,
+      field854State,
       historical
     );
   }
@@ -829,7 +967,12 @@ function tmv3_step7ExistingTaskPlan_(
     desiredAssignment: tmv3_step7DesiredAssignmentText_(
       desiredAssignment
     ),
+    desiredAssignmentObject: desiredAssignment,
+    desiredField854: field854State.desired,
+    actualField854: field854State.actual,
+    field854Check: field854State.check,
     checks: checks,
+    actions: action.actions || [],
     plan: action.plan,
     blocker: action.blocker,
     evidence: tmv3_step7Evidence_(record, [
@@ -849,33 +992,35 @@ function tmv3_step7ExistingAction_(
   actual,
   checks,
   assignmentCheck,
+  field854State,
   historical
 ) {
+  function blocked(plan, blocker) {
+    return { plan:plan, blocker:blocker, actions:[] };
+  }
+
   if (historical) {
-    return {
-      plan: 'VERIFY_ONLY_HISTORY_NO_WRITE',
-      blocker:
-        'Completed Task covers this appointment. Historical relationship drift is evidence only.'
-    };
+    return blocked(
+      'VERIFY_ONLY_HISTORY_NO_WRITE',
+      'Completed Task covers this appointment. Historical relationship drift is evidence only.'
+    );
   }
 
   if (checks.customer !== 'MATCH') {
-    return {
-      plan: 'REVIEW_CUSTOMER_RELATIONSHIP_CONFLICT',
-      blocker:
-        'Fresh Task Customer must exactly match the Step 4 verified Customer before any mutation.'
-    };
+    return blocked(
+      'REVIEW_CUSTOMER_RELATIONSHIP_CONFLICT',
+      'Fresh Task Customer must exactly match the Step 4 verified Customer before any mutation.'
+    );
   }
 
   if (
     record.vertical === 'PreInspection' &&
     checks.order === 'FORBIDDEN_PRESENT'
   ) {
-    return {
-      plan: 'REVIEW_PREINSPECTION_ORDER_ATTACHED',
-      blocker:
-        'PreInspection Task is attached to a Sales Order; automatic detachment is not authorized.'
-    };
+    return blocked(
+      'REVIEW_PREINSPECTION_ORDER_ATTACHED',
+      'PreInspection Task is attached to a Sales Order; automatic detachment is not authorized.'
+    );
   }
 
   if (
@@ -883,18 +1028,14 @@ function tmv3_step7ExistingAction_(
     checks.location === 'MISMATCH' ||
     checks.location === 'EXPECTED_LOCATION_UNRESOLVED'
   ) {
-    return {
-      plan: 'REVIEW_RELATIONSHIP_CONFLICT',
-      blocker:
-        'Fresh Task relationship conflicts with the verified appointment relationship. Do not overwrite automatically.'
-    };
+    return blocked(
+      'REVIEW_RELATIONSHIP_CONFLICT',
+      'Fresh Task relationship conflicts with the verified appointment relationship. Do not overwrite automatically.'
+    );
   }
 
   if (expected.requestedByError) {
-    return {
-      plan: 'REVIEW_REQUESTED_BY_EVIDENCE',
-      blocker: expected.requestedByError
-    };
+    return blocked('REVIEW_REQUESTED_BY_EVIDENCE', expected.requestedByError);
   }
 
   if (
@@ -902,46 +1043,47 @@ function tmv3_step7ExistingAction_(
     checks.requestedBy !== 'MATCH' &&
     expected.contactOwnership !== 'VERIFIED'
   ) {
-    return {
-      plan: 'REVIEW_CONTACT_OWNERSHIP',
-      blocker:
-        'Expected Contact ownership is not freshly verified for the resolved Customer.'
-    };
+    return blocked(
+      'REVIEW_CONTACT_OWNERSHIP',
+      'Expected Contact ownership is not freshly verified for the resolved Customer.'
+    );
   }
 
   if (assignmentCheck && assignmentCheck.blocker) {
-    return {
-      plan: 'REVIEW_ASSIGNMENT_UNRESOLVED',
-      blocker: assignmentCheck.blocker
-    };
+    return blocked('REVIEW_ASSIGNMENT_UNRESOLVED', assignmentCheck.blocker);
+  }
+
+  if (field854State && field854State.blocker) {
+    return blocked('REVIEW_PREINSPECTION_FIELD854', field854State.blocker);
   }
 
   const changes = [];
+  const actions = [];
 
   if (checks.location === 'MISSING') {
     changes.push('LOCATION');
+    actions.push(TMV3_STEP7_ACTION.PATCH_LOCATION);
   }
 
   if (checks.location === 'CREATE_REQUIRED') {
     changes.push('CREATE_LOCATION_THEN_LOCATION');
+    actions.push(TMV3_STEP7_ACTION.CREATE_LOCATION);
+    actions.push(TMV3_STEP7_ACTION.PATCH_LOCATION);
   }
 
   if (checks.order === 'MISSING') {
     changes.push('ORDER');
+    actions.push(TMV3_STEP7_ACTION.PATCH_ORDER);
   }
 
-  if (
-    expected.requestedById &&
-    checks.requestedBy !== 'MATCH'
-  ) {
+  if (expected.requestedById && checks.requestedBy !== 'MATCH') {
     changes.push('REQUESTED_BY');
+    actions.push(TMV3_STEP7_ACTION.PATCH_REQUESTED_BY);
   }
 
-  if (
-    checks.start !== 'MATCH' ||
-    checks.end !== 'MATCH'
-  ) {
+  if (checks.start !== 'MATCH' || checks.end !== 'MATCH') {
     changes.push('DATES');
+    actions.push(TMV3_STEP7_ACTION.PATCH_DATES);
   }
 
   if (
@@ -949,13 +1091,20 @@ function tmv3_step7ExistingAction_(
     assignmentCheck.status !== 'N/A'
   ) {
     changes.push('ASSIGNMENTS');
+    actions.push(TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS);
   }
 
+  if (field854State && field854State.patchRequired) {
+    changes.push('FIELD854');
+    actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
+  }
+
+  actions.push(TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS);
+
   return {
-    plan: changes.length
-      ? 'PATCH_' + changes.join('_AND_')
-      : 'NO_CHANGE',
-    blocker: ''
+    plan:changes.length ? 'PATCH_' + changes.join('_AND_') : 'NO_CHANGE',
+    blocker:'',
+    actions:tmv3_unique_(actions)
   };
 }
 
@@ -965,14 +1114,13 @@ function tmv3_step7CreatePlan_(
   sourceTaskIds,
   runtime
 ) {
-  const expected = tmv3_step7Expected_(
-    record,
-    runtime,
-    true
-  );
+  const expected = tmv3_step7Expected_(record, runtime, true);
+  const desiredAssignment = tmv3_desiredAssignment_(record);
+  const desiredField854 = tmv3_step7AuthoredNotes_(record);
 
   let plan;
   let blocker = '';
+  let actions = [];
 
   if (!expected.customerId) {
     plan = 'REVIEW_CREATE_CUSTOMER_UNRESOLVED';
@@ -982,11 +1130,8 @@ function tmv3_step7CreatePlan_(
     !expected.orderId
   ) {
     plan = 'REVIEW_CREATE_ORDER_UNRESOLVED';
-    blocker =
-      'Task CREATE requires the verified Order / Work Order relationship.';
-  } else if (
-    expected.requestedByError
-  ) {
+    blocker = 'Task CREATE requires the verified Order / Work Order relationship.';
+  } else if (expected.requestedByError) {
     plan = 'REVIEW_CREATE_REQUESTED_BY_UNRESOLVED';
     blocker = expected.requestedByError;
   } else if (
@@ -994,18 +1139,20 @@ function tmv3_step7CreatePlan_(
     expected.contactOwnership !== 'VERIFIED'
   ) {
     plan = 'REVIEW_CREATE_CONTACT_OWNERSHIP';
-    blocker =
-      'Expected Contact ownership is not freshly verified for the resolved Customer.';
+    blocker = 'Expected Contact ownership is not freshly verified for the resolved Customer.';
   } else {
     const createVerb =
+      disposition === 'RECREATE_TASK' ? 'RECREATE_TASK' : 'CREATE_TASK';
+    const createAction =
       disposition === 'RECREATE_TASK'
-        ? 'RECREATE_TASK'
-        : 'CREATE_TASK';
+        ? TMV3_STEP7_ACTION.RECREATE_TASK
+        : TMV3_STEP7_ACTION.CREATE_TASK;
 
     if (
       expected.locationStatus === 'CREATE_REQUIRED' &&
       !expected.locationId
     ) {
+      actions.push(TMV3_STEP7_ACTION.CREATE_LOCATION);
       plan =
         record.vertical === 'PreInspection'
           ? (
@@ -1021,16 +1168,22 @@ function tmv3_step7CreatePlan_(
     } else {
       plan = createVerb;
     }
+
+    actions.push(createAction);
+    if (record.vertical === 'PreInspection' && desiredField854) {
+      actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
+    }
+    actions.push(TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS);
   }
 
   return tmv3_step7PlanRow_({
-    record: record,
-    disposition: disposition,
-    taskId: '',
-    taskStatus: 'NOT_CREATED',
-    expected: expected,
-    checks: {
-      customer: expected.customerId ? 'VERIFIED_EXPECTED' : 'MISSING',
+    record:record,
+    disposition:disposition,
+    taskId:'',
+    taskStatus:'NOT_CREATED',
+    expected:expected,
+    checks:{
+      customer:expected.customerId ? 'VERIFIED_EXPECTED' : 'MISSING',
       order:
         record.vertical === 'PreInspection'
           ? 'NOT_APPLICABLE'
@@ -1046,26 +1199,22 @@ function tmv3_step7CreatePlan_(
       requestedBy:
         expected.requestedByError
           ? 'UNRESOLVED'
-          : (
-              expected.requestedById
-                ? 'VERIFIED_EXPECTED'
-                : 'N/A'
-            ),
-      start: 'VERIFIED_EXPECTED',
-      end: 'VERIFIED_EXPECTED',
-      assignment: 'VERIFIED_EXPECTED'
+          : (expected.requestedById ? 'VERIFIED_EXPECTED' : 'N/A'),
+      start:'VERIFIED_EXPECTED',
+      end:'VERIFIED_EXPECTED',
+      assignment:'VERIFIED_EXPECTED'
     },
-    desiredAssignment: tmv3_step7DesiredAssignmentText_(
-      tmv3_desiredAssignment_(record)
-    ),
-    plan: plan,
-    blocker: blocker,
-    evidence: tmv3_step7Evidence_(record, [
-      'CREATE_PLAN_ONLY',
-      'NO_TASK_WRITE'
-    ]),
-    sourceTaskIds: sourceTaskIds,
-    readStatus: 'NO_TASK_READ_REQUIRED'
+    desiredAssignment:tmv3_step7DesiredAssignmentText_(desiredAssignment),
+    desiredAssignmentObject:desiredAssignment,
+    desiredField854:desiredField854,
+    actualField854:'',
+    field854Check:desiredField854 ? 'CREATE_PENDING' : 'N/A',
+    actions:actions,
+    plan:plan,
+    blocker:blocker,
+    evidence:tmv3_step7Evidence_(record, ['CREATE_PLAN_ONLY','NO_TASK_WRITE']),
+    sourceTaskIds:sourceTaskIds,
+    readStatus:'NO_TASK_READ_REQUIRED'
   });
 }
 
@@ -1122,51 +1271,88 @@ function tmv3_step7PlanRow_(input) {
   const actual = input.actual || {};
   const checks = input.checks || tmv3_step7BlankChecks_('');
   const now = tmv3_now_();
+  const sourceTaskIdList = (input.sourceTaskIds || [])
+    .map(tmv3_clean_)
+    .filter(Boolean);
+  const desired =
+    input.desiredAssignmentObject || { employeeIds:[], poolIds:[] };
+  const actions = tmv3_unique_(
+    (input.actions || []).map(tmv3_clean_).filter(Boolean)
+  );
+  const inputFingerprint =
+    tmv3_clean_(record.fingerprint) ||
+    tmv3_hash_([
+      record.vertical || '',
+      record.eventId || '',
+      record.calendarId || '',
+      record.start ? tmv3_iso_(record.start) : '',
+      record.end ? tmv3_iso_(record.end) : '',
+      record.title || '',
+      record.location || '',
+      record.description || '',
+      record.organizer || ''
+    ].join('|'));
 
   return {
-    vertical: record.vertical || '',
-    eventId: record.eventId || '',
-    logicalKey: record.logicalKey || (
-      tmv3_clean_(record.vertical) + '|' +
-      tmv3_clean_(record.eventId)
+    vertical:record.vertical || '',
+    eventId:record.eventId || '',
+    calendarId:record.calendarId || '',
+    logicalKey:record.logicalKey || (
+      tmv3_clean_(record.vertical) + '|' + tmv3_clean_(record.eventId)
     ),
-    event: record.title || '',
-    disposition: input.disposition || '',
-    taskId: input.taskId || '',
-    taskStatus: input.taskStatus || '',
-    expectedCustomerId: expected.customerId || '',
-    actualCustomerId: actual.customerId || '',
-    customerCheck: checks.customer || '',
-    expectedOrderId: expected.orderId || '',
-    actualOrderId: actual.orderId || '',
-    orderCheck: checks.order || '',
-    expectedLocationId: expected.locationId || '',
-    actualLocationId: actual.locationId || '',
-    locationCheck: checks.location || '',
-    expectedRequestedById: expected.requestedById || '',
-    expectedRequestedByType: expected.requestedByType || '',
-    actualRequestedById: actual.requestedById || '',
-    actualRequestedByType: actual.requestedByType || '',
-    requestedByCheck: checks.requestedBy || '',
-    contactOwnership: expected.contactOwnership || 'N/A',
-    calendarStart: record.start ? tmv3_iso_(record.start) : '',
-    taskStart: actual.start || '',
-    startCheck: checks.start || '',
-    calendarEnd: record.end ? tmv3_iso_(record.end) : '',
-    taskDue: actual.due || '',
-    endCheck: checks.end || '',
-    scheduleSource: actual.scheduleSource || 'V2_TASK_MODEL',
-    desiredAssignment: input.desiredAssignment || '',
-    actualAssignment: actual.assignment || '',
-    assignmentCheck: checks.assignment || '',
-    plan: input.plan || '',
-    writeGate: 'SHADOW_ONLY__NO_WRITES',
-    blocker: input.blocker || '',
-    evidence: input.evidence || '',
-    sourceTaskIds: (input.sourceTaskIds || []).join(','),
-    engineVersion: TMV3.VERSION,
-    plannedAt: now,
-    readStatus: input.readStatus || ''
+    event:record.title || '',
+    disposition:input.disposition || '',
+    taskId:input.taskId || '',
+    taskStatus:input.taskStatus || '',
+    expectedCustomerId:expected.customerId || '',
+    actualCustomerId:actual.customerId || '',
+    customerCheck:checks.customer || '',
+    expectedOrderId:expected.orderId || '',
+    actualOrderId:actual.orderId || '',
+    orderCheck:checks.order || '',
+    expectedLocationId:expected.locationId || '',
+    locationStatus:expected.locationStatus || '',
+    actualLocationId:actual.locationId || '',
+    locationCheck:checks.location || '',
+    expectedRequestedById:expected.requestedById || '',
+    expectedRequestedByType:expected.requestedByType || '',
+    actualRequestedById:actual.requestedById || '',
+    actualRequestedByType:actual.requestedByType || '',
+    requestedByCheck:checks.requestedBy || '',
+    contactOwnership:expected.contactOwnership || 'N/A',
+    calendarStart:record.start ? tmv3_iso_(record.start) : '',
+    expectedStart:record.start ? tmv3_iso_(record.start) : '',
+    taskStart:actual.start || '',
+    startCheck:checks.start || '',
+    calendarEnd:record.end ? tmv3_iso_(record.end) : '',
+    expectedDue:record.end ? tmv3_iso_(record.end) : '',
+    taskDue:actual.due || '',
+    endCheck:checks.end || '',
+    scheduleSource:actual.scheduleSource || 'V2_TASK_MODEL',
+    desiredAssignment:input.desiredAssignment || '',
+    desiredAssignmentEmployeeIds:(desired.employeeIds || []).map(Number),
+    desiredAssignmentPoolIds:(desired.poolIds || []).map(Number),
+    actualAssignment:actual.assignment || '',
+    assignmentCheck:checks.assignment || '',
+    desiredField854:input.desiredField854 || '',
+    actualField854:input.actualField854 || '',
+    field854Check:input.field854Check || 'N/A',
+    plan:input.plan || '',
+    actions:actions,
+    writeGate:
+      TMV3.MODE === 'SHADOW_READ_ONLY'
+        ? 'SHADOW_ONLY__NO_WRITES'
+        : 'EXECUTION_CONFIG_GATED',
+    blocker:input.blocker || '',
+    evidence:input.evidence || '',
+    sourceTaskIds:sourceTaskIdList.join(','),
+    sourceTaskIdList:sourceTaskIdList,
+    engineVersion:TMV3.VERSION,
+    plannedAt:now,
+    readStatus:input.readStatus || '',
+    freshTaskReadStatus:input.readStatus || '',
+    inputFingerprint:inputFingerprint,
+    calendarUpdatedAt:tmv3_clean_(record.calendarUpdatedAt)
   };
 }
 

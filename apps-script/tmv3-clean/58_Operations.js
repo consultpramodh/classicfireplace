@@ -215,6 +215,450 @@ function tmv3_freshSelectedResolution_() {
   };
 }
 
+function tmv3_step7PublishedPlan_(vertical, eventId, taskId) {
+  const rows = tmv3_rows_(TMV3.SHEETS.RECONCILE);
+  const wantedTaskId = Number(taskId || 0);
+  const matches = rows.filter(function(row) {
+    if (
+      tmv3_clean_(row['Vertical']) !== tmv3_clean_(vertical) ||
+      tmv3_clean_(row['Event ID']) !== tmv3_clean_(eventId)
+    ) return false;
+
+    const rowTaskId = Number(row['Task ID'] || 0);
+    return wantedTaskId ? rowTaskId === wantedTaskId : rowTaskId === 0;
+  });
+
+  return matches.length === 1
+    ? tmv3_clean_(matches[0]['Relationship Plan'])
+    : '';
+}
+
+function tmv3_step7FreshSelectedContract_() {
+  const context = tmv3_selectedContext_();
+  const taskId = Number(tmv3_taskIdHintFromText_(context.taskHint) || 0);
+  const previousPlan = tmv3_step7PublishedPlan_(
+    context.vertical,
+    context.eventId,
+    taskId
+  );
+  const contract = tmv3_step7FreshExecutionContract_(
+    context.vertical,
+    context.eventId,
+    taskId
+  );
+
+  return {
+    context:context,
+    previousPlan:previousPlan,
+    contract:contract
+  };
+}
+
+function tmv3_step7PlanChangedResult_(selection) {
+  const previous = tmv3_clean_(selection && selection.previousPlan);
+  const fresh = tmv3_clean_(
+    selection && selection.contract && selection.contract.plan
+  );
+
+  if (!previous || previous === fresh) return null;
+
+  return {
+    status:'PLAN_CHANGED_NO_WRITE',
+    previousPlan:previous,
+    freshPlan:fresh,
+    reason:
+      'The canonical Step 7 plan changed after the operator view was published. ' +
+      'Refresh and review the new plan before execution.',
+    vertical:selection.contract.vertical,
+    eventId:selection.contract.eventId,
+    taskId:selection.contract.taskId || ''
+  };
+}
+
+function tmv3_step7BundleFromContract_(contract) {
+  contract = tmv3_step7ValidateExecutionContract_(contract);
+  const eventRecord = tmv3_findFreshEventRecord_(
+    contract.vertical,
+    contract.eventId
+  );
+
+  if (
+    contract.calendarId &&
+    tmv3_clean_(eventRecord.calendarId) !==
+      tmv3_clean_(contract.calendarId)
+  ) {
+    throw new Error(
+      'PLAN_CHANGED_NO_WRITE: Calendar ID changed after Step 7 planning.'
+    );
+  }
+
+  if (
+    contract.inputFingerprint &&
+    tmv3_clean_(eventRecord.fingerprint) !==
+      tmv3_clean_(contract.inputFingerprint)
+  ) {
+    throw new Error(
+      'PLAN_CHANGED_NO_WRITE: Calendar event changed after Step 7 planning.'
+    );
+  }
+
+  const resolved = {
+    taskId:Number(contract.taskId || 0) || '',
+    task:contract.taskId ? String(contract.taskId) : '',
+    customerId:tmv3_clean_(contract.expectedCustomerId),
+    locationId:tmv3_clean_(contract.expectedLocationId),
+    contactId:
+      tmv3_norm_(contract.expectedRequestedByType) === 'contact'
+        ? tmv3_clean_(contract.expectedRequestedById)
+        : '',
+    orderId:tmv3_clean_(contract.expectedOrderId),
+    status:contract.taskId
+      ? 'READY'
+      : (
+          contract.actions.indexOf(TMV3_STEP7_ACTION.RECREATE_TASK) !== -1
+            ? 'READY RECREATE'
+            : 'READY CREATE'
+        )
+  };
+
+  return {
+    context:null,
+    eventRecord:eventRecord,
+    refs:tmv3_referenceIndex_(),
+    state:tmv3_eventStateIndex_(),
+    records:[resolved],
+    resolved:resolved,
+    contract:contract
+  };
+}
+
+function tmv3_step7FreshLocationOwnership_(contract) {
+  const locationId = tmv3_clean_(contract.expectedLocationId);
+  const customerId = tmv3_clean_(contract.expectedCustomerId);
+  if (!locationId) return { status:'N/A' };
+
+  const customerNumberToId = {};
+  tmv3_rows_(TMV3.SHEETS.CUSTOMERS).forEach(function(row) {
+    const number = tmv3_clean_(row['Customer Number']);
+    const id = tmv3_clean_(row['Customer ID']);
+    if (number && id) customerNumberToId[number] = id;
+  });
+
+  const matches = tmv3_reportRows_(TMV3.PROPERTIES.LOCATIONS)
+    .map(function(row) {
+      return tmv3_normalizeLocation_(row, customerNumberToId);
+    })
+    .filter(function(row) {
+      return tmv3_clean_(row[0]) === locationId;
+    });
+
+  if (matches.length !== 1) {
+    throw new Error(
+      'Fresh Location ownership verification expected one Location ' +
+      locationId + '; found ' + matches.length + '.'
+    );
+  }
+
+  if (tmv3_clean_(matches[0][1]) !== customerId) {
+    throw new Error(
+      'Fresh Location ownership mismatch: Location ' + locationId +
+      ' does not belong to Customer ' + customerId + '.'
+    );
+  }
+
+  return {
+    status:'VERIFIED',
+    locationId:locationId,
+    customerId:customerId
+  };
+}
+
+function tmv3_step7FreshOrderOwnership_(contract) {
+  const orderId = tmv3_clean_(contract.expectedOrderId);
+  const customerId = tmv3_clean_(contract.expectedCustomerId);
+  if (!orderId || contract.vertical === 'PreInspection') {
+    return { status:'N/A' };
+  }
+
+  let rows = [];
+  if (contract.vertical === 'Service') {
+    rows = tmv3_reportRows_(TMV3.PROPERTIES.SERVICE_WORK_ORDERS)
+      .map(function(row) {
+        return tmv3_normalizeOrder_(row, 'WORK_ORDER');
+      });
+  } else if (contract.vertical === 'Delivery') {
+    rows = tmv3_reportRows_(TMV3.PROPERTIES.APPROVED_ORDERS)
+      .map(function(row) {
+        return tmv3_normalizeOrder_(row, 'SALES_ORDER');
+      })
+      .concat(
+        tmv3_reportRows_(TMV3.PROPERTIES.DELIVERY_APPROVED_ORDERS)
+          .map(function(row) {
+            return tmv3_normalizeOrder_(row, 'DELIVERY_APPROVED');
+          })
+      );
+  } else {
+    rows = tmv3_reportRows_(TMV3.PROPERTIES.APPROVED_ORDERS)
+      .map(function(row) {
+        return tmv3_normalizeOrder_(row, 'SALES_ORDER');
+      });
+  }
+
+  const matches = rows.filter(function(row) {
+    return tmv3_clean_(row[0]) === orderId;
+  });
+
+  if (!matches.length) {
+    throw new Error(
+      'Fresh Order / Work Order ownership verification could not find ID ' +
+      orderId + '.'
+    );
+  }
+
+  if (!matches.some(function(row) {
+    return tmv3_clean_(row[2]) === customerId;
+  })) {
+    throw new Error(
+      'Fresh Order / Work Order ownership mismatch for ID ' +
+      orderId + ' and Customer ' + customerId + '.'
+    );
+  }
+
+  return {
+    status:'VERIFIED',
+    orderId:orderId,
+    customerId:customerId
+  };
+}
+
+function tmv3_step7FreshCriticalOwnership_(contract, eventRecord) {
+  contract = tmv3_step7ValidateExecutionContract_(contract);
+
+  if (!tmv3_clean_(contract.expectedCustomerId)) {
+    throw new Error(
+      'Step 7 contract is missing the resolved Customer ID.'
+    );
+  }
+
+  let task = null;
+  if (contract.taskId) {
+    const raw = tmv3_rawTaskById_(contract.taskId);
+    task = tmv3_normalizeV2TaskModel_(raw || {});
+
+    if (!tmv3_taskIsOpen_(task['Status'])) {
+      throw new Error('Fresh Task state is no longer OPEN.');
+    }
+
+    if (
+      tmv3_clean_(task['Customer ID']) !==
+      tmv3_clean_(contract.expectedCustomerId)
+    ) {
+      throw new Error(
+        'Fresh Task Customer no longer matches the canonical Step 7 Customer.'
+      );
+    }
+  } else {
+    const customers = tmv3_reportRows_(TMV3.PROPERTIES.CUSTOMERS)
+      .map(tmv3_normalizeCustomer_)
+      .filter(function(row) {
+        return tmv3_clean_(row[0]) ===
+          tmv3_clean_(contract.expectedCustomerId);
+      });
+
+    if (customers.length !== 1) {
+      throw new Error(
+        'Fresh Customer existence verification expected one Customer ' +
+        contract.expectedCustomerId + '; found ' +
+        customers.length + '.'
+      );
+    }
+  }
+
+  const location = tmv3_step7FreshLocationOwnership_(contract);
+  const order = tmv3_step7FreshOrderOwnership_(contract);
+
+  let requestedBy = { status:'N/A' };
+
+  if (tmv3_norm_(contract.expectedRequestedByType) === 'contact') {
+    const contact = tmv3_getContactById_(
+      contract.expectedRequestedById,
+      contract.expectedCustomerId
+    );
+
+    if (!contact.__ownershipVerified) {
+      throw new Error(
+        'Fresh Requested By Contact ownership could not be proven for Customer ' +
+        contract.expectedCustomerId + '.'
+      );
+    }
+
+    requestedBy = {
+      status:'VERIFIED',
+      type:'contact',
+      id:contract.expectedRequestedById
+    };
+  } else if (
+    contract.vertical === 'PreInspection' &&
+    tmv3_norm_(contract.expectedRequestedByType) === 'employee'
+  ) {
+    const organizer = tmv3_resolveOrganizerEmployee_(eventRecord);
+
+    if (
+      !organizer ||
+      organizer.status !== 'MATCHED' ||
+      Number(organizer.employee && organizer.employee.id || 0) !==
+        Number(contract.expectedRequestedById || 0)
+    ) {
+      throw new Error(
+        'Fresh PreInspection organizer Employee no longer matches ' +
+        'the canonical Requested By.'
+      );
+    }
+
+    requestedBy = {
+      status:'VERIFIED',
+      type:'employee',
+      id:contract.expectedRequestedById
+    };
+  }
+
+  return {
+    task:task,
+    location:location,
+    order:order,
+    requestedBy:requestedBy
+  };
+}
+
+function tmv3_step7DatePayload_(contract) {
+  return {
+    Id:Number(contract.taskId),
+    StartDateTime:tmv3_strivenTaskDateTime_(
+      new Date(contract.expectedStart)
+    ),
+    DueDateTime:tmv3_strivenTaskDateTime_(
+      new Date(contract.expectedDue)
+    )
+  };
+}
+
+function tmv3_step7RelationshipPayload_(contract) {
+  const payload = { Id:Number(contract.taskId) };
+  const actions = contract.actions || [];
+
+  if (actions.indexOf(TMV3_STEP7_ACTION.PATCH_LOCATION) !== -1) {
+    payload.Location = { Id:Number(contract.expectedLocationId) };
+  }
+
+  if (actions.indexOf(TMV3_STEP7_ACTION.PATCH_ORDER) !== -1) {
+    payload.SalesOrder = { Id:Number(contract.expectedOrderId) };
+  }
+
+  if (
+    actions.indexOf(TMV3_STEP7_ACTION.PATCH_REQUESTED_BY) !== -1
+  ) {
+    payload.RequestedBy = {
+      Id:Number(contract.expectedRequestedById),
+      Type:tmv3_clean_(contract.expectedRequestedByType)
+    };
+  }
+
+  return payload;
+}
+
+function tmv3_step7DesiredAssignmentFromContract_(contract) {
+  return {
+    employeeIds:
+      (contract.desiredAssignmentEmployeeIds || []).map(Number),
+    poolIds:
+      (contract.desiredAssignmentPoolIds || []).map(Number)
+  };
+}
+
+function tmv3_step7ActionsForMode_(contract, mode) {
+  const actions = (contract.actions || []).slice();
+  const map = {
+    DATES:[TMV3_STEP7_ACTION.PATCH_DATES],
+    RELATIONSHIPS:[
+      TMV3_STEP7_ACTION.PATCH_LOCATION,
+      TMV3_STEP7_ACTION.PATCH_ORDER,
+      TMV3_STEP7_ACTION.PATCH_REQUESTED_BY
+    ],
+    ASSIGNEE:[TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS],
+    LINKS:[TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS],
+    FIELD854:[TMV3_STEP7_ACTION.PATCH_FIELD854]
+  };
+
+  if (mode === 'ALL') return actions;
+
+  const allowed = map[mode];
+  if (!allowed) {
+    throw new Error(
+      'Unsupported Step 7 execution mode: ' + mode + '.'
+    );
+  }
+
+  return actions.filter(function(action) {
+    return allowed.indexOf(action) !== -1;
+  });
+}
+
+function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
+  const changed = tmv3_step7PlanChangedResult_(selection);
+  if (changed) return changed;
+
+  const contract = tmv3_step7ValidateExecutionContract_(
+    selection.contract
+  );
+
+  if (tmv3_clean_(contract.blocker)) {
+    return {
+      status:'BLOCKED_NO_WRITE',
+      blocker:contract.blocker,
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      taskId:contract.taskId || '',
+      plan:contract.plan
+    };
+  }
+
+  if (
+    contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
+  ) {
+    return {
+      status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY',
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      taskId:contract.taskId || '',
+      plan:contract.plan
+    };
+  }
+
+  const bundle = tmv3_step7BundleFromContract_(contract);
+
+  tmv3_step7FreshCriticalOwnership_(
+    contract,
+    bundle.eventRecord
+  );
+
+  const createAction =
+    contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_TASK) !== -1 ||
+    contract.actions.indexOf(TMV3_STEP7_ACTION.RECREATE_TASK) !== -1;
+
+  return createAction
+    ? tmv3_createOrRecreateFromBundle_(
+        bundle,
+        scope,
+        contract
+      )
+    : tmv3_executeExistingTaskSync_(
+        bundle,
+        scope,
+        mode || 'ALL',
+        contract
+      );
+}
+
 function tmv3_assertResolvedRecordWritable_(resolved, options) {
   options = options || {};
   const status = tmv3_clean_(resolved && resolved.status).toUpperCase();
@@ -392,7 +836,7 @@ function tmv3_reconcileTaskAssignments_(eventRecord, taskId, scope, options) {
   options = options || {};
   tmv3_assertOperationWrite_(scope);
 
-  const desired = tmv3_desiredAssignment_(eventRecord);
+  const desired = options.desiredAssignment || tmv3_desiredAssignment_(eventRecord);
   const raw = tmv3_rawTaskById_(taskId);
   let current = tmv3_taskAssignmentsFromRaw_(raw);
   const added = [];
@@ -698,7 +1142,8 @@ function tmv3_setExistingFieldValue_(field, value) {
   if (Object.prototype.hasOwnProperty.call(field, 'ValueText')) field.ValueText = null;
 }
 
-function tmv3_pushPreInspectionField854_(bundle, scope) {
+function tmv3_pushPreInspectionField854_(bundle, scope, options) {
+  options = options || {};
   tmv3_assertOperationWrite_(scope);
   if (bundle.eventRecord.vertical !== 'PreInspection') {
     throw new Error('Field 854 is only valid for PreInspection.');
@@ -706,7 +1151,9 @@ function tmv3_pushPreInspectionField854_(bundle, scope) {
 
   tmv3_assertResolvedRecordWritable_(bundle.resolved, { requireTask: true });
   const taskId = Number(bundle.resolved.taskId);
-  const desired = tmv3_stripAuthoredCalendarNotes_(bundle.eventRecord.description);
+  const desired = options.desiredValue !== undefined
+    ? tmv3_clean_(options.desiredValue)
+    : tmv3_stripAuthoredCalendarNotes_(bundle.eventRecord.description);
 
   if (!desired) {
     return {
@@ -1332,48 +1779,78 @@ function tmv3_persistCreatedTaskIdState_(bundle, taskId) {
   }]);
 }
 
-function tmv3_createOrRecreateFromBundle_(bundle, scope) {
+function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
+  contract = tmv3_step7ValidateExecutionContract_(contract);
   tmv3_assertOperationWrite_(scope);
-  const status = tmv3_clean_(bundle.resolved.status).toUpperCase();
 
-  if (status !== 'READY CREATE' && status !== 'READY RECREATE') {
+  if (tmv3_clean_(contract.blocker)) {
     throw new Error(
-      'CREATE / RECREATE blocked. Fresh V3 status is ' + status + '.'
+      'CREATE / RECREATE blocked by Step 7: ' + contract.blocker
+    );
+  }
+
+  if (
+    contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
+  ) {
+    return {
+      status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY',
+      eventId:contract.eventId,
+      plan:contract.plan
+    };
+  }
+
+  const isRecreate =
+    contract.actions.indexOf(TMV3_STEP7_ACTION.RECREATE_TASK) !== -1;
+  const isCreate =
+    contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_TASK) !== -1;
+
+  if (!isCreate && !isRecreate) {
+    throw new Error(
+      'Step 7 contract does not authorize CREATE / RECREATE.'
     );
   }
 
   if (bundle.resolved.taskId) {
-    throw new Error('CREATE blocked because a Task ID is already resolved.');
-  }
-
-  if ((bundle.records || []).some(function(record) { return !!record.taskId; })) {
-    throw new Error('CREATE blocked because another mapped Task already exists for this event.');
+    throw new Error(
+      'CREATE blocked because a Task ID is already resolved.'
+    );
   }
 
   const persisted = tmv3_existingPersistedTaskForEvent_(
-    bundle.eventRecord.vertical,
-    bundle.eventRecord.eventId
+    contract.vertical,
+    contract.eventId
   );
+
   if (persisted) {
     throw new Error(
-      'CREATE blocked: V3 previously persisted Task ' + persisted.taskId +
+      'CREATE blocked: V3 previously persisted Task ' +
+      persisted.taskId +
       ' for this Calendar event. Reconcile that Task first.'
     );
   }
 
-  const action = status === 'READY RECREATE' ? 'RECREATE' : 'CREATE';
+  const action = isRecreate ? 'RECREATE' : 'CREATE';
   const source = tmv3_buildCreateSource_(bundle, action);
   const request = {
-    startDateTime: tmv3_strivenTaskDateTime_(bundle.eventRecord.start),
-    dueDateTime: tmv3_strivenTaskDateTime_(bundle.eventRecord.end),
+    startDateTime:tmv3_strivenTaskDateTime_(
+      new Date(contract.expectedStart)
+    ),
+    dueDateTime:tmv3_strivenTaskDateTime_(
+      new Date(contract.expectedDue)
+    ),
     calendarNotes:
-      bundle.eventRecord.vertical === 'PreInspection'
+      contract.vertical === 'PreInspection'
         ? null
-        : tmv3_stripAuthoredCalendarNotes_(bundle.eventRecord.description)
+        : tmv3_stripAuthoredCalendarNotes_(
+            bundle.eventRecord.description
+          )
   };
-  const payload = tmv3_buildReplacementCreatePayload_(source, request);
+  const payload = tmv3_buildReplacementCreatePayload_(
+    source,
+    request
+  );
 
-  if (bundle.eventRecord.vertical === 'PreInspection') {
+  if (contract.vertical === 'PreInspection') {
     delete payload.SalesOrder;
     delete payload.SalesOrderId;
     delete payload.SalesOrderID;
@@ -1389,180 +1866,334 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope) {
     json = tmv3_fetchJson_(
       TMV3.API_BASE + '/v2/tasks',
       {
-        method: 'post',
-        contentType: 'application/json',
-        payload: JSON.stringify(payload)
+        method:'post',
+        contentType:'application/json',
+        payload:JSON.stringify(payload)
       }
     );
-    newTaskId = Number(tmv3_extractCreatedTaskId_(json) || 0);
+    newTaskId = Number(
+      tmv3_extractCreatedTaskId_(json) || 0
+    );
+
     if (!newTaskId) {
-      throw new Error('POST succeeded but created Task ID could not be extracted.');
+      throw new Error(
+        'POST succeeded but created Task ID could not be extracted.'
+      );
     }
   } catch (err) {
     tmv3_audit_(
-      bundle.eventRecord.vertical,
-      bundle.eventRecord.eventId,
+      contract.vertical,
+      contract.eventId,
       '',
       action + '_TASK',
       'CREATE UNCERTAIN',
-      'Do not retry blindly. ' + String(err && err.message || err)
+      'Do not retry blindly. ' +
+        String(err && err.message || err)
     );
+
     throw new Error(
-      'CREATE UNCERTAIN. Do not retry blindly. Reconcile Striven first. ' +
+      'CREATE UNCERTAIN. Do not retry blindly. ' +
+      'Reconcile Striven first. ' +
       String(err && err.message || err)
     );
   }
 
-  // Persist the created ID to durable V3 state immediately. From this point,
-  // this execution never POSTs another Task.
   tmv3_persistCreatedTaskIdState_(bundle, newTaskId);
-  tmv3_audit_(
-    bundle.eventRecord.vertical,
-    bundle.eventRecord.eventId,
-    newTaskId,
-    action + '_TASK_ID_PERSISTED',
-    'PASS',
-    'Task ID persisted immediately after POST in TM State.'
+
+  const createdResolved = Object.assign(
+    {},
+    bundle.resolved,
+    {
+      taskId:newTaskId,
+      task:String(newTaskId),
+      status:'READY'
+    }
   );
 
-  const createdResolved = Object.assign({}, bundle.resolved, {
-    taskId: newTaskId,
-    task: String(newTaskId),
-    status: 'READY'
+  const createdBundle = Object.assign({}, bundle, {
+    resolved:createdResolved,
+    records:[createdResolved]
   });
 
   const assignment = tmv3_reconcileTaskAssignments_(
     bundle.eventRecord,
     newTaskId,
     scope,
-    { newTask: true }
+    {
+      newTask:true,
+      desiredAssignment:
+        tmv3_step7DesiredAssignmentFromContract_(contract)
+    }
   );
 
   let field854 = null;
-  if (bundle.eventRecord.vertical === 'PreInspection') {
-    const fieldBundle = Object.assign({}, bundle, { resolved: createdResolved });
-    field854 = tmv3_pushPreInspectionField854_(fieldBundle, scope);
+  if (
+    contract.vertical === 'PreInspection' &&
+    contract.actions.indexOf(
+      TMV3_STEP7_ACTION.PATCH_FIELD854
+    ) !== -1
+  ) {
+    field854 = tmv3_pushPreInspectionField854_(
+      createdBundle,
+      scope,
+      { desiredValue:contract.desiredField854 }
+    );
   }
 
   const readback = tmv3_getTaskById_(newTaskId);
   tmv3_upsertTaskCacheRow_(readback);
+
   if (!tmv3_taskIsOpen_(readback['Status'])) {
-    throw new Error('Created Task read-back is not OPEN. Task ID ' + newTaskId + '.');
-  }
-  if (String(readback['Customer ID'] || '') !== String(bundle.resolved.customerId)) {
-    throw new Error('Created Task Customer read-back mismatch.');
-  }
-  if (String(readback['Location ID'] || '') !== String(bundle.resolved.locationId)) {
-    throw new Error('Created Task Location read-back mismatch.');
-  }
-  if (
-    bundle.eventRecord.vertical === 'PreInspection' &&
-    (Number(readback['Task Type ID'] || 0) !== 105 || readback['Order ID'])
-  ) {
-    throw new Error('Created PreInspection Task violated Type 105 / no-SO invariant.');
+    throw new Error(
+      'Created Task read-back is not OPEN. Task ID ' +
+      newTaskId + '.'
+    );
   }
 
-  const linkRecords = [Object.assign({}, createdResolved, {
-    task: newTaskId + ' - ' + tmv3_clean_(readback['Name'])
-  })];
-  const linkBundle = Object.assign({}, bundle, {
-    resolved: linkRecords[0],
-    records: linkRecords
-  });
-  const calendarLinks = tmv3_operationWriteCalendarLinks_(linkBundle, scope);
+  if (
+    String(readback['Customer ID'] || '') !==
+    String(contract.expectedCustomerId)
+  ) {
+    throw new Error(
+      'Created Task Customer read-back mismatch.'
+    );
+  }
+
+  if (
+    String(readback['Location ID'] || '') !==
+    String(contract.expectedLocationId)
+  ) {
+    throw new Error(
+      'Created Task Location read-back mismatch.'
+    );
+  }
+
+  if (
+    contract.vertical === 'PreInspection' &&
+    (
+      Number(readback['Task Type ID'] || 0) !== 105 ||
+      readback['Order ID']
+    )
+  ) {
+    throw new Error(
+      'Created PreInspection Task violated Type 105 / no-SO invariant.'
+    );
+  }
+
+  let calendarLinks = null;
+  if (
+    contract.actions.indexOf(
+      TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS
+    ) !== -1
+  ) {
+    calendarLinks = tmv3_operationWriteCalendarLinks_(
+      createdBundle,
+      scope
+    );
+  }
+
+  const after = tmv3_step7FreshExecutionContract_(
+    contract.vertical,
+    contract.eventId,
+    newTaskId
+  );
+
+  if (
+    after.plan !== 'NO_CHANGE' ||
+    tmv3_clean_(after.blocker)
+  ) {
+    throw new Error(
+      'CREATE read-back did not converge to Step 7 NO_CHANGE; ' +
+      'fresh plan is ' + after.plan + '.'
+    );
+  }
 
   tmv3_audit_(
-    bundle.eventRecord.vertical,
-    bundle.eventRecord.eventId,
+    contract.vertical,
+    contract.eventId,
     newTaskId,
     action + '_TASK',
     'PASS',
-    JSON.stringify({ assignment: assignment, field854: field854, calendarLinks: calendarLinks })
+    JSON.stringify({
+      assignment:assignment,
+      field854:field854,
+      calendarLinks:calendarLinks
+    })
   );
 
   return {
-    status: 'CREATED_VERIFIED_AND_CALENDAR_LINKED',
-    action: action,
-    taskId: newTaskId,
-    assignment: assignment,
-    field854: field854,
-    calendarLinks: calendarLinks,
-    readback: readback
+    status:'CREATED_VERIFIED_AND_CONVERGED',
+    action:action,
+    taskId:newTaskId,
+    assignment:assignment,
+    field854:field854,
+    calendarLinks:calendarLinks,
+    readback:readback,
+    readbackPlan:after
   };
 }
 
-function tmv3_executeExistingTaskSync_(bundle, scope, mode) {
-  tmv3_assertResolvedRecordWritable_(bundle.resolved, { requireTask: true });
-  tmv3_assertResolvedOwnership_(bundle);
+function tmv3_executeExistingTaskSync_(
+  bundle,
+  scope,
+  mode,
+  contract
+) {
+  contract = tmv3_step7ValidateExecutionContract_(contract);
+  tmv3_assertOperationWrite_(scope);
 
-  const taskId = Number(bundle.resolved.taskId);
-  const before = tmv3_getTaskById_(taskId);
-
-  if (
-    before['Customer ID'] &&
-    String(before['Customer ID']) !== String(bundle.resolved.customerId)
-  ) {
-    throw new Error('Current Task Customer conflicts with fresh V3 Customer.');
+  if (!contract.taskId) {
+    throw new Error(
+      'Existing Task execution requires a Step 7 Task ID.'
+    );
   }
 
+  if (tmv3_clean_(contract.blocker)) {
+    throw new Error(
+      'Existing Task execution blocked by Step 7: ' +
+      contract.blocker
+    );
+  }
+
+  const actions = tmv3_step7ActionsForMode_(
+    contract,
+    mode || 'ALL'
+  );
+
+  if (
+    actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
+  ) {
+    return {
+      status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY',
+      taskId:Number(contract.taskId),
+      plan:contract.plan
+    };
+  }
+
+  const taskId = Number(contract.taskId);
   let patch = null;
   let assignment = null;
   let calendarLinks = null;
   let field854 = null;
 
-  if (mode === 'DATES') {
-    patch = tmv3_operationPatchTask_(taskId, tmv3_selectedDatePayload_(bundle), scope);
-    tmv3_verifyTaskPatch_(bundle, patch.readback, 'DATES');
-  } else if (mode === 'RELATIONSHIPS') {
-    patch = tmv3_operationPatchTask_(taskId, tmv3_selectedRelationshipPayload_(bundle), scope);
-    tmv3_verifyTaskPatch_(bundle, patch.readback, 'RELATIONSHIPS');
-  } else if (mode === 'ASSIGNEE') {
-    assignment = tmv3_reconcileTaskAssignments_(bundle.eventRecord, taskId, scope, {});
-  } else if (mode === 'LINKS') {
-    calendarLinks = tmv3_operationWriteCalendarLinks_(bundle, scope);
-  } else if (mode === 'FIELD854') {
-    field854 = tmv3_pushPreInspectionField854_(bundle, scope);
-  } else if (mode === 'ALL') {
-    const payload = Object.assign(
-      {},
-      tmv3_selectedDatePayload_(bundle),
-      tmv3_selectedRelationshipPayload_(bundle)
+  const relationshipActions = [
+    TMV3_STEP7_ACTION.PATCH_LOCATION,
+    TMV3_STEP7_ACTION.PATCH_ORDER,
+    TMV3_STEP7_ACTION.PATCH_REQUESTED_BY
+  ];
+
+  if (relationshipActions.some(function(action) {
+    return actions.indexOf(action) !== -1;
+  })) {
+    patch = tmv3_operationPatchTask_(
+      taskId,
+      tmv3_step7RelationshipPayload_(contract),
+      scope
     );
-    patch = tmv3_operationPatchTask_(taskId, payload, scope);
-    tmv3_verifyTaskPatch_(bundle, patch.readback, 'ALL');
-    assignment = tmv3_reconcileTaskAssignments_(bundle.eventRecord, taskId, scope, {});
-    if (bundle.eventRecord.vertical === 'PreInspection') {
-      field854 = tmv3_pushPreInspectionField854_(bundle, scope);
-    }
-    calendarLinks = tmv3_operationWriteCalendarLinks_(bundle, scope);
-  } else {
-    throw new Error('Unsupported selected sync mode: ' + mode);
+  }
+
+  if (
+    actions.indexOf(TMV3_STEP7_ACTION.PATCH_DATES) !== -1
+  ) {
+    const datePatch = tmv3_operationPatchTask_(
+      taskId,
+      tmv3_step7DatePayload_(contract),
+      scope
+    );
+    patch = patch || datePatch;
+  }
+
+  if (
+    actions.indexOf(
+      TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS
+    ) !== -1
+  ) {
+    assignment = tmv3_reconcileTaskAssignments_(
+      bundle.eventRecord,
+      taskId,
+      scope,
+      {
+        desiredAssignment:
+          tmv3_step7DesiredAssignmentFromContract_(contract)
+      }
+    );
+  }
+
+  if (
+    actions.indexOf(TMV3_STEP7_ACTION.PATCH_FIELD854) !== -1
+  ) {
+    field854 = tmv3_pushPreInspectionField854_(
+      bundle,
+      scope,
+      { desiredValue:contract.desiredField854 }
+    );
+  }
+
+  if (
+    actions.indexOf(
+      TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS
+    ) !== -1
+  ) {
+    calendarLinks = tmv3_operationWriteCalendarLinks_(
+      bundle,
+      scope
+    );
+  }
+
+  const after = tmv3_step7FreshExecutionContract_(
+    contract.vertical,
+    contract.eventId,
+    taskId
+  );
+
+  const fullExecution = (mode || 'ALL') === 'ALL';
+
+  if (
+    fullExecution &&
+    (
+      after.plan !== 'NO_CHANGE' ||
+      tmv3_clean_(after.blocker)
+    )
+  ) {
+    throw new Error(
+      'Step 7 read-back did not converge to NO_CHANGE; ' +
+      'fresh plan is ' + after.plan + '.'
+    );
   }
 
   tmv3_audit_(
-    bundle.eventRecord.vertical,
-    bundle.eventRecord.eventId,
+    contract.vertical,
+    contract.eventId,
     taskId,
-    'MANUAL_' + mode,
+    'STEP7_' + String(mode || 'ALL'),
     'PASS',
     JSON.stringify({
-      patch: patch && patch.status,
-      assignment: assignment && assignment.status,
-      field854: field854 && field854.status,
-      calendarLinks: calendarLinks && calendarLinks.status
+      plan:contract.plan,
+      actions:actions,
+      patch:patch && patch.status,
+      assignment:assignment && assignment.status,
+      field854:field854 && field854.status,
+      calendarLinks:calendarLinks && calendarLinks.status,
+      readbackPlan:after.plan
     })
   );
 
   return {
-    status: 'VERIFIED',
-    mode: mode,
-    vertical: bundle.eventRecord.vertical,
-    eventId: bundle.eventRecord.eventId,
-    taskId: taskId,
-    patch: patch,
-    assignment: assignment,
-    field854: field854,
-    calendarLinks: calendarLinks
+    status:
+      fullExecution
+        ? 'VERIFIED_CONVERGENCE'
+        : 'VERIFIED_PARTIAL',
+    mode:mode || 'ALL',
+    vertical:contract.vertical,
+    eventId:contract.eventId,
+    taskId:taskId,
+    plan:contract.plan,
+    actions:actions,
+    patch:patch,
+    assignment:assignment,
+    field854:field854,
+    calendarLinks:calendarLinks,
+    readbackPlan:after
   };
 }
 
@@ -1581,102 +2212,34 @@ function tmv3_executeVerifiedStep7ExistingPlan(
   taskId,
   expectedPlan
 ) {
-  tmv3_assertOperationWrite_('MANUAL');
-
-  const wantedVertical = tmv3_clean_(vertical);
-  const wantedEventId = tmv3_clean_(eventId);
-  const wantedTaskId = Number(taskId || 0);
-  const wantedPlan = tmv3_clean_(expectedPlan);
-  const allowed = [
-    'PATCH_DATES',
-    'PATCH_LOCATION',
-    'PATCH_REQUESTED_BY',
-    'PATCH_ASSIGNMENTS'
-  ];
-
-  if (!wantedTaskId || !wantedPlan) {
-    throw new Error('Canary executor requires an exact Task ID and expected plan.');
-  }
-  if (
-    wantedPlan !== 'NO_CHANGE' &&
-    (
-      wantedPlan.indexOf('PATCH_') !== 0 ||
-      !allowed.some(function(prefix) { return wantedPlan.indexOf(prefix) !== -1; })
-    )
-  ) {
-    throw new Error('Unsupported Step 7 canary plan: ' + wantedPlan + '.');
-  }
-
-  const plan = tmv3_step7FreshPlanForTask_(
-    wantedVertical,
-    wantedEventId,
-    wantedTaskId
+  const contract = tmv3_step7FreshExecutionContract_(
+    vertical,
+    eventId,
+    taskId
   );
-  if (plan.plan !== wantedPlan) {
-    throw new Error('Fresh Step 7 plan changed from ' + wantedPlan + ' to ' + plan.plan + '.');
-  }
-  if (tmv3_clean_(plan.blocker)) {
-    throw new Error('Step 7 plan is blocked: ' + plan.blocker);
-  }
-  if (tmv3_norm_(plan.taskStatus) !== 'open' || plan.readStatus !== 'FRESH_TASK_GET') {
-    throw new Error('Step 7 Task is not a fresh-read open Task.');
-  }
-  if (plan.customerCheck !== 'MATCH' || plan.orderCheck === 'MISMATCH' || plan.locationCheck === 'MISMATCH') {
-    throw new Error('Step 7 relationship safety check failed.');
+
+  const previousPlan = tmv3_clean_(expectedPlan);
+
+  if (previousPlan && previousPlan !== contract.plan) {
+    return {
+      status:'PLAN_CHANGED_NO_WRITE',
+      previousPlan:previousPlan,
+      freshPlan:contract.plan,
+      reason:
+        'Fresh canonical Step 7 plan differs from the expected plan.',
+      eventId:contract.eventId,
+      taskId:contract.taskId
+    };
   }
 
-  const eventRecord = tmv3_findFreshEventRecord_(wantedVertical, wantedEventId);
-  const refs = tmv3_referenceIndex_();
-  const state = tmv3_eventStateIndex_();
-  const records = tmv3_resolveEventRecords_(eventRecord, refs, state);
-  const matches = records.filter(function(record) {
-    return Number(record.taskId || 0) === wantedTaskId;
-  });
-  if (matches.length !== 1) {
-    throw new Error('Fresh resolver did not return exactly one matching Task row.');
-  }
-
-  const bundle = {
-    context:null,
-    eventRecord:eventRecord,
-    refs:refs,
-    state:state,
-    records:records,
-    resolved:matches[0]
-  };
-  const result = {
-    status:'CANARY_EXECUTED',
-    vertical:wantedVertical,
-    eventId:wantedEventId,
-    taskId:wantedTaskId,
-    plan:wantedPlan,
-    relationships:null,
-    dates:null,
-    assignments:null,
-    calendarLinks:null
-  };
-
-  // NO_CHANGE is an allowed links-only canary: it proves the Task is already
-  // correct while still repairing/verifying the managed Calendar backlink.
-  if (/LOCATION|REQUESTED_BY/.test(wantedPlan)) {
-    result.relationships = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'RELATIONSHIPS');
-  }
-  if (/DATES/.test(wantedPlan)) {
-    result.dates = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'DATES');
-  }
-  if (/ASSIGNMENTS/.test(wantedPlan)) {
-    result.assignments = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'ASSIGNEE');
-  }
-  result.calendarLinks = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'LINKS');
-
-  const after = tmv3_step7FreshPlanForTask_(wantedVertical, wantedEventId, wantedTaskId);
-  if (after.plan !== 'NO_CHANGE' || tmv3_clean_(after.blocker)) {
-    throw new Error('Canary read-back did not converge to NO_CHANGE; fresh plan is ' + after.plan + '.');
-  }
-  result.status = 'CANARY_VERIFIED_NO_CHANGE';
-  result.readbackPlan = after;
-  tmv3_audit_(wantedVertical, wantedEventId, wantedTaskId, 'STEP7_CANARY', 'PASS', wantedPlan);
-  return result;
+  return tmv3_executeFreshStep7Selection_(
+    {
+      previousPlan:previousPlan,
+      contract:contract
+    },
+    'MANUAL',
+    'ALL'
+  );
 }
 
 function tmv3_previewSelectedAction() {
@@ -1699,54 +2262,78 @@ function tmv3_previewSelectedAction() {
 }
 
 function tmv3_syncSelectedAppointment() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const status = tmv3_clean_(bundle.resolved.status).toUpperCase();
-  const result =
-    status === 'READY CREATE' || status === 'READY RECREATE'
-      ? tmv3_createOrRecreateFromBundle_(bundle, 'MANUAL')
-      : tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'ALL');
+  const selection = tmv3_step7FreshSelectedContract_();
+  const result = tmv3_executeFreshStep7Selection_(
+    selection,
+    'MANUAL',
+    'ALL'
+  );
   tmv3_refreshOperatorAfterManual_();
   return result;
 }
 
 function tmv3_pushSelectedDates() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const result = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'DATES');
+  const selection = tmv3_step7FreshSelectedContract_();
+  const result = tmv3_executeFreshStep7Selection_(
+    selection,
+    'MANUAL',
+    'DATES'
+  );
   tmv3_refreshOperatorAfterManual_();
   return result;
 }
 
 function tmv3_pushSelectedRelationships() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const result = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'RELATIONSHIPS');
+  const selection = tmv3_step7FreshSelectedContract_();
+  const result = tmv3_executeFreshStep7Selection_(
+    selection,
+    'MANUAL',
+    'RELATIONSHIPS'
+  );
   tmv3_refreshOperatorAfterManual_();
   return result;
 }
 
 function tmv3_reconcileSelectedAssignee() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const result = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'ASSIGNEE');
+  const selection = tmv3_step7FreshSelectedContract_();
+  const result = tmv3_executeFreshStep7Selection_(
+    selection,
+    'MANUAL',
+    'ASSIGNEE'
+  );
   tmv3_refreshOperatorAfterManual_();
   return result;
 }
 
 function tmv3_fixSelectedCalendarLinks() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const result = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'LINKS');
+  const selection = tmv3_step7FreshSelectedContract_();
+  const result = tmv3_executeFreshStep7Selection_(
+    selection,
+    'MANUAL',
+    'LINKS'
+  );
   tmv3_refreshOperatorAfterManual_();
   return result;
 }
 
 function tmv3_createOrRecreateSelectedTask() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const result = tmv3_createOrRecreateFromBundle_(bundle, 'MANUAL');
+  const selection = tmv3_step7FreshSelectedContract_();
+  const result = tmv3_executeFreshStep7Selection_(
+    selection,
+    'MANUAL',
+    'ALL'
+  );
   tmv3_refreshOperatorAfterManual_();
   return result;
 }
 
 function tmv3_pushSelectedPreInspectionInstallNotes() {
-  const bundle = tmv3_freshSelectedResolution_();
-  const result = tmv3_executeExistingTaskSync_(bundle, 'MANUAL', 'FIELD854');
+  const selection = tmv3_step7FreshSelectedContract_();
+  const result = tmv3_executeFreshStep7Selection_(
+    selection,
+    'MANUAL',
+    'FIELD854'
+  );
   tmv3_refreshOperatorAfterManual_();
   return result;
 }
@@ -1757,60 +2344,100 @@ function tmv3_runSafeReadyRows_(scope) {
   const isAuto = tmv3_norm_(scope) === 'auto';
 
   if (isAuto && !tmv3_operationWritesEnabled_('AUTO')) {
-    tmv3_audit_('SYSTEM','','','AUTO_WRITE_CYCLE','GATED','Scheduled external writes remain disabled.');
-    return { status: 'AUTO_WRITES_GATED', writes: 0 };
+    tmv3_audit_(
+      'SYSTEM','','','AUTO_WRITE_CYCLE','GATED',
+      'Scheduled external writes remain disabled.'
+    );
+    return {
+      status:'AUTO_WRITES_GATED',
+      writes:0
+    };
   }
 
-  tmv3_assertOperationWrite_(scope);
   const events = tmv3_calendarRecords_();
-  const refs = tmv3_referenceIndex_();
-  const state = tmv3_eventStateIndex_();
   const results = [];
 
-  for (let i = 0; i < events.length && results.length < maxWrites; i++) {
+  for (
+    let i = 0;
+    i < events.length && results.length < maxWrites;
+    i++
+  ) {
     const eventRecord = events[i];
-    const records = tmv3_resolveEventRecords_(eventRecord, refs, state);
+    let contracts = [];
 
-    for (let j = 0; j < records.length && results.length < maxWrites; j++) {
-      const resolved = records[j];
-      const status = tmv3_clean_(resolved.status).toUpperCase();
-      if (['READY','READY CREATE','READY RECREATE'].indexOf(status) === -1) continue;
+    try {
+      contracts = tmv3_step7FreshPlansForEvent_(
+        eventRecord.vertical,
+        eventRecord.eventId
+      ).filter(function(contract) {
+        return (
+          !tmv3_clean_(contract.blocker) &&
+          (contract.actions || []).length > 0
+        );
+      });
+    } catch (err) {
+      results.push({
+        vertical:eventRecord.vertical,
+        eventId:eventRecord.eventId,
+        status:'ATTENTION',
+        error:String(err && err.message || err)
+      });
+      continue;
+    }
 
-      const bundle = {
-        context: null,
-        eventRecord: eventRecord,
-        refs: refs,
-        state: state,
-        records: records,
-        resolved: resolved
-      };
+    for (
+      let j = 0;
+      j < contracts.length && results.length < maxWrites;
+      j++
+    ) {
+      const contract = contracts[j];
+
+      if (
+        (contract.actions || []).indexOf(
+          TMV3_STEP7_ACTION.CREATE_LOCATION
+        ) !== -1
+      ) {
+        results.push({
+          vertical:contract.vertical,
+          eventId:contract.eventId,
+          taskId:contract.taskId || '',
+          status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY'
+        });
+        continue;
+      }
 
       try {
-        const one =
-          status === 'READY CREATE' || status === 'READY RECREATE'
-            ? tmv3_createOrRecreateFromBundle_(bundle, scope)
-            : tmv3_executeExistingTaskSync_(bundle, scope, 'ALL');
+        const one = tmv3_executeFreshStep7Selection_(
+          {
+            previousPlan:contract.plan,
+            contract:contract
+          },
+          scope,
+          'ALL'
+        );
+
         results.push({
-          vertical: eventRecord.vertical,
-          eventId: eventRecord.eventId,
-          taskId: one.taskId || resolved.taskId || '',
-          status: 'PASS'
+          vertical:contract.vertical,
+          eventId:contract.eventId,
+          taskId:one.taskId || contract.taskId || '',
+          status:one.status
         });
       } catch (err) {
         tmv3_audit_(
-          eventRecord.vertical,
-          eventRecord.eventId,
-          resolved.taskId || '',
+          contract.vertical,
+          contract.eventId,
+          contract.taskId || '',
           'SAFE_READY_ROW',
           'ATTENTION',
           String(err && err.message || err)
         );
+
         results.push({
-          vertical: eventRecord.vertical,
-          eventId: eventRecord.eventId,
-          taskId: resolved.taskId || '',
-          status: 'ATTENTION',
-          error: String(err && err.message || err)
+          vertical:contract.vertical,
+          eventId:contract.eventId,
+          taskId:contract.taskId || '',
+          status:'ATTENTION',
+          error:String(err && err.message || err)
         });
       }
     }
@@ -1819,11 +2446,15 @@ function tmv3_runSafeReadyRows_(scope) {
   tmv3_shadowMapFromCache();
 
   return {
-    status: 'COMPLETE',
-    scope: scope,
-    writes: results.filter(function(item) { return item.status === 'PASS'; }).length,
-    attempts: results.length,
-    results: results
+    status:'COMPLETE',
+    scope:scope,
+    writes:results.filter(function(item) {
+      return /VERIFIED|CREATED/.test(
+        String(item.status || '')
+      );
+    }).length,
+    attempts:results.length,
+    results:results
   };
 }
 
@@ -1984,49 +2615,101 @@ function tmv3_sendInstallMissingSoRemindersNow() {
 
 function tmv3_runCalendarLinksForReady_AUTO() {
   if (!tmv3_operationWritesEnabled_('AUTO')) {
-    tmv3_audit_('SYSTEM','','','AUTO_CALENDAR_LINK_CYCLE','GATED','Scheduled Calendar writes remain disabled.');
-    return { status: 'AUTO_WRITES_GATED', writes: 0 };
+    tmv3_audit_(
+      'SYSTEM','','','AUTO_CALENDAR_LINK_CYCLE','GATED',
+      'Scheduled Calendar writes remain disabled.'
+    );
+    return {
+      status:'AUTO_WRITES_GATED',
+      writes:0
+    };
   }
 
   const events = tmv3_calendarRecords_();
-  const refs = tmv3_referenceIndex_();
-  const state = tmv3_eventStateIndex_();
   const results = [];
-  const limit = Number((tmv3_operationPolicy_().autoMaxWritesPerRun) || 10);
+  const limit = Number(
+    tmv3_operationPolicy_().autoMaxWritesPerRun || 10
+  );
 
-  for (let i = 0; i < events.length && results.length < limit; i++) {
+  for (
+    let i = 0;
+    i < events.length && results.length < limit;
+    i++
+  ) {
     const eventRecord = events[i];
-    const records = tmv3_resolveEventRecords_(eventRecord, refs, state);
-    if (!records.length) continue;
-
-    const eligible = records.every(function(record) {
-      const status = tmv3_clean_(record.status).toUpperCase();
-      return !!record.taskId && ['MATCHED','READY'].indexOf(status) !== -1;
-    });
-    if (!eligible) continue;
-
-    const needsLink = records.some(function(record) {
-      return /Calendar (?:Task |Sales Orders page )?link missing|LINKS\s*[△✕]/i.test(
-        tmv3_clean_(record.issue) + ' ' + tmv3_clean_(record.verification)
-      );
-    });
-    if (!needsLink) continue;
+    let contracts = [];
 
     try {
-      const bundle = {
-        eventRecord: eventRecord,
-        records: records,
-        resolved: records[0],
-        refs: refs,
-        state: state
-      };
-      const write = tmv3_operationWriteCalendarLinks_(bundle, 'AUTO');
-      results.push({ eventId: eventRecord.eventId, vertical: eventRecord.vertical, status: write.status });
+      contracts = tmv3_step7FreshPlansForEvent_(
+        eventRecord.vertical,
+        eventRecord.eventId
+      ).filter(function(contract) {
+        return (
+          !tmv3_clean_(contract.blocker) &&
+          Number(contract.taskId || 0) > 0 &&
+          (contract.actions || []).indexOf(
+            TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS
+          ) !== -1
+        );
+      });
     } catch (err) {
-      tmv3_audit_(eventRecord.vertical,eventRecord.eventId,'','AUTO_CALENDAR_LINK','ATTENTION',String(err && err.message || err));
-      results.push({ eventId: eventRecord.eventId, vertical: eventRecord.vertical, status: 'ATTENTION', error: String(err && err.message || err) });
+      results.push({
+        eventId:eventRecord.eventId,
+        vertical:eventRecord.vertical,
+        status:'ATTENTION',
+        error:String(err && err.message || err)
+      });
+      continue;
+    }
+
+    for (
+      let j = 0;
+      j < contracts.length && results.length < limit;
+      j++
+    ) {
+      const contract = contracts[j];
+
+      try {
+        const write = tmv3_executeFreshStep7Selection_(
+          {
+            previousPlan:contract.plan,
+            contract:contract
+          },
+          'AUTO',
+          'LINKS'
+        );
+
+        results.push({
+          eventId:contract.eventId,
+          vertical:contract.vertical,
+          taskId:contract.taskId,
+          status:write.status
+        });
+      } catch (err) {
+        tmv3_audit_(
+          contract.vertical,
+          contract.eventId,
+          contract.taskId || '',
+          'AUTO_CALENDAR_LINK',
+          'ATTENTION',
+          String(err && err.message || err)
+        );
+
+        results.push({
+          eventId:contract.eventId,
+          vertical:contract.vertical,
+          taskId:contract.taskId || '',
+          status:'ATTENTION',
+          error:String(err && err.message || err)
+        });
+      }
     }
   }
 
-  return { status: 'COMPLETE', writes: results.length, results: results };
+  return {
+    status:'COMPLETE',
+    writes:results.length,
+    results:results
+  };
 }
+
