@@ -747,6 +747,7 @@ function tmv3_issue1SingleDecisionAuthorityRegression() {
     plan:'CREATE_LOCATION_THEN_CREATE_TASK',
     locationStatus:'CREATE_REQUIRED',
     expectedLocationId:'',
+    expectedLocationAddress:'183 Hudson Dr, Toronto, ON M4T 2K7, Canada',
     actions:[
       TMV3_STEP7_ACTION.CREATE_LOCATION,
       TMV3_STEP7_ACTION.CREATE_TASK,
@@ -880,3 +881,242 @@ function tmv3_issue1SingleDecisionAuthorityRegression() {
     assignmentRegression:assignment
   };
 }
+
+/************************************************************
+ * TM V3 — ISSUE 2 NON-IDEMPOTENT CREATE SAFETY REGRESSION
+ ************************************************************/
+
+function tmv3_issue2CreateSafetyRegression() {
+  const cases = [];
+
+  function check(name, pass, evidence) {
+    cases.push({
+      name:name,
+      pass:!!pass,
+      evidence:evidence || ''
+    });
+  }
+
+  const baseRows = [{
+    'Vertical':'PreInspection',
+    'Event ID':'evt-create-safety',
+    'Task ID':'12345'
+  }];
+
+  const found = tmv3_existingPersistedTaskForEvent_(
+    'PreInspection',
+    'evt-create-safety',
+    {
+      rows:baseRows,
+      readTask:function() {
+        return {
+          'Task ID':'12345',
+          'Status':'Open'
+        };
+      }
+    }
+  );
+
+  check(
+    'PERSISTED_TASK_FOUND_VERIFIED',
+    found.status === 'FOUND_VERIFIED' &&
+      Number(found.taskId) === 12345,
+    JSON.stringify(found)
+  );
+
+  const failedRead = tmv3_existingPersistedTaskForEvent_(
+    'PreInspection',
+    'evt-create-safety',
+    {
+      rows:baseRows,
+      readTask:function() {
+        throw new Error('HTTP 500');
+      }
+    }
+  );
+
+  check(
+    'PERSISTED_TASK_READ_FAILURE_FAILS_CLOSED',
+    failedRead.status === 'KNOWN_READ_FAILED' &&
+      Number(failedRead.taskId) === 12345,
+    JSON.stringify(failedRead)
+  );
+
+  const multiple = tmv3_existingPersistedTaskForEvent_(
+    'PreInspection',
+    'evt-create-safety',
+    {
+      rows:[
+        {
+          'Vertical':'PreInspection',
+          'Event ID':'evt-create-safety',
+          'Task ID':'12345'
+        },
+        {
+          'Vertical':'PreInspection',
+          'Event ID':'evt-create-safety',
+          'Task ID':'12346'
+        }
+      ],
+      readTask:function() {
+        throw new Error('SHOULD_NOT_READ_MULTIPLE');
+      }
+    }
+  );
+
+  check(
+    'MULTIPLE_PERSISTED_TASKS_REQUIRE_RECONCILIATION',
+    multiple.status === 'MULTIPLE_KNOWN' &&
+      multiple.taskIds.length === 2,
+    JSON.stringify(multiple)
+  );
+
+  [
+    'ATTEMPT_STARTED',
+    'UNCERTAIN',
+    'ID_CAPTURED',
+    'VERIFIED',
+    'CORRUPT',
+    'UNKNOWN_STATE'
+  ].forEach(function(state) {
+    check(
+      'CREATE_GUARD_' + state + '_BLOCKS_RETRY',
+      tmv3_createGuardStateBlocksRetry_({
+        state:state
+      }) === true,
+      state
+    );
+  });
+
+  check(
+    'EMPTY_CREATE_GUARD_ALLOWS_PREFLIGHT',
+    tmv3_createGuardStateBlocksRetry_(null) === false,
+    'null guard'
+  );
+
+  const parsedAddress = tmv3_parseCanadianCustomerLocation_(
+    '183 Hudson Dr, Toronto, ON M4T 2K7, Canada',
+    54635
+  );
+
+  check(
+    'PREINSPECTION_LOCATION_PAYLOAD_CONTRACT',
+    parsedAddress.CustomerId === 54635 &&
+      parsedAddress.Address1 === '183 Hudson Dr' &&
+      parsedAddress.City === 'Toronto' &&
+      parsedAddress.State === 'ON' &&
+      parsedAddress.PostalCode === 'M4T 2K7' &&
+      parsedAddress.Country === 'Canada',
+    JSON.stringify(parsedAddress)
+  );
+
+  const createLocationContract = tmv3_issue1ContractFixture_({
+    taskId:'',
+    disposition:'CREATE_TASK',
+    expectedLocationId:'',
+    expectedLocationAddress:
+      '183 Hudson Dr, Toronto, ON M4T 2K7, Canada',
+    locationStatus:'CREATE_REQUIRED',
+    plan:
+      'CREATE_LOCATION_THEN_CREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8',
+    actions:[
+      TMV3_STEP7_ACTION.CREATE_LOCATION,
+      TMV3_STEP7_ACTION.CREATE_TASK,
+      TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS,
+      TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS
+    ],
+    readStatus:'NO_TASK_READ_REQUIRED',
+    freshTaskReadStatus:'NO_TASK_READ_REQUIRED'
+  });
+
+  let createLocationValidated = false;
+
+  try {
+    createLocationValidated =
+      tmv3_step7ValidateExecutionContract_(
+        createLocationContract
+      ) === createLocationContract;
+  } catch (err) {}
+
+  check(
+    'CREATE_LOCATION_CONTRACT_HAS_VERIFIED_ADDRESS',
+    createLocationValidated,
+    createLocationContract.expectedLocationAddress
+  );
+
+  let missingAddressFailedClosed = false;
+
+  try {
+    tmv3_step7ValidateExecutionContract_(
+      Object.assign(
+        {},
+        createLocationContract,
+        { expectedLocationAddress:'' }
+      )
+    );
+  } catch (err) {
+    missingAddressFailedClosed =
+      String(err && err.message || err).indexOf(
+        'missing the verified Calendar job-site address'
+      ) !== -1;
+  }
+
+  check(
+    'CREATE_LOCATION_MISSING_ADDRESS_FAILS_CLOSED',
+    missingAddressFailedClosed,
+    'blank expectedLocationAddress'
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 Issue 2 CREATE safety regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    cases:cases.length,
+    results:cases
+  };
+}
+
+function tmv3_liveHardeningRegression() {
+  const issue1 =
+    tmv3_issue1SingleDecisionAuthorityRegression();
+  const issue2 =
+    tmv3_issue2CreateSafetyRegression();
+
+  const result = {
+    status:
+      issue1.status === 'PASS' &&
+      issue2.status === 'PASS'
+        ? 'PASS'
+        : 'FAIL',
+    version:TMV3.VERSION,
+    mode:TMV3.MODE,
+    issue1:issue1,
+    issue2:issue2
+  };
+
+  Logger.log(
+    JSON.stringify(
+      result,
+      null,
+      2
+    )
+  );
+
+  if (result.status !== 'PASS') {
+    throw new Error(
+      'TMV3 live hardening regression failed.'
+    );
+  }
+
+  return result;
+}
+
