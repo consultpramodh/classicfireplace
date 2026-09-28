@@ -4,6 +4,7 @@
 
 const TMV3_LINK_BLOCK_START = '<!-- TMV3_STRIVEN_LINKS_START -->';
 const TMV3_LINK_BLOCK_END = '<!-- TMV3_STRIVEN_LINKS_END -->';
+const TMV3_FINAL_LINK_HEADING = '-----Striven Links-----';
 
 function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
   const cfg = TMV3.VERTICALS[eventRecord.vertical];
@@ -103,25 +104,31 @@ function tmv3_requiredCalendarCopies_(vertical) {
 
 function tmv3_managedCalendarDescription_(existingDescription, plan) {
   const authored = tmv3_stripManagedLinkBlocks_(existingDescription);
-
-  const lines = [
-    TMV3_LINK_BLOCK_START,
-    '────────── STRIVEN LINKS ──────────'
-  ];
-
-  (plan.links || []).forEach(function(link) {
-    lines.push(link.label);
-    lines.push(link.url);
+  const linkLines = (plan.links || []).map(function(link) {
+    return '<a href="' +
+      tmv3_calendarHtmlEscape_(link.url) +
+      '">' +
+      tmv3_calendarHtmlEscape_(link.label) +
+      '</a>';
   });
 
-  lines.push('──────────────────────────────────');
-  lines.push(TMV3_LINK_BLOCK_END);
+  const managed =
+    '<b>' + TMV3_FINAL_LINK_HEADING + '</b>' +
+    (linkLines.length ? '<br>' + linkLines.join('<br>') : '');
 
   return (
     authored
-      ? authored.replace(/\s+$/, '') + '\n\n'
+      ? authored.replace(/\s+$/, '') + '<br><br>'
       : ''
-  ) + lines.join('\n');
+  ) + managed;
+}
+
+function tmv3_calendarHtmlEscape_(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function tmv3_stripManagedLinkBlocks_(description) {
@@ -153,7 +160,18 @@ function tmv3_stripManagedLinkBlocks_(description) {
     text = text.replace(rx, '');
   });
 
+  // Finalized compact Striven Links block (no TMV3 comments, no raw URLs).
+  text = text.replace(
+    /(?:<br\s*\/?>|\r?\n|\s)*<b>\s*-{5}Striven Links-{5}\s*<\/b>[\s\S]*$/i,
+    ''
+  );
+  text = text.replace(
+    /(?:\r?\n|\s)*-{5}Striven Links-{5}[\s\S]*$/i,
+    ''
+  );
+
   return text
+    .replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>')
     .replace(/(?:\r?\n\s*){3,}/g, '\n\n')
     .replace(/^\s+|\s+$/g, '');
 }
