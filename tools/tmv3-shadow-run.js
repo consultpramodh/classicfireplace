@@ -480,6 +480,15 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'liveHardeningRegression') {
+      var hardening = tmv3_liveHardeningRegression();
+      return TMPV3_shadowResponse_({
+        ok:hardening.status === 'PASS',
+        status:'LIVE_HARDENING_REGRESSION_COMPLETE',
+        result:hardening
+      });
+    }
+
     if (body.action === 'assignmentFeatureRegression') {
       var regression = tmv3_assignmentFeatureRegression();
       return TMPV3_shadowResponse_({
@@ -1565,6 +1574,8 @@ async function main() {
                       ? 'sheetPublish'
                     : RUN_MODE === 'STEP7_CREATE_CANDIDATES'
                       ? 'step7CreateCandidates'
+                    : RUN_MODE === 'LIVE_HARDENING_REGRESSION'
+                      ? 'liveHardeningRegression'
                     : RUN_MODE === 'ISSUE1_REGRESSION'
                       ? 'issue1Regression'
                     : RUN_MODE === 'ASSIGNMENT_FEATURE_VERIFY'
@@ -1705,6 +1716,8 @@ async function main() {
                           ? 'V3_' + RUN_MODE + '_VERIFIED'
                         : RUN_MODE.indexOf('CANARY_') === 0
                           ? 'V3_' + RUN_MODE + '_VERIFIED'
+                        : RUN_MODE === 'LIVE_HARDENING_REGRESSION'
+                          ? 'V3_LIVE_HARDENING_REGRESSION_VERIFIED'
                         : RUN_MODE === 'ISSUE1_REGRESSION'
                           ? 'V3_ISSUE1_SINGLE_AUTHORITY_REGRESSION_VERIFIED'
                         : RUN_MODE === 'STEP7_CASES'
@@ -1723,6 +1736,7 @@ async function main() {
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
             RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
             RUN_MODE === 'TASK_SCHEDULE' ||
+            RUN_MODE === 'LIVE_HARDENING_REGRESSION' ||
             RUN_MODE === 'ISSUE1_REGRESSION' ||
             RUN_MODE === 'ASSIGNMENT_FEATURE_VERIFY' ||
             RUN_MODE === 'ASSIGNMENT_CASES' ||
@@ -1761,6 +1775,8 @@ async function main() {
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
                       : RUN_MODE.indexOf('CANARY_') === 0
                         ? 'V3_' + RUN_MODE + '_VERIFIED'
+                      : RUN_MODE === 'LIVE_HARDENING_REGRESSION'
+                        ? 'V3_LIVE_HARDENING_REGRESSION_VERIFIED'
                       : RUN_MODE === 'ISSUE1_REGRESSION'
                         ? 'V3_ISSUE1_SINGLE_AUTHORITY_REGRESSION_VERIFIED'
                       : RUN_MODE === 'ASSIGNMENT_FEATURE_VERIFY'
