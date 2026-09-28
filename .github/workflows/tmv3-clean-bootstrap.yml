@@ -106,6 +106,28 @@ jobs:
             printf '{"scriptId":"%s","rootDir":"src"}\n' "$SCRIPT_ID" > "$WORK/.clasp.json"
           fi
 
+          if [ "$HAD_PRE" = "1" ]; then
+            echo "Verifying live PRE source matches task_mapping before any push."
+            find "$GITHUB_WORKSPACE/$SOURCE_DIR" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/repo-pre-files.txt"
+            find "$PRE/src" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/live-pre-files.txt"
+
+            if ! diff -u "$TMP/repo-pre-files.txt" "$TMP/live-pre-files.txt"; then
+              echo "LIVE_SOURCE_DRIFT: file inventory differs. No Apps Script write attempted."
+              exit 1
+            fi
+
+            while IFS= read -r file; do
+              EXPECTED="$(sha256sum "$GITHUB_WORKSPACE/$SOURCE_DIR/$file" | awk '{print $1}')"
+              ACTUAL="$(sha256sum "$PRE/src/$file" | awk '{print $1}')"
+              if [ "$EXPECTED" != "$ACTUAL" ]; then
+                echo "LIVE_SOURCE_DRIFT: hash mismatch for $file. No Apps Script write attempted."
+                exit 1
+              fi
+            done < "$TMP/repo-pre-files.txt"
+
+            echo "PRE_SOURCE_PARITY_VERIFIED"
+          fi
+
           mkdir -p "$WORK/src"
           find "$WORK/src" -mindepth 1 -maxdepth 1 -type f -delete
           cp "$GITHUB_WORKSPACE/$SOURCE_DIR/"* "$WORK/src/"
