@@ -614,6 +614,7 @@ function tmv3_step7ActionsForMode_(contract, mode) {
   const map = {
     DATES:[TMV3_STEP7_ACTION.PATCH_DATES],
     RELATIONSHIPS:[
+      TMV3_STEP7_ACTION.CREATE_LOCATION,
       TMV3_STEP7_ACTION.PATCH_LOCATION,
       TMV3_STEP7_ACTION.PATCH_ORDER,
       TMV3_STEP7_ACTION.PATCH_REQUESTED_BY
@@ -651,7 +652,7 @@ function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
     return changed;
   }
 
-  const contract = tmv3_step7ValidateExecutionContract_(
+  let contract = tmv3_step7ValidateExecutionContract_(
     selection.contract
   );
 
@@ -666,38 +667,35 @@ function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
     };
   }
 
-  if (
-    contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
-  ) {
-    const blockedLocationCreate = {
-      status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY',
-      vertical:contract.vertical,
-      eventId:contract.eventId,
-      taskId:contract.taskId || '',
-      plan:contract.plan,
-      reason:
-        'Step 7 requires creation of a new Customer Location, but V3 has no ' +
-        'verified Striven customer-location create endpoint/payload/read-back contract. ' +
-        'No Task POST is authorized until Location creation is independently verified.',
-      nextAction:'VERIFY_AND_IMPLEMENT_CUSTOMER_LOCATION_CREATE_CAPABILITY'
-    };
-    tmv3_audit_(
-      contract.vertical,
-      contract.eventId,
-      contract.taskId || '',
-      'STEP7_CREATE_LOCATION_GUARD',
-      'NO_WRITE',
-      JSON.stringify(blockedLocationCreate)
-    );
-    return blockedLocationCreate;
-  }
-
-  const bundle = tmv3_step7BundleFromContract_(contract);
+  let bundle = tmv3_step7BundleFromContract_(contract);
 
   tmv3_step7FreshCriticalOwnership_(
     contract,
     bundle.eventRecord
   );
+
+  const requestedActions = tmv3_step7ActionsForMode_(
+    contract,
+    mode || 'ALL'
+  );
+
+  if (
+    requestedActions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
+  ) {
+    const locationResult = tmv3_ensureStep7Location_(
+      bundle,
+      scope,
+      contract
+    );
+
+    bundle = locationResult.bundle;
+    contract = locationResult.contract;
+
+    tmv3_step7FreshCriticalOwnership_(
+      contract,
+      bundle.eventRecord
+    );
+  }
 
   const createAction =
     contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_TASK) !== -1 ||
@@ -1732,8 +1730,674 @@ function tmv3_buildCreateSource_(bundle, action) {
 }
 
 
-function tmv3_existingPersistedTaskForEvent_(vertical, eventId) {
-  const rows = tmv3_rows_(TMV3.SHEETS.STATE).filter(function(row) {
+function tmv3_durableWriteGuardKey_(kind, identity) {
+  return (
+    'TMV3_' +
+    tmv3_clean_(kind).toUpperCase().replace(/[^A-Z0-9_]/g, '_') +
+    '_' +
+    tmv3_hash_(tmv3_clean_(identity))
+  );
+}
+
+function tmv3_readDurableWriteGuard_(key) {
+  const raw = PropertiesService.getScriptProperties().getProperty(key);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object'
+      ? parsed
+      : { state:'CORRUPT', raw:raw };
+  } catch (err) {
+    return {
+      state:'CORRUPT',
+      raw:raw,
+      error:String(err && err.message || err)
+    };
+  }
+}
+
+function tmv3_writeDurableWriteGuard_(key, state, data) {
+  const value = Object.assign(
+    {},
+    data || {},
+    {
+      state:tmv3_clean_(state),
+      guardKey:key,
+      engineVersion:TMV3.VERSION,
+      updatedAt:tmv3_now_()
+    }
+  );
+
+  PropertiesService.getScriptProperties().setProperty(
+    key,
+    JSON.stringify(value)
+  );
+
+  return value;
+}
+
+function tmv3_createGuardStateBlocksRetry_(guard) {
+  if (!guard) return false;
+  return tmv3_clean_(guard.state).toUpperCase() !== 'CLEARED';
+}
+
+function tmv3_taskCreateGuardKey_(contract) {
+  const operation =
+    (contract.actions || []).indexOf(
+      TMV3_STEP7_ACTION.RECREATE_TASK
+    ) !== -1
+      ? 'RECREATE_TASK'
+      : 'CREATE_TASK';
+
+  return tmv3_durableWriteGuardKey_(
+    'TASK_CREATE_GUARD',
+    [
+      contract.vertical,
+      contract.eventId,
+      operation,
+      (contract.sourceTaskIdList || []).slice().sort().join(',')
+    ].join('|')
+  );
+}
+
+function tmv3_locationCreateGuardKey_(contract) {
+  return tmv3_durableWriteGuardKey_(
+    'LOCATION_CREATE_GUARD',
+    [
+      contract.vertical,
+      contract.eventId,
+      contract.expectedCustomerId,
+      tmv3_normalizeAddress_(contract.expectedLocationAddress)
+    ].join('|')
+  );
+}
+
+function tmv3_parseCanadianCustomerLocation_(address, customerId) {
+  const raw = tmv3_clean_(address);
+  const customer = Number(customerId || 0);
+
+  if (!raw || !customer) {
+    throw new Error(
+      'Customer Location creation requires verified Customer ID and Calendar address.'
+    );
+  }
+
+  const upper = raw.toUpperCase();
+  const postalMatch = upper.match(/\b([A-Z]\d[A-Z])\s?(\d[A-Z]\d)\b/);
+  const provinceMatch = upper.match(
+    /\b(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT)\b/
+  );
+
+  const parts = raw
+    .split(',')
+    .map(tmv3_clean_)
+    .filter(Boolean);
+
+  let provinceIndex = -1;
+
+  for (let i = 0; i < parts.length; i++) {
+    if (
+      /\b(ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT)\b/i.test(parts[i]) ||
+      /\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/i.test(parts[i])
+    ) {
+      provinceIndex = i;
+      break;
+    }
+  }
+
+  if (
+    !postalMatch ||
+    !provinceMatch ||
+    provinceIndex < 2
+  ) {
+    throw new Error(
+      'Customer Location creation requires a complete Canadian address with street, city, province and postal code. Address was: ' +
+      raw
+    );
+  }
+
+  const street = tmv3_clean_(parts[0]);
+  const city = tmv3_clean_(parts[provinceIndex - 1]);
+
+  if (!street || !city) {
+    throw new Error(
+      'Customer Location creation could not deterministically separate street and city from: ' +
+      raw
+    );
+  }
+
+  return {
+    CustomerId:customer,
+    Name:raw,
+    Address1:street,
+    City:city,
+    State:provinceMatch[1],
+    PostalCode:postalMatch[1] + ' ' + postalMatch[2],
+    Country:'Canada',
+    IsActive:true
+  };
+}
+
+function tmv3_normalizedLocationObject_(normalized) {
+  const row = normalized || [];
+
+  return {
+    'Location ID':tmv3_clean_(row[0]),
+    'Customer ID':tmv3_clean_(row[1]),
+    'Address 1':tmv3_clean_(row[2]),
+    'Address 2':tmv3_clean_(row[3]),
+    'City':tmv3_clean_(row[4]),
+    'Province':tmv3_clean_(row[5]),
+    'Postal Code':tmv3_clean_(row[6]),
+    'Phone':tmv3_clean_(row[7]),
+    'Fingerprint':tmv3_clean_(row[8])
+  };
+}
+
+function tmv3_freshCustomerLocationCandidates_(bundle, customerId, address) {
+  const customerNumberToId = {};
+
+  (bundle.refs.customers || []).forEach(function(customer) {
+    const number = tmv3_clean_(customer['Customer Number']);
+    const id = tmv3_clean_(customer['Customer ID']);
+
+    if (number && id) {
+      customerNumberToId[number] = id;
+    }
+  });
+
+  const target = tmv3_addressParts_(address);
+  const exactKey = tmv3_normalizeAddress_(address);
+
+  const owned = tmv3_reportRows_(TMV3.PROPERTIES.LOCATIONS)
+    .map(function(raw) {
+      return tmv3_normalizedLocationObject_(
+        tmv3_normalizeLocation_(raw, customerNumberToId)
+      );
+    })
+    .filter(function(location) {
+      return (
+        tmv3_clean_(location['Location ID']) &&
+        tmv3_clean_(location['Customer ID']) === tmv3_clean_(customerId)
+      );
+    });
+
+  const exact = owned.filter(function(location) {
+    return (
+      tmv3_normalizeAddress_(tmv3_locationFullAddress_(location)) ===
+      exactKey
+    );
+  });
+
+  const matches = exact.length
+    ? exact
+    : owned.filter(function(location) {
+        return tmv3_addressStrongMatch_(
+          target,
+          tmv3_addressParts_(
+            tmv3_locationFullAddress_(location)
+          )
+        );
+      });
+
+  return {
+    owned:owned,
+    matches:matches
+  };
+}
+
+function tmv3_extractCreatedLocationId_(json) {
+  if (typeof json === 'number' && json > 0) {
+    return Number(json);
+  }
+
+  if (typeof json === 'string' && /^\d+$/.test(json.trim())) {
+    return Number(json.trim());
+  }
+
+  if (!json || typeof json !== 'object') {
+    return 0;
+  }
+
+  const candidates = [
+    json.id,
+    json.Id,
+    json.locationId,
+    json.LocationId,
+    json.LocationID,
+    json.customerLocationId,
+    json.CustomerLocationId,
+    json.data && json.data.id,
+    json.data && json.data.Id,
+    json.location && json.location.id,
+    json.location && json.location.Id
+  ];
+
+  for (let i = 0; i < candidates.length; i++) {
+    const id = Number(candidates[i]);
+
+    if (Number.isFinite(id) && id > 0) {
+      return id;
+    }
+  }
+
+  return 0;
+}
+
+function tmv3_upsertLocationCacheObject_(location) {
+  const id = tmv3_clean_(location && location['Location ID']);
+
+  if (!id) {
+    throw new Error('Location cache upsert requires Location ID.');
+  }
+
+  const sh = tmv3_sheet_(TMV3.SHEETS.LOCATIONS);
+  const headers = [
+    'Location ID','Customer ID','Address 1','Address 2','City',
+    'Province','Postal Code','Phone','Fingerprint'
+  ];
+  const row = headers.map(function(header) {
+    return location[header] === undefined
+      ? ''
+      : location[header];
+  });
+
+  const lastRow = sh.getLastRow();
+  let targetRow = 0;
+
+  if (lastRow > 1) {
+    const ids = sh.getRange(
+      2,
+      1,
+      lastRow - 1,
+      1
+    ).getValues();
+
+    for (let i = 0; i < ids.length; i++) {
+      if (tmv3_clean_(ids[i][0]) === id) {
+        targetRow = i + 2;
+        break;
+      }
+    }
+  }
+
+  if (targetRow) {
+    sh.getRange(
+      targetRow,
+      1,
+      1,
+      row.length
+    ).setValues([row]);
+  } else {
+    sh.getRange(
+      Math.max(2, lastRow + 1),
+      1,
+      1,
+      row.length
+    ).setValues([row]);
+  }
+
+  return location;
+}
+
+function tmv3_locationResultFromVerified_(
+  bundle,
+  contract,
+  location,
+  guardKey
+) {
+  tmv3_upsertLocationCacheObject_(location);
+
+  const locationId = tmv3_clean_(
+    location['Location ID']
+  );
+
+  const updatedContract = Object.assign(
+    {},
+    contract,
+    {
+      expectedLocationId:locationId,
+      locationStatus:'MATCHED',
+      actions:(contract.actions || []).filter(function(action) {
+        return action !== TMV3_STEP7_ACTION.CREATE_LOCATION;
+      })
+    }
+  );
+
+  const updatedBundle = tmv3_step7BundleFromContract_(
+    updatedContract
+  );
+
+  return {
+    status:'LOCATION_VERIFIED',
+    locationId:locationId,
+    guardKey:guardKey,
+    location:location,
+    contract:updatedContract,
+    bundle:updatedBundle
+  };
+}
+
+function tmv3_ensureStep7LocationUnlocked_(
+  bundle,
+  scope,
+  contract
+) {
+  tmv3_assertOperationWrite_(scope);
+  contract = tmv3_step7ValidateExecutionContract_(contract);
+
+  if (
+    (contract.actions || []).indexOf(
+      TMV3_STEP7_ACTION.CREATE_LOCATION
+    ) === -1
+  ) {
+    return {
+      status:'LOCATION_NOT_REQUIRED',
+      contract:contract,
+      bundle:bundle
+    };
+  }
+
+  if (contract.vertical !== 'PreInspection') {
+    throw new Error(
+      'CREATE_LOCATION is currently authorized only for PreInspection. ' +
+      contract.vertical +
+      ' requires explicit relationship review to avoid duplicating an Order-linked Location.'
+    );
+  }
+
+  const payload = tmv3_parseCanadianCustomerLocation_(
+    contract.expectedLocationAddress,
+    contract.expectedCustomerId
+  );
+
+  const guardKey = tmv3_locationCreateGuardKey_(contract);
+  const guard = tmv3_readDurableWriteGuard_(guardKey);
+
+  const preflight = tmv3_freshCustomerLocationCandidates_(
+    bundle,
+    contract.expectedCustomerId,
+    contract.expectedLocationAddress
+  );
+
+  if (preflight.matches.length > 1) {
+    throw new Error(
+      'CREATE_LOCATION blocked: multiple Customer-owned Locations match the Calendar address.'
+    );
+  }
+
+  if (guard) {
+    const knownId = Number(guard.locationId || 0);
+
+    if (knownId) {
+      const known = preflight.owned.filter(function(location) {
+        return Number(location['Location ID'] || 0) === knownId;
+      });
+
+      if (known.length === 1) {
+        tmv3_writeDurableWriteGuard_(
+          guardKey,
+          'VERIFIED',
+          Object.assign({}, guard, {
+            locationId:knownId,
+            customerId:contract.expectedCustomerId,
+            address:contract.expectedLocationAddress
+          })
+        );
+
+        return tmv3_locationResultFromVerified_(
+          bundle,
+          contract,
+          known[0],
+          guardKey
+        );
+      }
+
+      throw new Error(
+        'CREATE_LOCATION blocked: Location ' +
+        knownId +
+        ' was previously captured but fresh Striven Location data cannot verify it yet. Reconcile before retry.'
+      );
+    }
+
+    if (preflight.matches.length === 1) {
+      const recoveredId = Number(
+        preflight.matches[0]['Location ID'] || 0
+      );
+
+      tmv3_writeDurableWriteGuard_(
+        guardKey,
+        'VERIFIED',
+        Object.assign({}, guard, {
+          locationId:recoveredId,
+          customerId:contract.expectedCustomerId,
+          address:contract.expectedLocationAddress,
+          reconciledFrom:'FRESH_LOCATION_REPORT'
+        })
+      );
+
+      return tmv3_locationResultFromVerified_(
+        bundle,
+        contract,
+        preflight.matches[0],
+        guardKey
+      );
+    }
+
+    throw new Error(
+      'CREATE_LOCATION blocked: a previous Location write attempt is ' +
+      tmv3_clean_(guard.state || 'UNCERTAIN') +
+      ' and no unique fresh Location can yet be reconciled. No second POST is allowed.'
+    );
+  }
+
+  if (preflight.matches.length === 1) {
+    const existingId = Number(
+      preflight.matches[0]['Location ID'] || 0
+    );
+
+    tmv3_writeDurableWriteGuard_(
+      guardKey,
+      'VERIFIED',
+      {
+        vertical:contract.vertical,
+        eventId:contract.eventId,
+        customerId:contract.expectedCustomerId,
+        address:contract.expectedLocationAddress,
+        locationId:existingId,
+        reconciledFrom:'PREEXISTING_FRESH_LOCATION'
+      }
+    );
+
+    return tmv3_locationResultFromVerified_(
+      bundle,
+      contract,
+      preflight.matches[0],
+      guardKey
+    );
+  }
+
+  tmv3_writeDurableWriteGuard_(
+    guardKey,
+    'ATTEMPT_STARTED',
+    {
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      customerId:contract.expectedCustomerId,
+      address:contract.expectedLocationAddress
+    }
+  );
+
+  let response;
+  let locationId = 0;
+
+  try {
+    response = tmv3_fetchJson_(
+      TMV3.API_BASE +
+        '/v1/customers/' +
+        encodeURIComponent(
+          Number(contract.expectedCustomerId)
+        ) +
+        '/location',
+      {
+        method:'post',
+        contentType:'application/json',
+        payload:JSON.stringify(payload)
+      }
+    );
+
+    locationId = tmv3_extractCreatedLocationId_(response);
+
+    if (!locationId) {
+      throw new Error(
+        'Location POST returned success but no durable Location ID was extracted.'
+      );
+    }
+  } catch (err) {
+    tmv3_writeDurableWriteGuard_(
+      guardKey,
+      'UNCERTAIN',
+      {
+        vertical:contract.vertical,
+        eventId:contract.eventId,
+        customerId:contract.expectedCustomerId,
+        address:contract.expectedLocationAddress,
+        error:String(err && err.message || err)
+      }
+    );
+
+    tmv3_audit_(
+      contract.vertical,
+      contract.eventId,
+      contract.taskId || '',
+      'CREATE_LOCATION',
+      'CREATE UNCERTAIN',
+      'No retry is authorized until the Customer Location is reconciled. ' +
+        String(err && err.message || err)
+    );
+
+    throw new Error(
+      'CREATE LOCATION UNCERTAIN. Do not retry blindly. Reconcile Striven first. ' +
+      String(err && err.message || err)
+    );
+  }
+
+  tmv3_writeDurableWriteGuard_(
+    guardKey,
+    'ID_CAPTURED',
+    {
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      customerId:contract.expectedCustomerId,
+      address:contract.expectedLocationAddress,
+      locationId:locationId
+    }
+  );
+
+  const readback = tmv3_freshCustomerLocationCandidates_(
+    bundle,
+    contract.expectedCustomerId,
+    contract.expectedLocationAddress
+  );
+
+  const verified = readback.owned.filter(function(location) {
+    return (
+      Number(location['Location ID'] || 0) ===
+      Number(locationId)
+    );
+  });
+
+  if (verified.length !== 1) {
+    throw new Error(
+      'Location ' +
+      locationId +
+      ' was created and captured, but fresh Location report read-back has not converged. No Task write is authorized yet.'
+    );
+  }
+
+  if (
+    !tmv3_addressStrongMatch_(
+      tmv3_addressParts_(contract.expectedLocationAddress),
+      tmv3_addressParts_(
+        tmv3_locationFullAddress_(verified[0])
+      )
+    )
+  ) {
+    throw new Error(
+      'Created Location read-back address does not match the verified Calendar job-site address.'
+    );
+  }
+
+  tmv3_writeDurableWriteGuard_(
+    guardKey,
+    'VERIFIED',
+    {
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      customerId:contract.expectedCustomerId,
+      address:contract.expectedLocationAddress,
+      locationId:locationId
+    }
+  );
+
+  tmv3_audit_(
+    contract.vertical,
+    contract.eventId,
+    contract.taskId || '',
+    'CREATE_LOCATION',
+    'PASS',
+    JSON.stringify({
+      locationId:locationId,
+      customerId:contract.expectedCustomerId,
+      readback:'FRESH_LOCATION_REPORT'
+    })
+  );
+
+  return tmv3_locationResultFromVerified_(
+    bundle,
+    contract,
+    verified[0],
+    guardKey
+  );
+}
+
+function tmv3_ensureStep7Location_(
+  bundle,
+  scope,
+  contract
+) {
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(30000)) {
+    throw new Error(
+      'CREATE_LOCATION blocked because another V3 write is already in progress.'
+    );
+  }
+
+  try {
+    return tmv3_ensureStep7LocationUnlocked_(
+      bundle,
+      scope,
+      contract
+    );
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function tmv3_existingPersistedTaskForEvent_(
+  vertical,
+  eventId,
+  options
+) {
+  options = options || {};
+
+  const sourceRows = Array.isArray(options.rows)
+    ? options.rows
+    : tmv3_rows_(TMV3.SHEETS.STATE);
+
+  const rows = sourceRows.filter(function(row) {
     return (
       tmv3_clean_(row['Vertical']) === tmv3_clean_(vertical) &&
       tmv3_clean_(row['Event ID']) === tmv3_clean_(eventId) &&
@@ -1741,18 +2405,84 @@ function tmv3_existingPersistedTaskForEvent_(vertical, eventId) {
     );
   });
 
-  for (let i = 0; i < rows.length; i++) {
-    const taskId = Number(rows[i]['Task ID'] || 0);
-    if (!taskId) continue;
-    try {
-      const task = tmv3_getTaskById_(taskId);
-      if (task && task['Task ID']) {
-        return { taskId: taskId, task: task, state: rows[i] };
-      }
-    } catch (ignored) {}
+  const taskIds = tmv3_unique_(
+    rows.map(function(row) {
+      return tmv3_clean_(row['Task ID']);
+    }).filter(Boolean)
+  );
+
+  if (!taskIds.length) {
+    return {
+      status:'NONE',
+      taskIds:[],
+      taskId:0,
+      task:null,
+      state:null
+    };
   }
 
-  return null;
+  if (taskIds.length > 1) {
+    return {
+      status:'MULTIPLE_KNOWN',
+      taskIds:taskIds,
+      taskId:0,
+      task:null,
+      state:null,
+      reason:
+        'Multiple persisted Task IDs exist for this Calendar event: ' +
+        taskIds.join(', ') +
+        '.'
+    };
+  }
+
+  const taskId = Number(taskIds[0] || 0);
+  const state = rows.filter(function(row) {
+    return Number(row['Task ID'] || 0) === taskId;
+  })[0] || null;
+
+  const readTask =
+    typeof options.readTask === 'function'
+      ? options.readTask
+      : tmv3_getTaskById_;
+
+  try {
+    const task = readTask(taskId);
+
+    if (!task || !tmv3_clean_(task['Task ID'])) {
+      return {
+        status:'KNOWN_READ_FAILED',
+        taskIds:taskIds,
+        taskId:taskId,
+        task:null,
+        state:state,
+        reason:
+          'Persisted Task ' +
+          taskId +
+          ' did not return an authoritative Task record.'
+      };
+    }
+
+    return {
+      status:'FOUND_VERIFIED',
+      taskIds:taskIds,
+      taskId:taskId,
+      task:task,
+      state:state
+    };
+  } catch (err) {
+    return {
+      status:'KNOWN_READ_FAILED',
+      taskIds:taskIds,
+      taskId:taskId,
+      task:null,
+      state:state,
+      reason:
+        'Persisted Task ' +
+        taskId +
+        ' could not be freshly read: ' +
+        String(err && err.message || err)
+    };
+  }
 }
 
 function tmv3_persistCreatedTaskIdState_(bundle, taskId) {
@@ -1775,6 +2505,30 @@ function tmv3_persistCreatedTaskIdState_(bundle, taskId) {
 }
 
 function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
+  const lock = LockService.getScriptLock();
+
+  if (!lock.tryLock(30000)) {
+    throw new Error(
+      'CREATE / RECREATE blocked because another V3 write is already in progress.'
+    );
+  }
+
+  try {
+    return tmv3_createOrRecreateFromBundleUnlocked_(
+      bundle,
+      scope,
+      contract
+    );
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function tmv3_createOrRecreateFromBundleUnlocked_(
+  bundle,
+  scope,
+  contract
+) {
   contract = tmv3_step7ValidateExecutionContract_(contract);
   tmv3_assertOperationWrite_(scope);
 
@@ -1787,11 +2541,9 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
   if (
     contract.actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
   ) {
-    return {
-      status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY',
-      eventId:contract.eventId,
-      plan:contract.plan
-    };
+    throw new Error(
+      'CREATE / RECREATE ordering error: Customer Location must be freshly verified before Task POST.'
+    );
   }
 
   const isRecreate =
@@ -1826,11 +2578,86 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
     contract.eventId
   );
 
-  if (persisted) {
+  if (persisted.status === 'KNOWN_READ_FAILED') {
     throw new Error(
-      'CREATE blocked: V3 previously persisted Task ' +
-      persisted.taskId +
-      ' for this Calendar event. Reconcile that Task first.'
+      'CREATE blocked: ' +
+      persisted.reason +
+      ' A failed read is not evidence that the Task does not exist.'
+    );
+  }
+
+  if (persisted.status === 'MULTIPLE_KNOWN') {
+    throw new Error(
+      'CREATE blocked: ' +
+      persisted.reason +
+      ' Reconcile the event before any new Task POST.'
+    );
+  }
+
+  if (persisted.status === 'FOUND_VERIFIED') {
+    const sourceIds = (contract.sourceTaskIdList || [])
+      .map(String);
+
+    const authorizedRecreateSource =
+      isRecreate &&
+      sourceIds.length === 1 &&
+      sourceIds[0] === String(persisted.taskId) &&
+      tmv3_taskIsCompleted_(persisted.task['Status']);
+
+    if (!authorizedRecreateSource) {
+      throw new Error(
+        'CREATE blocked: V3 previously persisted Task ' +
+        persisted.taskId +
+        ' for this Calendar event. Reconcile that Task first.'
+      );
+    }
+  }
+
+  const taskGuardKey = tmv3_taskCreateGuardKey_(contract);
+  const priorGuard = tmv3_readDurableWriteGuard_(
+    taskGuardKey
+  );
+
+  if (tmv3_createGuardStateBlocksRetry_(priorGuard)) {
+    const priorTaskId = Number(
+      priorGuard.taskId || 0
+    );
+
+    if (priorTaskId) {
+      try {
+        const priorTask = tmv3_getTaskById_(
+          priorTaskId
+        );
+
+        throw new Error(
+          'CREATE blocked: durable guard already captured Task ' +
+          priorTaskId +
+          ' (' +
+          tmv3_clean_(priorTask['Status']) +
+          '). Reconcile that Task instead of POSTing again.'
+        );
+      } catch (err) {
+        if (
+          String(err && err.message || err).indexOf(
+            'durable guard already captured Task'
+          ) !== -1
+        ) {
+          throw err;
+        }
+
+        throw new Error(
+          'CREATE blocked: durable guard captured Task ' +
+          priorTaskId +
+          ' but the fresh read failed. No second POST is allowed. ' +
+          String(err && err.message || err)
+        );
+      }
+    }
+
+    throw new Error(
+      'CREATE blocked: prior write guard is ' +
+      tmv3_clean_(priorGuard.state || 'UNCERTAIN') +
+      '. Reconcile Striven before any retry.'
     );
   }
 
@@ -1867,6 +2694,17 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
   let json;
   let newTaskId = 0;
 
+  tmv3_writeDurableWriteGuard_(
+    taskGuardKey,
+    'ATTEMPT_STARTED',
+    {
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      action:action,
+      sourceTaskIds:(contract.sourceTaskIdList || []).slice()
+    }
+  );
+
   try {
     json = tmv3_fetchJson_(
       TMV3.API_BASE + '/v2/tasks',
@@ -1886,6 +2724,18 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
       );
     }
   } catch (err) {
+    tmv3_writeDurableWriteGuard_(
+      taskGuardKey,
+      'UNCERTAIN',
+      {
+        vertical:contract.vertical,
+        eventId:contract.eventId,
+        action:action,
+        sourceTaskIds:(contract.sourceTaskIdList || []).slice(),
+        error:String(err && err.message || err)
+      }
+    );
+
     tmv3_audit_(
       contract.vertical,
       contract.eventId,
@@ -1903,7 +2753,22 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
     );
   }
 
-  tmv3_persistCreatedTaskIdState_(bundle, newTaskId);
+  tmv3_writeDurableWriteGuard_(
+    taskGuardKey,
+    'ID_CAPTURED',
+    {
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      action:action,
+      sourceTaskIds:(contract.sourceTaskIdList || []).slice(),
+      taskId:newTaskId
+    }
+  );
+
+  tmv3_persistCreatedTaskIdState_(
+    bundle,
+    newTaskId
+  );
 
   const createdResolved = Object.assign(
     {},
@@ -2033,6 +2898,19 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
     );
   }
 
+  tmv3_writeDurableWriteGuard_(
+    taskGuardKey,
+    'VERIFIED',
+    {
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      action:action,
+      sourceTaskIds:(contract.sourceTaskIdList || []).slice(),
+      taskId:newTaskId,
+      terminalPlan:after.plan
+    }
+  );
+
   tmv3_audit_(
     contract.vertical,
     contract.eventId,
@@ -2084,16 +2962,6 @@ function tmv3_executeExistingTaskSync_(
     contract,
     mode || 'ALL'
   );
-
-  if (
-    actions.indexOf(TMV3_STEP7_ACTION.CREATE_LOCATION) !== -1
-  ) {
-    return {
-      status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY',
-      taskId:Number(contract.taskId),
-      plan:contract.plan
-    };
-  }
 
   const taskId = Number(contract.taskId);
   let patch = null;
@@ -2303,6 +3171,13 @@ function tmv3_previewSelectedAction() {
       TMV3_STEP7_ACTION.CREATE_LOCATION
     ) !== -1;
 
+  const locationCreateSupported =
+    !locationCreatePending ||
+    (
+      contract.vertical === 'PreInspection' &&
+      !!tmv3_clean_(contract.expectedLocationAddress)
+    );
+
   const output = {
     mode:'READ_ONLY',
     authority:'STEP7_CANONICAL_CONTRACT',
@@ -2334,10 +3209,12 @@ function tmv3_previewSelectedAction() {
         !planChanged &&
         !tmv3_clean_(contract.blocker) &&
         (contract.actions || []).length > 0 &&
-        !locationCreatePending,
+        locationCreateSupported,
       externalWriteCurrentlyEnabled:
         tmv3_operationWritesEnabled_('MANUAL'),
       locationCreatePending:locationCreatePending,
+      locationCreateSupported:locationCreateSupported,
+      expectedLocationAddress:contract.expectedLocationAddress || '',
       expectedTerminalPlan:'NO_CHANGE'
     },
     manualWritesEnabled:tmv3_operationWritesEnabled_('MANUAL'),
@@ -2506,20 +3383,6 @@ function tmv3_runSafeReadyRows_(scope) {
       j++
     ) {
       const contract = contracts[j];
-
-      if (
-        (contract.actions || []).indexOf(
-          TMV3_STEP7_ACTION.CREATE_LOCATION
-        ) !== -1
-      ) {
-        results.push({
-          vertical:contract.vertical,
-          eventId:contract.eventId,
-          taskId:contract.taskId || '',
-          status:'BLOCKED_PENDING_LOCATION_CREATE_CAPABILITY'
-        });
-        continue;
-      }
 
       try {
         const one = tmv3_executeFreshStep7Selection_(
