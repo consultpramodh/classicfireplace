@@ -1915,16 +1915,23 @@ function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
     records:[createdResolved]
   });
 
-  const assignment = tmv3_reconcileTaskAssignments_(
-    bundle.eventRecord,
-    newTaskId,
-    scope,
-    {
-      newTask:true,
-      desiredAssignment:
-        tmv3_step7DesiredAssignmentFromContract_(contract)
-    }
-  );
+  let assignment = null;
+  if (
+    contract.actions.indexOf(
+      TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS
+    ) !== -1
+  ) {
+    assignment = tmv3_reconcileTaskAssignments_(
+      bundle.eventRecord,
+      newTaskId,
+      scope,
+      {
+        newTask:true,
+        desiredAssignment:
+          tmv3_step7DesiredAssignmentFromContract_(contract)
+      }
+    );
+  }
 
   let field854 = null;
   if (

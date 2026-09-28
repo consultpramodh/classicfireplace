@@ -1170,6 +1170,14 @@ function tmv3_step7CreatePlan_(
     }
 
     actions.push(createAction);
+
+    if (
+      (desiredAssignment.employeeIds || []).length ||
+      (desiredAssignment.poolIds || []).length
+    ) {
+      actions.push(TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS);
+    }
+
     if (record.vertical === 'PreInspection' && desiredField854) {
       actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
     }
