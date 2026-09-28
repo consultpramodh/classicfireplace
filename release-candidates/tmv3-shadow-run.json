@@ -12,6 +12,7 @@
   "eventId": "6thvbtf65kfoe397mpoj80lpms@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "SEP30_NICO_PREINSPECTION_WRITE",
-  "allowedDate": "2026-09-30"
+  "requestTag": "SEP30_NICO_PREINSPECTION_WRITE_API_HEADROOM",
+  "allowedDate": "2026-09-30",
+  "testWriteApiSoftLimit": 1300
 }
