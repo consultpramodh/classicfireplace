@@ -728,6 +728,56 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7EventWriteFresh') {
+      var freshVertical = String(body.vertical || '');
+      var freshEventId = String(body.eventId || '');
+      var freshPlans = tmv3_step7FreshPlansForEvent_(
+        freshVertical,
+        freshEventId
+      );
+
+      if (!Array.isArray(freshPlans) || freshPlans.length !== 1) {
+        throw new Error(
+          'Fresh event write expected exactly one canonical Step 7 plan; found ' +
+          (freshPlans ? freshPlans.length : 0) + '.'
+        );
+      }
+
+      var freshContract = tmv3_step7ValidateExecutionContract_(freshPlans[0]);
+
+      // Technician-owned field: never allow automation to write Field 854.
+      if (
+        freshVertical === 'PreInspection' &&
+        Array.isArray(freshContract.actions)
+      ) {
+        freshContract.actions = freshContract.actions.filter(function(action) {
+          return String(action || '') !== 'PATCH_FIELD854';
+        });
+      }
+
+      var freshResult = tmv3_executeFreshStep7Selection_(
+        {
+          previousPlan:freshContract.plan,
+          contract:freshContract
+        },
+        'MANUAL',
+        'ALL'
+      );
+
+      return TMPV3_shadowResponse_({
+        ok:
+          freshResult &&
+          (
+            freshResult.status === 'CREATED_VERIFIED_AND_CONVERGED' ||
+            freshResult.status === 'VERIFIED_CONVERGENCE' ||
+            freshResult.status === 'CANARY_VERIFIED_NO_CHANGE'
+          ),
+        status:'STEP7_EVENT_WRITE_FRESH_COMPLETE',
+        plan:freshContract,
+        result:freshResult
+      });
+    }
+
     if (body.action === 'step7EventWrite') {
       var writeVertical = String(body.vertical || '');
       var writeEventId = String(body.eventId || '');
@@ -1238,6 +1288,7 @@ async function main() {
         RUN_MODE.indexOf('CANARY_') !== 0 ||
         RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
+      RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
         RUN_MODE === 'CANARY_STEP7'
       ) &&
       RELEASE_MANIFEST.forceVersionedDeployment !== true
@@ -1444,6 +1495,8 @@ async function main() {
                       ? 'step7AssignmentCanary'
                     : RUN_MODE === 'CANARY_EVENT_WRITE'
                       ? 'step7EventWrite'
+                    : RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+                      ? 'step7EventWriteFresh'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
                     : RUN_MODE === 'SHEET_PUBLISH'
@@ -1477,7 +1530,8 @@ async function main() {
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
-            RUN_MODE === 'CANARY_EVENT_WRITE'
+            RUN_MODE === 'CANARY_EVENT_WRITE' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
           )
             ? String(RELEASE_MANIFEST.vertical || '')
           : (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
@@ -1512,7 +1566,8 @@ async function main() {
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
-            RUN_MODE === 'CANARY_EVENT_WRITE'
+            RUN_MODE === 'CANARY_EVENT_WRITE' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
           )
             ? Number(RELEASE_MANIFEST.taskId || 0) :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
@@ -1528,7 +1583,8 @@ async function main() {
             RUN_MODE === 'PREVIEW_STEP7' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
-            RUN_MODE === 'CANARY_EVENT_WRITE'
+            RUN_MODE === 'CANARY_EVENT_WRITE' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
           )
             ? String(RELEASE_MANIFEST.expectedPlan || 'NO_CHANGE')
             : ''
