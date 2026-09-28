@@ -6,5 +6,6 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
-  "mode": "SHADOW_READ_ONLY"
+  "mode": "SHADOW_READ_ONLY",
+  "expectedLiveCommit": "cc291fa33aafaa060537703fe8bb47febc562b6e"
 }
