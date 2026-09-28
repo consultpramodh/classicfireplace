@@ -1268,16 +1268,16 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     throw new Error('No Calendar copy found for Event ID ' + plan.eventId + '.');
   }
 
-  if (
-    eventRecord.vertical === 'PreInspection' &&
-    copies.length !== (plan.calendarIds || []).length
-  ) {
-    throw new Error(
-      'PreInspection Calendar link blocked: expected ' +
-      (plan.calendarIds || []).length + ' Calendar copies, found ' + copies.length + '.'
-    );
-  }
+  const missingCalendarCopies = (plan.calendarIds || []).filter(function(calendarId) {
+    return !copies.some(function(copy) {
+      return tmv3_clean_(copy.calendarId) === tmv3_clean_(calendarId);
+    });
+  });
 
+  // PreInspection may legitimately exist on only one configured source
+  // Calendar. Patch every copy that actually exists and verify it. Missing
+  // mirror copies are reported as attention, but must not block the Task link
+  // from being written back to the real appointment.
   const results = [];
   copies.forEach(function(copy) {
     const before = String(copy.event.getDescription() || '');
@@ -1312,7 +1312,11 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     vertical: eventRecord.vertical,
     eventId: plan.eventId,
     copies: results,
-    links: plan.links
+    links: plan.links,
+    missingCalendarCopies: missingCalendarCopies,
+    attention: missingCalendarCopies.length
+      ? 'Some configured Calendar copies were not present; existing copies were updated and verified.'
+      : ''
   };
 }
 
