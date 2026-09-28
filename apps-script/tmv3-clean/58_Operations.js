@@ -1604,7 +1604,7 @@ function tmv3_findRecreateSourceTask_(bundle) {
   const resolved = bundle.resolved;
   const vertical = bundle.eventRecord.vertical;
   const cfg = TMV3.VERTICALS[vertical];
-  const candidates = [];
+  let candidates = [];
 
   (bundle.refs.tasks || []).forEach(function(task) {
     if (!tmv3_taskFitsVertical_(task, vertical, cfg)) return;
@@ -1627,6 +1627,27 @@ function tmv3_findRecreateSourceTask_(bundle) {
       candidates.push(task);
     }
   });
+
+  // PreInspection tasks are intentionally resolved on demand and are not
+  // guaranteed to exist in the shared Source Tasks cache. For RECREATE, use
+  // the same Customer-scoped Type 105 search as Step 5 so completed history
+  // can be proven without weakening the duplicate guard.
+  if (vertical === 'PreInspection' && candidates.length === 0) {
+    const customer = tmv3_customerFromRefs_(bundle.refs, resolved.customerId);
+    if (!customer) {
+      throw new Error(
+        'RECREATE requires verified PreInspection Customer before history lookup.'
+      );
+    }
+
+    candidates = tmv3_searchPreInspectionTasks_(customer).filter(function(task) {
+      return (
+        tmv3_taskIsCompleted_(task['Status']) &&
+        String(task['Customer ID'] || '') === String(resolved.customerId || '') &&
+        String(task['Location ID'] || '') === String(resolved.locationId || '')
+      );
+    });
+  }
 
   if (candidates.length !== 1) {
     throw new Error(
