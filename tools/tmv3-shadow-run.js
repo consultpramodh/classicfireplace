@@ -239,6 +239,20 @@ function buildTemporaryRunner(pre, token) {
         );
         if (patched !== source) canaryModePatchCount++;
         source = patched;
+
+        // Explicit test-write runs may borrow a small, bounded slice of the
+        // reserved Striven API capacity. This only exists in the temporary
+        // canary source and is restored immediately after execution.
+        const testSoftLimit = Number(RELEASE_MANIFEST.testWriteApiSoftLimit || 0);
+        if (
+          testSoftLimit > 1200 &&
+          testSoftLimit <= 1500
+        ) {
+          source = source.replace(
+            'v3DailySoftLimit: 1200,',
+            'v3DailySoftLimit: ' + testSoftLimit + ','
+          );
+        }
       }
 
       return {
