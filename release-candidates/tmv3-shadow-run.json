@@ -3,7 +3,7 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "LIVE_HARDENING_REGRESSION",
+  "runMode": "MAP_ONLY",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "LIVE_HARDENING_READ_ONLY_REGRESSION",
+  "requestTag": "LIVE_HARDENING_MAP_ONLY_VERIFY",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
