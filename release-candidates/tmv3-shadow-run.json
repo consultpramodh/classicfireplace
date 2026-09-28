@@ -9,10 +9,10 @@
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "6thvbtf65kfoe397mpoj80lpms@google.com",
+  "eventId": "1kvnstldjo16hj97sss08v3668@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "SEP30_NICO_PREINSPECTION_WRITE_API_HEADROOM",
+  "requestTag": "SEP30_MONICA_PREINSPECTION_WRITE",
   "allowedDate": "2026-09-30",
   "testWriteApiSoftLimit": 1300
 }
