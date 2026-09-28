@@ -728,6 +728,55 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7EventWrite') {
+      var writeVertical = String(body.vertical || '');
+      var writeEventId = String(body.eventId || '');
+      var writeTaskId = Number(body.taskId || 0);
+      var writePreviousPlan = tmv3_step7PublishedPlan_(
+        writeVertical,
+        writeEventId,
+        writeTaskId
+      );
+      var writeContract = tmv3_step7FreshExecutionContract_(
+        writeVertical,
+        writeEventId,
+        writeTaskId
+      );
+
+      // Field 854 is technician-owned. Never include automation Field 854
+      // writes in this guarded event execution, even if the live source still
+      // exposes the legacy action.
+      if (
+        writeVertical === 'PreInspection' &&
+        Array.isArray(writeContract.actions)
+      ) {
+        writeContract.actions = writeContract.actions.filter(function(action) {
+          return String(action || '') !== 'PATCH_FIELD854';
+        });
+      }
+
+      var writeResult = tmv3_executeFreshStep7Selection_(
+        {
+          previousPlan:writePreviousPlan,
+          contract:writeContract
+        },
+        'MANUAL',
+        'ALL'
+      );
+
+      return TMPV3_shadowResponse_({
+        ok:
+          writeResult &&
+          (
+            writeResult.status === 'CREATED_VERIFIED_AND_CONVERGED' ||
+            writeResult.status === 'VERIFIED_CONVERGENCE' ||
+            writeResult.status === 'CANARY_VERIFIED_NO_CHANGE'
+          ),
+        status:'STEP7_EVENT_WRITE_COMPLETE',
+        result:writeResult
+      });
+    }
+
     if (body.action === 'step7Canary') {
       var canary = tmv3_executeVerifiedStep7ExistingPlan(
         String(body.vertical || ''),
@@ -1188,6 +1237,7 @@ async function main() {
       (
         RUN_MODE.indexOf('CANARY_') !== 0 ||
         RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+      RUN_MODE === 'CANARY_EVENT_WRITE' ||
         RUN_MODE === 'CANARY_STEP7'
       ) &&
       RELEASE_MANIFEST.forceVersionedDeployment !== true
@@ -1392,6 +1442,8 @@ async function main() {
                       ? 'step7CanaryPreview'
                     : RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
                       ? 'step7AssignmentCanary'
+                    : RUN_MODE === 'CANARY_EVENT_WRITE'
+                      ? 'step7EventWrite'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
                     : RUN_MODE === 'SHEET_PUBLISH'
@@ -1424,7 +1476,8 @@ async function main() {
           (
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
-            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE'
           )
             ? String(RELEASE_MANIFEST.vertical || '')
           : (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
@@ -1458,7 +1511,8 @@ async function main() {
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
-            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE'
           )
             ? Number(RELEASE_MANIFEST.taskId || 0) :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
@@ -1473,7 +1527,8 @@ async function main() {
             RUN_MODE === 'CANARY_ROCCO' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
             RUN_MODE === 'CANARY_STEP7' ||
-            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
+            RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+            RUN_MODE === 'CANARY_EVENT_WRITE'
           )
             ? String(RELEASE_MANIFEST.expectedPlan || 'NO_CHANGE')
             : ''
