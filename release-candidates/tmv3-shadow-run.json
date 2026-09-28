@@ -3,7 +3,7 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
-  "runMode": "DIRECT_STEP7_CANARY",
+  "runMode": "CANARY_STEP7",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
