@@ -135,6 +135,24 @@ A violation throws before the Task POST.
 - Bound project remains `SHADOW_READ_ONLY`
 - Evidence file: `test-evidence/2026-09-29-tmv3-hard-rules-r1.md`
 
+## 3.11.26 PreInspection C# title standard — VERIFIED
+
+- Canonical PreInspection Calendar prefix changed from `Cust#` to `C#`.
+- Canonical format: `C#<Customer Number> - <Customer Name> - <Phone>`.
+- Legacy `Cust#` remains parse-compatible.
+- Hard-rule revision: `2026-09-29-r2`.
+- Pure regression: **50/50 PASS**.
+- PR: #89.
+- Merge commit: `6fd144699cb531735ad230a985d361f7821d24e0`.
+- Guarded bootstrap run: `36624855596` — **SUCCESS**.
+- PRE source parity verified before push.
+- Bound Apps Script remote parity: **22/22 files**.
+- Jane Bisset live Calendar read-back verified:
+  - title: `C#62638 - Jane & Neil Bisset - (416) 399-6519`
+  - original intake title preserved in Calendar description
+  - existing note `Wants G4 if possible` preserved
+- Evidence: `test-evidence/2026-09-29-tmv3-preinspection-c-prefix-r1.md`.
+
 ## Jane Bisset canary state
 
 Event: `2g1s53ho1qf09d19vsep0p3v0h@google.com`
