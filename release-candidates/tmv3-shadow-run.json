@@ -3,7 +3,7 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
-  "runMode": "DIRECT_STEP7_CANARY",
+  "runMode": "CANARY_STEP7",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "1v3369lidrmua17esmv4gcpeo9@google.com",
   "taskId": 18574,
   "expectedPlan": "PATCH_CALENDAR_TITLE_AND_TASK_NAME",
-  "requestTag": "JANA_CHRIS_BARFIELD_SINGLE_EVENT_STEP7_CANARY_20260929",
+  "requestTag": "JANA_CHRIS_BARFIELD_WEBAPP_CANARY_20260929",
   "allowedDate": "2026-10-29",
   "testWriteApiSoftLimit": 1200
 }
