@@ -1,0 +1,143 @@
+{
+  "vendor": "Valor Fireplaces",
+  "sourcePriceList": {
+    "name": "VALOR-CAN-AUG26.pdf",
+    "effectiveDate": "2026-02-18",
+    "revisionDate": "2026-08-21",
+    "currency": "CAD"
+  },
+  "purpose": "10-fireplace image pilot for Striven item image mapping",
+  "imagePolicy": "Use official Valor-hosted representative fireplace images. These are configured fireplace photos, not bare-engine pack shots. Do not infer component-level image ownership from a configured fireplace photo.",
+  "items": [
+    {
+      "itemNumber": "200AN",
+      "pairedFuelItemNumber": "200AP",
+      "name": "P2 Gas Fireplace - NG Engine",
+      "series": "P2",
+      "gasType": "NG",
+      "msrpCad": 3675,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/p2.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/p2/p2-rcb-lsk.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "Traditional Logs + Reflective Glass Liner",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "530VN",
+      "pairedFuelItemNumber": "530VP",
+      "name": "Portrait Zero-Clearance Gas Fireplace - NG Engine",
+      "series": "Portrait",
+      "gasType": "NG",
+      "msrpCad": 2986,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/portrait.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/portrait/536-LSK.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "President ZC Front / configured Portrait fireplace",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "534VN",
+      "pairedFuelItemNumber": "534VP",
+      "name": "Horizon Gas Fireplace - NG V-Class Engine",
+      "series": "Horizon",
+      "gasType": "NG",
+      "msrpCad": 3323,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/horizon.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/horizon/setting-clearview-vrl.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "Traditional Logs + Red Brick Liner + Clearview Front",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "1000MN",
+      "pairedFuelItemNumber": "1000MP",
+      "name": "H3 Gas Fireplace - NG Engine",
+      "series": "H3",
+      "gasType": "NG",
+      "msrpCad": 4012,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/h3.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/installs/h3/birch-heatshift.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "1000BLKV2 + 1060PBL + 1041FSV; shown with Valor HeatShift",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "1100MN",
+      "pairedFuelItemNumber": "1100MP",
+      "name": "H5 Gas Fireplace - NG Engine",
+      "series": "H5",
+      "gasType": "NG",
+      "msrpCad": 4991,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/h5.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/h5/h5-gbl-setting.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "1100BLK + 1185GBL + 1184ECPW",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "1400MN",
+      "pairedFuelItemNumber": "1400MP",
+      "name": "H6 Gas Fireplace - NG Engine",
+      "series": "H6",
+      "gasType": "NG",
+      "msrpCad": 6503,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/h6.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/h6/h6-gbl-setting.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "1400BLK + 1485GBL",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "1500KN",
+      "pairedFuelItemNumber": "1500KP",
+      "name": "L1 Linear Gas Fireplace - NG Engine",
+      "series": "L1",
+      "gasType": "NG",
+      "msrpCad": 5512,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/linear-fireplaces/l1.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l1/birchv2-rgl-cik.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "1505BLKV2 + 1525RGL + 1530CIK",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "1600KN",
+      "pairedFuelItemNumber": "1600KP",
+      "name": "L1 See-Thru Linear Gas Fireplace - NG Engine",
+      "series": "L1 See-Thru",
+      "gasType": "NG",
+      "msrpCad": 6775,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/linear-fireplaces/l1-seethru.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l1-2sided/birchv2-rgl.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "1505BLKV2 + 1525RGL + 1530CIK",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "1700KN",
+      "pairedFuelItemNumber": "1700KP",
+      "name": "L2 Linear Gas Fireplace - NG Engine",
+      "series": "L2",
+      "gasType": "NG",
+      "msrpCad": 6709,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/linear-fireplaces/l2.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/l2-linear/setting-birch-v2.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "1705BLKV2 + 1725RGL + 1730CIK",
+      "sourceStatus": "official-valor"
+    },
+    {
+      "itemNumber": "1800KN",
+      "pairedFuelItemNumber": "1800KP",
+      "name": "L3 Linear Gas Fireplace - NG Engine",
+      "series": "L3",
+      "gasType": "NG",
+      "msrpCad": 7390,
+      "productPage": "https://www.valorfireplaces.com/gas-fireplaces/linear-fireplaces/l3.php",
+      "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l3/birch-rgl-inch.jpg",
+      "imageRole": "representative-configured-fireplace",
+      "websiteConfiguration": "1800BLK + 1825RGL + 1875LFB",
+      "sourceStatus": "official-valor"
+    }
+  ]
+}
