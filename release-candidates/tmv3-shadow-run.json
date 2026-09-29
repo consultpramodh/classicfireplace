@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_26_PREINSPECTION_C_PREFIX_R1",
+  "release": "TMV3_3_11_27_TRIGGER_INSTALL_SAFETY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_SAFE_RESET_AFTER_JANE_E2E_CANARY_20260929",
+  "requestTag": "TMV3_TRIGGER_INVENTORY_AFTER_SAFETY_PATCH_20260929",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
