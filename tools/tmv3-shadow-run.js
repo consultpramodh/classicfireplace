@@ -579,6 +579,35 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'triggerInventory') {
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'TRIGGER_INVENTORY_COMPLETE',
+        result:{
+          triggers:tmv3_listTriggers(),
+          watchedCalendarIds:
+            typeof tmv3_step1CalendarIds_ === 'function'
+              ? tmv3_step1CalendarIds_()
+              : []
+        }
+      });
+    }
+
+    if (body.action === 'installManagedTriggers') {
+      var installed = tmv3_installTriggers();
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'MANAGED_TRIGGERS_INSTALL_COMPLETE',
+        result:{
+          triggers:installed,
+          watchedCalendarIds:
+            typeof tmv3_step1CalendarIds_ === 'function'
+              ? tmv3_step1CalendarIds_()
+              : []
+        }
+      });
+    }
+
     if (body.action === 'titlePreview') {
       var titlePreview = tmv3_previewTitleNormalizationForEvent(
         String(body.vertical || ''),
@@ -1738,6 +1767,8 @@ async function main() {
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+      RUN_MODE === 'TRIGGER_INVENTORY' ||
+      RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
       RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
@@ -1763,7 +1794,11 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
-                    : RUN_MODE === 'PREVIEW_TITLE'
+                    : RUN_MODE === 'TRIGGER_INVENTORY'
+                    ? 'triggerInventory'
+                  : RUN_MODE === 'INSTALL_MANAGED_TRIGGERS'
+                    ? 'installManagedTriggers'
+                  : RUN_MODE === 'PREVIEW_TITLE'
                       ? 'titlePreview'
                     : RUN_MODE === 'CANARY_TITLE'
                       ? 'titleCanary'
@@ -1927,6 +1962,10 @@ async function main() {
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                       : RUN_MODE === 'STEP6'
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                        : RUN_MODE === 'TRIGGER_INVENTORY'
+                          ? 'V3_TRIGGER_INVENTORY_VERIFIED'
+                        : RUN_MODE === 'INSTALL_MANAGED_TRIGGERS'
+                          ? 'V3_MANAGED_TRIGGERS_INSTALL_VERIFIED'
                         : RUN_MODE.indexOf('PREVIEW_') === 0
                           ? 'V3_' + RUN_MODE + '_VERIFIED'
                         : RUN_MODE.indexOf('CANARY_') === 0
