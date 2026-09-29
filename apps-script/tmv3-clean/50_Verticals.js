@@ -71,16 +71,9 @@ function tmv3_taskNameNormalizationStatusAllowed_(status) {
 function tmv3_titleLocationDisplay_(location) {
   if (!location) return '';
 
-  if (typeof tmv3_step4LocationDisplay_ === 'function') {
-    return tmv3_clean_(tmv3_step4LocationDisplay_(location));
-  }
-
   return [
     location['Address 1'],
-    location['Address 2'],
-    location['City'],
-    location['Province'],
-    location['Postal Code']
+    location['City']
   ].map(tmv3_clean_).filter(Boolean).join(', ');
 }
 
