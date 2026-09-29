@@ -1357,6 +1357,16 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
       throw new Error('Calendar description preservation read-back mismatch on ' + calendarId + '.');
     }
 
+    if (plan.titleChange || plan.descriptionChange) {
+      tmv3_recordTitleMigrationState_(
+        eventRecord.vertical,
+        contract.eventId,
+        calendarId,
+        plan.currentTitle,
+        desired
+      );
+    }
+
     results.push({
       calendarId:calendarId,
       status:
