@@ -638,7 +638,7 @@ function tmv3_extractCustomerNumberForVertical_(vertical, text) {
   const s = tmv3_clean_(text);
 
   const labelled = s.match(
-    /(?:Customer|Cust(?:omer)?\s*#?)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{3,8})/i
+    /(?:Customer|Cust(?:omer)?\s*#?|C\s*#)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{3,8})/i
   );
 
   if (labelled) return labelled[1];
@@ -757,10 +757,16 @@ function tmv3_preInspectionCalendarCustomerName_(title, customerNumber) {
   );
 
   if (customerNumber) {
-    value = value.replace(
-      new RegExp('(^|\\s)#?' + String(customerNumber).replace(/[^0-9]/g, '') + '(?=\\s|[-–—:]|$)', 'g'),
-      ' '
-    );
+    const digits = String(customerNumber).replace(/[^0-9]/g, '');
+    value = value
+      .replace(
+        new RegExp('(^|\\s)(?:C|Cust(?:omer)?)\\s*#?\\s*' + digits + '(?=\\s|[-–—:]|$)', 'ig'),
+        ' '
+      )
+      .replace(
+        new RegExp('(^|\\s)#?' + digits + '(?=\\s|[-–—:]|$)', 'g'),
+        ' '
+      );
   }
 
   return value
@@ -844,7 +850,7 @@ function tmv3_extractOrderNumber_(text) {
 function tmv3_extractCustomerNumber_(text) {
   const s = tmv3_clean_(text);
   const m = s.match(
-    /(?:Customer|Cust(?:omer)?\s*#?)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{3,8})/i
+    /(?:Customer|Cust(?:omer)?\s*#?|C\s*#)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{3,8})/i
   );
 
   if (m) return m[1];

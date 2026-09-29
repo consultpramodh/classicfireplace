@@ -10,8 +10,8 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.25-hard-rules-r1`
-- Hard-rule version: `2026-09-29-r1`
+- V3 version: `3.11.26-preinspection-c-prefix-r1`
+- Hard-rule version: `2026-09-29-r2`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
@@ -89,6 +89,7 @@ V3 remains consolidated under the existing module set. **Do not add Step 8/9/10 
 - Technician-completed fields are not prefilled.
 - Default assignment is **Pool 8 — Pre-Inspection Pool**.
 - Calendar organizer/creator resolves **Requested By** and is not automatically Assigned To.
+- Canonical PreInspection Calendar title uses `C#<Customer Number> - <Customer Name> - <Phone>`; legacy `Cust#` remains parse-compatible.
 - Primary/shared and Stephen secondary Calendar handling remains supported.
 - Managed links/titles are verified on the actual required Calendar copies.
 
@@ -145,7 +146,7 @@ Resolved evidence before the hard-rule correction:
 - Contact: `56537`
 - Step 6: `CREATE_TASK`
 - no open Task found
-- canonical Calendar title: `Cust#62638 - Jane & Neil Bisset - (416) 399-6519`
+- canonical Calendar title: `C#62638 - Jane & Neil Bisset - (416) 399-6519`
 - canonical Task locality: `16 Brooke Ave, North York`
 
 No Striven Task was created during the previous canary attempt.
@@ -162,7 +163,7 @@ The prior Stage-8 canary was returned to Stage 7 / SHADOW because a Calendar upd
 
 ## Exact next action
 
-**Verify/install the managed V3 triggers in the bound Apps Script project, then rerun Jane Bisset as the single PreInspection CREATE canary under the 3.11.25 hard-rule contract.**
+**Verify/install the managed V3 triggers in the bound Apps Script project, then rerun Jane Bisset as the single PreInspection CREATE canary under the 3.11.26 hard-rule contract.**
 
 The canary must prove:
 

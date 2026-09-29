@@ -274,7 +274,7 @@ function tmv3_desiredCalendarTitle_(record) {
     return {
       status:'READY',
       value:[
-        'Cust#' + context.customerNumber,
+        TMV3_HARD_RULES.PreInspection.calendarTitlePrefix + context.customerNumber,
         context.customerName,
         context.phone
       ].join(' - '),
