@@ -1,0 +1,50 @@
+name: Valor Striven API Help Probe
+
+on:
+  push:
+    branches:
+      - work/valor-image-pilot-10
+    paths:
+      - 'vendor-catalog/valor/pilot-10/striven-help-probe.js'
+      - '.github/workflows/valor-striven-api-help-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: valor-striven-api-help-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: work/valor-image-pilot-10
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate probe
+        run: node --check vendor-catalog/valor/pilot-10/striven-help-probe.js
+
+      - name: Run temporary Striven help probe
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node vendor-catalog/valor/pilot-10/striven-help-probe.js
+
+      - name: Preserve probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: valor-striven-api-help-probe-${{ github.run_id }}
+          path: valor-striven-api-probe/
+          if-no-files-found: warn
+          retention-days: 7
