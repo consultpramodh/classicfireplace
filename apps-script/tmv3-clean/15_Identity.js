@@ -12,6 +12,23 @@
  * - Customer-owned Location / Contact relationships are mandatory.
  ************************************************************/
 
+
+function tmv3_identityDescriptionForRecord_(record) {
+  record = record || {};
+
+  if (record.identityDescriptionClean !== undefined) {
+    return tmv3_clean_(record.identityDescriptionClean);
+  }
+
+  if (record.descriptionClean !== undefined) {
+    return tmv3_clean_(record.descriptionClean);
+  }
+
+  return tmv3_calendarReadableDescription_(
+    record.description || ''
+  );
+}
+
 function tmv3_identityIndex_(refs) {
   const out = {
     contactsByCustomer: {},
@@ -212,7 +229,7 @@ function tmv3_resolveIdentity_(eventRecord, cfg, refs, order) {
     if (ownerIds.length === 1 && refs.customerById[ownerIds[0]]) {
       const candidateCustomer = refs.customerById[ownerIds[0]];
       const nameCheck = tmv3_nameCorroboratesCustomer_(
-        eventRecord.title + ' ' + eventRecord.description,
+        eventRecord.title + ' ' + tmv3_identityDescriptionForRecord_(eventRecord),
         candidateCustomer['Name']
       );
 
@@ -409,10 +426,10 @@ function tmv3_resolveOwnedContact_(customer, preferredContactId, eventRecord, ix
   }
 
   const emails = tmv3_extractEmails_(
-    eventRecord.title + ' ' + eventRecord.description
+    eventRecord.title + ' ' + tmv3_identityDescriptionForRecord_(eventRecord)
   );
   const phones = tmv3_allPhones_(
-    eventRecord.title + ' ' + eventRecord.description + ' ' + eventRecord.location
+    eventRecord.title + ' ' + tmv3_identityDescriptionForRecord_(eventRecord) + ' ' + eventRecord.location
   );
 
   let candidates = owned.filter(function(r) {
@@ -575,7 +592,7 @@ function tmv3_nameCorroboratesCustomer_(haystack, customerName) {
 
 function tmv3_phoneCorroboratesCustomer_(eventRecord, customer, ix) {
   const phones = tmv3_allPhones_(
-    eventRecord.title + ' ' + eventRecord.description + ' ' + eventRecord.location
+    eventRecord.title + ' ' + tmv3_identityDescriptionForRecord_(eventRecord) + ' ' + eventRecord.location
   );
 
   if (!phones.length) return false;
