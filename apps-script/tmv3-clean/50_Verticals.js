@@ -24,7 +24,7 @@ function tmv3_desiredAssignment_(eventRecord) {
   // assignment names must be explicit in the Calendar event TITLE.
   // Description/notes are narrative context and must never create an
   // assignment instruction (for example, "Let SF know the results").
-  const title = tmv3_norm_(eventRecord.title);
+  const title = tmv3_norm_(eventRecord.assignmentSourceTitle || eventRecord.title);
 
   const ids = [];
 
