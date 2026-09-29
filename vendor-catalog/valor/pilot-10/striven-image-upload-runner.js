@@ -219,8 +219,7 @@ function TMP_Valor_uploadOne_(token, cfg) {
 
   if (existing) {
     var existingIsDefault = (existing.IsDefault === true || existing.isDefault === true);
-    var anyDefault = beforeData.some(function(img){ return (img.IsDefault === true || img.isDefault === true); });
-    if (!existingIsDefault && !anyDefault) {
+    if (!existingIsDefault) {
       var existingId = existing.Id || existing.id || 0;
       var setDefault = UrlFetchApp.fetch(
         'https://api.striven.com/v1/items/' + cfg.id + '/images/' + existingId + '/set-default',
