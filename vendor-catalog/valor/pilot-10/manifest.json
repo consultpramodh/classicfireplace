@@ -20,7 +20,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/p2/p2-rcb-lsk.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "Traditional Logs + Reflective Glass Liner",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 39799,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 1558,
+        "name": "(200AN) P2 Gas Fireplace Engine - NG",
+        "category": "Hearth - Gas - Insert",
+        "cost": 2205,
+        "price": 3675,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/39799",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/39799/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "530VN",
@@ -33,7 +50,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/portrait/536-LSK.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "President ZC Front / configured Portrait fireplace",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 42895,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 3274,
+        "name": "Portrait ZC Engine - NG (530VN)",
+        "category": "Hearth - Gas - Zero Clearance",
+        "cost": 1791.6,
+        "price": 2986,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/42895",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/42895/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "534VN",
@@ -46,7 +80,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/horizon/setting-clearview-vrl.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "Traditional Logs + Red Brick Liner + Clearview Front",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 41479,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 3300,
+        "name": "534 Horizon - NG - V-Class Engine (with 817VAK included) (534VN)",
+        "category": "Hearth - Gas - Zero Clearance",
+        "cost": 1993.8,
+        "price": 3323,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/41479",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/41479/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "1000MN",
@@ -59,7 +110,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/installs/h3/birch-heatshift.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "1000BLKV2 + 1060PBL + 1041FSV; shown with Valor HeatShift",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 41622,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 66,
+        "name": "H3 ZC Fireplace - NG - HeatShift Compatible w/ Valor 10 Remote (1000MN)",
+        "category": "Hearth - Gas - Insert",
+        "cost": 2407.2,
+        "price": 4012,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/41622",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/41622/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "1100MN",
@@ -72,7 +140,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/h5/h5-gbl-setting.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "1100BLK + 1185GBL + 1184ECPW",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 37548,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 313,
+        "name": "H5 ZC Engine - NG - HeatShift Compatible (1100MN)",
+        "category": "Hearth - Gas - Insert",
+        "cost": 2994.6,
+        "price": 4991,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/37548",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/37548/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "1400MN",
@@ -85,7 +170,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/h6/h6-gbl-setting.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "1400BLK + 1485GBL",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 36083,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 1103,
+        "name": "H6 ZC Engine - NG - HeatShift Compatible (1400MN)",
+        "category": "Hearth - Gas - Insert",
+        "cost": 3901.8,
+        "price": 6503,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/36083",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/36083/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "1500KN",
@@ -98,7 +200,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l1/birchv2-rgl-cik.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "1505BLKV2 + 1525RGL + 1530CIK",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 36045,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 1142,
+        "name": "L1 Linear Engine - NG - HeatShift Compatible (1500KN)",
+        "category": "Hearth - Gas - Insert",
+        "cost": 3307.2,
+        "price": 5512,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/36045",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/36045/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "1600KN",
@@ -111,7 +230,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l1-2sided/birchv2-rgl.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "1505BLKV2 + 1525RGL + 1530CIK",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 24098,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 1458,
+        "name": "L1 See-Thru Engine - NG - HeatShift Compatible (1600KN)",
+        "category": "Hearth - Gas - Insert",
+        "cost": 4065,
+        "price": 6775,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/24098",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/24098/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "1700KN",
@@ -124,7 +260,24 @@
       "imageUrl": "https://www.valorfireplaces.com/media/responsive/fireplaces/l2-linear/setting-birch-v2.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "1705BLKV2 + 1725RGL + 1730CIK",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 24111,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 1474,
+        "name": "L2 Linear Engine - NG - HeatShift Compatible (1700KN)",
+        "category": "Hearth - Gas - Insert",
+        "cost": 4025.4,
+        "price": 6709,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/24111",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/24111/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     },
     {
       "itemNumber": "1800KN",
@@ -137,7 +290,29 @@
       "imageUrl": "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l3/birch-rgl-inch.jpg",
       "imageRole": "representative-configured-fireplace",
       "websiteConfiguration": "1800BLK + 1825RGL + 1875LFB",
-      "sourceStatus": "official-valor"
+      "sourceStatus": "official-valor",
+      "striven": {
+        "itemId": 36046,
+        "baselineSource": "Striven Central Data Hub / DATA_ITEMS",
+        "baselineRow": 1507,
+        "name": "L3 Linear Engine - NG - HeatShift Compatible (1800KN)",
+        "category": "Hearth - Gas - Insert",
+        "cost": 4434,
+        "price": 7390,
+        "itemType": "Inventory",
+        "preferredVendor": "VALOR - Miles Industries Ltd.",
+        "manufacturer": "VALOR - Miles Industries Ltd.",
+        "locationName": "60 - WAREHOUSE (Ajax)",
+        "liveItemEndpoint": "https://api.striven.com/v1/items/36046",
+        "liveImagesEndpoint": "https://api.striven.com/v1/items/36046/images",
+        "liveDetailsStatus": "PENDING_DIRECT_API_READ",
+        "liveImagesStatus": "PENDING_DIRECT_API_READ"
+      }
     }
-  ]
+  ],
+  "strivenSource": {
+    "spreadsheetId": "13OKw69We9tsIWzEQwNOl4aAHh11qrsICSOt781O2upU",
+    "sheet": "DATA_ITEMS",
+    "note": "Used only to resolve current Striven Item IDs and cached baseline fields before live /v1/items/{id} collection."
+  }
 }
