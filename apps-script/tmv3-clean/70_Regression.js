@@ -1231,6 +1231,18 @@ function tmv3_titleNormalizationRegression() {
     installTask.value
   );
 
+  const fullAddressLocation = {
+    'Address 1':
+      '119 Glenmount Park Rd, Old Toronto, Toronto, ON M4E 2N3, CANADA',
+    'City':''
+  };
+  check(
+    'TASK_NAME_FULL_ADDRESS_ROW_NORMALIZES_TO_STREET_CITY',
+    tmv3_titleLocationDisplay_(fullAddressLocation) ===
+      '119 Glenmount Park Rd, Toronto',
+    tmv3_titleLocationDisplay_(fullAddressLocation)
+  );
+
   const missingOrder = baseRecord('Install');
   missingOrder.step3.anchor.orderNumber = '';
   missingOrder.orderNumber = '';

@@ -71,10 +71,48 @@ function tmv3_taskNameNormalizationStatusAllowed_(status) {
 function tmv3_titleLocationDisplay_(location) {
   if (!location) return '';
 
-  return [
-    location['Address 1'],
-    location['City']
-  ].map(tmv3_clean_).filter(Boolean).join(', ');
+  const rawAddress = tmv3_clean_(location['Address 1']);
+  const structuredCity = tmv3_clean_(location['City']);
+
+  if (!rawAddress) return structuredCity;
+
+  const parts = rawAddress
+    .split(',')
+    .map(tmv3_clean_)
+    .filter(Boolean);
+
+  const street = parts.length ? parts[0] : rawAddress;
+  let city = structuredCity;
+
+  // Some Striven Location report rows put the complete Canadian address
+  // into Address 1 and leave City blank. In that shape, use the locality
+  // immediately before the province/postal segment. Example:
+  // "119 Glenmount Park Rd, Old Toronto, Toronto, ON M4E 2N3, CANADA"
+  // -> "119 Glenmount Park Rd, Toronto".
+  if (!city && parts.length > 1) {
+    let provinceIndex = -1;
+
+    for (let i = 1; i < parts.length; i++) {
+      if (
+        /^(?:ON|QC|BC|AB|MB|SK|NS|NB|NL|PE|NT|NU|YT)\b/i.test(parts[i]) ||
+        /\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/i.test(parts[i])
+      ) {
+        provinceIndex = i;
+        break;
+      }
+    }
+
+    if (provinceIndex > 1) {
+      city = parts[provinceIndex - 1];
+    } else if (parts.length === 2) {
+      city = parts[1];
+    }
+  }
+
+  return [street, city]
+    .map(tmv3_clean_)
+    .filter(Boolean)
+    .join(', ');
 }
 
 function tmv3_verifiedTitleContext_(record) {
