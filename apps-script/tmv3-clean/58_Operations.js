@@ -621,7 +621,11 @@ function tmv3_step7ActionsForMode_(contract, mode) {
     ],
     ASSIGNEE:[TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS],
     LINKS:[TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS],
-    FIELD854:[TMV3_STEP7_ACTION.PATCH_FIELD854]
+    FIELD854:[TMV3_STEP7_ACTION.PATCH_FIELD854],
+    TITLE:[
+      TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE,
+      TMV3_STEP7_ACTION.PATCH_TASK_NAME
+    ]
   };
 
   if (mode === 'ALL') return actions;
@@ -3241,6 +3245,8 @@ function tmv3_executeExistingTaskSync_(
   let assignment = null;
   let calendarLinks = null;
   let field854 = null;
+  let calendarTitle = null;
+  let taskName = null;
 
   const relationshipActions = [
     TMV3_STEP7_ACTION.PATCH_LOCATION,
@@ -3306,6 +3312,76 @@ function tmv3_executeExistingTaskSync_(
     );
   }
 
+  // Title mutation is intentionally last among existing-record mutations.
+  // Within the title pair, Calendar is always written and verified first,
+  // then the canonical OPEN Task Name is patched independently.
+  if (
+    actions.indexOf(
+      TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE
+    ) !== -1
+  ) {
+    calendarTitle = tmv3_operationNormalizeCalendarTitle_(
+      bundle,
+      contract,
+      scope
+    );
+  }
+
+  if (
+    actions.indexOf(
+      TMV3_STEP7_ACTION.PATCH_TASK_NAME
+    ) !== -1
+  ) {
+    try {
+      taskName = tmv3_operationNormalizeTaskName_(
+        taskId,
+        contract.desiredTaskName,
+        contract,
+        scope
+      );
+    } catch (err) {
+      const afterFailure = tmv3_step7FreshExecutionContract_(
+        contract.vertical,
+        contract.eventId,
+        taskId
+      );
+
+      const calendarWasWritten = !!(
+        calendarTitle &&
+        (calendarTitle.copies || []).some(function(copy) {
+          return copy && copy.writePerformed === true;
+        })
+      );
+
+      const partial = {
+        status:
+          calendarWasWritten
+            ? 'PARTIAL_RECONCILIATION_REQUIRED'
+            : 'TASK_NAME_WRITE_FAILED_NO_CALENDAR_MUTATION',
+        vertical:contract.vertical,
+        eventId:contract.eventId,
+        taskId:taskId,
+        failedAction:TMV3_STEP7_ACTION.PATCH_TASK_NAME,
+        error:String(err && err.message || err),
+        calendarTitle:calendarTitle,
+        freshPlan:afterFailure.plan,
+        freshActions:(afterFailure.actions || []).slice(),
+        readback:afterFailure
+      };
+
+      tmv3_audit_(
+        contract.vertical,
+        contract.eventId,
+        taskId,
+        'STEP7_TITLE',
+        calendarWasWritten ? 'PARTIAL' : 'ATTENTION',
+        JSON.stringify(partial)
+      );
+
+      return partial;
+    }
+  }
+
   const after = tmv3_step7FreshExecutionContract_(
     contract.vertical,
     contract.eventId,
@@ -3313,6 +3389,13 @@ function tmv3_executeExistingTaskSync_(
   );
 
   const fullExecution = (mode || 'ALL') === 'ALL';
+  const titleExecution = (mode || 'ALL') === 'TITLE';
+  const titleActionsRemaining = (after.actions || []).filter(function(action) {
+    return [
+      TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE,
+      TMV3_STEP7_ACTION.PATCH_TASK_NAME
+    ].indexOf(action) !== -1;
+  });
 
   if (
     fullExecution &&
@@ -3340,6 +3423,39 @@ function tmv3_executeExistingTaskSync_(
     );
   }
 
+  if (
+    titleExecution &&
+    (
+      titleActionsRemaining.length ||
+      tmv3_clean_(after.calendarTitleBlocker) ||
+      tmv3_clean_(after.taskNameBlocker)
+    )
+  ) {
+    const detail = {
+      expectedTerminalTitleActions:[],
+      freshPlan:after.plan,
+      remainingTitleActions:titleActionsRemaining,
+      calendarTitleCheck:after.calendarTitleCheck || '',
+      taskNameCheck:after.taskNameCheck || '',
+      calendarTitleBlocker:after.calendarTitleBlocker || '',
+      taskNameBlocker:after.taskNameBlocker || ''
+    };
+
+    tmv3_audit_(
+      contract.vertical,
+      contract.eventId,
+      taskId,
+      'STEP7_TITLE',
+      'ATTENTION',
+      JSON.stringify(detail)
+    );
+
+    throw new Error(
+      'Title read-back did not converge; remaining title actions: ' +
+      titleActionsRemaining.join(',') + '.'
+    );
+  }
+
   tmv3_audit_(
     contract.vertical,
     contract.eventId,
@@ -3353,6 +3469,10 @@ function tmv3_executeExistingTaskSync_(
       assignment:assignment && assignment.status,
       field854:field854 && field854.status,
       calendarLinks:calendarLinks && calendarLinks.status,
+      calendarTitle:calendarTitle && calendarTitle.status,
+      taskName:taskName && taskName.status,
+      calendarTitleCheck:after.calendarTitleCheck || '',
+      taskNameCheck:after.taskNameCheck || '',
       readbackPlan:after.plan
     })
   );
@@ -3372,6 +3492,8 @@ function tmv3_executeExistingTaskSync_(
     assignment:assignment,
     field854:field854,
     calendarLinks:calendarLinks,
+    calendarTitle:calendarTitle,
+    taskName:taskName,
     readbackPlan:after
   };
 }
@@ -3430,6 +3552,104 @@ function tmv3_executeVerifiedStep7ExistingPlan(
   );
 }
 
+
+
+function tmv3_previewTitleNormalizationForEvent(
+  vertical,
+  eventId,
+  taskId
+) {
+  const contract = tmv3_step7FreshExecutionContract_(
+    vertical,
+    eventId,
+    taskId
+  );
+
+  const result = {
+    mode:'READ_ONLY',
+    authority:'FRESH_STEP7_CANONICAL_CONTRACT',
+    vertical:contract.vertical,
+    eventId:contract.eventId,
+    taskId:contract.taskId || '',
+    plan:contract.plan,
+    blocker:contract.blocker || '',
+    actions:(contract.actions || []).slice(),
+    titleNormalization:tmv3_titleNormalizationPreview_(contract),
+    manualWritesEnabled:tmv3_operationWritesEnabled_('MANUAL'),
+    automationWritesEnabled:tmv3_operationWritesEnabled_('AUTO')
+  };
+
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+function tmv3_executeVerifiedTitleNormalization(
+  vertical,
+  eventId,
+  taskId,
+  expectedPlan
+) {
+  const expected = tmv3_clean_(expectedPlan);
+  if (!expected) {
+    throw new Error(
+      'Title normalization execution requires the exact plan returned by the prior read-only preview.'
+    );
+  }
+
+  const contract = tmv3_step7FreshExecutionContract_(
+    vertical,
+    eventId,
+    taskId
+  );
+
+  const titleActions = tmv3_step7ActionsForMode_(
+    contract,
+    'TITLE'
+  );
+
+  if (expected !== tmv3_clean_(contract.plan)) {
+    return {
+      status:'PLAN_CHANGED_NO_WRITE',
+      previousPlan:expected,
+      freshPlan:contract.plan,
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      taskId:contract.taskId || ''
+    };
+  }
+
+  if (tmv3_clean_(contract.blocker)) {
+    return {
+      status:'BLOCKED_NO_WRITE',
+      blocker:contract.blocker,
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      taskId:contract.taskId || '',
+      plan:contract.plan
+    };
+  }
+
+  if (!titleActions.length) {
+    return {
+      status:'NO_TITLE_CHANGE_REQUIRED',
+      vertical:contract.vertical,
+      eventId:contract.eventId,
+      taskId:contract.taskId || '',
+      plan:contract.plan,
+      calendarTitleCheck:contract.calendarTitleCheck || '',
+      taskNameCheck:contract.taskNameCheck || ''
+    };
+  }
+
+  return tmv3_executeFreshStep7Selection_(
+    {
+      previousPlan:expected,
+      contract:contract
+    },
+    'MANUAL',
+    'TITLE'
+  );
+}
 
 function tmv3_titleNormalizationPreview_(contract) {
   contract = tmv3_step7ValidateExecutionContract_(contract);
