@@ -1,8 +1,54 @@
-const TMV3_VERSION = '3.11.24-jane-bisset-locality-r1';
+const TMV3_VERSION = '3.11.25-hard-rules-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
+
+const TMV3_HARD_RULES = Object.freeze({
+  version:'2026-09-29-r1',
+  GLOBAL:Object.freeze({
+    ambiguityPolicy:'REVIEW_NO_GUESS',
+    uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
+    mutationVerification:'READ_BACK_REQUIRED',
+    calendarMutationPolicy:'MANAGED_FIELDS_ONLY',
+    newStageFilesPolicy:'DO_NOT_ADD_STEP_8_9_10_FILES'
+  }),
+  Install:Object.freeze({
+    orderRequired:true,
+    orderLabel:'Sales Order',
+    assignmentEvidence:'CALENDAR_TITLE_ONLY',
+    aidenAssignment:'IGNORE',
+    preserveUnrelatedManualEmployees:true
+  }),
+  Delivery:Object.freeze({
+    orderRequired:true,
+    orderLabel:'Sales Order',
+    assignmentEvidence:'CALENDAR_TITLE_ONLY',
+    defaultPoolId:4,
+    preserveUnrelatedManualEmployees:true
+  }),
+  Service:Object.freeze({
+    orderRequired:true,
+    orderLabel:'Work Order',
+    technicianEvidence:'TECHNICIAN_CALENDAR',
+    defaultPoolId:4,
+    removePoolOnlyAfterTechnicianEstablished:true,
+    removeOnlyConflictingKnownServiceTechnicians:true
+  }),
+  PreInspection:Object.freeze({
+    orderRequired:false,
+    attachOrderToTask:false,
+    taskTypeId:105,
+    descriptionPolicy:'BLANK_AT_CREATE',
+    calendarNotesPolicy:'CALENDAR_ONLY',
+    field854Policy:'DO_NOT_MANAGE',
+    infoCustomFieldsAtCreate:'NONE',
+    technicianFieldsPolicy:'DO_NOT_PREFILL',
+    defaultPoolId:8,
+    requestedBySource:'CALENDAR_CREATOR_ORGANIZER_EMPLOYEE',
+    organizerIsAssignee:false
+  })
+});
 
 const TMV3 = Object.freeze({
   MODE: TMV3_MODE,
@@ -150,7 +196,10 @@ const TMV3 = Object.freeze({
       defaultPoolName: 'Pre-Inspection Pool',
       requestedByFromOrganizer: true,
       descriptionMustBeBlankAtCreate: true,
-      field854Policy: 'MANAGED_WRITE_PRESERVE_OTHER_FIELDS',
+      calendarNotesPolicy: 'CALENDAR_ONLY',
+      field854Policy: 'DO_NOT_MANAGE',
+      infoCustomFieldsAtCreate: 'NONE',
+      technicianFieldsPrefill: false,
       knownInspectors: [
         { employeeId: 15, name: 'Stephen Foley', patterns: ['stephen', 'stephen foley'] }
       ]
