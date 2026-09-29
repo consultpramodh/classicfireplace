@@ -1505,7 +1505,7 @@ function tmv3_titleNormalizationRegression() {
       blocker:'',
       desiredCalendarTitle:'SO#585275 - John Smith - (416) 555-1212',
       desiredTaskName:
-        'John Smith - 123 Main St, Toronto, ON, M1M 1M1 - (416) 555-1212'
+        'John Smith - 123 Main St, Toronto - (416) 555-1212'
     };
     titleContractAccepted =
       tmv3_step7ValidateExecutionContract_(contract) === contract;
