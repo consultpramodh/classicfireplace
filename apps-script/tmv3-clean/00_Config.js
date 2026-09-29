@@ -1,8 +1,8 @@
-const TMV3_VERSION = '3.11.24-jane-bisset-canary-r1';
-const TMV3_EXECUTION_STAGE = 8;
+const TMV3_VERSION = '3.11.24-jane-bisset-locality-r1';
+const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
-const TMV3_MODE = 'CANARY_WRITE';
+const TMV3_MODE = 'SHADOW_READ_ONLY';
 
 const TMV3 = Object.freeze({
   MODE: TMV3_MODE,
@@ -17,11 +17,9 @@ const TMV3 = Object.freeze({
   MAX_PAGES: 50,
   OPERATIONS: Object.freeze({
     manualWritesEnabled: true,
-    automationWritesEnabled: true,
-    autoMaxWritesPerRun: 1,
-    canaryEventId: '2g1s53ho1qf09d19vsep0p3v0h@google.com',
-    canaryVertical: 'PreInspection',
-    installRemindersEnabled: false,
+    automationWritesEnabled: false,
+    autoMaxWritesPerRun: 10,
+    installRemindersEnabled: true,
     preInspectionMissingDetailEmailsEnabled: false
   }),
   API_BUDGET: Object.freeze({
