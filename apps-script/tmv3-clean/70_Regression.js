@@ -1085,22 +1085,387 @@ function tmv3_issue2CreateSafetyRegression() {
   };
 }
 
+
+/************************************************************
+ * TM V3 — TITLE NORMALIZATION / PRESERVATION REGRESSION
+ *
+ * Pure/deterministic coverage only. No Calendar or Striven writes.
+ ************************************************************/
+function tmv3_titleNormalizationRegression() {
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail === undefined ? '' : detail
+    });
+  }
+
+  function baseRecord(vertical) {
+    return {
+      vertical:vertical,
+      phone:'4165551212',
+      title:'Legacy Title',
+      step3:{
+        disposition:'VERIFIED',
+        anchor:{
+          orderId:'26796',
+          orderNumber:'585275',
+          customerNumber:'62400'
+        }
+      },
+      step4:{
+        disposition:'VERIFIED',
+        customer:{
+          'Customer ID':'35659',
+          'Customer Number':'62400',
+          'Name':'John Smith',
+          'Primary Phone':'4165551212'
+        },
+        location:{
+          'Location ID':'32606',
+          'Customer ID':'35659',
+          'Address 1':'123 Main St',
+          'City':'Toronto',
+          'Province':'ON',
+          'Postal Code':'M1M 1M1'
+        }
+      }
+    };
+  }
+
+  let plan = tmv3_titleDescriptionPlan_(
+    'John Install 416-555-1212',
+    '585275 - John Smith - (416) 555-1212',
+    'Customer asked for morning.'
+  );
+  check(
+    'DESCRIPTION_PLAIN_TEXT_EXACT_PRESERVATION',
+    plan.after ===
+      'John Install 416-555-1212\n\nCustomer asked for morning.',
+    plan.after
+  );
+
+  plan = tmv3_titleDescriptionPlan_(
+    'Old Title',
+    'New Title',
+    ''
+  );
+  check(
+    'DESCRIPTION_EMPTY_PRESERVATION',
+    plan.after === 'Old Title\n\n',
+    JSON.stringify(plan.after)
+  );
+
+  const html = '<p>Existing <a href="https://example.test">link</a><br>Line 2</p>';
+  plan = tmv3_titleDescriptionPlan_(
+    'Old Title',
+    'New Title',
+    html
+  );
+  check(
+    'DESCRIPTION_HTML_AND_LINK_BYTES_PRESERVED',
+    plan.after === 'Old Title\n\n' + html,
+    plan.after
+  );
+
+  const lineBreaks = 'Line 1\nLine 2\n\nLine 4';
+  plan = tmv3_titleDescriptionPlan_(
+    'Old Title',
+    'New Title',
+    lineBreaks
+  );
+  check(
+    'DESCRIPTION_USER_LINE_BREAKS_PRESERVED',
+    plan.after === 'Old Title\n\n' + lineBreaks,
+    JSON.stringify(plan.after)
+  );
+
+  plan = tmv3_titleDescriptionPlan_(
+    'Old Title',
+    'New Title',
+    'Old Title\n\nExisting'
+  );
+  check(
+    'DESCRIPTION_ALREADY_PREFIXED_NO_DUPLICATE',
+    plan.after === 'Old Title\n\nExisting' &&
+      plan.descriptionChange === false,
+    JSON.stringify(plan)
+  );
+
+  plan = tmv3_titleDescriptionPlan_(
+    'New Title',
+    'New Title',
+    'Old Title\n\nExisting'
+  );
+  check(
+    'SECOND_RUN_IDEMPOTENT',
+    plan.status === 'NO_CHANGE' &&
+      plan.after === 'Old Title\n\nExisting',
+    JSON.stringify(plan)
+  );
+
+  const install = baseRecord('Install');
+  const installCalendar = tmv3_desiredCalendarTitle_(install);
+  const installTask = tmv3_desiredTaskName_(install);
+  check(
+    'INSTALL_CANONICAL_CALENDAR_TITLE',
+    installCalendar.status === 'READY' &&
+      installCalendar.value ===
+        '585275 - John Smith - (416) 555-1212',
+    JSON.stringify(installCalendar)
+  );
+  check(
+    'INSTALL_CANONICAL_TASK_NAME',
+    installTask.status === 'READY' &&
+      installTask.value.indexOf(
+        'John Smith - 123 Main St'
+      ) === 0 &&
+      /\(416\) 555-1212$/.test(installTask.value),
+    JSON.stringify(installTask)
+  );
+
+  const missingOrder = baseRecord('Install');
+  missingOrder.step3.anchor.orderNumber = '';
+  missingOrder.orderNumber = '';
+  const missingOrderTitle =
+    tmv3_desiredCalendarTitle_(missingOrder);
+  check(
+    'INSTALL_MISSING_SO_BLOCKS_CALENDAR_RENAME',
+    missingOrderTitle.status === 'BLOCKED',
+    JSON.stringify(missingOrderTitle)
+  );
+
+  const ambiguousCustomer = baseRecord('Install');
+  ambiguousCustomer.step4.disposition = 'REVIEW';
+  const ambiguousTitle =
+    tmv3_desiredTaskName_(ambiguousCustomer);
+  check(
+    'AMBIGUOUS_CUSTOMER_BLOCKS_TASK_RENAME',
+    ambiguousTitle.status === 'BLOCKED',
+    JSON.stringify(ambiguousTitle)
+  );
+
+  const missingLocation = baseRecord('Install');
+  missingLocation.step4.location = null;
+  const missingLocationName =
+    tmv3_desiredTaskName_(missingLocation);
+  check(
+    'MISSING_LOCATION_BLOCKS_TASK_RENAME',
+    missingLocationName.status === 'BLOCKED',
+    JSON.stringify(missingLocationName)
+  );
+
+  const missingPhone = baseRecord('Install');
+  missingPhone.phone = '';
+  missingPhone.step4.customer['Primary Phone'] = '';
+  const missingPhoneName =
+    tmv3_desiredTaskName_(missingPhone);
+  check(
+    'MISSING_PHONE_BLOCKS_TASK_RENAME',
+    missingPhoneName.status === 'BLOCKED',
+    JSON.stringify(missingPhoneName)
+  );
+
+  [
+    '4165551212',
+    '(416) 555-1212',
+    '+1 416-555-1212'
+  ].forEach(function(value, index) {
+    check(
+      'PHONE_FORMAT_VARIANT_' + (index + 1),
+      tmv3_titlePhoneDisplay_(value) ===
+        '(416) 555-1212',
+      value
+    );
+  });
+
+  const delivery = baseRecord('Delivery');
+  const deliveryCalendar =
+    tmv3_desiredCalendarTitle_(delivery);
+  check(
+    'DELIVERY_CALENDAR_TITLE_FAILS_CLOSED',
+    deliveryCalendar.status === 'NOT_AUTHORIZED',
+    JSON.stringify(deliveryCalendar)
+  );
+
+  const serviceOne = baseRecord('Service');
+  serviceOne.serviceFireplaceNumber = 1;
+  const serviceTwo = baseRecord('Service');
+  serviceTwo.serviceFireplaceNumber = 2;
+  const serviceOneName = tmv3_desiredTaskName_(serviceOne);
+  const serviceTwoName = tmv3_desiredTaskName_(serviceTwo);
+  check(
+    'SERVICE_FP1_SUFFIX',
+    / - FP#1$/.test(serviceOneName.value),
+    serviceOneName.value
+  );
+  check(
+    'SERVICE_FP2_SUFFIX',
+    / - FP#2$/.test(serviceTwoName.value),
+    serviceTwoName.value
+  );
+  check(
+    'SERVICE_SIBLINGS_REMAIN_DISTINCT',
+    serviceOneName.value !== serviceTwoName.value,
+    serviceOneName.value + ' || ' + serviceTwoName.value
+  );
+
+  const pre = baseRecord('PreInspection');
+  const preCalendar = tmv3_desiredCalendarTitle_(pre);
+  const preTask = tmv3_desiredTaskName_(pre);
+  const prePolicy = tmv3_preInspectionCreatePolicy();
+  check(
+    'PREINSPECTION_CANONICAL_CALENDAR_TITLE',
+    preCalendar.value ===
+      '62400 - John Smith - (416) 555-1212',
+    JSON.stringify(preCalendar)
+  );
+  check(
+    'PREINSPECTION_CANONICAL_TASK_NAME',
+    preTask.status === 'READY' &&
+      preTask.value.indexOf('John Smith - ') === 0,
+    JSON.stringify(preTask)
+  );
+  check(
+    'PREINSPECTION_GUARDRAILS_UNCHANGED',
+    prePolicy.taskTypeId === 105 &&
+      prePolicy.attachSalesOrder === false &&
+      prePolicy.description === '' &&
+      prePolicy.requiredPoolId === 8 &&
+      prePolicy.field854 === 'NO_WRITE' &&
+      prePolicy.technicianFields === 'DO_NOT_PREFILL',
+    JSON.stringify(prePolicy)
+  );
+
+  const beforeAssignment = tmv3_desiredAssignment_({
+    vertical:'Install',
+    title:'John Install 4165551212'
+  });
+  const afterAssignment = tmv3_desiredAssignment_({
+    vertical:'Install',
+    title:'585275 - John Smith - (416) 555-1212',
+    assignmentSourceTitle:'John Install 4165551212'
+  });
+  check(
+    'ASSIGNMENT_PARITY_AFTER_TITLE_NORMALIZATION',
+    JSON.stringify(beforeAssignment) ===
+      JSON.stringify(afterAssignment) &&
+      beforeAssignment.employeeIds.indexOf(18) !== -1,
+    JSON.stringify({
+      before:beforeAssignment,
+      after:afterAssignment
+    })
+  );
+
+  const preservedRaw =
+    'John Install 4165551212\n\nSO#585275\nCustomer note';
+  const evidenceRaw =
+    tmv3_identityEvidenceDescriptionRaw_(
+      preservedRaw,
+      'John Install 4165551212'
+    );
+  check(
+    'PRESERVED_TITLE_EXCLUDED_FROM_IDENTITY_EVIDENCE',
+    evidenceRaw === 'SO#585275\nCustomer note',
+    evidenceRaw
+  );
+
+  check(
+    'NO_MIGRATION_STATE_DOES_NOT_DROP_DESCRIPTION_TEXT',
+    tmv3_identityEvidenceDescriptionRaw_(
+      preservedRaw,
+      ''
+    ) === preservedRaw,
+    'raw description must remain evidence when no verified migration state exists'
+  );
+
+  check(
+    'OPEN_TASK_NAME_NORMALIZATION_ALLOWED',
+    tmv3_taskNameNormalizationStatusAllowed_('OPEN') === true,
+    'OPEN'
+  );
+  check(
+    'DONE_TASK_NAME_NORMALIZATION_BLOCKED',
+    tmv3_taskNameNormalizationStatusAllowed_('DONE') === false,
+    'DONE'
+  );
+  check(
+    'CANCELLED_TASK_NAME_NORMALIZATION_BLOCKED',
+    tmv3_taskNameNormalizationStatusAllowed_('CANCELLED') === false,
+    'CANCELLED'
+  );
+
+  const safeTitlePatch =
+    tmv3_safeTaskPatchPayload_(
+      { Title:'John Smith - 123 Main St - (416) 555-1212' },
+      12345
+    );
+  check(
+    'TASK_NAME_PATCH_IS_TITLE_ONLY',
+    Object.keys(safeTitlePatch).sort().join(',') === 'Id,Title',
+    JSON.stringify(safeTitlePatch)
+  );
+
+  let unknownFieldBlocked = false;
+  try {
+    tmv3_safeTaskPatchPayload_(
+      { Title:'Allowed', UnexpectedField:'NO' },
+      12345
+    );
+  } catch (err) {
+    unknownFieldBlocked =
+      /Blocked unknown Task PATCH field/.test(
+        String(err && err.message || err)
+      );
+  }
+  check(
+    'TASK_NAME_PATCH_REJECTS_UNRELATED_FIELDS',
+    unknownFieldBlocked,
+    'UnexpectedField'
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 title normalization regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    version:TMV3.VERSION,
+    jev:'JEV NOT USED — DETERMINISTIC',
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_liveHardeningRegression() {
   const issue1 =
     tmv3_issue1SingleDecisionAuthorityRegression();
   const issue2 =
     tmv3_issue2CreateSafetyRegression();
+  const titleNormalization =
+    tmv3_titleNormalizationRegression();
 
   const result = {
     status:
       issue1.status === 'PASS' &&
-      issue2.status === 'PASS'
+      issue2.status === 'PASS' &&
+      titleNormalization.status === 'PASS'
         ? 'PASS'
         : 'FAIL',
     version:TMV3.VERSION,
     mode:TMV3.MODE,
     issue1:issue1,
-    issue2:issue2
+    issue2:issue2,
+    titleNormalization:titleNormalization
   };
 
   Logger.log(
