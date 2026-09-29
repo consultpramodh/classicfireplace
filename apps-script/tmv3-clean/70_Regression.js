@@ -1435,7 +1435,7 @@ function tmv3_titleNormalizationRegression() {
     taskById:{},
     contactByKey:{},
     organizerByEmail:{
-      'stephen@classicfireplace.ca':{
+      'stephen classicfireplace ca':{
         status:'MATCHED',
         employee:{ id:15, name:'Stephen Foley' },
         evidence:'REGRESSION_ORGANIZER_MATCH'
