@@ -575,8 +575,6 @@ function tmv3_issue1ContractFixture_(overrides) {
     desiredAssignmentEmployeeIds:[18],
     desiredAssignmentPoolIds:[],
     assignmentCheck:'MATCH',
-    desiredField854:'',
-    field854Check:'N/A',
     plan:'NO_CHANGE',
     actions:[TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS],
     writeGate:'SHADOW_ONLY__NO_WRITES',
@@ -1464,13 +1462,12 @@ function tmv3_titleNormalizationRegression() {
       preCreatePlan.actions.indexOf(
         TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE
       ) !== -1 &&
-      preCreatePlan.desiredField854 === undefined &&
+      !Object.prototype.hasOwnProperty.call(preCreatePlan, 'desiredField854') &&
       preCreatePlan.desiredCalendarTitle ===
         'Cust#62400 - John Smith - (416) 555-1212',
     JSON.stringify({
       plan:preCreatePlan.plan,
       actions:preCreatePlan.actions,
-      desiredField854:preCreatePlan.desiredField854,
       desiredCalendarTitle:preCreatePlan.desiredCalendarTitle
     })
   );
