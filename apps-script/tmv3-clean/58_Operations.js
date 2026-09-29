@@ -1267,7 +1267,7 @@ function tmv3_assertTitleNormalizationWriteAuthorized_(contract, action, scope) 
 
   if (
     action === 'PATCH_TASK_NAME' &&
-    tmv3_clean_(contract.taskStatus).toUpperCase() !== 'OPEN'
+    !tmv3_taskNameNormalizationStatusAllowed_(contract.taskStatus)
   ) {
     throw new Error(
       'Task Name normalization is authorized only for the canonical OPEN Task.'
