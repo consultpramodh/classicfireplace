@@ -1238,6 +1238,14 @@ function tmv3_titleDescriptionPlan_(currentTitle, desiredTitle, rawDescription) 
   const alreadyPreserved =
     before === oldTitle ||
     before.indexOf(prefix) === 0;
+  const after =
+    alreadyPreserved
+      ? before
+      : (
+          before
+            ? prefix + before
+            : oldTitle
+        );
 
   return {
     status:'READY',
@@ -1245,9 +1253,9 @@ function tmv3_titleDescriptionPlan_(currentTitle, desiredTitle, rawDescription) 
     currentTitle:oldTitle,
     desiredTitle:newTitle,
     before:before,
-    after:alreadyPreserved ? before : prefix + before,
+    after:after,
     titleChange:true,
-    descriptionChange:!alreadyPreserved,
+    descriptionChange:after !== before,
     alreadyPreserved:alreadyPreserved
   };
 }
@@ -1314,15 +1322,9 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
   ids.forEach(function(calendarId) {
     const found = tmv3_findEventCopyRobust_(calendarId, contract.eventId);
     if (!found || !found.event) {
-      if (eventRecord.vertical === 'PreInspection') {
-        results.push({
-          calendarId:calendarId,
-          status:'COPY_NOT_PRESENT',
-          writePerformed:false
-        });
-        return;
-      }
-      throw new Error('Calendar event copy was not found on ' + calendarId + '.');
+      throw new Error(
+        'Required Calendar event copy was not found on ' + calendarId + '.'
+      );
     }
 
     const beforeTitle = String(found.event.getTitle() || '');
