@@ -11,7 +11,7 @@
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
 - V3 version: `3.11.26-preinspection-c-prefix-r1`
-- Hard-rule version: `2026-09-29-r1`
+- Hard-rule version: `2026-09-29-r2`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
@@ -95,7 +95,7 @@ V3 remains consolidated under the existing module set. **Do not add Step 8/9/10 
 
 ## Field 854 removal — VERIFIED IN SOURCE
 
-Release `3.11.26-preinspection-c-prefix-r1` removed:
+Release `3.11.25-hard-rules-r1` removed:
 
 - `PATCH_FIELD854` from Step 7 actions
 - Field 854 reconciliation state/planning
@@ -163,7 +163,7 @@ The prior Stage-8 canary was returned to Stage 7 / SHADOW because a Calendar upd
 
 ## Exact next action
 
-**Verify/install the managed V3 triggers in the bound Apps Script project, then rerun Jane Bisset as the single PreInspection CREATE canary under the 3.11.25 hard-rule contract.**
+**Verify/install the managed V3 triggers in the bound Apps Script project, then rerun Jane Bisset as the single PreInspection CREATE canary under the 3.11.26 hard-rule contract.**
 
 The canary must prove:
 
