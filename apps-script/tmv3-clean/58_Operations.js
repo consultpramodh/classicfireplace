@@ -3420,6 +3420,169 @@ function tmv3_executeVerifiedStep7ExistingPlan(
   );
 }
 
+
+function tmv3_titleNormalizationPreview_(contract) {
+  contract = tmv3_step7ValidateExecutionContract_(contract);
+
+  const bundle = tmv3_step7BundleFromContract_(contract);
+  const customer = tmv3_customerFromRefs_(
+    bundle.refs,
+    contract.expectedCustomerId
+  );
+  const location = tmv3_locationFromRefs_(
+    bundle.refs,
+    contract.expectedCustomerId,
+    contract.expectedLocationId
+  );
+  const order = contract.expectedOrderId
+    ? bundle.refs.orderById[String(contract.expectedOrderId)] || null
+    : null;
+
+  const previewRecord = Object.assign(
+    {},
+    bundle.eventRecord,
+    {
+      step3:{
+        disposition:'VERIFIED',
+        anchor:{
+          orderId:contract.expectedOrderId || '',
+          orderNumber:tmv3_clean_(order && order['Order Number']),
+          customerNumber:tmv3_clean_(customer && customer['Customer Number'])
+        }
+      },
+      step4:{
+        disposition:
+          customer && location
+            ? 'VERIFIED'
+            : 'NOT_VERIFIED',
+        customer:customer || null,
+        location:location || null
+      }
+    }
+  );
+
+  const desiredCalendar = tmv3_desiredCalendarTitle_(previewRecord);
+
+  let currentTaskName = '';
+  let currentTaskReadStatus = contract.taskId
+    ? 'NOT_READ'
+    : 'NO_TASK';
+
+  if (contract.taskId) {
+    try {
+      const task = tmv3_getTaskById_(contract.taskId);
+      currentTaskName = tmv3_clean_(task && task['Name']);
+      currentTaskReadStatus = 'FRESH_TASK_GET';
+    } catch (err) {
+      currentTaskReadStatus =
+        'TASK_READ_FAILED: ' +
+        String(err && err.message || err);
+    }
+  }
+
+  const desiredTask = tmv3_desiredTaskName_(
+    previewRecord,
+    { sourceTaskTitle:currentTaskName }
+  );
+
+  const currentCalendarTitle = tmv3_clean_(
+    bundle.eventRecord && bundle.eventRecord.title
+  );
+  const rawDescription = String(
+    bundle.eventRecord &&
+    (
+      bundle.eventRecord.rawDescription !== undefined
+        ? bundle.eventRecord.rawDescription
+        : bundle.eventRecord.description
+    ) || ''
+  );
+
+  const descriptionPlan =
+    desiredCalendar.status === 'READY'
+      ? tmv3_titleDescriptionPlan_(
+          currentCalendarTitle,
+          desiredCalendar.value,
+          rawDescription
+        )
+      : {
+          status:'NOT_PLANNED',
+          before:rawDescription,
+          after:rawDescription,
+          titleChange:false,
+          descriptionChange:false,
+          alreadyPreserved:false,
+          reason:desiredCalendar.reason || ''
+        };
+
+  return {
+    jev:'JEV NOT USED — DETERMINISTIC',
+    calendar:{
+      currentTitle:currentCalendarTitle,
+      desiredTitle:desiredCalendar.value || '',
+      desiredStatus:desiredCalendar.status,
+      desiredSource:desiredCalendar.source || '',
+      check:
+        desiredCalendar.status === 'READY'
+          ? (
+              currentCalendarTitle === tmv3_clean_(desiredCalendar.value)
+                ? 'MATCH'
+                : 'MISMATCH'
+            )
+          : desiredCalendar.status,
+      blocker:
+        desiredCalendar.status === 'BLOCKED'
+          ? desiredCalendar.reason
+          : '',
+      description:{
+        preservationStatus:descriptionPlan.status,
+        action:
+          descriptionPlan.descriptionChange
+            ? 'PREPEND_OLD_TITLE_PLUS_ONE_BLANK_LINE'
+            : 'NO_DESCRIPTION_CHANGE',
+        alreadyPreserved:descriptionPlan.alreadyPreserved === true,
+        currentLength:rawDescription.length,
+        proposedLength:String(descriptionPlan.after || '').length,
+        currentHash:tmv3_hash_(rawDescription),
+        proposedHash:tmv3_hash_(String(descriptionPlan.after || ''))
+      }
+    },
+    task:{
+      taskId:contract.taskId || '',
+      taskStatus:contract.taskStatus || '',
+      currentName:currentTaskName,
+      currentReadStatus:currentTaskReadStatus,
+      desiredName:desiredTask.value || '',
+      desiredStatus:desiredTask.status,
+      desiredSource:desiredTask.source || '',
+      check:
+        !contract.taskId
+          ? 'CREATE_USES_CANONICAL_NAME'
+          : (
+              desiredTask.status === 'READY'
+                ? (
+                    currentTaskName === tmv3_clean_(desiredTask.value)
+                      ? 'MATCH'
+                      : 'MISMATCH'
+                  )
+                : desiredTask.status
+            ),
+      blocker:
+        desiredTask.status === 'BLOCKED'
+          ? desiredTask.reason
+          : ''
+    },
+    identitySources:{
+      customerId:contract.expectedCustomerId || '',
+      locationId:contract.expectedLocationId || '',
+      orderId:contract.expectedOrderId || '',
+      customerName:tmv3_clean_(customer && customer['Name']),
+      customerNumber:tmv3_clean_(customer && customer['Customer Number']),
+      locationAddress:tmv3_titleLocationDisplay_(location),
+      authority:'STEP7_VERIFIED_IDS + CURRENT_SOURCE_TABLES'
+    }
+  };
+}
+
 function tmv3_previewSelectedAction() {
   const selection = tmv3_step7FreshSelectedContract_();
   const contract = tmv3_step7ValidateExecutionContract_(
@@ -3440,6 +3603,9 @@ function tmv3_previewSelectedAction() {
       contract.vertical === 'PreInspection' &&
       !!tmv3_clean_(contract.expectedLocationAddress)
     );
+
+  const titleNormalization =
+    tmv3_titleNormalizationPreview_(contract);
 
   const output = {
     mode:'READ_ONLY',
@@ -3467,6 +3633,7 @@ function tmv3_previewSelectedAction() {
       employeeIds:(contract.desiredAssignmentEmployeeIds || []).slice(),
       poolIds:(contract.desiredAssignmentPoolIds || []).slice()
     },
+    titleNormalization:titleNormalization,
     mutationPreview:{
       authorizedByPlan:
         !planChanged &&
