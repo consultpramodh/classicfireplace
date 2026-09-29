@@ -1,4 +1,5 @@
 name: TEMP Upload Valor Images to Striven
+# Finalize default image consistency
 
 on:
   push:
