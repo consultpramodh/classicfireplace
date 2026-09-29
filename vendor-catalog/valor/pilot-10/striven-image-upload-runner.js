@@ -212,16 +212,16 @@ function TMP_Valor_uploadOne_(token, cfg) {
     return {ok:false,sku:cfg.sku,itemId:cfg.id,action:'IMAGE_LIST_READ_FAILED',http:before.code};
   }
 
-  var beforeData = (before.json && before.json.Data) || [];
+  var beforeData = (before.json && (before.json.Data || before.json.data)) || [];
   var existing = beforeData.filter(function(img) {
-    return String(img.OriginalFileName || '').toLowerCase() === String(cfg.fileName).toLowerCase();
+    return String(img.OriginalFileName || img.originalFileName || '').toLowerCase() === String(cfg.fileName).toLowerCase();
   })[0];
 
   if (existing) {
     return {
       ok:true,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'SKIPPED_EXISTS',
-      imageId:existing.Id || 0,fileName:existing.OriginalFileName || cfg.fileName,
-      isDefault:existing.IsDefault === true
+      imageId:existing.Id || existing.id || 0,fileName:existing.OriginalFileName || existing.originalFileName || cfg.fileName,
+      isDefault:(existing.IsDefault === true || existing.isDefault === true)
     };
   }
 
@@ -245,7 +245,7 @@ function TMP_Valor_uploadOne_(token, cfg) {
   }
 
   blob.setName(cfg.fileName);
-  var hasDefault = beforeData.some(function(img){ return img.IsDefault === true; });
+  var hasDefault = beforeData.some(function(img){ return (img.IsDefault === true || img.isDefault === true); });
   var uploadHeaders = {
     Authorization:'Bearer ' + token,
     Accept:'application/json, application/octet-stream'
@@ -272,9 +272,9 @@ function TMP_Valor_uploadOne_(token, cfg) {
     return {ok:false,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'VERIFY_LIST_FAILED',http:after.code};
   }
 
-  var afterData = (after.json && after.json.Data) || [];
+  var afterData = (after.json && (after.json.Data || after.json.data)) || [];
   var created = afterData.filter(function(img) {
-    return String(img.OriginalFileName || '').toLowerCase() === String(cfg.fileName).toLowerCase();
+    return String(img.OriginalFileName || img.originalFileName || '').toLowerCase() === String(cfg.fileName).toLowerCase();
   })[0];
 
   if (!created && afterData.length <= beforeData.length) {
@@ -293,9 +293,9 @@ function TMP_Valor_uploadOne_(token, cfg) {
 
   return {
     ok:true,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'UPLOADED',
-    imageId:created && created.Id || 0,
-    fileName:created && (created.OriginalFileName || created.FileName) || cfg.fileName,
-    isDefault:created && created.IsDefault === true,
+    imageId:created && created.Id || created.id || 0,
+    fileName:created && (created.OriginalFileName || created.originalFileName || created.FileName || created.fileName) || cfg.fileName,
+    isDefault:created && (created.IsDefault === true || created.isDefault === true),
     beforeCount:beforeData.length,afterCount:afterData.length,
     sourceBytes:bytes
   };
