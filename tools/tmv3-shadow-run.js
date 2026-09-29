@@ -579,6 +579,58 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'titlePreview') {
+      var titlePreview = tmv3_previewTitleNormalizationForEvent(
+        String(body.vertical || ''),
+        String(body.eventId || ''),
+        Number(body.taskId || 0)
+      );
+      var titleExpectedPlan = String(body.expectedPlan || '');
+
+      if (
+        titleExpectedPlan &&
+        String(titlePreview.plan || '') !== titleExpectedPlan
+      ) {
+        throw new Error(
+          'Fresh title preview changed from ' +
+          titleExpectedPlan +
+          ' to ' +
+          String(titlePreview.plan || '') +
+          '.'
+        );
+      }
+
+      if (tmv3_clean_(titlePreview.blocker)) {
+        throw new Error(
+          'Title preview is blocked: ' +
+          String(titlePreview.blocker || '')
+        );
+      }
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'TITLE_PREVIEW_COMPLETE',
+        result:titlePreview
+      });
+    }
+
+    if (body.action === 'titleCanary') {
+      var titleCanary = tmv3_executeVerifiedTitleNormalization(
+        String(body.vertical || ''),
+        String(body.eventId || ''),
+        Number(body.taskId || 0),
+        String(body.expectedPlan || '')
+      );
+
+      return TMPV3_shadowResponse_({
+        ok:
+          String(titleCanary && titleCanary.status || '') ===
+          'TITLE_NORMALIZATION_VERIFIED',
+        status:'TITLE_CANARY_COMPLETE',
+        result:titleCanary
+      });
+    }
+
     if (body.action === 'step7CanaryPreview') {
       var previewVertical = String(body.vertical || '');
       var previewEventId = String(body.eventId || '');
@@ -1511,7 +1563,8 @@ async function main() {
         RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
-        RUN_MODE === 'CANARY_STEP7'
+        RUN_MODE === 'CANARY_STEP7' ||
+        RUN_MODE === 'CANARY_TITLE'
       ) &&
       RELEASE_MANIFEST.forceVersionedDeployment !== true
     ) {
@@ -1683,6 +1736,8 @@ async function main() {
       RUN_MODE === 'PREVIEW_GOLDCON' ||
       RUN_MODE === 'PREVIEW_ROCCO' ||
       RUN_MODE === 'PREVIEW_STEP7' ||
+      RUN_MODE === 'PREVIEW_TITLE' ||
+      RUN_MODE === 'CANARY_TITLE' ||
       RUN_MODE === 'CANARY_GOLDCON' ||
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'CANARY_STEP7' ||
@@ -1714,6 +1769,10 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
+                    : RUN_MODE === 'PREVIEW_TITLE'
+                      ? 'titlePreview'
+                    : RUN_MODE === 'CANARY_TITLE'
+                      ? 'titleCanary'
                     : RUN_MODE.indexOf('PREVIEW_') === 0
                       ? 'step7CanaryPreview'
                     : RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
@@ -1756,6 +1815,8 @@ async function main() {
           (
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'PREVIEW_TITLE' ||
+            RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
             RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
@@ -1779,6 +1840,8 @@ async function main() {
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'PREVIEW_TITLE' ||
+            RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
             RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
@@ -1794,6 +1857,8 @@ async function main() {
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'PREVIEW_TITLE' ||
+            RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
             RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
@@ -1814,6 +1879,8 @@ async function main() {
             RUN_MODE === 'PREVIEW_ROCCO' ||
             RUN_MODE === 'CANARY_ROCCO' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
+            RUN_MODE === 'PREVIEW_TITLE' ||
+            RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
