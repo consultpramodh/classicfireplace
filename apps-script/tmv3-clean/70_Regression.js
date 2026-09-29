@@ -1351,8 +1351,41 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_CANONICAL_CALENDAR_TITLE',
     preCalendar.value ===
-      'Cust#62400 - John Smith - (416) 555-1212',
+      'C#62400 - John Smith - (416) 555-1212',
     JSON.stringify(preCalendar)
+  );
+  check(
+    'PREINSPECTION_NEW_C_PREFIX_PARSES_CUSTOMER_NUMBER',
+    tmv3_extractCustomerNumberForVertical_(
+      'PreInspection',
+      'C#62400 - John Smith - (416) 555-1212'
+    ) === '62400',
+    tmv3_extractCustomerNumberForVertical_(
+      'PreInspection',
+      'C#62400 - John Smith - (416) 555-1212'
+    )
+  );
+  check(
+    'PREINSPECTION_LEGACY_CUST_PREFIX_STILL_PARSES',
+    tmv3_extractCustomerNumberForVertical_(
+      'PreInspection',
+      'Cust#62400 - John Smith - (416) 555-1212'
+    ) === '62400',
+    tmv3_extractCustomerNumberForVertical_(
+      'PreInspection',
+      'Cust#62400 - John Smith - (416) 555-1212'
+    )
+  );
+  check(
+    'PREINSPECTION_C_PREFIX_NAME_EXTRACTION',
+    tmv3_preInspectionCalendarCustomerName_(
+      'C#62400 - John Smith - (416) 555-1212',
+      '62400'
+    ) === 'John Smith',
+    tmv3_preInspectionCalendarCustomerName_(
+      'C#62400 - John Smith - (416) 555-1212',
+      '62400'
+    )
   );
   check(
     'PREINSPECTION_CANONICAL_TASK_NAME',
@@ -1464,7 +1497,7 @@ function tmv3_titleNormalizationRegression() {
       ) !== -1 &&
       !Object.prototype.hasOwnProperty.call(preCreatePlan, 'desiredField854') &&
       preCreatePlan.desiredCalendarTitle ===
-        'Cust#62400 - John Smith - (416) 555-1212',
+        'C#62400 - John Smith - (416) 555-1212',
     JSON.stringify({
       plan:preCreatePlan.plan,
       actions:preCreatePlan.actions,
