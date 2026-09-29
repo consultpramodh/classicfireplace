@@ -14,20 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Inspect public Striven API help
+      - name: Discover Striven image API help links
         shell: bash
         run: |
           set -euo pipefail
-          urls=(
-            "https://api.striven.com/Help/Api/POST-v1-Items-id-Images"
-            "https://api.striven.com/Help/Api/POST-v1-items-id-images"
-            "https://api.striven.com/Help/Api/GET-v1-Items-id-Images"
-            "https://api.striven.com/Help/Api/GET-v1-items-id-images"
-          )
-          for u in "${urls[@]}"; do
-            echo "===== $u ====="
-            curl -L -sS -D /tmp/headers.txt "$u" -o /tmp/body.html || true
-            head -40 /tmp/headers.txt || true
-            perl -0777 -pe 's/<script.*?<\/script>/ /gis; s/<style.*?<\/style>/ /gis; s/<[^>]+>/ /g; s/\s+/ /g' /tmp/body.html | head -c 18000 || true
-            echo
-          done
+          curl -L -sS "https://api.striven.com/Help" -o /tmp/help.html
+          echo "=== IMAGE/ITEM API HREFS ==="
+          grep -Eo 'href="[^"]+"' /tmp/help.html | sed 's/^href="//;s/"$//' | grep -Ei 'item|image|picture|attachment' | sort -u | head -300 || true
+          echo "=== RAW CONTEXT AROUND IMAGES ==="
+          grep -Ein -C 3 'image|picture|attachment|items' /tmp/help.html | head -500 || true
