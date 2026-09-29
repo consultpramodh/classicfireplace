@@ -252,6 +252,182 @@ function tmv3_eventStateIndex_() {
   return byKey;
 }
 
+
+function tmv3_titleMigrationStateIndex_() {
+  if (tmv3_titleMigrationStateIndex_._cache) {
+    return tmv3_titleMigrationStateIndex_._cache;
+  }
+
+  const out = {};
+  tmv3_rows_(TMV3.SHEETS.STATE).forEach(function(row) {
+    const vertical = tmv3_clean_(row['Vertical']);
+    const eventId = tmv3_clean_(row['Event ID']);
+    if (!vertical || !eventId) return;
+
+    const key = vertical + '|' + eventId;
+    if (!out[key]) out[key] = row;
+  });
+
+  tmv3_titleMigrationStateIndex_._cache = out;
+  return out;
+}
+
+function tmv3_titleMigrationStateForEvent_(vertical, eventId, calendarId) {
+  const row =
+    tmv3_titleMigrationStateIndex_()[
+      tmv3_clean_(vertical) + '|' + tmv3_clean_(eventId)
+    ] || {};
+
+  let map = {};
+  const rawMap = tmv3_clean_(row['Title Migration Map']);
+
+  if (rawMap) {
+    try {
+      const parsed = JSON.parse(rawMap);
+      if (parsed && typeof parsed === 'object') map = parsed;
+    } catch (ignored) {}
+  }
+
+  const id = tmv3_clean_(calendarId);
+
+  return {
+    preservedTitle:
+      id && map[id]
+        ? tmv3_clean_(map[id])
+        : '',
+    canonicalTitle:tmv3_clean_(row['Canonical Calendar Title']),
+    normalizedAt:tmv3_clean_(row['Title Normalized At']),
+    migrationMap:map
+  };
+}
+
+function tmv3_recordTitleMigrationState_(
+  vertical,
+  eventId,
+  calendarId,
+  preservedTitle,
+  canonicalTitle
+) {
+  const cleanVertical = tmv3_clean_(vertical);
+  const cleanEventId = tmv3_clean_(eventId);
+  const cleanCalendarId = tmv3_clean_(calendarId);
+  const oldTitle = tmv3_clean_(preservedTitle);
+  const newTitle = tmv3_clean_(canonicalTitle);
+
+  if (
+    !cleanVertical ||
+    !cleanEventId ||
+    !cleanCalendarId ||
+    !oldTitle ||
+    !newTitle
+  ) {
+    throw new Error(
+      'Title migration state requires vertical, Event ID, Calendar ID, old title and canonical title.'
+    );
+  }
+
+  const sh = tmv3_sheet_(TMV3.SHEETS.STATE);
+
+  if (sh.getLastRow() < 1) {
+    sh.getRange(1,1,1,6).setValues([[
+      'Vertical',
+      'Event ID',
+      'Title Migration Map',
+      'Canonical Calendar Title',
+      'Title Normalized At',
+      'Engine Version'
+    ]]);
+  }
+
+  let headers = sh
+    .getRange(1,1,1,Math.max(1,sh.getLastColumn()))
+    .getValues()[0]
+    .map(tmv3_clean_);
+
+  [
+    'Title Migration Map',
+    'Canonical Calendar Title',
+    'Title Normalized At'
+  ].forEach(function(header) {
+    if (headers.indexOf(header) !== -1) return;
+    const col = headers.length + 1;
+    if (sh.getMaxColumns() < col) {
+      sh.insertColumnsAfter(sh.getMaxColumns(), col - sh.getMaxColumns());
+    }
+    sh.getRange(1,col).setValue(header);
+    headers.push(header);
+  });
+
+  const verticalIx = headers.indexOf('Vertical');
+  const eventIx = headers.indexOf('Event ID');
+  const mapIx = headers.indexOf('Title Migration Map');
+  const canonicalIx = headers.indexOf('Canonical Calendar Title');
+  const normalizedAtIx = headers.indexOf('Title Normalized At');
+
+  if (verticalIx < 0 || eventIx < 0) {
+    throw new Error(
+      'TM State is missing Vertical/Event ID columns required for title migration state.'
+    );
+  }
+
+  const lastRow = sh.getLastRow();
+  const values =
+    lastRow >= 2
+      ? sh.getRange(2,1,lastRow-1,headers.length).getValues()
+      : [];
+
+  const targets = [];
+
+  values.forEach(function(row, index) {
+    if (
+      tmv3_clean_(row[verticalIx]) === cleanVertical &&
+      tmv3_clean_(row[eventIx]) === cleanEventId
+    ) {
+      targets.push(index + 2);
+    }
+  });
+
+  if (!targets.length) {
+    const row = headers.map(function() { return ''; });
+    row[verticalIx] = cleanVertical;
+    row[eventIx] = cleanEventId;
+    targets.push(sh.getLastRow() + 1);
+    sh.getRange(targets[0],1,1,headers.length).setValues([row]);
+  }
+
+  targets.forEach(function(rowNumber) {
+    const currentRaw = tmv3_clean_(
+      sh.getRange(rowNumber,mapIx+1).getValue()
+    );
+
+    let map = {};
+    if (currentRaw) {
+      try {
+        const parsed = JSON.parse(currentRaw);
+        if (parsed && typeof parsed === 'object') map = parsed;
+      } catch (ignored) {}
+    }
+
+    map[cleanCalendarId] = oldTitle;
+
+    sh.getRange(rowNumber,mapIx+1).setValue(JSON.stringify(map));
+    sh.getRange(rowNumber,canonicalIx+1).setValue(newTitle);
+    sh.getRange(rowNumber,normalizedAtIx+1).setValue(tmv3_now_());
+  });
+
+  tmv3_titleMigrationStateIndex_._cache = null;
+
+  return {
+    status:'TITLE_MIGRATION_STATE_RECORDED',
+    vertical:cleanVertical,
+    eventId:cleanEventId,
+    calendarId:cleanCalendarId,
+    preservedTitle:oldTitle,
+    canonicalTitle:newTitle,
+    rowsUpdated:targets.length
+  };
+}
+
 function tmv3_upsertState_(records) {
   const headers = [
     'Vertical','Event ID','Calendar ID','Customer ID','Location ID','Contact ID',
@@ -259,7 +435,8 @@ function tmv3_upsertState_(records) {
     'Engine Version','Classification Override','State','Next Action','Error Code',
     'First Seen At','Last Seen At','Last State Change At','Resolved At',
     'First Detected At','Last Attempt At','Attempt Count',
-    'Acknowledged By','Acknowledged At','Acknowledgement Note','Last Error Class'
+    'Acknowledged By','Acknowledged At','Acknowledgement Note','Last Error Class',
+    'Title Migration Map','Canonical Calendar Title','Title Normalized At'
   ];
 
   const existingIndex = tmv3_eventStateIndex_();
@@ -330,7 +507,10 @@ function tmv3_upsertState_(records) {
       'Acknowledged By': unresolved ? (prior['Acknowledged By'] || '') : '',
       'Acknowledged At': unresolved ? (prior['Acknowledged At'] || '') : '',
       'Acknowledgement Note': unresolved ? (prior['Acknowledgement Note'] || '') : '',
-      'Last Error Class': unresolved ? (r.errorCode || prior['Last Error Class'] || '') : ''
+      'Last Error Class': unresolved ? (r.errorCode || prior['Last Error Class'] || '') : '',
+      'Title Migration Map': r.titleMigrationMap || prior['Title Migration Map'] || '',
+      'Canonical Calendar Title': r.canonicalCalendarTitle || prior['Canonical Calendar Title'] || '',
+      'Title Normalized At': r.titleNormalizedAt || prior['Title Normalized At'] || ''
     };
   });
 
