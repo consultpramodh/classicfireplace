@@ -40,7 +40,9 @@
         "imageId": 43503,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/200AN-p2.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "530VN",
@@ -73,7 +75,9 @@
         "imageId": 43506,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/530VN-portrait.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "534VN",
@@ -106,7 +110,9 @@
         "imageId": 43507,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/534VN-horizon.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "1000MN",
@@ -139,7 +145,9 @@
         "imageId": 43508,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/1000MN-h3.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "1100MN",
@@ -172,7 +180,9 @@
         "imageId": 43509,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/1100MN-h5.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "1400MN",
@@ -205,7 +215,9 @@
         "imageId": 43510,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/1400MN-h6.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "1500KN",
@@ -238,7 +250,9 @@
         "imageId": 43511,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/1500KN-l1.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "1600KN",
@@ -271,7 +285,9 @@
         "imageId": 43512,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/1600KN-l1-see-thru.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "1700KN",
@@ -304,7 +320,9 @@
         "imageId": 43513,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/1700KN-l2.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     },
     {
       "itemNumber": "1800KN",
@@ -337,7 +355,9 @@
         "imageId": 43514,
         "imageIsDefault": true,
         "imageUploadedAt": "2026-09-29"
-      }
+      },
+      "localImagePath": "vendor-catalog/valor/pilot-10/images/1800KN-l3.jpg",
+      "imageRepositoryStatus": "COMMITTED_TO_GITHUB"
     }
   ],
   "strivenSource": {
