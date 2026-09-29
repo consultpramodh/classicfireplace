@@ -1301,6 +1301,88 @@ function tmv3_titleNormalizationCalendarIds_(eventRecord) {
   return ids;
 }
 
+function tmv3_titleMissingRequiredCalendarIds_(requiredIds, copies) {
+  const found = {};
+  (copies || []).forEach(function(copy) {
+    const id = tmv3_clean_(copy && copy.calendarId);
+    if (id) found[id] = true;
+  });
+
+  return (requiredIds || []).map(tmv3_clean_).filter(function(id) {
+    return id && !found[id];
+  });
+}
+
+function tmv3_titleCalendarProtectedSnapshot_(event) {
+  const guestEmails = [];
+  const creatorEmails = [];
+
+  try {
+    (event.getGuestList ? event.getGuestList(true) : []).forEach(function(guest) {
+      const email = tmv3_normEmail_(guest && guest.getEmail ? guest.getEmail() : '');
+      if (email) guestEmails.push(email);
+    });
+  } catch (ignored) {}
+
+  try {
+    (event.getCreators ? event.getCreators() : []).forEach(function(email) {
+      const clean = tmv3_normEmail_(email);
+      if (clean) creatorEmails.push(clean);
+    });
+  } catch (ignored) {}
+
+  return {
+    start:event && event.getStartTime ? event.getStartTime().getTime() : null,
+    end:event && event.getEndTime ? event.getEndTime().getTime() : null,
+    allDay:event && event.isAllDayEvent ? event.isAllDayEvent() === true : null,
+    location:String(event && event.getLocation ? event.getLocation() || '' : ''),
+    guests:guestEmails.sort(),
+    creators:creatorEmails.sort()
+  };
+}
+
+function tmv3_titleTaskProtectedSnapshot_(task) {
+  task = task || {};
+
+  function sortedCsv(value) {
+    return tmv3_clean_(value)
+      .split(',')
+      .map(tmv3_clean_)
+      .filter(Boolean)
+      .sort();
+  }
+
+  return {
+    taskId:tmv3_clean_(task['Task ID']),
+    taskNumber:tmv3_clean_(task['Task Number']),
+    taskTypeId:tmv3_clean_(task['Task Type ID']),
+    taskType:tmv3_clean_(task['Task Type']),
+    status:tmv3_clean_(task['Status']),
+    customerId:tmv3_clean_(task['Customer ID']),
+    locationId:tmv3_clean_(task['Location ID']),
+    contactId:tmv3_clean_(task['Contact ID']),
+    orderId:tmv3_clean_(task['Order ID']),
+    start:tmv3_clean_(task['Start']),
+    due:tmv3_clean_(task['Due']),
+    assignees:sortedCsv(task['Assignees']),
+    pools:sortedCsv(task['Pools'])
+  };
+}
+
+function tmv3_assertTitleProtectedSnapshotUnchanged_(before, after, label) {
+  const beforeJson = JSON.stringify(before || {});
+  const afterJson = JSON.stringify(after || {});
+
+  if (beforeJson !== afterJson) {
+    throw new Error(
+      label + ' unrelated-field read-back mismatch. Before=' +
+      beforeJson + ' After=' + afterJson
+    );
+  }
+
+  return true;
+}
+
 function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
   tmv3_assertTitleNormalizationWriteAuthorized_(
     contract,
@@ -1317,64 +1399,101 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
   const ids = tmv3_titleNormalizationCalendarIds_(eventRecord);
   if (!ids.length) throw new Error('No Calendar ID is available for title normalization.');
 
-  const results = [];
-
+  const copies = [];
   ids.forEach(function(calendarId) {
     const found = tmv3_findEventCopyRobust_(calendarId, contract.eventId);
-    if (!found || !found.event) {
+    if (found && found.event) {
+      copies.push({
+        calendarId:calendarId,
+        event:found.event,
+        protectedBefore:tmv3_titleCalendarProtectedSnapshot_(found.event),
+        beforeTitle:String(found.event.getTitle() || ''),
+        beforeDescription:String(found.event.getDescription() || '')
+      });
+    }
+  });
+
+  const missing = tmv3_titleMissingRequiredCalendarIds_(ids, copies);
+  if (missing.length) {
+    throw new Error(
+      'Required Calendar event copy/copies were not found: ' +
+      missing.join(', ') +
+      '. No Calendar title write was performed.'
+    );
+  }
+
+  copies.forEach(function(copy) {
+    copy.plan = tmv3_titleDescriptionPlan_(
+      copy.beforeTitle,
+      desired,
+      copy.beforeDescription
+    );
+    if (copy.plan.status === 'BLOCKED') {
       throw new Error(
-        'Required Calendar event copy was not found on ' + calendarId + '.'
+        'Calendar title preflight blocked on ' +
+        copy.calendarId + ': ' +
+        copy.plan.reason
       );
     }
+  });
 
-    const beforeTitle = String(found.event.getTitle() || '');
-    const beforeDescription = String(found.event.getDescription() || '');
-    const plan = tmv3_titleDescriptionPlan_(
-      beforeTitle,
-      desired,
-      beforeDescription
-    );
+  const results = [];
 
-    if (plan.status === 'BLOCKED') {
-      throw new Error(plan.reason);
-    }
+  copies.forEach(function(copy) {
+    const plan = copy.plan;
 
     if (plan.descriptionChange) {
-      found.event.setDescription(plan.after);
+      copy.event.setDescription(plan.after);
     }
 
     if (plan.titleChange) {
-      found.event.setTitle(desired);
+      copy.event.setTitle(desired);
     }
 
-    const readbackFound = tmv3_findEventCopyRobust_(calendarId, contract.eventId);
+    const readbackFound = tmv3_findEventCopyRobust_(
+      copy.calendarId,
+      contract.eventId
+    );
     if (!readbackFound || !readbackFound.event) {
       throw new Error('Calendar event disappeared during title read-back.');
     }
 
     const afterTitle = String(readbackFound.event.getTitle() || '');
     const afterDescription = String(readbackFound.event.getDescription() || '');
+    const protectedAfter =
+      tmv3_titleCalendarProtectedSnapshot_(readbackFound.event);
 
     if (tmv3_clean_(afterTitle) !== desired) {
-      throw new Error('Calendar title read-back mismatch on ' + calendarId + '.');
+      throw new Error(
+        'Calendar title read-back mismatch on ' + copy.calendarId + '.'
+      );
     }
 
     if (afterDescription !== plan.after) {
-      throw new Error('Calendar description preservation read-back mismatch on ' + calendarId + '.');
+      throw new Error(
+        'Calendar description preservation read-back mismatch on ' +
+        copy.calendarId + '.'
+      );
     }
+
+    tmv3_assertTitleProtectedSnapshotUnchanged_(
+      copy.protectedBefore,
+      protectedAfter,
+      'Calendar ' + copy.calendarId
+    );
 
     if (plan.titleChange || plan.descriptionChange) {
       tmv3_recordTitleMigrationState_(
         eventRecord.vertical,
         contract.eventId,
-        calendarId,
+        copy.calendarId,
         plan.currentTitle,
         desired
       );
     }
 
     results.push({
-      calendarId:calendarId,
+      calendarId:copy.calendarId,
       status:
         !plan.titleChange && !plan.descriptionChange
           ? 'ALREADY_CORRECT'
@@ -1383,10 +1502,11 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
       oldTitle:plan.currentTitle,
       newTitle:desired,
       descriptionChanged:plan.descriptionChange,
-      oldDescriptionLength:beforeDescription.length,
+      oldDescriptionLength:copy.beforeDescription.length,
       newDescriptionLength:afterDescription.length,
-      oldDescriptionHash:tmv3_hash_(beforeDescription),
-      newDescriptionHash:tmv3_hash_(afterDescription)
+      oldDescriptionHash:tmv3_hash_(copy.beforeDescription),
+      newDescriptionHash:tmv3_hash_(afterDescription),
+      unrelatedFieldsVerified:true
     });
   });
 
@@ -1395,6 +1515,7 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
     vertical:eventRecord.vertical,
     eventId:contract.eventId,
     desiredCalendarTitle:desired,
+    requiredCalendarIds:ids,
     copies:results
   };
 }
@@ -1415,13 +1536,15 @@ function tmv3_operationNormalizeTaskName_(taskId, desiredTaskName, contract, sco
 
   const before = tmv3_getTaskById_(id);
   const beforeName = tmv3_clean_(before && before['Name']);
+  const protectedBefore = tmv3_titleTaskProtectedSnapshot_(before);
 
   if (beforeName === desired) {
     return {
       status:'ALREADY_CORRECT',
       taskId:id,
       beforeName:beforeName,
-      afterName:beforeName
+      afterName:beforeName,
+      unrelatedFieldsVerified:true
     };
   }
 
@@ -1433,17 +1556,25 @@ function tmv3_operationNormalizeTaskName_(taskId, desiredTaskName, contract, sco
 
   const after = tmv3_getTaskById_(id);
   const afterName = tmv3_clean_(after && after['Name']);
+  const protectedAfter = tmv3_titleTaskProtectedSnapshot_(after);
 
   if (afterName !== desired) {
     throw new Error('Task Name read-back mismatch for Task ' + id + '.');
   }
+
+  tmv3_assertTitleProtectedSnapshotUnchanged_(
+    protectedBefore,
+    protectedAfter,
+    'Task ' + id
+  );
 
   return {
     status:'TASK_NAME_WRITTEN_AND_VERIFIED',
     taskId:id,
     beforeName:beforeName,
     afterName:afterName,
-    patchStatus:patch && patch.status
+    patchStatus:patch && patch.status,
+    unrelatedFieldsVerified:true
   };
 }
 
