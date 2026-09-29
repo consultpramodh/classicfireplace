@@ -25,6 +25,70 @@ When sources conflict, use this order:
 
 Never invent missing production information.
 
+## Task Mapping hard business rules
+
+These rules are **authoritative and non-negotiable unless the user explicitly changes one of them**. They must be reviewed before any Task Mapping code change. The Apps Script mirror is `TMV3_HARD_RULES`; runtime and regression guards must fail closed if implementation drifts from this section.
+
+### Global
+
+- Never guess identity, ownership, task relationship, or transaction relationship. Ambiguity goes to **REVIEW**.
+- Never blindly retry an uncertain external CREATE. Reconcile first.
+- Every consequential external mutation requires authoritative read-back verification.
+- Calendar writes are limited to explicitly managed Task Mapping fields/actions such as approved canonical titles, managed links, and required mirror participation. Do not overwrite unrelated Calendar content.
+- Preserve unrelated working functionality and manual assignments.
+- V3 stays consolidated in the existing Apps Script module set. **Do not add Step 8/9/10 Apps Script files.**
+- A rule change must update this document, `TMV3_HARD_RULES`, relevant regression coverage, and the code path in the same change.
+
+### Install
+
+- Sales Order is required.
+- Task link must return to Calendar.
+- Installer assignment evidence comes from the Calendar **title only**; narrative description text is not assignment evidence.
+- Aiden is ignored for assignment.
+- Preserve unrelated/manual existing employees when reconciling the intended installer.
+
+### Delivery
+
+- Sales Order is required.
+- Sales Order and Task links return to Calendar.
+- Assignment evidence comes from the Calendar **title only**.
+- Default pool is Pool 4 `To Be Assigned` when applicable.
+- Do not remove unrelated/manual employees.
+
+### Service
+
+- The operational order is the **Work Order**.
+- Work Order and Task links return to Calendar.
+- Technician identity comes from the technician Calendar.
+- Remove `To Be Assigned` only after the intended technician is established.
+- Remove only conflicting known Service technicians; preserve unrelated/manual employees.
+
+### PreInspection
+
+- **Sales Order is not required to create the Task.**
+- **Never attach a Sales Order to the PreInspection Task at CREATE.**
+- Task Type must be **105 — Pre Inspection**.
+- Task Description must be **exactly blank at CREATE**.
+- Calendar notes remain **on the Calendar only**.
+- **Field 854 is removed from Task Mapping automation. Do not read it as required state, plan it, create it, patch it, synchronize it, or expose a manual menu action for it.**
+- PreInspection CREATE must not prefill `InfoCustomFields`.
+- Do not prefill technician-completed fields such as Difficulty of Job, Job Risk, Finishing, Electrical Work, or Custom Metal Work.
+- Default assignment is **Pool 8 — Pre-Inspection Pool**.
+- Calendar organizer/creator resolves **Requested By**. The organizer is not automatically `Assigned To`.
+- Customer identity, customer-owned Location, date/time, Requested By, Pool 8, Task Type, Calendar links, and canonical titles are the automation-owned fields.
+- Primary/shared and Stephen secondary Calendar handling must remain supported; managed links/titles must be verified on the actual required copies.
+
+### Mandatory reflection gate
+
+Before modifying Task Mapping:
+
+1. read this hard-rule section;
+2. inspect current live/repository source for conflicts with it;
+3. state the affected rule(s) internally before patching;
+4. make the smallest change that preserves every unaffected hard rule;
+5. run hard-rule regression before deployment;
+6. do not deploy if a hard-rule assertion fails.
+
 ## Production change procedure
 
 For material code changes:
