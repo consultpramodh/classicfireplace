@@ -63,6 +63,11 @@ function tmv3_titlePhoneDisplay_(value) {
   return '(' + phone.slice(0,3) + ') ' + phone.slice(3,6) + '-' + phone.slice(6);
 }
 
+
+function tmv3_taskNameNormalizationStatusAllowed_(status) {
+  return tmv3_clean_(status).toUpperCase() === 'OPEN';
+}
+
 function tmv3_titleLocationDisplay_(location) {
   if (!location) return '';
 
