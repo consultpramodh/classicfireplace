@@ -554,6 +554,7 @@ function tmv3_assertHardRules_() {
   requireRule(rules.technicianFieldsPolicy === 'DO_NOT_PREFILL', 'Hard-rule mirror says technician fields are not prefilled.');
   requireRule(Number(rules.defaultPoolId || 0) === 8, 'Hard-rule mirror says Pool 8 is required.');
   requireRule(rules.organizerIsAssignee === false, 'PreInspection organizer must not become Assigned To.');
+  requireRule(rules.calendarTitlePrefix === 'C#', 'PreInspection canonical Calendar title prefix must be C#.');
 
   if (
     typeof TMV3_STEP7_ACTION !== 'undefined' &&
