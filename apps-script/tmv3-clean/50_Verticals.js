@@ -223,7 +223,7 @@ function tmv3_desiredCalendarTitle_(record) {
     return {
       status:'READY',
       value:[
-        context.customerNumber,
+        'Cust#' + context.customerNumber,
         context.customerName,
         context.phone
       ].join(' - '),
