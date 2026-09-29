@@ -1320,7 +1320,7 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_CANONICAL_CALENDAR_TITLE',
     preCalendar.value ===
-      '62400 - John Smith - (416) 555-1212',
+      'Cust#62400 - John Smith - (416) 555-1212',
     JSON.stringify(preCalendar)
   );
   check(
