@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_22_FULL_AUTOMATION_HARDENING_R1",
+  "release": "TMV3_3_11_23_ADDRESS_NORMALIZATION_R2",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "52d6ede6d622884fdae0cde86d7f634a32c69779"
+  "expectedLiveCommit": "3e400f18504f468356477c872ca071271f668daa"
 }
