@@ -1155,7 +1155,7 @@ function tmv3_titleNormalizationRegression() {
   );
   check(
     'DESCRIPTION_EMPTY_PRESERVATION',
-    plan.after === 'Old Title\n\n',
+    plan.after === 'Old Title',
     JSON.stringify(plan.after)
   );
 
@@ -1220,11 +1220,15 @@ function tmv3_titleNormalizationRegression() {
   check(
     'INSTALL_CANONICAL_TASK_NAME',
     installTask.status === 'READY' &&
-      installTask.value.indexOf(
-        'John Smith - 123 Main St'
-      ) === 0 &&
-      /\(416\) 555-1212$/.test(installTask.value),
+      installTask.value ===
+        'John Smith - 123 Main St, Toronto - (416) 555-1212',
     JSON.stringify(installTask)
+  );
+  check(
+    'TASK_NAME_SHORT_ADDRESS_EXACT',
+    installTask.value.indexOf(', ON') === -1 &&
+      installTask.value.indexOf('M1M 1M1') === -1,
+    installTask.value
   );
 
   const missingOrder = baseRecord('Install');
@@ -1338,6 +1342,67 @@ function tmv3_titleNormalizationRegression() {
       prePolicy.field854 === 'NO_WRITE' &&
       prePolicy.technicianFields === 'DO_NOT_PREFILL',
     JSON.stringify(prePolicy)
+  );
+
+  check(
+    'PREINSPECTION_REQUIRED_COPY_PREFLIGHT_BLOCKS',
+    tmv3_titleMissingRequiredCalendarIds_(
+      ['calendar-a','calendar-b'],
+      [{ calendarId:'calendar-a' }]
+    ).join(',') === 'calendar-b',
+    'calendar-b must block before any title write'
+  );
+
+  const taskProtectedBefore = tmv3_titleTaskProtectedSnapshot_({
+    'Task ID':'123',
+    'Task Number':'T123',
+    'Task Type ID':'105',
+    'Task Type':'Pre Inspection',
+    'Status':'Open',
+    'Name':'Old',
+    'Customer ID':'10',
+    'Location ID':'20',
+    'Contact ID':'30',
+    'Order ID':'',
+    'Start':'2026-09-30T10:00:00',
+    'Due':'2026-09-30T11:00:00',
+    'Assignees':'John, Matt',
+    'Pools':'Pre-Inspection Pool'
+  });
+  const taskProtectedAfter = tmv3_titleTaskProtectedSnapshot_({
+    'Task ID':'123',
+    'Task Number':'T123',
+    'Task Type ID':'105',
+    'Task Type':'Pre Inspection',
+    'Status':'Open',
+    'Name':'New',
+    'Customer ID':'10',
+    'Location ID':'20',
+    'Contact ID':'30',
+    'Order ID':'',
+    'Start':'2026-09-30T10:00:00',
+    'Due':'2026-09-30T11:00:00',
+    'Assignees':'Matt, John',
+    'Pools':'Pre-Inspection Pool'
+  });
+  check(
+    'TASK_NAME_PROTECTED_FIELDS_IGNORE_NAME_ONLY',
+    JSON.stringify(taskProtectedBefore) === JSON.stringify(taskProtectedAfter),
+    JSON.stringify({
+      before:taskProtectedBefore,
+      after:taskProtectedAfter
+    })
+  );
+
+  const changedTaskProtected = Object.assign(
+    {},
+    taskProtectedAfter,
+    { locationId:'999' }
+  );
+  check(
+    'TASK_NAME_PROTECTED_FIELDS_DETECT_UNRELATED_CHANGE',
+    JSON.stringify(taskProtectedBefore) !== JSON.stringify(changedTaskProtected),
+    JSON.stringify(changedTaskProtected)
   );
 
   const beforeAssignment = tmv3_desiredAssignment_({
