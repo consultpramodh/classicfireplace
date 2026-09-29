@@ -593,7 +593,7 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
       const nameHits = ownerIds.filter(function(ownerId) {
         const customer = refs.customerById[ownerId];
         return customer && tmv3_nameCorroboratesCustomer_(
-          record.title + ' ' + record.descriptionClean,
+          record.title + ' ' + tmv3_identityDescriptionForRecord_(record),
           customer['Name']
         );
       });
@@ -626,7 +626,7 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
   if (phoneMatches.length > 1) {
     const nameHits = phoneMatches.filter(function(customer) {
       return tmv3_nameCorroboratesCustomer_(
-        record.title + ' ' + record.descriptionClean,
+        record.title + ' ' + tmv3_identityDescriptionForRecord_(record),
         customer['Name']
       );
     });
@@ -701,7 +701,7 @@ function tmv3_step4CorroborateCustomer_(record, customer) {
 
   if (
     tmv3_nameCorroboratesCustomer_(
-      record.title + ' ' + record.descriptionClean,
+      record.title + ' ' + tmv3_identityDescriptionForRecord_(record),
       customer['Name']
     )
   ) {
@@ -710,7 +710,7 @@ function tmv3_step4CorroborateCustomer_(record, customer) {
   }
 
   const eventPhones = tmv3_allPhones_(
-    record.title + ' ' + record.descriptionClean + ' ' + record.location
+    record.title + ' ' + tmv3_identityDescriptionForRecord_(record) + ' ' + record.location
   );
 
   const primary = tmv3_phone10_(customer['Primary Phone']);

@@ -97,8 +97,23 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
   options = options || {};
 
   const title = tmv3_clean_(event.getTitle());
+  const eventId = event.getId();
   const rawDescription = String(event.getDescription() || '');
   const descriptionClean = tmv3_calendarReadableDescription_(rawDescription);
+  const titleMigration = tmv3_titleMigrationStateForEvent_(
+    vertical,
+    eventId,
+    calCfg.calendarId
+  );
+  const identityRawDescription =
+    tmv3_identityEvidenceDescriptionRaw_(
+      rawDescription,
+      titleMigration.preservedTitle
+    );
+  const identityDescriptionClean =
+    tmv3_calendarReadableDescription_(identityRawDescription);
+  const assignmentSourceTitle =
+    tmv3_clean_(titleMigration.preservedTitle) || title;
   const location = tmv3_clean_(event.getLocation());
 
   const creator = tmv3_safeCalendar_(
@@ -143,27 +158,26 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
 
   const start = event.getStartTime();
   const end = event.getEndTime();
-  const eventId = event.getId();
   const links = tmv3_extractLinks_(rawDescription);
 
   const orderNumber = tmv3_extractOrderNumberForVertical_(
     vertical,
     title,
-    descriptionClean,
+    identityDescriptionClean,
     location
   );
 
   const customerNumber = tmv3_extractCustomerNumberForVertical_(
     vertical,
-    title + ' ' + descriptionClean
+    title + ' ' + identityDescriptionClean
   );
 
   const phone = tmv3_extractPhone_(
-    title + ' ' + descriptionClean + ' ' + location
+    title + ' ' + identityDescriptionClean + ' ' + location
   );
 
   const taskNumber = tmv3_extractCalendarTaskNumber_(
-    title + ' ' + descriptionClean
+    title + ' ' + identityDescriptionClean
   );
 
   const serviceLegacyAllowed =
@@ -176,7 +190,7 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
     !serviceLegacyAllowed &&
     tmv3_serviceExternalCreatorRecoveryAllowed_({
       title: title,
-      description: descriptionClean,
+      description: identityDescriptionClean,
       location: location,
       isAllDay: isAllDay,
       creator: creator,
@@ -218,7 +232,10 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
     title: title,
     description: rawDescription,
     descriptionClean: descriptionClean,
+    identityDescriptionClean: identityDescriptionClean,
     rawDescription: rawDescription,
+    preservedCalendarTitle: tmv3_clean_(titleMigration.preservedTitle),
+    assignmentSourceTitle: assignmentSourceTitle,
     location: location,
     start: start,
     end: end,
@@ -366,6 +383,39 @@ function tmv3_calendarEventUrl_(eventId) {
   return id
     ? 'https://calendar.google.com/calendar/u/0/r/eventedit/' + encodeURIComponent(id)
     : '';
+}
+
+
+function tmv3_identityEvidenceDescriptionRaw_(rawDescription, preservedTitle) {
+  let text = String(
+    rawDescription === null || rawDescription === undefined
+      ? ''
+      : rawDescription
+  );
+
+  const oldTitle = tmv3_clean_(preservedTitle);
+
+  if (oldTitle) {
+    const lfPrefix = oldTitle + '\n\n';
+    const crlfPrefix = oldTitle + '\r\n\r\n';
+
+    if (text.indexOf(lfPrefix) === 0) {
+      text = text.slice(lfPrefix.length);
+    } else if (text.indexOf(crlfPrefix) === 0) {
+      text = text.slice(crlfPrefix.length);
+    } else if (text === oldTitle) {
+      text = '';
+    }
+  }
+
+  // Older PreInspection standardization used a deterministic managed context
+  // block. Ignore that block for identity evidence only. Never mutate it here.
+  text = text.replace(
+    /<!--\s*PREINSPECT_TITLE_CONTEXT_START\s*-->[\s\S]*?<!--\s*PREINSPECT_TITLE_CONTEXT_END\s*-->/gi,
+    ' '
+  );
+
+  return text;
 }
 
 function tmv3_calendarReadableDescription_(value) {

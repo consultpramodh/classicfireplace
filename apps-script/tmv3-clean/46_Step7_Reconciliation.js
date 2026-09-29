@@ -59,6 +59,8 @@ const TMV3_STEP7_ACTION = Object.freeze({
   PATCH_REQUESTED_BY:'PATCH_REQUESTED_BY',
   PATCH_ASSIGNMENTS:'PATCH_ASSIGNMENTS',
   PATCH_FIELD854:'PATCH_FIELD854',
+  PATCH_CALENDAR_TITLE:'PATCH_CALENDAR_TITLE',
+  PATCH_TASK_NAME:'PATCH_TASK_NAME',
   VERIFY_CALENDAR_LINKS:'VERIFY_CALENDAR_LINKS',
   CREATE_LOCATION:'CREATE_LOCATION',
   CREATE_TASK:'CREATE_TASK',
@@ -773,6 +775,68 @@ function tmv3_step7RequestedByFromRaw_(raw) {
   };
 }
 
+
+function tmv3_step7TitleState_(record, actualTaskName, taskStatus, historical) {
+  const desiredCalendar = tmv3_desiredCalendarTitle_(record);
+  const desiredTask = tmv3_desiredTaskName_(
+    record,
+    { sourceTaskTitle:actualTaskName || '' }
+  );
+
+  const actualCalendarTitle = tmv3_clean_(record && record.title);
+  const actualName = tmv3_clean_(actualTaskName);
+  const openTask =
+    !historical &&
+    tmv3_taskNameNormalizationStatusAllowed_(taskStatus);
+
+  const calendarCheck =
+    desiredCalendar.status === 'READY'
+      ? (
+          actualCalendarTitle === tmv3_clean_(desiredCalendar.value)
+            ? 'MATCH'
+            : 'MISMATCH'
+        )
+      : desiredCalendar.status;
+
+  const taskCheck =
+    desiredTask.status === 'READY'
+      ? (
+          actualName === tmv3_clean_(desiredTask.value)
+            ? 'MATCH'
+            : 'MISMATCH'
+        )
+      : desiredTask.status;
+
+  return {
+    openTask:openTask,
+    jev:'JEV NOT USED — DETERMINISTIC',
+    desiredCalendarTitle:desiredCalendar.value || '',
+    actualCalendarTitle:actualCalendarTitle,
+    calendarTitleStatus:desiredCalendar.status || '',
+    calendarTitleCheck:calendarCheck,
+    calendarTitleBlocker:
+      desiredCalendar.status === 'BLOCKED'
+        ? (desiredCalendar.reason || '')
+        : '',
+    desiredTaskName:desiredTask.value || '',
+    actualTaskName:actualName,
+    taskNameStatus:desiredTask.status || '',
+    taskNameCheck:taskCheck,
+    taskNameBlocker:
+      desiredTask.status === 'BLOCKED'
+        ? (desiredTask.reason || '')
+        : '',
+    calendarActionRequired:
+      openTask &&
+      desiredCalendar.status === 'READY' &&
+      calendarCheck === 'MISMATCH',
+    taskActionRequired:
+      openTask &&
+      desiredTask.status === 'READY' &&
+      taskCheck === 'MISMATCH'
+  };
+}
+
 function tmv3_step7ExistingTaskPlan_(
   record,
   disposition,
@@ -894,6 +958,13 @@ function tmv3_step7ExistingTaskPlan_(
     fresh.raw
   );
 
+  const titleState = tmv3_step7TitleState_(
+    record,
+    tmv3_clean_(actual['Name']),
+    tmv3_clean_(actual['Status']),
+    historical
+  );
+
   const checks = {
     customer: customerCheck,
     order: orderCheck,
@@ -923,6 +994,7 @@ function tmv3_step7ExistingTaskPlan_(
       checks,
       assignmentCheck,
       field854State,
+      titleState,
       historical
     );
   }
@@ -942,8 +1014,10 @@ function tmv3_step7ExistingTaskPlan_(
       start: tmv3_clean_(scheduleCheck.start),
       due: tmv3_clean_(scheduleCheck.due),
       assignment: tmv3_step7AssignmentText_(actualAssignments),
+      taskName:tmv3_clean_(actual['Name']),
       scheduleSource: scheduleCheck.source || 'V2_TASK_MODEL'
     },
+    titleState:titleState,
     desiredAssignment: tmv3_step7DesiredAssignmentText_(
       desiredAssignment
     ),
@@ -951,6 +1025,7 @@ function tmv3_step7ExistingTaskPlan_(
     desiredField854: field854State.desired,
     actualField854: field854State.actual,
     field854Check: field854State.check,
+    titleState:titleState,
     checks: checks,
     actions: action.actions || [],
     plan: action.plan,
@@ -973,6 +1048,7 @@ function tmv3_step7ExistingAction_(
   checks,
   assignmentCheck,
   field854State,
+  titleState,
   historical
 ) {
   function blocked(plan, blocker) {
@@ -1077,6 +1153,16 @@ function tmv3_step7ExistingAction_(
   if (field854State && field854State.patchRequired) {
     changes.push('FIELD854');
     actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
+  }
+
+  if (titleState && titleState.calendarActionRequired) {
+    changes.push('CALENDAR_TITLE');
+    actions.push(TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE);
+  }
+
+  if (titleState && titleState.taskActionRequired) {
+    changes.push('TASK_NAME');
+    actions.push(TMV3_STEP7_ACTION.PATCH_TASK_NAME);
   }
 
   actions.push(TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS);
@@ -1323,6 +1409,31 @@ function tmv3_step7PlanRow_(input) {
     desiredField854:input.desiredField854 || '',
     actualField854:input.actualField854 || '',
     field854Check:input.field854Check || 'N/A',
+    desiredCalendarTitle:
+      (input.titleState && input.titleState.desiredCalendarTitle) || '',
+    actualCalendarTitle:
+      (input.titleState && input.titleState.actualCalendarTitle) ||
+      tmv3_clean_(record.title),
+    calendarTitleStatus:
+      (input.titleState && input.titleState.calendarTitleStatus) || '',
+    calendarTitleCheck:
+      (input.titleState && input.titleState.calendarTitleCheck) || '',
+    calendarTitleBlocker:
+      (input.titleState && input.titleState.calendarTitleBlocker) || '',
+    desiredTaskName:
+      (input.titleState && input.titleState.desiredTaskName) || '',
+    actualTaskName:
+      (input.titleState && input.titleState.actualTaskName) ||
+      (actual.taskName || ''),
+    taskNameStatus:
+      (input.titleState && input.titleState.taskNameStatus) || '',
+    taskNameCheck:
+      (input.titleState && input.titleState.taskNameCheck) || '',
+    taskNameBlocker:
+      (input.titleState && input.titleState.taskNameBlocker) || '',
+    titleJev:
+      (input.titleState && input.titleState.jev) ||
+      'JEV NOT USED — DETERMINISTIC',
     plan:input.plan || '',
     actions:actions,
     writeGate:
