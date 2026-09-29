@@ -962,7 +962,13 @@ function doPost(e) {
         String(body.expectedPlan || '')
       );
       return TMPV3_shadowResponse_({
-        ok:canary.status === 'CANARY_VERIFIED_NO_CHANGE',
+        ok:
+          canary &&
+          (
+            canary.status === 'CREATED_VERIFIED_AND_CONVERGED' ||
+            canary.status === 'VERIFIED_CONVERGENCE' ||
+            canary.status === 'CANARY_VERIFIED_NO_CHANGE'
+          ),
         status:'STEP7_CANARY_COMPLETE',
         result:canary
       });
