@@ -4377,6 +4377,22 @@ function tmv3_pushSelectedPreInspectionInstallNotes() {
   return result;
 }
 
+function tmv3_canaryWriteEventAllowed_(eventRecord) {
+  const policy = tmv3_operationPolicy_();
+
+  if (TMV3.MODE !== 'CANARY_WRITE') return true;
+
+  const eventId = tmv3_clean_(policy.canaryEventId);
+  const vertical = tmv3_clean_(policy.canaryVertical);
+
+  if (!eventId) return false;
+
+  return (
+    tmv3_clean_(eventRecord && eventRecord.eventId) === eventId &&
+    (!vertical || tmv3_clean_(eventRecord && eventRecord.vertical) === vertical)
+  );
+}
+
 function tmv3_runSafeReadyRows_(scope) {
   const policy = tmv3_operationPolicy_();
   const maxWrites = Number(policy.autoMaxWritesPerRun || 10);
@@ -4393,7 +4409,9 @@ function tmv3_runSafeReadyRows_(scope) {
     };
   }
 
-  const events = tmv3_calendarRecords_();
+  const events = tmv3_calendarRecords_().filter(function(eventRecord) {
+    return tmv3_canaryWriteEventAllowed_(eventRecord);
+  });
   const results = [];
 
   for (
@@ -4650,7 +4668,9 @@ function tmv3_runCalendarLinksForReady_AUTO() {
     };
   }
 
-  const events = tmv3_calendarRecords_();
+  const events = tmv3_calendarRecords_().filter(function(eventRecord) {
+    return tmv3_canaryWriteEventAllowed_(eventRecord);
+  });
   const results = [];
   const limit = Number(
     tmv3_operationPolicy_().autoMaxWritesPerRun || 10
