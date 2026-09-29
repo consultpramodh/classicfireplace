@@ -3614,7 +3614,11 @@ function tmv3_executeExistingTaskSync_(
     status:
       fullExecution
         ? 'VERIFIED_CONVERGENCE'
-        : 'VERIFIED_PARTIAL',
+        : (
+            titleExecution
+              ? 'TITLE_NORMALIZATION_VERIFIED'
+              : 'VERIFIED_PARTIAL'
+          ),
     mode:mode || 'ALL',
     vertical:contract.vertical,
     eventId:contract.eventId,
