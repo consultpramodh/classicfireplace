@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_20_LIVE_HARDENING_R1",
+  "release": "TMV3_3_11_21_TITLE_NORMALIZATION_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "MAP_ONLY",
+  "runMode": "LIVE_HARDENING_REGRESSION",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "LIVE_HARDENING_MAP_ONLY_VERIFY",
+  "requestTag": "TITLE_NORMALIZATION_LIVE_HARDENING_REGRESSION",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
