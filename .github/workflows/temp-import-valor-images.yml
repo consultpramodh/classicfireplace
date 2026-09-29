@@ -1,0 +1,86 @@
+name: TEMP Import Valor Pilot Images to GitHub
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/temp-import-valor-images.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temp-import-valor-images
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Valor pilot branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/valor-image-pilot-10
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Download verified Valor images
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR="vendor-catalog/valor/pilot-10/images"
+          mkdir -p "$DIR"
+
+          download() {
+            sku="$1"
+            name="$2"
+            url="$3"
+            out="$DIR/$name"
+            echo "Downloading $sku -> $out"
+            curl -L --fail --silent --show-error               --retry 3 --retry-delay 2               -A "Mozilla/5.0"               "$url" -o "$out"
+            bytes="$(wc -c < "$out")"
+            if [ "$bytes" -lt 1000 ]; then
+              echo "ERROR: $sku image is unexpectedly small: $bytes bytes"
+              exit 1
+            fi
+            mime="$(file --brief --mime-type "$out")"
+            case "$mime" in
+              image/jpeg|image/png|image/webp|image/gif) ;;
+              *)
+                echo "ERROR: $sku is not a recognized image: $mime"
+                exit 1
+                ;;
+            esac
+            echo "$sku OK: $bytes bytes / $mime"
+          }
+
+          download "200AN"  "200AN-p2.jpg" "https://www.valorfireplaces.com/media/responsive/fireplaces/p2/p2-rcb-lsk.jpg"
+          download "530VN"  "530VN-portrait.jpg" "https://www.valorfireplaces.com/media/responsive/fireplaces/portrait/536-LSK.jpg"
+          download "534VN"  "534VN-horizon.jpg" "https://www.valorfireplaces.com/media/responsive/fireplaces/horizon/setting-clearview-vrl.jpg"
+          download "1000MN" "1000MN-h3.jpg" "https://www.valorfireplaces.com/media/ResponsiveGraphics/installs/h3/birch-heatshift.jpg"
+          download "1100MN" "1100MN-h5.jpg" "https://www.valorfireplaces.com/media/responsive/fireplaces/h5/h5-gbl-setting.jpg"
+          download "1400MN" "1400MN-h6.jpg" "https://www.valorfireplaces.com/media/responsive/fireplaces/h6/h6-gbl-setting.jpg"
+          download "1500KN" "1500KN-l1.jpg" "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l1/birchv2-rgl-cik.jpg"
+          download "1600KN" "1600KN-l1-see-thru.jpg" "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l1-2sided/birchv2-rgl.jpg"
+          download "1700KN" "1700KN-l2.jpg" "https://www.valorfireplaces.com/media/responsive/fireplaces/l2-linear/setting-birch-v2.jpg"
+          download "1800KN" "1800KN-l3.jpg" "https://www.valorfireplaces.com/media/ResponsiveGraphics/products/l3/birch-rgl-inch.jpg"
+
+          (
+            cd "$DIR"
+            sha256sum *.jpg > SHA256SUMS.txt
+          )
+
+      - name: Commit images to pilot branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vendor-catalog/valor/pilot-10/images/
+          if git diff --cached --quiet; then
+            echo "No image changes to commit."
+            exit 0
+          fi
+          git commit -m "Add verified Valor pilot product images"
+          git push origin HEAD:work/valor-image-pilot-10
