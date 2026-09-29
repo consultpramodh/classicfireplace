@@ -218,10 +218,35 @@ function TMP_Valor_uploadOne_(token, cfg) {
   })[0];
 
   if (existing) {
+    var existingIsDefault = (existing.IsDefault === true || existing.isDefault === true);
+    var anyDefault = beforeData.some(function(img){ return (img.IsDefault === true || img.isDefault === true); });
+    if (!existingIsDefault && !anyDefault) {
+      var existingId = existing.Id || existing.id || 0;
+      var setDefault = UrlFetchApp.fetch(
+        'https://api.striven.com/v1/items/' + cfg.id + '/images/' + existingId + '/set-default',
+        {
+          method:'post',
+          headers:{Authorization:'Bearer ' + token, Accept:'application/json, application/octet-stream'},
+          muteHttpExceptions:true
+        }
+      );
+      var setDefaultCode = setDefault.getResponseCode();
+      if (setDefaultCode < 200 || setDefaultCode >= 300) {
+        return {
+          ok:false,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'SET_DEFAULT_FAILED',
+          imageId:existingId,http:setDefaultCode,responsePrefix:setDefault.getContentText().substring(0,300)
+        };
+      }
+      return {
+        ok:true,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'SET_DEFAULT',
+        imageId:existingId,fileName:existing.OriginalFileName || existing.originalFileName || cfg.fileName,
+        isDefault:true
+      };
+    }
     return {
       ok:true,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'SKIPPED_EXISTS',
       imageId:existing.Id || existing.id || 0,fileName:existing.OriginalFileName || existing.originalFileName || cfg.fileName,
-      isDefault:(existing.IsDefault === true || existing.isDefault === true)
+      isDefault:existingIsDefault
     };
   }
 
