@@ -1243,6 +1243,23 @@ function tmv3_titleNormalizationRegression() {
     tmv3_titleLocationDisplay_(fullAddressLocation)
   );
 
+  const janeLocation = {
+    'Address 1':
+      '16 Brooke Ave, North York, Toronto, ON M5M 2J6, CANADA',
+    'City':''
+  };
+  check(
+    'TASK_NAME_PREFERS_VERIFIED_CALENDAR_LOCALITY',
+    tmv3_titleLocationDisplay_(
+      janeLocation,
+      '16 Brooke Ave, North York, ON M5M 2J6, Canada'
+    ) === '16 Brooke Ave, North York',
+    tmv3_titleLocationDisplay_(
+      janeLocation,
+      '16 Brooke Ave, North York, ON M5M 2J6, Canada'
+    )
+  );
+
   const missingOrder = baseRecord('Install');
   missingOrder.step3.anchor.orderNumber = '';
   missingOrder.orderNumber = '';
