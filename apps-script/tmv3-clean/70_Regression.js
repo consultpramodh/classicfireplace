@@ -1352,7 +1352,7 @@ function tmv3_titleNormalizationRegression() {
     'ASSIGNMENT_PARITY_AFTER_TITLE_NORMALIZATION',
     JSON.stringify(beforeAssignment) ===
       JSON.stringify(afterAssignment) &&
-      beforeAssignment.employeeIds.indexOf(18) !== -1,
+      beforeAssignment.employeeIds.map(Number).indexOf(18) !== -1,
     JSON.stringify({
       before:beforeAssignment,
       after:afterAssignment
