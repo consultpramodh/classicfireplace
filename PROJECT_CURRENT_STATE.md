@@ -1,6 +1,6 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-09-25 (America/Toronto)
+**Last updated:** 2026-09-29 (America/Toronto)
 
 ## Canonical project
 
@@ -10,134 +10,162 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.14-legacy-assignment-parity-r1`
+- V3 version: `3.11.25-hard-rules-r1`
+- Hard-rule version: `2026-09-29-r1`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
+- Automation writes: **disabled**
 
 The four verticals remain Install, Delivery, Service, and PreInspection.
+
+## Mandatory source of truth
+
+Before any Task Mapping code change, read:
+
+1. `PROJECT_OPERATING_RULES.md` — **Task Mapping hard business rules**
+2. this current-state file
+3. current `task_mapping` source / live parity evidence
+
+The Apps Script mirror is `TMV3_HARD_RULES` in `00_Config.js`. `tmv3_assertHardRules_()` fails closed when implementation/configuration drifts from those rules.
+
+A business-rule change is incomplete unless the same change updates:
+
+- `PROJECT_OPERATING_RULES.md`
+- `TMV3_HARD_RULES`
+- affected code path(s)
+- regression coverage
 
 ## Current V3 architecture
 
 `CALENDAR → NORMALIZE/ELIGIBILITY → BUSINESS ANCHOR → IDENTITY → TASK RESOLUTION → TASK DECISION → RECONCILIATION → EXECUTE → READ-BACK VERIFY → CALENDAR LINK VERIFY → COMPLETE`
 
-V3 remains consolidated under the existing module set. Do **not** add Step 8/9/10 Apps Script files.
+V3 remains consolidated under the existing module set. **Do not add Step 8/9/10 Apps Script files.**
+
+## Hard rules reinstated — 2026-09-29
+
+### Global
+
+- Ambiguity is `REVIEW`; never guess.
+- An uncertain external CREATE is reconciled before any retry.
+- Consequential external writes require read-back verification.
+- Calendar writes are limited to explicitly managed Task Mapping fields/actions.
+- Preserve unrelated working behavior and manual assignments.
+- No new Step 8/9/10 Apps Script files.
+
+### Install
+
+- Sales Order required.
+- Task link returns to Calendar.
+- Assignment evidence comes from Calendar **title only**.
+- Calendar description is not assignment evidence.
+- Aiden is ignored.
+- Preserve unrelated/manual employees.
+
+### Delivery
+
+- Sales Order required.
+- Sales Order + Task links return to Calendar.
+- Assignment evidence comes from Calendar **title only**.
+- Default Pool 4 when applicable.
+- Preserve unrelated/manual employees.
+
+### Service
+
+- Operational transaction is the **Work Order**.
+- Work Order + Task links return to Calendar.
+- Technician comes from the technician Calendar.
+- Remove `To Be Assigned` only after the intended technician is established.
+- Remove only conflicting known Service technicians; preserve unrelated/manual employees.
+
+### PreInspection
+
+- Sales Order is **not required** for CREATE.
+- Never attach a Sales Order to the PreInspection Task at CREATE.
+- Task Type is **105 — Pre Inspection**.
+- Task Description is **exactly blank at CREATE**.
+- Calendar notes remain **Calendar-only**.
+- **Field 854 is not managed by Task Mapping.**
+- CREATE does not prefill `InfoCustomFields`.
+- Technician-completed fields are not prefilled.
+- Default assignment is **Pool 8 — Pre-Inspection Pool**.
+- Calendar organizer/creator resolves **Requested By** and is not automatically Assigned To.
+- Primary/shared and Stephen secondary Calendar handling remains supported.
+- Managed links/titles are verified on the actual required Calendar copies.
+
+## Field 854 removal — VERIFIED IN SOURCE
+
+Release `3.11.25-hard-rules-r1` removed:
+
+- `PATCH_FIELD854` from Step 7 actions
+- Field 854 reconciliation state/planning
+- Field 854 CREATE population
+- Field 854 existing-task patching
+- `tmv3_pushPreInspectionField854_`
+- `tmv3_preInspectionField854Payload_`
+- manual `tmv3_pushSelectedPreInspectionInstallNotes`
+- the **Push PreInspection Install Notes (854)** menu item
+
+The regression suite now asserts that Field 854 is absent from executable automation.
+
+## PreInspection CREATE payload enforcement
+
+Immediately before a PreInspection Task POST, V3 enforces and then asserts:
+
+- Task Type ID = 105
+- no Sales Order attachment
+- Description = `''`
+- no `InfoCustomFields`
+
+A violation throws before the Task POST.
+
+## Verification evidence
+
+### 3.11.25 hard-rules release
+
+- Pre-change checkpoint branch: `checkpoint/tmv3-hard-rules-pre-2026-09-29`
+- PR: #87
+- Merge commit: `f7789326e5253401014d6210bb25a007c2ea9478`
+- Pure regression: **47/47 PASS**
+- Apps Script syntax: **PASS** for all changed V3 files
+- Guarded bootstrap run: `36621590973` — **SUCCESS**
+- Bootstrap evidence: `CLEAN_V3_SOURCE_VERIFIED`
+- Remote file parity: **22/22 files**
+- Ledger check run: `36621590979` — **SUCCESS**
+- Bound project remains `SHADOW_READ_ONLY`
+- Evidence file: `test-evidence/2026-09-29-tmv3-hard-rules-r1.md`
+
+## Jane Bisset canary state
+
+Event: `2g1s53ho1qf09d19vsep0p3v0h@google.com`
+
+Resolved evidence before the hard-rule correction:
+
+- Customer: `62638 — Jane & Neil Bisset`
+- Location: `58275`
+- Contact: `56537`
+- Step 6: `CREATE_TASK`
+- no open Task found
+- canonical Calendar title: `Cust#62638 - Jane & Neil Bisset - (416) 399-6519`
+- canonical Task locality: `16 Brooke Ave, North York`
+
+No Striven Task was created during the previous canary attempt.
+
+The prior Stage-8 canary was returned to Stage 7 / SHADOW because a Calendar update produced no Stage-8 execution/audit entry. Do not resume production writes until managed trigger state is verified.
 
 ## Current safety state
 
-V3 is not in production-write mode.
-
-- Global mode: `SHADOW_READ_ONLY`
-- Automation writes: disabled
-- Scheduled Stage-7 business writes: gated
-- CREATE/RECREATE production cutover: not approved
-- Legacy production behavior remains the rollback/business-continuity path
-
-## Verified fixes — 2026-09-25
-
-### Canonical PM Task schedule
-
-**VERIFIED**
-
-For Install Task `18678`, Striven v2 exposed a PM appointment as an AM schedule. V3 now falls back to canonical Striven v1 `DesiredStartDate / DesiredEndDate` when v2 disagrees with Calendar.
-
-Verified:
-
-- Calendar start/end: `MATCH / MATCH`
-- source: `V1_DESIRED_START_END`
-- incorrect date patch removed
-- evidence: `test-evidence/2026-09-25-tmv3-canonical-pm-schedule-verified.md`
-
-### Install / Delivery assignee inference
-
-**VERIFIED**
-
-The apparent Task `18678` assignment mismatch was a V3 false positive. V3 was incorrectly treating narrative Calendar-description text as assignment evidence.
-
-Release `3.11.9-assignee-title-only-r1` restores the canonical rule:
-
-- Install / Delivery assignment names come from the **Calendar event title only**;
-- description notes do not create assignments;
-- normalized whole-token / whole-phrase matching is used;
-- Aiden remains ignored;
-- Service and PreInspection keep their separate assignment rules.
-
-Fresh live Step 7 for Task `18678` now returns:
-
-- Customer: `MATCH`
-- Order: `MATCH`
-- Location: `MATCH`
-- Requested By: `MATCH`
-- Start: `MATCH`
-- End: `MATCH`
-- Desired assignment: none
-- Existing assignment: preserved
-- Assignment check: `N/A`
-- Final plan: `NO_CHANGE`
-- Blocker: none
-- Read status: `FRESH_TASK_GET`
-
-No Striven assignment mutation was made.
-
-Evidence:
-
-- GitHub Actions run: `36183055729`
-- artifact: `10885545480`
-- file: `test-evidence/2026-09-25-tmv3-title-only-assignee-verified.md`
-
-## Read-only runtime verifier
-
-Read-only V3 verification now reuses the Apps Script HEAD/test web-app deployment through the authenticated `/dev` endpoint.
-
-This removes the previous need to create one temporary Apps Script version/deployment for every read-only probe and avoids the observed `RESOURCE_EXHAUSTED` deployment path.
-
-The runner still restores the exact pre-run source and verifies source-head hash parity after execution.
-
-## Write-path readiness
-
-Existing-task reconciliation is implemented with guarded fresh-read / fresh-plan / read-back verification.
-
-CREATE/RECREATE implementation is present with duplicate prevention, durable Task-ID capture, read-back checks, Calendar backlink handling, and PreInspection-specific safety rules.
-
-Production readiness is not yet proven until controlled live canaries and the final regression pass complete.
-
-## Remaining critical path
-
-1. **Finish the Assignment Reconciliation feature as one feature-level gate** using exact legacy behavior across Install, Delivery, Service, and PreInspection.
-2. Run assignment regression coverage plus a fresh current-data scan; individual Tasks are validation examples only, not separate project items.
-3. Mark Assignment Reconciliation `DONE / VERIFIED` only when no unexpected assignment plans remain.
-4. Move to the next feature gate: guarded CREATE/RECREATE behavior with authoritative read-back and Calendar backlink verification.
-5. Run the final four-vertical V3 regression.
-6. Only if those feature gates pass, perform controlled production cutover and verify the first scheduled cycle.
-
-## Current completion classification
-
-| Area | Status |
-|---|---|
-| V3 architecture | BUILT |
-| Stage-7 reconciliation engine | BUILT / ACTIVE VERIFICATION |
-| Canonical PM schedule fallback | VERIFIED |
-| Title-only Install/Delivery assignment resolution | VERIFIED |
-| Existing-task guarded mutation path | BUILT |
-| CREATE path | BUILT / LIVE CANARY PENDING |
-| RECREATE path | BUILT / LIVE CANARY PENDING |
-| Calendar backlink path | BUILT / FINAL CANARY PENDING |
-| Read-only runtime verification transport | VERIFIED |
-| Automation production writes | GATED |
-| Final four-vertical regression | PENDING |
-| Production cutover | NOT APPROVED |
-| Legacy retirement | NOT APPROVED |
+- Stage 7
+- `SHADOW_READ_ONLY`
+- automation external writes disabled
+- CREATE/RECREATE production cutover not approved
+- hard rules are deployed and source-parity verified
 
 ## Exact next action
 
-**Complete the Assignment Reconciliation feature.**
+**Verify/install the managed V3 triggers in the bound Apps Script project, then rerun Jane Bisset as the single PreInspection CREATE canary under the 3.11.25 hard-rule contract.**
 
-Feature acceptance:
+The canary must prove:
 
-- Install / Delivery use the legacy title-based assignee resolver; Aiden remains ignored.
-- Install preserves unrelated/manual existing employees when adding the intended installer.
-- Delivery follows the legacy delivery cleanup behavior and does not remove unrelated manual employees.
-- Service derives the technician from the technician Calendar, removes `To Be Assigned` only after the intended technician is established, and removes only conflicting known Service technicians.
-- PreInspection remains assigned to Pool 8; organizer/employee is `Requested By`, not `Assigned To`.
-- A regression matrix and a fresh current-data scan must show no unexpected assignment mutations.
+`Calendar event → Customer → Location → identity evidence → Type 105 CREATE → Requested By → Pool 8 → blank Description → no SO → no InfoCustomFields/Field 854 → Calendar links/title → authoritative read-back → NO_CHANGE`
 
-Task `16735` is retained only as live canary evidence that the Install assignment write path works and converges to `NO_CHANGE`.
+Only after that single-record path converges should automatic write scope be widened.
