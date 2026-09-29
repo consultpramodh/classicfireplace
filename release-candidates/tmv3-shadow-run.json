@@ -3,7 +3,7 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TRIGGER_INVENTORY",
+  "runMode": "INSTALL_MANAGED_TRIGGERS",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_PRELIVE_TRIGGER_INVENTORY_20260929",
+  "requestTag": "TMV3_PRELIVE_INSTALL_MANAGED_TRIGGERS_20260929",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
