@@ -54,3 +54,36 @@ Source catalog: **Valor 2026 MSRP CDN Price List**, effective 2026-02-18, revisi
 ## Next integration step
 
 Resolve each Valor Item Number to its Striven Item ID, call `GET /v1/items/{id}/images` to avoid duplicates, then use the image URL in this manifest as the source file for the Striven image upload flow. The exact `POST /v1/items/{id}/images` request contract still needs to be verified before implementing the uploader.
+
+
+## Striven Item IDs resolved
+
+The current Striven Central Data Hub `DATA_ITEMS` dataset was used to resolve the exact internal Striven Item IDs before calling the item-detail endpoint.
+
+| Valor Item | Striven Item ID | Live detail endpoint | Live image endpoint |
+|---|---:|---|---|
+| 200AN | 39799 | `GET /v1/items/39799` | `GET /v1/items/39799/images` |
+| 530VN | 42895 | `GET /v1/items/42895` | `GET /v1/items/42895/images` |
+| 534VN | 41479 | `GET /v1/items/41479` | `GET /v1/items/41479/images` |
+| 1000MN | 41622 | `GET /v1/items/41622` | `GET /v1/items/41622/images` |
+| 1100MN | 37548 | `GET /v1/items/37548` | `GET /v1/items/37548/images` |
+| 1400MN | 36083 | `GET /v1/items/36083` | `GET /v1/items/36083/images` |
+| 1500KN | 36045 | `GET /v1/items/36045` | `GET /v1/items/36045/images` |
+| 1600KN | 24098 | `GET /v1/items/24098` | `GET /v1/items/24098/images` |
+| 1700KN | 24111 | `GET /v1/items/24111` | `GET /v1/items/24111/images` |
+| 1800KN | 36046 | `GET /v1/items/36046` | `GET /v1/items/36046/images` |
+
+## Direct Striven collector
+
+`striven-collector.gs` is a read-only Google Apps Script collector for these 10 items.
+
+Run:
+
+`valorPilot10_collectFromStriven()`
+
+It performs one token request if needed, then for each fireplace calls both:
+
+- `GET /v1/items/{id}`
+- `GET /v1/items/{id}/images`
+
+It validates that the Item Number returned by Striven exactly matches the expected Valor SKU before accepting the result. No Striven write endpoint is called.
