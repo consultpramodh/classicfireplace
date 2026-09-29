@@ -266,7 +266,7 @@ function TMP_Valor_uploadOne_(token, cfg) {
     };
   }
 
-  Utilities.sleep(750);
+  Utilities.sleep(4000);
   var after = TMP_Valor_fetchJson_('https://api.striven.com/v1/items/' + cfg.id + '/images', token);
   if (after.code !== 200) {
     return {ok:false,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'VERIFY_LIST_FAILED',http:after.code};
@@ -280,7 +280,10 @@ function TMP_Valor_uploadOne_(token, cfg) {
   if (!created && afterData.length <= beforeData.length) {
     return {
       ok:false,sku:cfg.sku,itemId:cfg.id,series:cfg.series,action:'VERIFY_FAILED',
-      beforeCount:beforeData.length,afterCount:afterData.length
+      beforeCount:beforeData.length,afterCount:afterData.length,
+      uploadHttp:uploadCode,
+      uploadContentType:String(upload.getHeaders()['Content-Type'] || upload.getHeaders()['content-type'] || ''),
+      uploadResponsePrefix:upload.getContentText().substring(0,500)
     };
   }
 
