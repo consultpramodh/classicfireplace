@@ -297,9 +297,12 @@ function tmv3_preInspectionCreatePolicy() {
     taskTypeId: 105,
     attachSalesOrder: false,
     description: '',
-    field854: 'CALENDAR_NOTES_MANAGED',
+    calendarNotes: 'CALENDAR_ONLY',
+    field854: 'DO_NOT_MANAGE',
+    infoCustomFieldsAtCreate: 'NONE',
     requiredPoolId: 8,
     requestedBy: 'CALENDAR_ORGANIZER',
+    assignedToFromOrganizer: false,
     calendarLinks: [
       'CUSTOMER_SALES_ORDERS_PAGE',
       'TASK'
