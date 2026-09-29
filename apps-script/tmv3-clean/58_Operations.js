@@ -36,6 +36,8 @@ function tmv3_operationWritesEnabled_(scope) {
 }
 
 function tmv3_assertOperationWrite_(scope) {
+  tmv3_assertHardRules_();
+
   if (!tmv3_operationWritesEnabled_(scope)) {
     throw new Error(
       'TM V3 ' + String(scope || 'UNKNOWN') +
@@ -621,7 +623,6 @@ function tmv3_step7ActionsForMode_(contract, mode) {
     ],
     ASSIGNEE:[TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS],
     LINKS:[TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS],
-    FIELD854:[TMV3_STEP7_ACTION.PATCH_FIELD854],
     TITLE:[
       TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE,
       TMV3_STEP7_ACTION.PATCH_TASK_NAME
@@ -1605,154 +1606,6 @@ function tmv3_setExistingFieldValue_(field, value) {
   if (Object.prototype.hasOwnProperty.call(field, 'ValueText')) field.ValueText = null;
 }
 
-function tmv3_preInspectionField854Payload_(notes) {
-  const value = String(notes || '').trim();
-  if (!value) return [];
-
-  return [{
-    Id:854,
-    Name:'Install Notes',
-    Value:value,
-    ValueText:null
-  }];
-}
-
-function tmv3_customFieldSnapshotExcept_(fields, excludedId) {
-  return (fields || [])
-    .filter(function(field) {
-      return tmv3_fieldId_(field) !== Number(excludedId || 0);
-    })
-    .map(function(field) {
-      return {
-        id:tmv3_fieldId_(field),
-        name:tmv3_clean_(tmv3_first_(field || {}, ['name','Name'])),
-        value:String(tmv3_fieldValue_(field) == null ? '' : tmv3_fieldValue_(field))
-      };
-    })
-    .sort(function(a,b) {
-      if (a.id !== b.id) return a.id - b.id;
-      return a.name.localeCompare(b.name);
-    });
-}
-
-function tmv3_pushPreInspectionField854_(bundle, scope, options) {
-  tmv3_assertOperationWrite_(scope);
-
-  if (!bundle || !bundle.eventRecord || bundle.eventRecord.vertical !== 'PreInspection') {
-    return {
-      status:'NOT_APPLICABLE',
-      fieldId:854,
-      taskId:Number(bundle && bundle.resolved && bundle.resolved.taskId || 0)
-    };
-  }
-
-  const taskId = Number(bundle && bundle.resolved && bundle.resolved.taskId || 0);
-  if (!taskId) throw new Error('Field 854 synchronization requires Task ID.');
-
-  const desired = String(
-    options && options.desiredValue !== undefined
-      ? options.desiredValue
-      : tmv3_step7AuthoredNotes_(bundle.eventRecord)
-  ).trim();
-
-  const beforeRaw = tmv3_rawTaskById_(taskId);
-  const beforeFields = tmv3_infoCustomFieldsRaw_(beforeRaw);
-  const matches = beforeFields.filter(function(field) {
-    return tmv3_fieldId_(field) === 854;
-  });
-
-  if (matches.length > 1) {
-    throw new Error(
-      'Task ' + taskId +
-      ' exposes multiple Field 854 values; automatic synchronization is blocked.'
-    );
-  }
-
-  const actualBefore = matches.length
-    ? String(tmv3_fieldValue_(matches[0]) || '').trim()
-    : '';
-
-  if (actualBefore === desired) {
-    return {
-      status:'ALREADY_CORRECT',
-      fieldId:854,
-      taskId:taskId,
-      desiredValue:desired,
-      actualValue:actualBefore,
-      otherCustomFieldsVerified:true
-    };
-  }
-
-  const fields = JSON.parse(JSON.stringify(beforeFields || []));
-  let target = null;
-
-  fields.forEach(function(field) {
-    if (tmv3_fieldId_(field) === 854) target = field;
-  });
-
-  if (target) {
-    tmv3_setExistingFieldValue_(target, desired);
-  } else if (desired) {
-    fields.push(tmv3_preInspectionField854Payload_(desired)[0]);
-  } else {
-    return {
-      status:'ALREADY_CORRECT',
-      fieldId:854,
-      taskId:taskId,
-      desiredValue:'',
-      actualValue:'',
-      otherCustomFieldsVerified:true
-    };
-  }
-
-  const otherBefore = tmv3_customFieldSnapshotExcept_(beforeFields, 854);
-
-  tmv3_operationPatchTask_(
-    taskId,
-    { InfoCustomFields:fields },
-    scope
-  );
-
-  const afterRaw = tmv3_rawTaskById_(taskId);
-  const afterFields = tmv3_infoCustomFieldsRaw_(afterRaw);
-  const afterMatches = afterFields.filter(function(field) {
-    return tmv3_fieldId_(field) === 854;
-  });
-
-  if (afterMatches.length !== 1) {
-    throw new Error(
-      'Field 854 read-back failed for Task ' + taskId +
-      '; expected exactly one Field 854 value.'
-    );
-  }
-
-  const actualAfter = String(
-    tmv3_fieldValue_(afterMatches[0]) || ''
-  ).trim();
-
-  if (actualAfter !== desired) {
-    throw new Error(
-      'Field 854 read-back mismatch for Task ' + taskId + '.'
-    );
-  }
-
-  const otherAfter = tmv3_customFieldSnapshotExcept_(afterFields, 854);
-  if (JSON.stringify(otherBefore) !== JSON.stringify(otherAfter)) {
-    throw new Error(
-      'Field 854 update changed unrelated custom fields for Task ' + taskId + '.'
-    );
-  }
-
-  return {
-    status:'FIELD854_WRITTEN_AND_VERIFIED',
-    fieldId:854,
-    taskId:taskId,
-    desiredValue:desired,
-    actualValue:actualAfter,
-    otherCustomFieldsVerified:true
-  };
-}
-
 function tmv3_findEventCopyRobust_(calendarId, eventId) {
   const direct = tmv3_findCalendarEventById_(calendarId, eventId);
   if (direct) return direct;
@@ -2360,13 +2213,66 @@ function tmv3_buildCreateSource_(bundle, action) {
     useSubContractor: base.useSubContractor === true,
     infoCustomFields:
       eventRecord.vertical === 'PreInspection'
-        ? tmv3_preInspectionField854Payload_(
-            tmv3_step7AuthoredNotes_(eventRecord)
-          )
+        ? []
         : (action === 'RECREATE' ? base.infoCustomFields : [])
   };
 }
 
+
+function tmv3_enforcePreInspectionCreatePayloadHardRules_(payload) {
+  payload = payload || {};
+
+  delete payload.SalesOrder;
+  delete payload.SalesOrderId;
+  delete payload.SalesOrderID;
+  delete payload.SOId;
+  delete payload.InfoCustomFields;
+  payload.Description = '';
+
+  return payload;
+}
+
+function tmv3_assertPreInspectionCreatePayloadHardRules_(payload) {
+  const errors = [];
+  const type = payload && payload.Type || {};
+  const description = String(payload && payload.Description || '');
+  const hasOrder = !!(
+    payload &&
+    (
+      payload.SalesOrder ||
+      payload.SalesOrderId ||
+      payload.SalesOrderID ||
+      payload.SOId
+    )
+  );
+  const hasCustomFields = !!(
+    payload &&
+    Array.isArray(payload.InfoCustomFields) &&
+    payload.InfoCustomFields.length
+  );
+
+  if (Number(type.Id || type.id || 0) !== 105) {
+    errors.push('Task Type must be 105.');
+  }
+  if (hasOrder) {
+    errors.push('Sales Order attachment is forbidden.');
+  }
+  if (description !== '') {
+    errors.push('Task Description must be blank at CREATE.');
+  }
+  if (hasCustomFields) {
+    errors.push('PreInspection CREATE must not prefill InfoCustomFields, including Field 854.');
+  }
+
+  if (errors.length) {
+    throw new Error(
+      'PREINSPECTION HARD RULE VIOLATION: ' +
+      errors.join(' | ')
+    );
+  }
+
+  return true;
+}
 
 function tmv3_durableWriteGuardKey_(kind, identity) {
   return (
@@ -3329,11 +3235,8 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
   );
 
   if (contract.vertical === 'PreInspection') {
-    delete payload.SalesOrder;
-    delete payload.SalesOrderId;
-    delete payload.SalesOrderID;
-    delete payload.SOId;
-    payload.Description = '';
+    tmv3_enforcePreInspectionCreatePayloadHardRules_(payload);
+    tmv3_assertPreInspectionCreatePayloadHardRules_(payload);
   }
 
   let json;
@@ -3445,20 +3348,6 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
         desiredAssignment:
           tmv3_step7DesiredAssignmentFromContract_(contract)
       }
-    );
-  }
-
-  let field854 = null;
-  if (
-    contract.vertical === 'PreInspection' &&
-    contract.actions.indexOf(
-      TMV3_STEP7_ACTION.PATCH_FIELD854
-    ) !== -1
-  ) {
-    field854 = tmv3_pushPreInspectionField854_(
-      createdBundle,
-      scope,
-      { desiredValue:contract.desiredField854 }
     );
   }
 
@@ -3577,7 +3466,6 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
     'PASS',
     JSON.stringify({
       assignment:assignment,
-      field854:field854,
       calendarLinks:calendarLinks,
       calendarTitle:calendarTitle
     })
@@ -3588,7 +3476,6 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
     action:action,
     taskId:newTaskId,
     assignment:assignment,
-    field854:field854,
     calendarLinks:calendarLinks,
     calendarTitle:calendarTitle,
     readback:readback,
@@ -3627,7 +3514,6 @@ function tmv3_executeExistingTaskSync_(
   let patch = null;
   let assignment = null;
   let calendarLinks = null;
-  let field854 = null;
   let calendarTitle = null;
   let taskName = null;
 
@@ -3671,16 +3557,6 @@ function tmv3_executeExistingTaskSync_(
         desiredAssignment:
           tmv3_step7DesiredAssignmentFromContract_(contract)
       }
-    );
-  }
-
-  if (
-    actions.indexOf(TMV3_STEP7_ACTION.PATCH_FIELD854) !== -1
-  ) {
-    field854 = tmv3_pushPreInspectionField854_(
-      bundle,
-      scope,
-      { desiredValue:contract.desiredField854 }
     );
   }
 
@@ -3850,7 +3726,6 @@ function tmv3_executeExistingTaskSync_(
       actions:actions,
       patch:patch && patch.status,
       assignment:assignment && assignment.status,
-      field854:field854 && field854.status,
       calendarLinks:calendarLinks && calendarLinks.status,
       calendarTitle:calendarTitle && calendarTitle.status,
       taskName:taskName && taskName.status,
@@ -3877,7 +3752,6 @@ function tmv3_executeExistingTaskSync_(
     actions:actions,
     patch:patch,
     assignment:assignment,
-    field854:field854,
     calendarLinks:calendarLinks,
     calendarTitle:calendarTitle,
     taskName:taskName,
@@ -4361,17 +4235,6 @@ function tmv3_createOrRecreateSelectedTask() {
     selection,
     'MANUAL',
     'ALL'
-  );
-  tmv3_refreshOperatorAfterManual_();
-  return result;
-}
-
-function tmv3_pushSelectedPreInspectionInstallNotes() {
-  const selection = tmv3_step7FreshSelectedContract_();
-  const result = tmv3_executeFreshStep7Selection_(
-    selection,
-    'MANUAL',
-    'FIELD854'
   );
   tmv3_refreshOperatorAfterManual_();
   return result;
