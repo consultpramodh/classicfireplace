@@ -1138,7 +1138,7 @@ function tmv3_titleNormalizationRegression() {
 
   let plan = tmv3_titleDescriptionPlan_(
     'John Install 416-555-1212',
-    '585275 - John Smith - (416) 555-1212',
+    'SO#585275 - John Smith - (416) 555-1212',
     'Customer asked for morning.'
   );
   check(
@@ -1214,7 +1214,7 @@ function tmv3_titleNormalizationRegression() {
     'INSTALL_CANONICAL_CALENDAR_TITLE',
     installCalendar.status === 'READY' &&
       installCalendar.value ===
-        '585275 - John Smith - (416) 555-1212',
+        'SO#585275 - John Smith - (416) 555-1212',
     JSON.stringify(installCalendar)
   );
   check(
@@ -1346,7 +1346,7 @@ function tmv3_titleNormalizationRegression() {
   });
   const afterAssignment = tmv3_desiredAssignment_({
     vertical:'Install',
-    title:'585275 - John Smith - (416) 555-1212',
+    title:'SO#585275 - John Smith - (416) 555-1212',
     assignmentSourceTitle:'John Install 4165551212'
   });
   check(
@@ -1503,7 +1503,7 @@ function tmv3_titleNormalizationRegression() {
       engineVersion:TMV3.VERSION,
       inputFingerprint:'abc123',
       blocker:'',
-      desiredCalendarTitle:'585275 - John Smith - (416) 555-1212',
+      desiredCalendarTitle:'SO#585275 - John Smith - (416) 555-1212',
       desiredTaskName:
         'John Smith - 123 Main St, Toronto, ON, M1M 1M1 - (416) 555-1212'
     };
