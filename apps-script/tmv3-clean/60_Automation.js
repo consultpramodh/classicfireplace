@@ -81,6 +81,14 @@ function tmv3_assertCalendarTriggerAuthorization_(calendarIds) {
   const ids = (calendarIds || []).map(tmv3_clean_).filter(Boolean);
   if (!ids.length) return true;
 
+  // Explicitly require the scopes needed by this installation flow.
+  // When the Calendar scope is missing, Apps Script stops here and presents
+  // the user authorization flow before any managed trigger is deleted.
+  ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/script.scriptapp'
+  ]);
+
   try {
     const probe = CalendarApp.getCalendarById(ids[0]);
     if (!probe) {
