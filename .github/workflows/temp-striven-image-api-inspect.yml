@@ -1,0 +1,38 @@
+name: TEMP Inspect Striven Item Image API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/temp-striven-image-api-inspect.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect public Striven API help
+        shell: bash
+        run: |
+          set -euo pipefail
+          for u in             "https://api.striven.com/Help/Api/POST-v1-Items-id-Images"             "https://api.striven.com/Help/Api/POST-v1-items-id-images"             "https://api.striven.com/Help/Api/GET-v1-Items-id-Images"             "https://api.striven.com/Help/Api/GET-v1-items-id-images"
+          do
+            echo "===== $u ====="
+            curl -L -sS -D /tmp/headers.txt "$u" -o /tmp/body.html || true
+            head -40 /tmp/headers.txt
+            python3 - <<'PY'
+from pathlib import Path
+from html import unescape
+import re
+s=Path('/tmp/body.html').read_text(errors='ignore')
+s=re.sub(r'<script[\s\S]*?</script>',' ',s,flags=re.I)
+s=re.sub(r'<style[\s\S]*?</style>',' ',s,flags=re.I)
+s=re.sub(r'<[^>]+>',' ',s)
+s=unescape(s)
+s=re.sub(r'\s+',' ',s).strip()
+print(s[:18000])
+PY
+          done
