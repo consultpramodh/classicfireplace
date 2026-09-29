@@ -36,7 +36,6 @@ function onOpen() {
         .addItem('Fix Calendar Links', 'tmv3_fixSelectedCalendarLinks')
         .addSeparator()
         .addItem('Create / Recreate Task', 'tmv3_createOrRecreateSelectedTask')
-        .addItem('Push PreInspection Install Notes (854)', 'tmv3_pushSelectedPreInspectionInstallNotes')
     )
     .addSubMenu(
       ui.createMenu('Reminders')

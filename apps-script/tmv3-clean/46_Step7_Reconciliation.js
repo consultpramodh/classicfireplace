@@ -58,7 +58,6 @@ const TMV3_STEP7_ACTION = Object.freeze({
   PATCH_ORDER:'PATCH_ORDER',
   PATCH_REQUESTED_BY:'PATCH_REQUESTED_BY',
   PATCH_ASSIGNMENTS:'PATCH_ASSIGNMENTS',
-  PATCH_FIELD854:'PATCH_FIELD854',
   PATCH_CALENDAR_TITLE:'PATCH_CALENDAR_TITLE',
   PATCH_TASK_NAME:'PATCH_TASK_NAME',
   VERIFY_CALENDAR_LINKS:'VERIFY_CALENDAR_LINKS',
@@ -72,57 +71,6 @@ const TMV3_STEP7_ACTION_VALUES = Object.freeze(
     return TMV3_STEP7_ACTION[key];
   })
 );
-
-function tmv3_step7AuthoredNotes_(record) {
-  if (!record || record.vertical !== 'PreInspection') return '';
-  return tmv3_stripManagedLinkBlocks_(record.description || '')
-    .replace(/<!--\s*PREINSPECT_STRIVEN_TASK_LINK_START\s*-->[\s\S]*?<!--\s*PREINSPECT_STRIVEN_TASK_LINK_END\s*-->/gi, '')
-    .replace(/(?:\r?\n\s*){3,}/g, '\n\n')
-    .trim();
-}
-
-function tmv3_step7PreInspectionField854State_(record, rawTask) {
-  if (!record || record.vertical !== 'PreInspection') {
-    return {
-      desired:'',
-      actual:'',
-      check:'N/A',
-      patchRequired:false,
-      blocker:''
-    };
-  }
-
-  const desired = tmv3_step7AuthoredNotes_(record);
-  const fields = tmv3_infoCustomFieldsRaw_(rawTask);
-  const matches = fields.filter(function(field) {
-    return tmv3_fieldId_(field) === 854;
-  });
-
-  if (matches.length > 1) {
-    return {
-      desired:desired,
-      actual:'',
-      check:'AMBIGUOUS_DUPLICATE_FIELD854',
-      patchRequired:false,
-      blocker:'Task exposes multiple Field 854 values; automatic overwrite is blocked.'
-    };
-  }
-
-  const actual = matches.length
-    ? String(tmv3_fieldValue_(matches[0]) || '').trim()
-    : '';
-
-  return {
-    desired:desired,
-    actual:actual,
-    check:
-      actual === desired
-        ? 'MATCH'
-        : (matches.length ? 'MISMATCH' : (desired ? 'MISSING' : 'MATCH_EMPTY')),
-    patchRequired:actual !== desired,
-    blocker:''
-  };
-}
 
 function tmv3_step7ValidateExecutionContract_(contract) {
   if (!contract || typeof contract !== 'object') {
@@ -986,11 +934,6 @@ function tmv3_step7ExistingTaskPlan_(
     actualAssignments
   );
 
-  const field854State = tmv3_step7PreInspectionField854State_(
-    record,
-    fresh.raw
-  );
-
   const titleState = tmv3_step7TitleState_(
     record,
     tmv3_clean_(actual['Name']),
@@ -1026,7 +969,6 @@ function tmv3_step7ExistingTaskPlan_(
       actual,
       checks,
       assignmentCheck,
-      field854State,
       titleState,
       historical
     );
@@ -1055,9 +997,6 @@ function tmv3_step7ExistingTaskPlan_(
       desiredAssignment
     ),
     desiredAssignmentObject: desiredAssignment,
-    desiredField854: field854State.desired,
-    actualField854: field854State.actual,
-    field854Check: field854State.check,
     titleState:titleState,
     checks: checks,
     actions: action.actions || [],
@@ -1080,7 +1019,6 @@ function tmv3_step7ExistingAction_(
   actual,
   checks,
   assignmentCheck,
-  field854State,
   titleState,
   historical
 ) {
@@ -1142,10 +1080,6 @@ function tmv3_step7ExistingAction_(
     return blocked('REVIEW_ASSIGNMENT_UNRESOLVED', assignmentCheck.blocker);
   }
 
-  if (field854State && field854State.blocker) {
-    return blocked('REVIEW_PREINSPECTION_FIELD854', field854State.blocker);
-  }
-
   if (
     titleState &&
     titleState.taskNameStatus === 'BLOCKED'
@@ -1203,11 +1137,6 @@ function tmv3_step7ExistingAction_(
     actions.push(TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS);
   }
 
-  if (field854State && field854State.patchRequired) {
-    changes.push('FIELD854');
-    actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
-  }
-
   if (titleState && titleState.calendarActionRequired) {
     changes.push('CALENDAR_TITLE');
     actions.push(TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE);
@@ -1235,10 +1164,6 @@ function tmv3_step7CreatePlan_(
 ) {
   const expected = tmv3_step7Expected_(record, runtime, true);
   const desiredAssignment = tmv3_desiredAssignment_(record);
-  const desiredField854 =
-    record.vertical === 'PreInspection'
-      ? tmv3_step7AuthoredNotes_(record)
-      : '';
 
   const desiredTask = tmv3_desiredTaskName_(
     record,
@@ -1356,11 +1281,6 @@ function tmv3_step7CreatePlan_(
       actions.push(TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS);
     }
 
-    if (record.vertical === 'PreInspection' && desiredField854) {
-      actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
-      plan += '__FIELD854';
-    }
-
     actions.push(TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS);
 
     if (titleState.calendarActionRequired) {
@@ -1399,12 +1319,6 @@ function tmv3_step7CreatePlan_(
     },
     desiredAssignment:tmv3_step7DesiredAssignmentText_(desiredAssignment),
     desiredAssignmentObject:desiredAssignment,
-    desiredField854:desiredField854,
-    actualField854:'',
-    field854Check:
-      record.vertical === 'PreInspection'
-        ? (desiredField854 ? 'CREATE_MANAGED_VALUE' : 'MATCH_EMPTY')
-        : 'N/A',
     titleState:titleState,
     actions:actions,
     plan:plan,
@@ -1532,9 +1446,6 @@ function tmv3_step7PlanRow_(input) {
     desiredAssignmentPoolIds:(desired.poolIds || []).map(Number),
     actualAssignment:actual.assignment || '',
     assignmentCheck:checks.assignment || '',
-    desiredField854:input.desiredField854 || '',
-    actualField854:input.actualField854 || '',
-    field854Check:input.field854Check || 'N/A',
     desiredCalendarTitle:
       (input.titleState && input.titleState.desiredCalendarTitle) || '',
     actualCalendarTitle:

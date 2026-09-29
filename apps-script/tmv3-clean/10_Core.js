@@ -524,7 +524,62 @@ function tmv3_upsertState_(records) {
   tmv3_replaceRows_(TMV3.SHEETS.STATE, headers, rows);
 }
 
+function tmv3_assertHardRules_() {
+  const errors = [];
+  const pre = TMV3.VERTICALS.PreInspection;
+  const rules = TMV3_HARD_RULES.PreInspection;
+
+  function requireRule(ok, message) {
+    if (!ok) errors.push(message);
+  }
+
+  requireRule(pre.orderRequired === false, 'PreInspection must not require a Sales Order.');
+  requireRule(pre.attachOrderToTask === false, 'PreInspection must not attach a Sales Order to the Task.');
+  requireRule(Number(pre.taskTypeId || 0) === 105, 'PreInspection Task Type must remain 105.');
+  requireRule(pre.descriptionMustBeBlankAtCreate === true, 'PreInspection Task Description must be blank at CREATE.');
+  requireRule(pre.calendarNotesPolicy === 'CALENDAR_ONLY', 'PreInspection Calendar notes must remain Calendar-only.');
+  requireRule(pre.field854Policy === 'DO_NOT_MANAGE', 'PreInspection Field 854 must not be managed by V3.');
+  requireRule(pre.infoCustomFieldsAtCreate === 'NONE', 'PreInspection CREATE must not prefill InfoCustomFields.');
+  requireRule(pre.technicianFieldsPrefill === false, 'PreInspection technician-completed fields must not be prefilled.');
+  requireRule(Number(pre.defaultPoolId || 0) === 8, 'PreInspection must use Pool 8.');
+  requireRule(pre.requestedByFromOrganizer === true, 'PreInspection Requested By must resolve from Calendar organizer/creator.');
+
+  requireRule(rules.orderRequired === false, 'Hard-rule mirror says PreInspection orderRequired must be false.');
+  requireRule(rules.attachOrderToTask === false, 'Hard-rule mirror says PreInspection SO attachment is forbidden.');
+  requireRule(Number(rules.taskTypeId || 0) === 105, 'Hard-rule mirror says PreInspection Task Type must be 105.');
+  requireRule(rules.descriptionPolicy === 'BLANK_AT_CREATE', 'Hard-rule mirror says Description must be blank.');
+  requireRule(rules.calendarNotesPolicy === 'CALENDAR_ONLY', 'Hard-rule mirror says Calendar notes stay on Calendar.');
+  requireRule(rules.field854Policy === 'DO_NOT_MANAGE', 'Hard-rule mirror says Field 854 is removed from automation.');
+  requireRule(rules.infoCustomFieldsAtCreate === 'NONE', 'Hard-rule mirror says no PreInspection custom-field prefill.');
+  requireRule(rules.technicianFieldsPolicy === 'DO_NOT_PREFILL', 'Hard-rule mirror says technician fields are not prefilled.');
+  requireRule(Number(rules.defaultPoolId || 0) === 8, 'Hard-rule mirror says Pool 8 is required.');
+  requireRule(rules.organizerIsAssignee === false, 'PreInspection organizer must not become Assigned To.');
+
+  if (
+    typeof TMV3_STEP7_ACTION !== 'undefined' &&
+    TMV3_STEP7_ACTION.PATCH_FIELD854
+  ) {
+    errors.push('PATCH_FIELD854 must not exist in the Step 7 action vocabulary.');
+  }
+
+  if (errors.length) {
+    throw new Error(
+      'TMV3 HARD RULE VIOLATION [' +
+      TMV3_HARD_RULES.version +
+      ']: ' +
+      errors.join(' | ')
+    );
+  }
+
+  return {
+    status:'PASS',
+    rulesVersion:TMV3_HARD_RULES.version,
+    engineVersion:TMV3.VERSION
+  };
+}
+
 function tmv3_assertShadow_() {
+  tmv3_assertHardRules_();
   const allowedReadPipelineModes = [
     'SHADOW_READ_ONLY',
     'CANARY_WRITE',
