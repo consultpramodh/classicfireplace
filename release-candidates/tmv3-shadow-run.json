@@ -1,9 +1,9 @@
 {
   "release": "TMV3_3_11_23_ADDRESS_NORMALIZATION_R2",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "CANARY_WRITE",
-  "writesEnabled": true,
-  "runMode": "CANARY_STEP7",
+  "mode": "SHADOW_READ_ONLY",
+  "writesEnabled": false,
+  "runMode": "PREVIEW_TITLE",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "1v3369lidrmua17esmv4gcpeo9@google.com",
   "taskId": 18574,
   "expectedPlan": "PATCH_CALENDAR_TITLE_AND_TASK_NAME",
-  "requestTag": "JANA_CHRIS_BARFIELD_WEBAPP_CANARY_20260929",
-  "allowedDate": "2026-10-29",
+  "requestTag": "JANA_CHRIS_BARFIELD_SAFE_PREVIEW_RESET_20260929",
+  "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
