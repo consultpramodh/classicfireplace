@@ -354,7 +354,7 @@ async function postJson(url,payload){
     const url=(dep.entryPoints&&dep.entryPoints[0]&&dep.entryPoints[0].webApp&&dep.entryPoints[0].webApp.url) ||
       ('https://script.google.com/macros/s/'+deploymentId+'/exec');
 
-    await new Promise(r=>setTimeout(r,5000));
+    await new Promise(r=>setTimeout(r,15000));
 
     const canary=await postJson(url,{token:guardToken,mode:'CANARY'});
     fs.writeFileSync(path.join(OUT_DIR,'canary.json'),JSON.stringify(canary,null,2));
