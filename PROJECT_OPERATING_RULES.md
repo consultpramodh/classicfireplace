@@ -75,6 +75,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - Do not prefill technician-completed fields such as Difficulty of Job, Job Risk, Finishing, Electrical Work, or Custom Metal Work.
 - Default assignment is **Pool 8 — Pre-Inspection Pool**.
 - Calendar organizer/creator resolves **Requested By**. The organizer is not automatically `Assigned To`.
+- Canonical PreInspection Calendar title format is **`C#<Customer Number> - <Customer Name> - <Phone>`**. Legacy `Cust#` titles remain readable, but all new normalization uses `C#`.
 - Customer identity, customer-owned Location, date/time, Requested By, Pool 8, Task Type, Calendar links, and canonical titles are the automation-owned fields.
 - Primary/shared and Stephen secondary Calendar handling must remain supported; managed links/titles must be verified on the actual required copies.
 
