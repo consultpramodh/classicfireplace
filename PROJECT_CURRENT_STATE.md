@@ -10,7 +10,7 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.26-preinspection-c-prefix-r1`
+- V3 version: `3.11.27-trigger-install-safety-r1`
 - Hard-rule version: `2026-09-29-r2`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
@@ -152,6 +152,82 @@ A violation throws before the Task POST.
   - original intake title preserved in Calendar description
   - existing note `Wants G4 if possible` preserved
 - Evidence: `test-evidence/2026-09-29-tmv3-preinspection-c-prefix-r1.md`.
+
+## 3.11.27 Trigger-install safety + Jane E2E canary attempt
+
+### Trigger installer correction
+
+Release `3.11.27-trigger-install-safety-r1` fixes the managed-trigger installer so it:
+
+- proves Calendar access before deleting existing managed triggers;
+- treats Calendar trigger creation failures as FAIL;
+- verifies every configured Calendar has a `tmv3_calendarEventUpdated` trigger;
+- throws on incomplete installation instead of reporting PASS.
+
+Verification:
+
+- syntax: PASS
+- pure regression: **50/50 PASS**
+- PR: #90
+- merge commit: `7f1224ac6dae9c380bb219dffebbf89d0b88db44`
+- guarded bootstrap run: `36626085957` — SUCCESS
+- ledger check: `36626085984` — SUCCESS
+- bound Apps Script remote source parity verified
+
+### Jane Bisset end-to-end master canary attempt
+
+Canary run: `36625424757`
+
+Scope:
+
+- PreInspection only
+- Event `2g1s53ho1qf09d19vsep0p3v0h@google.com`
+- allowed date `2026-09-30`
+- guarded `CANARY_EVENT_WRITE_FRESH`
+- persistent V3 source remained Stage 7 / SHADOW outside the temporary canary runner
+
+Result: **BLOCKED BEFORE STRIVEN CREATE**
+
+Exact blocker:
+
+`The script does not have permission to perform that action. Required permissions: Calendar / Calendar readonly.`
+
+The failure occurred during the fresh Calendar read, before Step 7 could build Jane's live write contract.
+
+Verified consequences:
+
+- no Jane Task was created;
+- no Striven POST occurred;
+- no Jane Event-ID audit write was produced by the canary;
+- no duplicate-create guard was consumed;
+- canary manifest was returned to `SHADOW_READ_ONLY`.
+
+### Current managed-trigger inventory
+
+Post-safety-patch inventory run: `36626244899`
+
+Current bound-project triggers:
+
+- `tmv3_dailySourceRefresh` — clock
+- `tmv3_scheduledOperations` — five clock triggers
+- `tmv3_installReminderCheck` — clock
+- `tmv3_calendarReconciliationFallback` — hourly clock
+- **0 `tmv3_calendarEventUpdated` Calendar triggers**
+
+Seven Calendar IDs are configured and must be restored.
+
+### Exact blocking action before Jane can continue
+
+Run `tmv3_installTriggers()` once from the bound Apps Script editor under the normal authorized Classic Fireplace Google account and approve the Calendar permission prompt if shown.
+
+Because 3.11.27 is now deployed, that run will preflight Calendar access before deleting anything and will fail if all seven Calendar update triggers are not installed.
+
+After that succeeds:
+
+1. verify 15 total managed triggers (8 clock + 7 Calendar);
+2. rerun Jane's guarded end-to-end canary;
+3. verify created Type-105 Task, Customer/Location/Requested By, Pool 8, blank Description, no SO, no InfoCustomFields/Field 854, Calendar links/title;
+4. rerun Jane and require `NO_CHANGE`.
 
 ## Jane Bisset canary state
 
