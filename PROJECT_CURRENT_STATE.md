@@ -10,7 +10,7 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.27-trigger-install-safety-r1`
+- V3 version: `3.11.28-calendar-auth-bootstrap-r1`
 - Hard-rule version: `2026-09-29-r2`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
@@ -228,6 +228,25 @@ After that succeeds:
 2. rerun Jane's guarded end-to-end canary;
 3. verify created Type-105 Task, Customer/Location/Requested By, Pool 8, blank Description, no SO, no InfoCustomFields/Field 854, Calendar links/title;
 4. rerun Jane and require `NO_CHANGE`.
+
+## 3.11.28 Calendar authorization bootstrap — SOURCE VERIFIED / CONSENT PENDING
+
+Release `3.11.28-calendar-auth-bootstrap-r1` adds an explicit `ScriptApp.requireScopes(...)` gate for Calendar + trigger-management scopes before managed trigger deletion or installation.
+
+Verified recovery evidence:
+
+- PR: #91
+- merge commit: `e08d707f9f72357b6407ab39145728faf99c2fb4`
+- exact pre-recovery live-drift checkpoint: `facafb7dfe6b137d2ccfc024e3860d0ac97c1604`
+- guarded recovery/bootstrap run: `36630610204` — **SUCCESS**
+- PRE live source matched the captured drift checkpoint before push
+- bound Apps Script remote parity after push: **22/22 files**
+- Stage remains **7**
+- mode remains **SHADOW_READ_ONLY**
+- automation writes remain **disabled**
+- Jane/Striven production writes were not executed during this recovery
+
+Runtime authorization remains pending. Refresh the Apps Script editor and run `tmv3_installTriggers()` once interactively. The new authorization gate should request the required Calendar permission before any trigger deletion occurs. After consent succeeds, verify **15 managed triggers total (8 clock + 7 Calendar)** before rerunning Jane.
 
 ## Jane Bisset canary state
 
