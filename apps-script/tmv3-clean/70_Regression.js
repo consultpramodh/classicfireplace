@@ -1367,8 +1367,12 @@ function tmv3_titleNormalizationRegression() {
     prePolicy.taskTypeId === 105 &&
       prePolicy.attachSalesOrder === false &&
       prePolicy.description === '' &&
+      prePolicy.calendarNotes === 'CALENDAR_ONLY' &&
+      prePolicy.field854 === 'DO_NOT_MANAGE' &&
+      prePolicy.infoCustomFieldsAtCreate === 'NONE' &&
       prePolicy.requiredPoolId === 8 &&
-      prePolicy.field854 === 'CALENDAR_NOTES_MANAGED' &&
+      prePolicy.requestedBy === 'CALENDAR_ORGANIZER' &&
+      prePolicy.assignedToFromOrganizer === false &&
       prePolicy.technicianFields === 'DO_NOT_PREFILL',
     JSON.stringify(prePolicy)
   );
@@ -1382,60 +1386,35 @@ function tmv3_titleNormalizationRegression() {
     'calendar-b must block before any title write'
   );
 
-  const field854Missing = tmv3_step7PreInspectionField854State_(
-    Object.assign({}, pre, {
-      description:'Installer reference note'
-    }),
-    { InfoCustomFields:[] }
-  );
   check(
-    'PREINSPECTION_FIELD854_MISSING_REQUIRES_PATCH',
-    field854Missing.desired === 'Installer reference note' &&
-      field854Missing.patchRequired === true &&
-      field854Missing.check === 'MISSING',
-    JSON.stringify(field854Missing)
+    'PREINSPECTION_FIELD854_ACTION_REMOVED',
+    TMV3_STEP7_ACTION.PATCH_FIELD854 === undefined,
+    JSON.stringify(TMV3_STEP7_ACTION)
   );
 
-  const field854Match = tmv3_step7PreInspectionField854State_(
-    Object.assign({}, pre, {
-      description:'Installer reference note'
-    }),
-    {
-      InfoCustomFields:[
-        {
-          Id:854,
-          Name:'Install Notes',
-          Value:'Installer reference note'
-        },
-        {
-          Id:900,
-          Name:'Unrelated',
-          Value:'keep'
-        }
-      ]
-    }
-  );
   check(
-    'PREINSPECTION_FIELD854_MATCH_NO_PATCH',
-    field854Match.patchRequired === false &&
-      field854Match.check === 'MATCH',
-    JSON.stringify(field854Match)
+    'PREINSPECTION_HARD_RULE_ASSERTION_PASSES',
+    tmv3_assertHardRules_().status === 'PASS',
+    JSON.stringify(tmv3_assertHardRules_())
   );
 
-  const safeFieldPatch = tmv3_safeTaskPatchPayload_(
-    {
-      InfoCustomFields:[
-        { Id:854, Name:'Install Notes', Value:'Installer reference note' },
-        { Id:900, Name:'Unrelated', Value:'keep' }
-      ]
-    },
-    12345
-  );
+  const forbiddenPayload = {
+    Type:{ Id:105, Name:'Pre Inspection' },
+    SalesOrder:{ Id:999 },
+    Description:'must be removed',
+    InfoCustomFields:[
+      { Id:854, Name:'Install Notes', Value:'must be removed' },
+      { Id:900, Name:'Other', Value:'must also be absent at CREATE' }
+    ]
+  };
+  tmv3_enforcePreInspectionCreatePayloadHardRules_(forbiddenPayload);
   check(
-    'FIELD854_PATCH_CONTRACT_ALLOWS_CUSTOM_FIELDS_ONLY',
-    Object.keys(safeFieldPatch).sort().join(',') ===
-      'Id,InfoCustomFields',
-    JSON.stringify(safeFieldPatch)
+    'PREINSPECTION_CREATE_PAYLOAD_ENFORCES_NO_SO_BLANK_DESCRIPTION_NO_CUSTOM_FIELDS',
+    forbiddenPayload.Description === '' &&
+      !forbiddenPayload.SalesOrder &&
+      !forbiddenPayload.InfoCustomFields &&
+      tmv3_assertPreInspectionCreatePayloadHardRules_(forbiddenPayload) === true,
+    JSON.stringify(forbiddenPayload)
   );
 
   const serviceCopies = tmv3_requiredCalendarCopiesForEvent_({
@@ -1478,14 +1457,14 @@ function tmv3_titleNormalizationRegression() {
     preCreateRuntime
   );
   check(
-    'PREINSPECTION_CREATE_INCLUDES_FIELD854_AND_CALENDAR_TITLE',
+    'PREINSPECTION_CREATE_EXCLUDES_FIELD854_AND_INCLUDES_CALENDAR_TITLE',
     preCreatePlan.actions.indexOf(
-      TMV3_STEP7_ACTION.PATCH_FIELD854
-    ) !== -1 &&
+      'PATCH_FIELD854'
+    ) === -1 &&
       preCreatePlan.actions.indexOf(
         TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE
       ) !== -1 &&
-      preCreatePlan.desiredField854 === 'Installer reference note' &&
+      preCreatePlan.desiredField854 === undefined &&
       preCreatePlan.desiredCalendarTitle ===
         'Cust#62400 - John Smith - (416) 555-1212',
     JSON.stringify({
