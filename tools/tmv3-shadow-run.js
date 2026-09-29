@@ -216,7 +216,8 @@ function buildTemporaryRunner(pre, token) {
   const canaryWrite =
     (
       RUN_MODE.indexOf('CANARY_') === 0 ||
-      RUN_MODE === 'DIRECT_STEP7_CANARY'
+      RUN_MODE === 'DIRECT_STEP7_CANARY' ||
+      RUN_MODE === 'DIRECT_TITLE_CANARY'
     ) &&
     RELEASE_MANIFEST.mode === 'CANARY_WRITE' &&
     RELEASE_MANIFEST.writesEnabled === true;
@@ -310,6 +311,23 @@ function TMPV3_directStep7Preview(vertical, eventId, taskId, expectedPlan) {
 
 function TMPV3_directStep7Canary(vertical, eventId, taskId, expectedPlan) {
   return tmv3_executeVerifiedStep7ExistingPlan(
+    String(vertical || ''),
+    String(eventId || ''),
+    Number(taskId || 0),
+    String(expectedPlan || '')
+  );
+}
+
+function TMPV3_directTitlePreview(vertical, eventId, taskId) {
+  return tmv3_previewTitleNormalizationForEvent(
+    String(vertical || ''),
+    String(eventId || ''),
+    Number(taskId || 0)
+  );
+}
+
+function TMPV3_directTitleCanary(vertical, eventId, taskId, expectedPlan) {
+  return tmv3_executeVerifiedTitleNormalization(
     String(vertical || ''),
     String(eventId || ''),
     Number(taskId || 0),
@@ -1096,7 +1114,8 @@ async function postJson(url, payload) {
 async function main() {
   if (
     RUN_MODE.indexOf('CANARY_') === 0 ||
-    RUN_MODE === 'DIRECT_STEP7_CANARY'
+    RUN_MODE === 'DIRECT_STEP7_CANARY' ||
+    RUN_MODE === 'DIRECT_TITLE_CANARY'
   ) {
     if (
       RELEASE_MANIFEST.mode !== 'CANARY_WRITE' ||
@@ -1206,8 +1225,142 @@ async function main() {
 
     // Allow Apps Script deployment metadata a short propagation window before
     // invoking the HEAD web-app entrypoint.
-    if (RUN_MODE !== 'DIRECT_STEP7_PREVIEW') {
+    if (
+      RUN_MODE !== 'DIRECT_STEP7_PREVIEW' &&
+      RUN_MODE !== 'DIRECT_TITLE_PREVIEW'
+    ) {
       await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+
+    if (RUN_MODE === 'DIRECT_TITLE_PREVIEW') {
+      const direct = await runScriptFunction(
+        'TMPV3_directTitlePreview',
+        [
+          String(RELEASE_MANIFEST.vertical || ''),
+          String(RELEASE_MANIFEST.eventId || ''),
+          Number(RELEASE_MANIFEST.taskId || 0)
+        ]
+      );
+
+      const executionError =
+        direct && direct.error
+          ? direct.error
+          : null;
+      if (executionError) {
+        fail(
+          'Apps Script direct title preview failed: ' +
+          JSON.stringify(executionError)
+        );
+      }
+
+      const result =
+        direct &&
+        direct.response &&
+        direct.response.result
+          ? direct.response.result
+          : null;
+
+      const expectedPlan = String(RELEASE_MANIFEST.expectedPlan || '');
+      if (
+        !result ||
+        String(result.blocker || '') ||
+        (expectedPlan && String(result.plan || '') !== expectedPlan)
+      ) {
+        fs.writeFileSync(
+          path.join(outDir, 'direct-title-preview.json'),
+          JSON.stringify({status:'FAILED', raw:direct}, null, 2)
+        );
+        fail(
+          'Direct title preview did not confirm the expected unblocked plan.'
+        );
+      }
+
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail('V3 source restore failed after direct title preview.');
+      }
+
+      fs.writeFileSync(
+        path.join(outDir, 'evidence.json'),
+        JSON.stringify({
+          status:'V3_DIRECT_TITLE_PREVIEW_VERIFIED',
+          result:result,
+          sourceHeadHashVerified:true,
+          temporaryDeploymentDeleted:false,
+          reusedHeadDeployment:false,
+          verifiedAt:new Date().toISOString()
+        }, null, 2)
+      );
+
+      console.log('V3_DIRECT_TITLE_PREVIEW_VERIFIED');
+      console.log(JSON.stringify(result));
+      return;
+    }
+
+    if (RUN_MODE === 'DIRECT_TITLE_CANARY') {
+      const direct = await runScriptFunction(
+        'TMPV3_directTitleCanary',
+        [
+          String(RELEASE_MANIFEST.vertical || ''),
+          String(RELEASE_MANIFEST.eventId || ''),
+          Number(RELEASE_MANIFEST.taskId || 0),
+          String(RELEASE_MANIFEST.expectedPlan || '')
+        ]
+      );
+
+      const executionError =
+        direct && direct.error
+          ? direct.error
+          : null;
+      if (executionError) {
+        fail(
+          'Apps Script direct title canary failed: ' +
+          JSON.stringify(executionError)
+        );
+      }
+
+      const result =
+        direct &&
+        direct.response &&
+        direct.response.result
+          ? direct.response.result
+          : null;
+
+      if (
+        !result ||
+        String(result.status || '') !== 'TITLE_NORMALIZATION_VERIFIED'
+      ) {
+        fs.writeFileSync(
+          path.join(outDir, 'direct-title-canary.json'),
+          JSON.stringify({status:'FAILED', raw:direct}, null, 2)
+        );
+        fail(
+          'Direct title canary did not return TITLE_NORMALIZATION_VERIFIED.'
+        );
+      }
+
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail('V3 source restore failed after direct title canary.');
+      }
+
+      fs.writeFileSync(
+        path.join(outDir, 'evidence.json'),
+        JSON.stringify({
+          status:'V3_DIRECT_TITLE_CANARY_VERIFIED',
+          result:result,
+          sourceHeadHashVerified:true,
+          temporaryDeploymentDeleted:false,
+          reusedHeadDeployment:false,
+          verifiedAt:new Date().toISOString()
+        }, null, 2)
+      );
+
+      console.log('V3_DIRECT_TITLE_CANARY_VERIFIED');
+      console.log(JSON.stringify(result));
+      return;
     }
 
     if (RUN_MODE === 'DIRECT_STEP7_PREVIEW') {
