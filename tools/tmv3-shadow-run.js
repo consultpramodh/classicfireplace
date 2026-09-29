@@ -585,21 +585,9 @@ function doPost(e) {
         String(body.eventId || ''),
         Number(body.taskId || 0)
       );
-      var titleExpectedPlan = String(body.expectedPlan || '');
 
-      if (
-        titleExpectedPlan &&
-        String(titlePreview.plan || '') !== titleExpectedPlan
-      ) {
-        throw new Error(
-          'Fresh title preview changed from ' +
-          titleExpectedPlan +
-          ' to ' +
-          String(titlePreview.plan || '') +
-          '.'
-        );
-      }
-
+      // Preview discovers the fresh plan. Exact-plan binding belongs only
+      // to the canary/write request that follows this read-only result.
       if (tmv3_clean_(titlePreview.blocker)) {
         throw new Error(
           'Title preview is blocked: ' +
