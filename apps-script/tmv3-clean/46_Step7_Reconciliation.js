@@ -82,11 +82,44 @@ function tmv3_step7AuthoredNotes_(record) {
 }
 
 function tmv3_step7PreInspectionField854State_(record, rawTask) {
+  if (!record || record.vertical !== 'PreInspection') {
+    return {
+      desired:'',
+      actual:'',
+      check:'N/A',
+      patchRequired:false,
+      blocker:''
+    };
+  }
+
+  const desired = tmv3_step7AuthoredNotes_(record);
+  const fields = tmv3_infoCustomFieldsRaw_(rawTask);
+  const matches = fields.filter(function(field) {
+    return tmv3_fieldId_(field) === 854;
+  });
+
+  if (matches.length > 1) {
+    return {
+      desired:desired,
+      actual:'',
+      check:'AMBIGUOUS_DUPLICATE_FIELD854',
+      patchRequired:false,
+      blocker:'Task exposes multiple Field 854 values; automatic overwrite is blocked.'
+    };
+  }
+
+  const actual = matches.length
+    ? String(tmv3_fieldValue_(matches[0]) || '').trim()
+    : '';
+
   return {
-    desired:'',
-    actual:'',
-    check:'TECHNICIAN_OWNED',
-    patchRequired:false,
+    desired:desired,
+    actual:actual,
+    check:
+      actual === desired
+        ? 'MATCH'
+        : (matches.length ? 'MISMATCH' : (desired ? 'MISSING' : 'MATCH_EMPTY')),
+    patchRequired:actual !== desired,
     blocker:''
   };
 }
@@ -1113,6 +1146,26 @@ function tmv3_step7ExistingAction_(
     return blocked('REVIEW_PREINSPECTION_FIELD854', field854State.blocker);
   }
 
+  if (
+    titleState &&
+    titleState.taskNameStatus === 'BLOCKED'
+  ) {
+    return blocked(
+      'REVIEW_TASK_NAME_EVIDENCE',
+      titleState.taskNameBlocker || 'Canonical Task Name evidence is incomplete.'
+    );
+  }
+
+  if (
+    titleState &&
+    titleState.calendarTitleStatus === 'BLOCKED'
+  ) {
+    return blocked(
+      'REVIEW_CALENDAR_TITLE_EVIDENCE',
+      titleState.calendarTitleBlocker || 'Canonical Calendar title evidence is incomplete.'
+    );
+  }
+
   const changes = [];
   const actions = [];
 
@@ -1182,7 +1235,53 @@ function tmv3_step7CreatePlan_(
 ) {
   const expected = tmv3_step7Expected_(record, runtime, true);
   const desiredAssignment = tmv3_desiredAssignment_(record);
-  const desiredField854 = '';
+  const desiredField854 =
+    record.vertical === 'PreInspection'
+      ? tmv3_step7AuthoredNotes_(record)
+      : '';
+
+  const desiredTask = tmv3_desiredTaskName_(
+    record,
+    { sourceTaskTitle:'' }
+  );
+  const desiredCalendar = tmv3_desiredCalendarTitle_(record);
+  const calendarTitleRequired =
+    record.vertical === 'Install' ||
+    record.vertical === 'PreInspection';
+
+  const titleState = {
+    openTask:false,
+    jev:'JEV NOT USED — DETERMINISTIC',
+    desiredCalendarTitle:desiredCalendar.value || '',
+    actualCalendarTitle:tmv3_clean_(record && record.title),
+    calendarTitleStatus:desiredCalendar.status || '',
+    calendarTitleCheck:
+      desiredCalendar.status === 'READY'
+        ? (
+            tmv3_clean_(record && record.title) ===
+            tmv3_clean_(desiredCalendar.value)
+              ? 'MATCH'
+              : 'MISMATCH'
+          )
+        : desiredCalendar.status,
+    calendarTitleBlocker:
+      desiredCalendar.status === 'BLOCKED'
+        ? (desiredCalendar.reason || '')
+        : '',
+    desiredTaskName:desiredTask.value || '',
+    actualTaskName:'',
+    taskNameStatus:desiredTask.status || '',
+    taskNameCheck:'CREATE_CANONICAL',
+    taskNameBlocker:
+      desiredTask.status === 'BLOCKED'
+        ? (desiredTask.reason || '')
+        : '',
+    calendarActionRequired:
+      desiredCalendar.status === 'READY' &&
+      tmv3_clean_(record && record.title) !==
+        tmv3_clean_(desiredCalendar.value),
+    taskActionRequired:false
+  };
 
   let plan;
   let blocker = '';
@@ -1206,6 +1305,19 @@ function tmv3_step7CreatePlan_(
   ) {
     plan = 'REVIEW_CREATE_CONTACT_OWNERSHIP';
     blocker = 'Expected Contact ownership is not freshly verified for the resolved Customer.';
+  } else if (desiredTask.status !== 'READY') {
+    plan = 'REVIEW_CREATE_TASK_NAME_UNRESOLVED';
+    blocker =
+      desiredTask.reason ||
+      'Canonical Task Name cannot be built from verified evidence.';
+  } else if (
+    calendarTitleRequired &&
+    desiredCalendar.status !== 'READY'
+  ) {
+    plan = 'REVIEW_CREATE_CALENDAR_TITLE_UNRESOLVED';
+    blocker =
+      desiredCalendar.reason ||
+      'Canonical Calendar title cannot be built from verified evidence.';
   } else {
     const createVerb =
       disposition === 'RECREATE_TASK' ? 'RECREATE_TASK' : 'CREATE_TASK';
@@ -1244,7 +1356,17 @@ function tmv3_step7CreatePlan_(
       actions.push(TMV3_STEP7_ACTION.PATCH_ASSIGNMENTS);
     }
 
+    if (record.vertical === 'PreInspection' && desiredField854) {
+      actions.push(TMV3_STEP7_ACTION.PATCH_FIELD854);
+      plan += '__FIELD854';
+    }
+
     actions.push(TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS);
+
+    if (titleState.calendarActionRequired) {
+      actions.push(TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE);
+      plan += '__CALENDAR_TITLE';
+    }
   }
 
   return tmv3_step7PlanRow_({
@@ -1279,7 +1401,11 @@ function tmv3_step7CreatePlan_(
     desiredAssignmentObject:desiredAssignment,
     desiredField854:desiredField854,
     actualField854:'',
-    field854Check:'TECHNICIAN_OWNED',
+    field854Check:
+      record.vertical === 'PreInspection'
+        ? (desiredField854 ? 'CREATE_MANAGED_VALUE' : 'MATCH_EMPTY')
+        : 'N/A',
+    titleState:titleState,
     actions:actions,
     plan:plan,
     blocker:blocker,
