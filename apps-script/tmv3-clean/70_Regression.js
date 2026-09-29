@@ -863,6 +863,123 @@ function tmv3_issue1SingleDecisionAuthorityRegression() {
     legacyCalendarGuard
   );
 
+
+  const installState = tmv3_step7TitleState_(
+    install,
+    'SO#581804 - John Smith - (416) 555-1212',
+    'Open',
+    false
+  );
+  check(
+    'STEP7_INSTALL_REQUIRES_CALENDAR_AND_TASK_TITLE_ACTIONS',
+    installState.calendarActionRequired === true &&
+      installState.taskActionRequired === true,
+    JSON.stringify(installState)
+  );
+
+  const deliveryState = tmv3_step7TitleState_(
+    delivery,
+    'SO #585289: Gallacher - John Smith - (416) 555-1212',
+    'Open',
+    false
+  );
+  check(
+    'STEP7_DELIVERY_TASK_ONLY_CALENDAR_FAILS_CLOSED',
+    deliveryState.calendarActionRequired === false &&
+      deliveryState.calendarTitleStatus === 'NOT_AUTHORIZED' &&
+      deliveryState.taskActionRequired === true,
+    JSON.stringify(deliveryState)
+  );
+
+  const doneState = tmv3_step7TitleState_(
+    install,
+    'SO#581804 - John Smith - (416) 555-1212',
+    'Done',
+    false
+  );
+  check(
+    'STEP7_DONE_TASK_HAS_NO_TITLE_ACTIONS',
+    doneState.calendarActionRequired === false &&
+      doneState.taskActionRequired === false,
+    JSON.stringify(doneState)
+  );
+
+  const titleOnlyFiltered = tmv3_step7ActionsForMode_(
+    {
+      actions:[
+        TMV3_STEP7_ACTION.PATCH_DATES,
+        TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE,
+        TMV3_STEP7_ACTION.PATCH_TASK_NAME,
+        TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS
+      ]
+    },
+    'TITLE'
+  );
+  check(
+    'TITLE_MODE_EXCLUDES_UNRELATED_ACTIONS',
+    titleOnlyFiltered.join(',') ===
+      [
+        TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE,
+        TMV3_STEP7_ACTION.PATCH_TASK_NAME
+      ].join(','),
+    JSON.stringify(titleOnlyFiltered)
+  );
+
+  let titleContractAccepted = false;
+  try {
+    const contract = {
+      vertical:'Install',
+      eventId:'evt-title-regression',
+      logicalKey:'Install|evt-title-regression',
+      disposition:'MATCH_EXISTING',
+      plan:'PATCH_CALENDAR_TITLE_AND_TASK_NAME',
+      actions:[
+        TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE,
+        TMV3_STEP7_ACTION.PATCH_TASK_NAME
+      ],
+      engineVersion:TMV3.VERSION,
+      inputFingerprint:'abc123',
+      blocker:'',
+      desiredCalendarTitle:'585275 - John Smith - (416) 555-1212',
+      desiredTaskName:
+        'John Smith - 123 Main St, Toronto, ON, M1M 1M1 - (416) 555-1212'
+    };
+    titleContractAccepted =
+      tmv3_step7ValidateExecutionContract_(contract) === contract;
+  } catch (ignored) {}
+
+  check(
+    'STEP7_CONTRACT_ACCEPTS_EXPLICIT_TITLE_ACTIONS',
+    titleContractAccepted,
+    'PATCH_CALENDAR_TITLE + PATCH_TASK_NAME'
+  );
+
+  let blockedContractRejected = false;
+  try {
+    tmv3_step7ValidateExecutionContract_({
+      vertical:'Install',
+      eventId:'evt-title-regression',
+      logicalKey:'Install|evt-title-regression',
+      disposition:'MATCH_EXISTING',
+      plan:'REVIEW_TITLE',
+      actions:[TMV3_STEP7_ACTION.PATCH_TASK_NAME],
+      engineVersion:TMV3.VERSION,
+      inputFingerprint:'abc123',
+      blocker:'blocked'
+    });
+  } catch (err) {
+    blockedContractRejected =
+      /Blocked Step 7 execution contract/.test(
+        String(err && err.message || err)
+      );
+  }
+
+  check(
+    'BLOCKED_STEP7_CONTRACT_EXPOSES_NO_TITLE_WRITE',
+    blockedContractRejected,
+    'blocker + title action must fail contract validation'
+  );
+
   const failures = cases.filter(function(item) {
     return !item.pass;
   });
