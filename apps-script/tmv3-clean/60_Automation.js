@@ -77,9 +77,47 @@ function tmv3_managedTriggerHandlers_() {
   ];
 }
 
+function tmv3_assertCalendarTriggerAuthorization_(calendarIds) {
+  const ids = (calendarIds || []).map(tmv3_clean_).filter(Boolean);
+  if (!ids.length) return true;
+
+  try {
+    const probe = CalendarApp.getCalendarById(ids[0]);
+    if (!probe) {
+      throw new Error(
+        'Configured Calendar is not accessible: ' + ids[0]
+      );
+    }
+  } catch (err) {
+    const message =
+      'Managed trigger install blocked before deleting existing triggers. ' +
+      'Calendar authorization/access is required. ' +
+      String(err && err.message || err);
+
+    tmv3_audit_(
+      'SYSTEM','','','INSTALL_TRIGGER_PREFLIGHT','BLOCKED',
+      message
+    );
+
+    throw new Error(message);
+  }
+
+  return true;
+}
+
 function tmv3_installTriggers() {
+  // V3 watches every configured Calendar through the staged pipeline.
+  // Authorization is proved BEFORE any existing managed trigger is removed.
+  const watchedCalendars =
+    typeof tmv3_step1CalendarIds_ === 'function'
+      ? tmv3_step1CalendarIds_()
+      : [];
+
+  tmv3_assertCalendarTriggerAuthorization_(watchedCalendars);
   tmv3_removeTriggers();
+
   const created = [];
+  const calendarFailures = [];
 
   created.push(
     ScriptApp.newTrigger('tmv3_dailySourceRefresh')
@@ -103,13 +141,6 @@ function tmv3_installTriggers() {
       .timeBased().everyHours(1).create()
   );
 
-  // V3 watches every configured Calendar through the staged pipeline.
-  // The current execution stage decides how far the event may progress.
-  const watchedCalendars =
-    typeof tmv3_step1CalendarIds_ === 'function'
-      ? tmv3_step1CalendarIds_()
-      : [];
-
   watchedCalendars.forEach(function(calendarId) {
     try {
       created.push(
@@ -119,18 +150,56 @@ function tmv3_installTriggers() {
           .create()
       );
     } catch (err) {
+      const failure = {
+        calendarId:calendarId,
+        error:String(err && err.message || err)
+      };
+      calendarFailures.push(failure);
       tmv3_audit_(
-        'SYSTEM','','','INSTALL_CALENDAR_TRIGGER','ATTENTION',
-        calendarId + ': ' + String(err && err.message || err)
+        'SYSTEM','','','INSTALL_CALENDAR_TRIGGER','FAIL',
+        calendarId + ': ' + failure.error
       );
     }
   });
 
   const result = tmv3_listTriggers();
+  const installedCalendarIds = {};
+  result.forEach(function(trigger) {
+    if (
+      tmv3_clean_(trigger.handler) === 'tmv3_calendarEventUpdated' &&
+      tmv3_clean_(trigger.sourceId)
+    ) {
+      installedCalendarIds[tmv3_clean_(trigger.sourceId)] = true;
+    }
+  });
+
+  const missingCalendarIds = watchedCalendars.filter(function(calendarId) {
+    return !installedCalendarIds[tmv3_clean_(calendarId)];
+  });
+
+  if (calendarFailures.length || missingCalendarIds.length) {
+    const detail = JSON.stringify({
+      calendarFailures:calendarFailures,
+      missingCalendarIds:missingCalendarIds,
+      createdCount:created.length
+    });
+
+    tmv3_audit_(
+      'SYSTEM','','','INSTALL_MANAGED_TRIGGERS','FAIL',
+      detail
+    );
+
+    throw new Error(
+      'Managed trigger install incomplete. ' + detail
+    );
+  }
+
   tmv3_audit_(
     'SYSTEM','','','INSTALL_MANAGED_TRIGGERS','PASS',
-    'Created ' + created.length + ' managed trigger(s).'
+    'Created ' + created.length + ' managed trigger(s), including ' +
+      watchedCalendars.length + ' Calendar update trigger(s).'
   );
+
   return result;
 }
 
