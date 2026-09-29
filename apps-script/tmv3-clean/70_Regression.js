@@ -1339,7 +1339,7 @@ function tmv3_titleNormalizationRegression() {
       prePolicy.attachSalesOrder === false &&
       prePolicy.description === '' &&
       prePolicy.requiredPoolId === 8 &&
-      prePolicy.field854 === 'NO_WRITE' &&
+      prePolicy.field854 === 'CALENDAR_NOTES_MANAGED' &&
       prePolicy.technicianFields === 'DO_NOT_PREFILL',
     JSON.stringify(prePolicy)
   );
@@ -1351,6 +1351,120 @@ function tmv3_titleNormalizationRegression() {
       [{ calendarId:'calendar-a' }]
     ).join(',') === 'calendar-b',
     'calendar-b must block before any title write'
+  );
+
+  const field854Missing = tmv3_step7PreInspectionField854State_(
+    Object.assign({}, pre, {
+      description:'Installer reference note'
+    }),
+    { InfoCustomFields:[] }
+  );
+  check(
+    'PREINSPECTION_FIELD854_MISSING_REQUIRES_PATCH',
+    field854Missing.desired === 'Installer reference note' &&
+      field854Missing.patchRequired === true &&
+      field854Missing.check === 'MISSING',
+    JSON.stringify(field854Missing)
+  );
+
+  const field854Match = tmv3_step7PreInspectionField854State_(
+    Object.assign({}, pre, {
+      description:'Installer reference note'
+    }),
+    {
+      InfoCustomFields:[
+        {
+          Id:854,
+          Name:'Install Notes',
+          Value:'Installer reference note'
+        },
+        {
+          Id:900,
+          Name:'Unrelated',
+          Value:'keep'
+        }
+      ]
+    }
+  );
+  check(
+    'PREINSPECTION_FIELD854_MATCH_NO_PATCH',
+    field854Match.patchRequired === false &&
+      field854Match.check === 'MATCH',
+    JSON.stringify(field854Match)
+  );
+
+  const safeFieldPatch = tmv3_safeTaskPatchPayload_(
+    {
+      InfoCustomFields:[
+        { Id:854, Name:'Install Notes', Value:'Installer reference note' },
+        { Id:900, Name:'Unrelated', Value:'keep' }
+      ]
+    },
+    12345
+  );
+  check(
+    'FIELD854_PATCH_CONTRACT_ALLOWS_CUSTOM_FIELDS_ONLY',
+    Object.keys(safeFieldPatch).sort().join(',') ===
+      'Id,InfoCustomFields',
+    JSON.stringify(safeFieldPatch)
+  );
+
+  const serviceCopies = tmv3_requiredCalendarCopiesForEvent_({
+    vertical:'Service',
+    calendarId:'service-tech-calendar',
+    sourceCalendarIds:['service-tech-calendar']
+  });
+  check(
+    'SERVICE_CALENDAR_WRITES_TARGET_ACTUAL_COPY_ONLY',
+    JSON.stringify(serviceCopies) ===
+      JSON.stringify(['service-tech-calendar']),
+    JSON.stringify(serviceCopies)
+  );
+
+  const preCreateRecord = Object.assign({}, pre, {
+    title:'62400 - John Smith - 4165551212',
+    description:'Installer reference note',
+    organizer:'stephen@classicfireplace.ca',
+    step4:Object.assign({}, pre.step4, {
+      locationStatus:'MATCHED',
+      contact:null,
+      evidence:[]
+    })
+  });
+  const preCreateRuntime = {
+    taskById:{},
+    contactByKey:{},
+    organizerByEmail:{
+      'stephen classicfireplace ca':{
+        status:'MATCHED',
+        employee:{ id:15, name:'Stephen Foley' },
+        evidence:'REGRESSION_ORGANIZER_MATCH'
+      }
+    }
+  };
+  const preCreatePlan = tmv3_step7CreatePlan_(
+    preCreateRecord,
+    'CREATE_TASK',
+    [],
+    preCreateRuntime
+  );
+  check(
+    'PREINSPECTION_CREATE_INCLUDES_FIELD854_AND_CALENDAR_TITLE',
+    preCreatePlan.actions.indexOf(
+      TMV3_STEP7_ACTION.PATCH_FIELD854
+    ) !== -1 &&
+      preCreatePlan.actions.indexOf(
+        TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE
+      ) !== -1 &&
+      preCreatePlan.desiredField854 === 'Installer reference note' &&
+      preCreatePlan.desiredCalendarTitle ===
+        'Cust#62400 - John Smith - (416) 555-1212',
+    JSON.stringify({
+      plan:preCreatePlan.plan,
+      actions:preCreatePlan.actions,
+      desiredField854:preCreatePlan.desiredField854,
+      desiredCalendarTitle:preCreatePlan.desiredCalendarTitle
+    })
   );
 
   const taskProtectedBefore = tmv3_titleTaskProtectedSnapshot_({

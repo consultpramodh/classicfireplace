@@ -246,7 +246,7 @@ function tmv3_preInspectionCreatePolicy() {
     taskTypeId: 105,
     attachSalesOrder: false,
     description: '',
-    field854: 'NO_WRITE',
+    field854: 'CALENDAR_NOTES_MANAGED',
     requiredPoolId: 8,
     requestedBy: 'CALENDAR_ORGANIZER',
     calendarLinks: [

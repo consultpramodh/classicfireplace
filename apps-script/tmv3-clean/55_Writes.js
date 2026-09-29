@@ -119,7 +119,8 @@ function tmv3_safeTaskPatchPayload_(payload, taskId) {
     Location: true,
     RequestedBy: true,
     Title: true,
-    Description: true
+    Description: true,
+    InfoCustomFields: true
   };
 
   // Striven's Task PATCH contract uses PascalCase date fields.
@@ -285,7 +286,7 @@ function tmv3_previewTaskMutation_(eventRecord, resolved, refs) {
         taskTypeId: 105,
         salesOrderAttached: false,
         description: '',
-        field854: 'NO_WRITE',
+        field854: 'CALENDAR_NOTES_MANAGED',
         technicianFields: 'DO_NOT_PREFILL'
       },
       event: {

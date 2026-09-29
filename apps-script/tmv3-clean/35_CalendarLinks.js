@@ -81,22 +81,35 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
     vertical: eventRecord.vertical,
     eventId: eventRecord.eventId,
     occurrenceStart: eventRecord.start ? tmv3_iso_(eventRecord.start) : '',
-    calendarIds: tmv3_requiredCalendarCopies_(eventRecord.vertical),
+    calendarIds: tmv3_requiredCalendarCopiesForEvent_(eventRecord),
     links: links
   };
+}
+
+function tmv3_requiredCalendarCopiesForEvent_(eventRecord) {
+  const record = eventRecord || {};
+  const vertical = tmv3_clean_(record.vertical);
+  const sourceIds = tmv3_unique_(
+    []
+      .concat(record.sourceCalendarIds || [])
+      .concat(record.calendarId || [])
+      .map(tmv3_clean_)
+      .filter(Boolean)
+  );
+
+  if (sourceIds.length) return sourceIds;
+  return tmv3_requiredCalendarCopies_(vertical);
 }
 
 function tmv3_requiredCalendarCopies_(vertical) {
   const cfg = TMV3.VERTICALS[vertical];
 
   if (vertical === 'Service') {
-    return (cfg.calendars || []).map(function(x) {
-      return x.calendarId;
-    });
+    return [];
   }
 
   if (vertical === 'PreInspection') {
-    return [cfg.primaryCalendarId].concat(cfg.secondaryCalendarIds || []);
+    return [cfg.primaryCalendarId].filter(Boolean);
   }
 
   return (cfg.calendarIds || []).slice();

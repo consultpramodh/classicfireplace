@@ -1605,11 +1605,151 @@ function tmv3_setExistingFieldValue_(field, value) {
   if (Object.prototype.hasOwnProperty.call(field, 'ValueText')) field.ValueText = null;
 }
 
+function tmv3_preInspectionField854Payload_(notes) {
+  const value = String(notes || '').trim();
+  if (!value) return [];
+
+  return [{
+    Id:854,
+    Name:'Install Notes',
+    Value:value,
+    ValueText:null
+  }];
+}
+
+function tmv3_customFieldSnapshotExcept_(fields, excludedId) {
+  return (fields || [])
+    .filter(function(field) {
+      return tmv3_fieldId_(field) !== Number(excludedId || 0);
+    })
+    .map(function(field) {
+      return {
+        id:tmv3_fieldId_(field),
+        name:tmv3_clean_(tmv3_first_(field || {}, ['name','Name'])),
+        value:String(tmv3_fieldValue_(field) == null ? '' : tmv3_fieldValue_(field))
+      };
+    })
+    .sort(function(a,b) {
+      if (a.id !== b.id) return a.id - b.id;
+      return a.name.localeCompare(b.name);
+    });
+}
+
 function tmv3_pushPreInspectionField854_(bundle, scope, options) {
+  tmv3_assertOperationWrite_(scope);
+
+  if (!bundle || !bundle.eventRecord || bundle.eventRecord.vertical !== 'PreInspection') {
+    return {
+      status:'NOT_APPLICABLE',
+      fieldId:854,
+      taskId:Number(bundle && bundle.resolved && bundle.resolved.taskId || 0)
+    };
+  }
+
+  const taskId = Number(bundle && bundle.resolved && bundle.resolved.taskId || 0);
+  if (!taskId) throw new Error('Field 854 synchronization requires Task ID.');
+
+  const desired = String(
+    options && options.desiredValue !== undefined
+      ? options.desiredValue
+      : tmv3_step7AuthoredNotes_(bundle.eventRecord)
+  ).trim();
+
+  const beforeRaw = tmv3_rawTaskById_(taskId);
+  const beforeFields = tmv3_infoCustomFieldsRaw_(beforeRaw);
+  const matches = beforeFields.filter(function(field) {
+    return tmv3_fieldId_(field) === 854;
+  });
+
+  if (matches.length > 1) {
+    throw new Error(
+      'Task ' + taskId +
+      ' exposes multiple Field 854 values; automatic synchronization is blocked.'
+    );
+  }
+
+  const actualBefore = matches.length
+    ? String(tmv3_fieldValue_(matches[0]) || '').trim()
+    : '';
+
+  if (actualBefore === desired) {
+    return {
+      status:'ALREADY_CORRECT',
+      fieldId:854,
+      taskId:taskId,
+      desiredValue:desired,
+      actualValue:actualBefore,
+      otherCustomFieldsVerified:true
+    };
+  }
+
+  const fields = JSON.parse(JSON.stringify(beforeFields || []));
+  let target = null;
+
+  fields.forEach(function(field) {
+    if (tmv3_fieldId_(field) === 854) target = field;
+  });
+
+  if (target) {
+    tmv3_setExistingFieldValue_(target, desired);
+  } else if (desired) {
+    fields.push(tmv3_preInspectionField854Payload_(desired)[0]);
+  } else {
+    return {
+      status:'ALREADY_CORRECT',
+      fieldId:854,
+      taskId:taskId,
+      desiredValue:'',
+      actualValue:'',
+      otherCustomFieldsVerified:true
+    };
+  }
+
+  const otherBefore = tmv3_customFieldSnapshotExcept_(beforeFields, 854);
+
+  tmv3_operationPatchTask_(
+    taskId,
+    { InfoCustomFields:fields },
+    scope
+  );
+
+  const afterRaw = tmv3_rawTaskById_(taskId);
+  const afterFields = tmv3_infoCustomFieldsRaw_(afterRaw);
+  const afterMatches = afterFields.filter(function(field) {
+    return tmv3_fieldId_(field) === 854;
+  });
+
+  if (afterMatches.length !== 1) {
+    throw new Error(
+      'Field 854 read-back failed for Task ' + taskId +
+      '; expected exactly one Field 854 value.'
+    );
+  }
+
+  const actualAfter = String(
+    tmv3_fieldValue_(afterMatches[0]) || ''
+  ).trim();
+
+  if (actualAfter !== desired) {
+    throw new Error(
+      'Field 854 read-back mismatch for Task ' + taskId + '.'
+    );
+  }
+
+  const otherAfter = tmv3_customFieldSnapshotExcept_(afterFields, 854);
+  if (JSON.stringify(otherBefore) !== JSON.stringify(otherAfter)) {
+    throw new Error(
+      'Field 854 update changed unrelated custom fields for Task ' + taskId + '.'
+    );
+  }
+
   return {
-    status:'NOT_MANAGED_TECHNICIAN_OWNED',
+    status:'FIELD854_WRITTEN_AND_VERIFIED',
     fieldId:854,
-    taskId:Number(bundle && bundle.resolved && bundle.resolved.taskId || 0)
+    taskId:taskId,
+    desiredValue:desired,
+    actualValue:actualAfter,
+    otherCustomFieldsVerified:true
   };
 }
 
@@ -1646,10 +1786,103 @@ function tmv3_findEventCopyRobust_(calendarId, eventId) {
   return null;
 }
 
+function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
+  if (
+    !eventRecord ||
+    eventRecord.vertical !== 'PreInspection' ||
+    !(eventRecord.step2 && eventRecord.step2.mirrorRequired === true)
+  ) {
+    return { status:'NOT_NEEDED', writePerformed:false };
+  }
+
+  tmv3_assertOperationWrite_(scope);
+
+  const primaryId = tmv3_clean_(
+    TMV3.VERTICALS.PreInspection.primaryCalendarId
+  );
+  if (!primaryId) {
+    throw new Error('PreInspection primary Calendar ID is not configured.');
+  }
+
+  const sourceIds = tmv3_unique_(
+    []
+      .concat(eventRecord.sourceCalendarIds || [])
+      .concat(eventRecord.calendarId || [])
+      .map(tmv3_clean_)
+      .filter(function(id) {
+        return id && id !== primaryId;
+      })
+  );
+
+  let sourceCopy = null;
+  for (let i = 0; i < sourceIds.length; i++) {
+    sourceCopy = tmv3_findEventCopyRobust_(
+      sourceIds[i],
+      eventRecord.eventId
+    );
+    if (sourceCopy && sourceCopy.event) break;
+  }
+
+  if (!sourceCopy || !sourceCopy.event) {
+    throw new Error(
+      'PreInspection mirror is required, but the source Calendar event could not be found.'
+    );
+  }
+
+  function guestEmails(event) {
+    return (event.getGuestList ? event.getGuestList(true) : [])
+      .map(function(guest) {
+        return tmv3_normEmail_(
+          guest && guest.getEmail ? guest.getEmail() : ''
+        );
+      })
+      .filter(Boolean);
+  }
+
+  if (guestEmails(sourceCopy.event).indexOf(tmv3_normEmail_(primaryId)) !== -1) {
+    return {
+      status:'ALREADY_PRESENT',
+      writePerformed:false,
+      primaryCalendarId:primaryId,
+      sourceCalendarId:sourceCopy.calendar.getId
+        ? sourceCopy.calendar.getId()
+        : ''
+    };
+  }
+
+  sourceCopy.event.addGuest(primaryId);
+
+  const readback = tmv3_findEventCopyRobust_(
+    sourceIds[0],
+    eventRecord.eventId
+  );
+  if (
+    !readback ||
+    !readback.event ||
+    guestEmails(readback.event).indexOf(tmv3_normEmail_(primaryId)) === -1
+  ) {
+    throw new Error(
+      'PreInspection mirror guest read-back failed for Event ' +
+      eventRecord.eventId + '.'
+    );
+  }
+
+  return {
+    status:'MIRROR_GUEST_WRITTEN_AND_VERIFIED',
+    writePerformed:true,
+    primaryCalendarId:primaryId,
+    sourceCalendarId:sourceIds[0]
+  };
+}
+
 function tmv3_operationWriteCalendarLinks_(bundle, scope) {
   tmv3_assertOperationWrite_(scope);
 
   const eventRecord = bundle.eventRecord;
+  const mirror = tmv3_ensurePreInspectionMirror_(
+    eventRecord,
+    scope
+  );
   const records = bundle.records || [bundle.resolved];
   records.forEach(function(record) {
     tmv3_assertResolvedRecordWritable_(record, { requireTask: true });
@@ -1720,8 +1953,9 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     links: plan.links,
     missingCalendarCopies: missingCalendarCopies,
     attention: missingCalendarCopies.length
-      ? 'Some configured Calendar copies were not present; existing copies were updated and verified.'
-      : ''
+      ? 'Some actual Calendar copies were not present; existing copies were updated and verified.'
+      : '',
+    mirror: mirror
   };
 }
 
@@ -2126,7 +2360,9 @@ function tmv3_buildCreateSource_(bundle, action) {
     useSubContractor: base.useSubContractor === true,
     infoCustomFields:
       eventRecord.vertical === 'PreInspection'
-        ? []
+        ? tmv3_preInspectionField854Payload_(
+            tmv3_step7AuthoredNotes_(eventRecord)
+          )
         : (action === 'RECREATE' ? base.infoCustomFields : [])
   };
 }
@@ -3098,7 +3334,6 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
     delete payload.SalesOrderID;
     delete payload.SOId;
     payload.Description = '';
-    delete payload.InfoCustomFields;
   }
 
   let json;
@@ -3279,6 +3514,19 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
     );
   }
 
+  let calendarTitle = null;
+  if (
+    contract.actions.indexOf(
+      TMV3_STEP7_ACTION.PATCH_CALENDAR_TITLE
+    ) !== -1
+  ) {
+    calendarTitle = tmv3_operationNormalizeCalendarTitle_(
+      createdBundle,
+      contract,
+      scope
+    );
+  }
+
   const after = tmv3_step7FreshExecutionContract_(
     contract.vertical,
     contract.eventId,
@@ -3330,7 +3578,8 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
     JSON.stringify({
       assignment:assignment,
       field854:field854,
-      calendarLinks:calendarLinks
+      calendarLinks:calendarLinks,
+      calendarTitle:calendarTitle
     })
   );
 
@@ -3341,6 +3590,7 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
     assignment:assignment,
     field854:field854,
     calendarLinks:calendarLinks,
+    calendarTitle:calendarTitle,
     readback:readback,
     readbackPlan:after
   };
