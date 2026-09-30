@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.33-jane-budget-allowance-r1';
+const TMV3_VERSION = '3.11.34-automatic-jane-canary-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -64,7 +64,7 @@ const TMV3 = Object.freeze({
   MAX_PAGES: 50,
   OPERATIONS: Object.freeze({
     manualWritesEnabled: true,
-    automationWritesEnabled: false,
+    automationWritesEnabled: true,
     autoMaxWritesPerRun: 1,
     canaryEventId: '2g1s53ho1qf09d19vsep0p3v0h@google.com',
     canaryVertical: 'PreInspection',
