@@ -318,6 +318,97 @@ function tmv3_refreshOperationalSourcesIfNeeded_(maxAgeMinutes, force) {
   };
 }
 
+function tmv3_stage7ConfiguredCanaryEnabled_(
+  stage,
+  mode,
+  automationWritesEnabled
+) {
+  return (
+    Number(stage) === 7 &&
+    String(mode || '') === 'CANARY_WRITE' &&
+    automationWritesEnabled === true
+  );
+}
+
+function tmv3_stage7AutomaticCanaryCycle_(reason) {
+  const stage = tmv3_executionStage_();
+  const policy = tmv3_operationPolicy_();
+  let mapped = null;
+
+  try {
+    mapped = tmv3_calendarStageRefresh_(
+      reason || 'STAGE7_AUTOMATIC_CANARY'
+    );
+  } catch (err) {
+    mapped = {
+      status:'ATTENTION',
+      error:String(err && err.message || err)
+    };
+
+    tmv3_audit_(
+      'SYSTEM','','','STAGE7_CANARY_MAPPING','ATTENTION',
+      JSON.stringify({
+        reason:tmv3_clean_(reason),
+        error:mapped.error
+      })
+    );
+  }
+
+  if (
+    !tmv3_stage7ConfiguredCanaryEnabled_(
+      stage,
+      TMV3.MODE,
+      policy.automationWritesEnabled === true
+    )
+  ) {
+    return {
+      status:'CALENDAR_STAGE_GATED',
+      stage:stage,
+      mapped:mapped,
+      writes:{
+        status:'AUTO_WRITES_GATED',
+        writes:0
+      }
+    };
+  }
+
+  let writes;
+
+  try {
+    writes = tmv3_runConfiguredCanary_AUTO();
+
+    tmv3_audit_(
+      'SYSTEM','','','STAGE7_AUTOMATIC_CANARY','PASS',
+      JSON.stringify({
+        reason:tmv3_clean_(reason),
+        status:tmv3_clean_(writes && writes.status),
+        taskId:tmv3_clean_(writes && writes.taskId)
+      })
+    );
+  } catch (err) {
+    writes = {
+      status:'ATTENTION',
+      writes:0,
+      error:String(err && err.message || err)
+    };
+
+    tmv3_audit_(
+      'SYSTEM','','','STAGE7_AUTOMATIC_CANARY','ATTENTION',
+      JSON.stringify({
+        reason:tmv3_clean_(reason),
+        error:writes.error
+      })
+    );
+  }
+
+  return {
+    status:'STAGE7_AUTOMATIC_CANARY_CYCLE',
+    stage:stage,
+    mapped:mapped,
+    writes:writes
+  };
+}
+
 function tmv3_runProductionAutomationCycle_(reason, options) {
   options = options || {};
 
@@ -387,8 +478,14 @@ function tmv3_calendarReconciliationFallback() {
     return { status:'OUTSIDE_BUSINESS_HOURS' };
   }
 
-  if (tmv3_executionStage_() <= 7) {
+  if (tmv3_executionStage_() < 7) {
     return tmv3_calendarStageRefresh_(
+      'CALENDAR_RECONCILIATION_FALLBACK'
+    );
+  }
+
+  if (tmv3_executionStage_() === 7) {
+    return tmv3_stage7AutomaticCanaryCycle_(
       'CALENDAR_RECONCILIATION_FALLBACK'
     );
   }
@@ -470,7 +567,7 @@ function tmv3_scheduledShadow() {
 }
 
 function tmv3_scheduledOperations() {
-  if (tmv3_executionStage_() <= 7) {
+  if (tmv3_executionStage_() < 7) {
     return {
       stage:tmv3_executionStage_(),
       mapped:tmv3_calendarStageRefresh_(
@@ -478,6 +575,12 @@ function tmv3_scheduledOperations() {
       ),
       writes:{ status:'CALENDAR_STAGE_GATED', writes:0 }
     };
+  }
+
+  if (tmv3_executionStage_() === 7) {
+    return tmv3_stage7AutomaticCanaryCycle_(
+      'SCHEDULED_CALENDAR_STAGE_REFRESH'
+    );
   }
 
   return tmv3_runProductionAutomationCycle_(
@@ -534,15 +637,22 @@ function tmv3_calendarEventUpdated() {
   try {
     try { cache.remove(dirtyKey); } catch (ignored) {}
 
+    const currentStage = tmv3_executionStage_();
     const first =
-      tmv3_executionStage_() <= 7
+      currentStage < 7
         ? tmv3_calendarStageRefresh_('CALENDAR_EVENT_UPDATED')
-        : tmv3_runProductionAutomationCycle_(
-            'CALENDAR_EVENT_UPDATED',
-            {
-              maxSourceAgeMinutes:15,
-              forceSourceRefresh:false
-            }
+        : (
+            currentStage === 7
+              ? tmv3_stage7AutomaticCanaryCycle_(
+                  'CALENDAR_EVENT_UPDATED'
+                )
+              : tmv3_runProductionAutomationCycle_(
+                  'CALENDAR_EVENT_UPDATED',
+                  {
+                    maxSourceAgeMinutes:15,
+                    forceSourceRefresh:false
+                  }
+                )
           );
 
     let rerun = null;
@@ -551,16 +661,22 @@ function tmv3_calendarEventUpdated() {
       try { cache.remove(dirtyKey); } catch (ignored) {}
 
       rerun =
-        tmv3_executionStage_() <= 7
+        currentStage < 7
           ? tmv3_calendarStageRefresh_(
               'CALENDAR_EVENT_UPDATED_RERUN'
             )
-          : tmv3_runProductionAutomationCycle_(
-              'CALENDAR_EVENT_UPDATED_RERUN',
-              {
-                maxSourceAgeMinutes:15,
-                forceSourceRefresh:false
-              }
+          : (
+              currentStage === 7
+                ? tmv3_stage7AutomaticCanaryCycle_(
+                    'CALENDAR_EVENT_UPDATED_RERUN'
+                  )
+                : tmv3_runProductionAutomationCycle_(
+                    'CALENDAR_EVENT_UPDATED_RERUN',
+                    {
+                      maxSourceAgeMinutes:15,
+                      forceSourceRefresh:false
+                    }
+                  )
             );
     }
 
@@ -569,13 +685,9 @@ function tmv3_calendarEventUpdated() {
       first:first,
       rerun:rerun,
       writes:
-        tmv3_executionStage_() <= 7
-          ? { status:'CALENDAR_STAGE_GATED', writes:0 }
-          : (
-              (rerun && rerun.writes) ||
-              (first && first.writes) ||
-              { status:'NO_WRITE_RESULT', writes:0 }
-            )
+        (rerun && rerun.writes) ||
+        (first && first.writes) ||
+        { status:'NO_WRITE_RESULT', writes:0 }
     };
   } finally {
     lock.releaseLock();
