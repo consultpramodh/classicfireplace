@@ -1606,7 +1606,7 @@ async function main() {
         url =
           'https://script.google.com/macros/s/' +
           deploymentId +
-          '/exec';
+          '/dev';
       }
     }
 
