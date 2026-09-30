@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_27_TRIGGER_INSTALL_SAFETY_R1",
+  "release": "TMV3_3_11_28_CALENDAR_AUTH_BOOTSTRAP_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TRIGGER_INVENTORY",
+  "runMode": "STEP1",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_POST_JANE_PRECANARY_AUTH_BLOCKER_RELOCK_20260929",
+  "requestTag": "TMV3_POST_AUTH_READONLY_CALENDAR_VERIFY_20260930",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
