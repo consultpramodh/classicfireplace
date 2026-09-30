@@ -1347,6 +1347,59 @@ function tmv3_titleNormalizationRegression() {
   const pre = baseRecord('PreInspection');
   const preCalendar = tmv3_desiredCalendarTitle_(pre);
   const preTask = tmv3_desiredTaskName_(pre);
+
+  // Regression for the Jane Bisset canary failure: CREATE execution receives
+  // a raw Calendar event, but must reuse the already-verified Step 7
+  // Customer/Location relationship when constructing the canonical Task Name.
+  const preExecutionBundle = {
+    eventRecord:{
+      vertical:'PreInspection',
+      phone:'4165551212',
+      location:'123 Main St, Toronto',
+      orderNumber:'',
+      title:'C#62400 - John Smith - (416) 555-1212'
+    },
+    resolved:{
+      customerId:'35659',
+      locationId:'32606',
+      contactId:'',
+      orderId:''
+    },
+    refs:{
+      customerById:{
+        '35659':pre.step4.customer
+      },
+      locationsByCustomer:{
+        '35659':[pre.step4.location]
+      },
+      orderById:{}
+    },
+    contract:{
+      expectedCustomerId:'35659',
+      expectedLocationId:'32606'
+    }
+  };
+
+  let preExecutionTitle = '';
+  let preExecutionTitleError = '';
+  try {
+    preExecutionTitle = tmv3_createTaskTitle_(
+      preExecutionBundle,
+      'CREATE',
+      {title:'Pre Inspection template'}
+    );
+  } catch (err) {
+    preExecutionTitleError = String(err && err.message || err);
+  }
+
+  check(
+    'PREINSPECTION_CREATE_EXECUTION_REUSES_VERIFIED_IDENTITY_CONTEXT',
+    !preExecutionTitleError &&
+      preExecutionTitle ===
+        'John Smith - 123 Main St, Toronto - (416) 555-1212',
+    preExecutionTitleError || preExecutionTitle
+  );
+
   const prePolicy = tmv3_preInspectionCreatePolicy();
   check(
     'PREINSPECTION_CANONICAL_CALENDAR_TITLE',
