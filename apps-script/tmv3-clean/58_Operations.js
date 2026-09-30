@@ -4455,8 +4455,100 @@ function tmv3_runSafeReadyRows_MANUAL() {
   return tmv3_runSafeReadyRows_('MANUAL');
 }
 
-function tmv3_runConfiguredCanary_MANUAL() {
-  tmv3_assertOperationWrite_('MANUAL');
+function tmv3_configuredCanaryContractDecision_(contract, policy) {
+  contract = tmv3_step7ValidateExecutionContract_(contract);
+  policy = policy || {};
+
+  const expectedCustomerId = tmv3_clean_(
+    policy.canaryExpectedCustomerId
+  );
+  const expectedLocationId = tmv3_clean_(
+    policy.canaryExpectedLocationId
+  );
+  const expectedAction = tmv3_clean_(
+    policy.canaryExpectedAction
+  );
+  const actualCustomerId = tmv3_clean_(
+    contract.expectedCustomerId
+  );
+  const actualLocationId = tmv3_clean_(
+    contract.expectedLocationId
+  );
+  const actions = Array.isArray(contract.actions)
+    ? contract.actions.slice()
+    : [];
+  const taskId = Number(contract.taskId || 0);
+
+  if (actualCustomerId !== expectedCustomerId) {
+    throw new Error(
+      'Configured canary Customer mismatch. Expected ' +
+      expectedCustomerId + ', fresh Step 7 resolved ' +
+      actualCustomerId + '.'
+    );
+  }
+
+  if (actualLocationId !== expectedLocationId) {
+    throw new Error(
+      'Configured canary Location mismatch. Expected ' +
+      expectedLocationId + ', fresh Step 7 resolved ' +
+      actualLocationId + '.'
+    );
+  }
+
+  if (!actions.length) {
+    return {
+      status:'CONVERGED_NO_CHANGE',
+      execute:false,
+      taskId:taskId || '',
+      actions:actions
+    };
+  }
+
+  if (taskId) {
+    if (
+      actions.indexOf(TMV3_STEP7_ACTION.CREATE_TASK) !== -1 ||
+      actions.indexOf(TMV3_STEP7_ACTION.RECREATE_TASK) !== -1
+    ) {
+      throw new Error(
+        'Configured canary duplicate protection stopped CREATE/RECREATE because fresh Step 7 already resolved Task ' +
+        taskId + '.'
+      );
+    }
+
+    return {
+      status:'RECONCILE_EXISTING_TASK',
+      execute:true,
+      taskId:taskId,
+      actions:actions
+    };
+  }
+
+  if (actions.indexOf(expectedAction) === -1) {
+    throw new Error(
+      'Configured canary expected initial action ' +
+      expectedAction + ' is not authorized by fresh Step 7. Fresh plan: ' +
+      contract.plan + '.'
+    );
+  }
+
+  return {
+    status:'EXECUTE_INITIAL_CANARY',
+    execute:true,
+    taskId:'',
+    actions:actions
+  };
+}
+
+function tmv3_runConfiguredCanary_(scope) {
+  const normalizedScope = tmv3_norm_(scope || '');
+
+  if (normalizedScope !== 'manual' && normalizedScope !== 'auto') {
+    throw new Error(
+      'Configured canary scope must be MANUAL or AUTO.'
+    );
+  }
+
+  tmv3_assertOperationWrite_(scope);
 
   if (TMV3.MODE !== 'CANARY_WRITE') {
     throw new Error(
@@ -4467,13 +4559,21 @@ function tmv3_runConfiguredCanary_MANUAL() {
   TMV3_CANARY_API_ALLOWANCE_ACTIVE = true;
 
   try {
-    return tmv3_runConfiguredCanaryWithAllowance_();
+    return tmv3_runConfiguredCanaryWithAllowance_(scope);
   } finally {
     TMV3_CANARY_API_ALLOWANCE_ACTIVE = false;
   }
 }
 
-function tmv3_runConfiguredCanaryWithAllowance_() {
+function tmv3_runConfiguredCanary_MANUAL() {
+  return tmv3_runConfiguredCanary_('MANUAL');
+}
+
+function tmv3_runConfiguredCanary_AUTO() {
+  return tmv3_runConfiguredCanary_('AUTO');
+}
+
+function tmv3_runConfiguredCanaryWithAllowance_(scope) {
   const policy = tmv3_operationPolicy_();
   const vertical = tmv3_clean_(policy.canaryVertical);
   const eventId = tmv3_clean_(policy.canaryEventId);
@@ -4510,69 +4610,28 @@ function tmv3_runConfiguredCanaryWithAllowance_() {
     );
   }
 
-  const executable = tmv3_step7FreshPlansForEvent_(
+  const plans = tmv3_step7FreshPlansForEvent_(
     vertical,
     eventId
-  ).filter(function(contract) {
-    return (
-      !tmv3_clean_(contract.blocker) &&
-      Array.isArray(contract.actions) &&
-      contract.actions.length > 0
-    );
+  );
+  const eligible = plans.filter(function(contract) {
+    return !tmv3_clean_(contract.blocker);
   });
 
-  if (executable.length !== 1) {
+  if (eligible.length !== 1) {
     throw new Error(
-      'Configured canary requires exactly one executable fresh Step 7 contract; found ' +
-      executable.length + '.'
+      'Configured canary requires exactly one unblocked fresh Step 7 contract; found ' +
+      eligible.length + '.'
     );
   }
 
   const contract = tmv3_step7ValidateExecutionContract_(
-    executable[0]
+    eligible[0]
   );
-
-  if (
-    tmv3_clean_(contract.expectedCustomerId) !==
-      expectedCustomerId
-  ) {
-    throw new Error(
-      'Configured canary Customer mismatch. Expected ' +
-      expectedCustomerId + ', fresh Step 7 resolved ' +
-      tmv3_clean_(contract.expectedCustomerId) + '.'
-    );
-  }
-
-  if (
-    tmv3_clean_(contract.expectedLocationId) !==
-      expectedLocationId
-  ) {
-    throw new Error(
-      'Configured canary Location mismatch. Expected ' +
-      expectedLocationId + ', fresh Step 7 resolved ' +
-      tmv3_clean_(contract.expectedLocationId) + '.'
-    );
-  }
-
-  if (
-    contract.actions.indexOf(expectedAction) === -1
-  ) {
-    throw new Error(
-      'Configured canary expected action ' +
-      expectedAction + ' is not authorized by fresh Step 7. Fresh plan: ' +
-      contract.plan + '.'
-    );
-  }
-
-  if (
-    expectedAction === TMV3_STEP7_ACTION.CREATE_TASK &&
-    Number(contract.taskId || 0)
-  ) {
-    throw new Error(
-      'Configured CREATE canary stopped because fresh Step 7 already resolved Task ' +
-      contract.taskId + '.'
-    );
-  }
+  const decision = tmv3_configuredCanaryContractDecision_(
+    contract,
+    policy
+  );
 
   tmv3_audit_(
     vertical,
@@ -4581,22 +4640,38 @@ function tmv3_runConfiguredCanaryWithAllowance_() {
     'CONFIGURED_CANARY_GUARD',
     'PASS',
     JSON.stringify({
+      scope:tmv3_clean_(scope),
       plan:contract.plan,
       expectedCustomerId:expectedCustomerId,
       expectedLocationId:expectedLocationId,
-      expectedAction:expectedAction
+      expectedAction:expectedAction,
+      decision:decision.status,
+      actions:decision.actions
     })
   );
+
+  if (!decision.execute) {
+    return {
+      status:'CONVERGED_NO_CHANGE',
+      scope:tmv3_clean_(scope),
+      vertical:vertical,
+      eventId:eventId,
+      taskId:decision.taskId || '',
+      writes:0,
+      attempts:1
+    };
+  }
 
   return tmv3_executeFreshStep7Selection_(
     {
       previousPlan:contract.plan,
       contract:contract
     },
-    'MANUAL',
+    scope,
     'ALL'
   );
 }
+
 
 function tmv3_runSafeReadyRows_AUTO() {
   return tmv3_runSafeReadyRows_('AUTO');
