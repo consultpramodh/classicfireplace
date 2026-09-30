@@ -362,3 +362,30 @@ Duplication audit after the guest correction found two visible content duplicate
 2. Darryl Law & Cindy Hum — a legacy `Pre-Inspection Task Link` block duplicates Task #18534 already present in the current `Striven Links` block.
 
 Do not collapse raw/normalized internal resolver fields merely because they look repetitive; several are intentional evidence/migration fields. Focus deduplication on user-visible Calendar content and duplicate managed link blocks.
+
+## 3.11.37 PreInspection guest filtering — DEPLOYED / BACKFILL COMPLETE
+
+The CF Preinspects guest rule was tightened after operational review:
+
+- CF Preinspects belongs only on actual customer PreInspection appointments on Stephen's calendar.
+- If an event matches the established non-customer/blocker classifier (for example Team Meeting, DO NOT BOOK, Day Off, vacation/out-of-office, travel, Newmarket blocker days, etc.), CF Preinspects must be removed if present and must not be re-added.
+- Any Stephen-calendar event created by `pramodh@classicfireplace.ca` must not carry CF Preinspects; if present, it is removed.
+- Stephen-created events also do not carry CF Preinspects.
+- Other creator + legitimate customer PreInspection => CF Preinspects is added/kept idempotently.
+- Existing attendees other than CF Preinspects are preserved.
+
+Release: `3.11.37-preinspect-guest-filter-r1` at source commit `4872c5f1409df84c06577e37beb4ef58478a9fc9`.
+Guarded deployment run `36756954359`: SUCCESS; source parity 22/22.
+
+Backfill used the authenticated V3 guest reconciler in bounded batches:
+
+- Batch 1 run `36758134576`: scanned 372; removed 50; added 0; deferred 22; errors 0.
+- Batch 2 run `36758420473`: scanned 372; removed 22; added 0; deferred 0; errors 0.
+- Total unwanted CF Preinspects invitations removed: **72**.
+
+Verified examples after cleanup:
+
+- Jane Bisset legitimate PreInspection retains CF Preinspects.
+- Team Meeting / DO NOT BOOK / NEWMARKET DAY blocker occurrences no longer carry CF Preinspects; unrelated existing attendees remain intact.
+
+The earlier 3.11.36 note saying Pramodh-created events receive CF Preinspects is superseded by this rule.
