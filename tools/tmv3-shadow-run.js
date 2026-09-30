@@ -648,6 +648,17 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'configuredAutoCanary') {
+      var configuredAutoCanary =
+        tmv3_runConfiguredCanary_AUTO();
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'CONFIGURED_AUTO_CANARY_COMPLETE',
+        result:configuredAutoCanary
+      });
+    }
+
     if (body.action === 'step7CanaryPreview') {
       var previewVertical = String(body.vertical || '');
       var previewEventId = String(body.eventId || '');
@@ -1767,6 +1778,7 @@ async function main() {
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+      RUN_MODE === 'CONFIGURED_AUTO_CANARY' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
       RUN_MODE === 'TASK_SCHEMA' ||
@@ -1794,6 +1806,8 @@ async function main() {
                   ? 'step5Task'
                   : RUN_MODE === 'STEP6'
                     ? 'step6Decision'
+                    : RUN_MODE === 'CONFIGURED_AUTO_CANARY'
+                    ? 'configuredAutoCanary'
                     : RUN_MODE === 'TRIGGER_INVENTORY'
                     ? 'triggerInventory'
                   : RUN_MODE === 'INSTALL_MANAGED_TRIGGERS'
@@ -1962,6 +1976,8 @@ async function main() {
                       ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                       : RUN_MODE === 'STEP6'
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                        : RUN_MODE === 'CONFIGURED_AUTO_CANARY'
+                          ? 'V3_CONFIGURED_AUTO_CANARY_VERIFIED'
                         : RUN_MODE === 'TRIGGER_INVENTORY'
                           ? 'V3_TRIGGER_INVENTORY_VERIFIED'
                         : RUN_MODE === 'INSTALL_MANAGED_TRIGGERS'
@@ -2027,6 +2043,8 @@ async function main() {
                     ? 'V3_STEP5_TASK_RESOLUTION_VERIFIED'
                     : RUN_MODE === 'STEP6'
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
+                      : RUN_MODE === 'CONFIGURED_AUTO_CANARY'
+                        ? 'V3_CONFIGURED_AUTO_CANARY_VERIFIED'
                       : RUN_MODE.indexOf('CANARY_') === 0
                         ? 'V3_' + RUN_MODE + '_VERIFIED'
                       : RUN_MODE === 'LIVE_HARDENING_REGRESSION'
