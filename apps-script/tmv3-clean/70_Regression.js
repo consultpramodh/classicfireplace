@@ -1866,7 +1866,7 @@ function tmv3_canaryApiBudgetRegression() {
     {
       canaryActive:true,
       mode:'CANARY_WRITE',
-      extraCalls:20
+      extraCalls:50
     }
   );
   const shadow = tmv3_strivenApiEffectiveSoftLimit_(
