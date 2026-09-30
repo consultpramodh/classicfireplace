@@ -305,4 +305,32 @@ Verification:
 - ledger run `36742906246`: **SUCCESS**.
 - automation writes remain disabled; the only authorized production write path is the exact configured Jane manual canary.
 
-Exact next action: refresh the Apps Script editor and run `tmv3_runConfiguredCanary_MANUAL()` once. Do not run `tmv3_runSafeReadyRows_MANUAL()`. After completion, read back the created Type-105 Task and Jane Calendar event, then run the same configured canary again and require convergence / no duplicate write before returning V3 to `SHADOW_READ_ONLY`.
+Superseded by 3.11.34: the canary is now trigger-driven and requires no operator-run function.
+
+## 3.11.34 automatic Jane canary — DEPLOYED / NON-MANUAL OPERATING MODEL RESTORED
+
+User requirement reaffirmed: **normal Task Mapping operation must not require an operator to run Apps Script functions manually.** Manual menu/editor functions are fallback and diagnostic tools only.
+
+Release `3.11.34-automatic-jane-canary-r1` changes the Stage-7 canary from a manual exception to the managed automation path:
+
+- `automationWritesEnabled:true` is active only while the system remains in `CANARY_WRITE`.
+- the exact Jane Bisset canary has both MANUAL and AUTO entrypoints, but production operation uses AUTO;
+- existing managed Calendar-change, scheduled-operations, and hourly reconciliation-fallback triggers invoke the exact Stage-7 canary automatically;
+- the canary remains hard-bound to Event `2g1s53ho1qf09d19vsep0p3v0h@google.com`, Customer `62638`, Location `58275`, date `2026-09-30`, and the initial `CREATE_TASK` contract;
+- after a Task exists, the same automatic path permits only reconciliation/link actions for that verified Task;
+- a second CREATE/RECREATE with an existing Task is blocked;
+- a clean second pass returns `CONVERGED_NO_CHANGE` with zero writes;
+- broad production automation remains gated at Stage 7.
+
+Verification:
+
+- PR #97 merged at `3391cb218386fb3b28e03d53b962821e5aac7392`.
+- automatic-canary regression: **9/9 PASS**.
+- bounded API regression: **4/4 PASS**.
+- syntax: PASS for all changed Apps Script files.
+- guarded bootstrap run `36745587462`: **SUCCESS**.
+- PRE source parity: **VERIFIED**.
+- bound Apps Script remote parity: **22/22 files**.
+- no manual function invocation is required for Jane; the next installed Calendar/scheduled/fallback trigger will attempt the canary automatically.
+
+Exact next action: **observe the next automatic trigger result, then verify Jane's created Type-105 Task, Customer/Location/Requested By, Pool 8, blank Description, no SO/InfoCustomFields/Field 854, Calendar backlinks, and subsequent `CONVERGED_NO_CHANGE`. Do not ask the operator to run the canary manually.**
