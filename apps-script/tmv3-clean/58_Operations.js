@@ -2007,12 +2007,77 @@ function tmv3_locationFromRefs_(refs, customerId, locationId) {
 
 function tmv3_createTaskTitle_(bundle, action, source) {
   const eventRecord = bundle && bundle.eventRecord;
+  const resolved = bundle && bundle.resolved || {};
+  const refs = bundle && bundle.refs || {};
+  const contract = bundle && bundle.contract || {};
+
   if (!eventRecord) {
     throw new Error('Task title construction requires an Event record.');
   }
 
-  const desired = tmv3_desiredTaskName_(
+  // CREATE execution starts from the raw Calendar event, while the canonical
+  // title builder intentionally requires Step 3 + Step 4 verified identity.
+  // Rehydrate only that verified title context from the already-authorized
+  // Step 7 relationship. Do not infer or guess identity from Calendar text.
+  tmv3_assertResolvedOwnership_(bundle);
+
+  if (
+    tmv3_clean_(contract.expectedCustomerId) &&
+    tmv3_clean_(contract.expectedCustomerId) !==
+      tmv3_clean_(resolved.customerId)
+  ) {
+    throw new Error(
+      'CREATE title context Customer no longer matches the Step 7 contract.'
+    );
+  }
+
+  if (
+    tmv3_clean_(contract.expectedLocationId) &&
+    tmv3_clean_(contract.expectedLocationId) !==
+      tmv3_clean_(resolved.locationId)
+  ) {
+    throw new Error(
+      'CREATE title context Location no longer matches the Step 7 contract.'
+    );
+  }
+
+  const customer = tmv3_customerFromRefs_(
+    refs,
+    resolved.customerId
+  );
+  const location = tmv3_locationFromRefs_(
+    refs,
+    resolved.customerId,
+    resolved.locationId
+  );
+
+  if (!customer || !location) {
+    throw new Error(
+      'CREATE title context requires the verified Customer and customer-owned Location.'
+    );
+  }
+
+  const verifiedRecord = Object.assign(
+    {},
     eventRecord,
+    {
+      step3:{
+        disposition:'VERIFIED',
+        anchor:{
+          customerNumber:tmv3_clean_(customer['Customer Number']),
+          orderNumber:tmv3_clean_(eventRecord.orderNumber)
+        }
+      },
+      step4:{
+        disposition:'VERIFIED',
+        customer:customer,
+        location:location
+      }
+    }
+  );
+
+  const desired = tmv3_desiredTaskName_(
+    verifiedRecord,
     {
       sourceTaskTitle:
         source && source.title
