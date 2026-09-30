@@ -1606,7 +1606,7 @@ async function main() {
         url =
           'https://script.google.com/macros/s/' +
           deploymentId +
-          '/dev';
+          (RUN_MODE === 'TASK_SCHEMA' ? '/exec' : '/dev');
       }
     }
 
