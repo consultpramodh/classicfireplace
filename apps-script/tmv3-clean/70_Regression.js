@@ -1927,6 +1927,195 @@ function tmv3_canaryApiBudgetRegression() {
   };
 }
 
+function tmv3_automaticCanaryRegression() {
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail
+    });
+  }
+
+  check(
+    'STAGE7_CANARY_AUTO_ENABLED_ONLY_IN_EXACT_MODE',
+    tmv3_stage7ConfiguredCanaryEnabled_(
+      7,
+      'CANARY_WRITE',
+      true
+    ) === true,
+    'stage7/canary/auto=true'
+  );
+  check(
+    'STAGE6_CANARY_AUTO_REMAINS_GATED',
+    tmv3_stage7ConfiguredCanaryEnabled_(
+      6,
+      'CANARY_WRITE',
+      true
+    ) === false,
+    'stage6'
+  );
+  check(
+    'SHADOW_CANARY_AUTO_REMAINS_GATED',
+    tmv3_stage7ConfiguredCanaryEnabled_(
+      7,
+      'SHADOW_READ_ONLY',
+      true
+    ) === false,
+    'shadow'
+  );
+  check(
+    'AUTO_FLAG_FALSE_REMAINS_GATED',
+    tmv3_stage7ConfiguredCanaryEnabled_(
+      7,
+      'CANARY_WRITE',
+      false
+    ) === false,
+    'auto=false'
+  );
+
+  const policy = {
+    canaryExpectedCustomerId:'62638',
+    canaryExpectedLocationId:'58275',
+    canaryExpectedAction:TMV3_STEP7_ACTION.CREATE_TASK
+  };
+
+  function contract(actions, taskId, customerId, locationId, plan) {
+    return {
+      vertical:'PreInspection',
+      eventId:'evt-jane-regression',
+      logicalKey:'PreInspection|evt-jane-regression',
+      disposition:taskId ? 'MATCH_EXISTING' : 'CREATE_TASK',
+      plan:plan || (actions.length ? actions.join('__') : 'NO_CHANGE'),
+      actions:actions.slice(),
+      engineVersion:TMV3.VERSION,
+      inputFingerprint:'fp-jane',
+      blocker:'',
+      expectedCustomerId:customerId || '62638',
+      expectedLocationId:locationId || '58275',
+      taskId:taskId || ''
+    };
+  }
+
+  const initial = tmv3_configuredCanaryContractDecision_(
+    contract(
+      [TMV3_STEP7_ACTION.CREATE_TASK],
+      '',
+      '62638',
+      '58275',
+      'CREATE_TASK'
+    ),
+    policy
+  );
+  check(
+    'AUTO_CANARY_INITIAL_CREATE_IS_EXECUTABLE',
+    initial.execute === true &&
+      initial.status === 'EXECUTE_INITIAL_CANARY',
+    JSON.stringify(initial)
+  );
+
+  const reconcile = tmv3_configuredCanaryContractDecision_(
+    contract(
+      [TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS],
+      19001,
+      '62638',
+      '58275',
+      'VERIFY_CALENDAR_LINKS'
+    ),
+    policy
+  );
+  check(
+    'AUTO_CANARY_EXISTING_TASK_ALLOWS_RECONCILIATION_ONLY',
+    reconcile.execute === true &&
+      reconcile.status === 'RECONCILE_EXISTING_TASK' &&
+      Number(reconcile.taskId) === 19001,
+    JSON.stringify(reconcile)
+  );
+
+  const converged = tmv3_configuredCanaryContractDecision_(
+    contract(
+      [],
+      19001,
+      '62638',
+      '58275',
+      'NO_CHANGE'
+    ),
+    policy
+  );
+  check(
+    'AUTO_CANARY_SECOND_PASS_CONVERGES_WITHOUT_WRITE',
+    converged.execute === false &&
+      converged.status === 'CONVERGED_NO_CHANGE',
+    JSON.stringify(converged)
+  );
+
+  let duplicateBlocked = false;
+  try {
+    tmv3_configuredCanaryContractDecision_(
+      contract(
+        [TMV3_STEP7_ACTION.CREATE_TASK],
+        19001,
+        '62638',
+        '58275',
+        'CREATE_TASK'
+      ),
+      policy
+    );
+  } catch (err) {
+    duplicateBlocked =
+      /duplicate protection stopped CREATE\/RECREATE/.test(
+        String(err && err.message || err)
+      );
+  }
+  check(
+    'AUTO_CANARY_EXISTING_TASK_BLOCKS_SECOND_CREATE',
+    duplicateBlocked,
+    'existing task + CREATE must fail closed'
+  );
+
+  let wrongCustomerBlocked = false;
+  try {
+    tmv3_configuredCanaryContractDecision_(
+      contract(
+        [TMV3_STEP7_ACTION.CREATE_TASK],
+        '',
+        '99999',
+        '58275',
+        'CREATE_TASK'
+      ),
+      policy
+    );
+  } catch (err) {
+    wrongCustomerBlocked =
+      /Customer mismatch/.test(
+        String(err && err.message || err)
+      );
+  }
+  check(
+    'AUTO_CANARY_WRONG_CUSTOMER_FAILS_CLOSED',
+    wrongCustomerBlocked,
+    '99999'
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 automatic canary regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_liveHardeningRegression() {
   const issue1 =
     tmv3_issue1SingleDecisionAuthorityRegression();
@@ -1936,13 +2125,16 @@ function tmv3_liveHardeningRegression() {
     tmv3_titleNormalizationRegression();
   const canaryApiBudget =
     tmv3_canaryApiBudgetRegression();
+  const automaticCanary =
+    tmv3_automaticCanaryRegression();
 
   const result = {
     status:
       issue1.status === 'PASS' &&
       issue2.status === 'PASS' &&
       titleNormalization.status === 'PASS' &&
-      canaryApiBudget.status === 'PASS'
+      canaryApiBudget.status === 'PASS' &&
+      automaticCanary.status === 'PASS'
         ? 'PASS'
         : 'FAIL',
     version:TMV3.VERSION,
@@ -1950,7 +2142,8 @@ function tmv3_liveHardeningRegression() {
     issue1:issue1,
     issue2:issue2,
     titleNormalization:titleNormalization,
-    canaryApiBudget:canaryApiBudget
+    canaryApiBudget:canaryApiBudget,
+    automaticCanary:automaticCanary
   };
 
   Logger.log(
