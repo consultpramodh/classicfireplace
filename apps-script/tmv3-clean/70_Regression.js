@@ -1833,6 +1833,100 @@ function tmv3_titleNormalizationRegression() {
   };
 }
 
+function tmv3_canaryApiBudgetRegression() {
+  const cfg = {
+    v3DailySoftLimit:1200,
+    planDailyLimit:5000
+  };
+  const status = {
+    softLimit:1200
+  };
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail
+    });
+  }
+
+  const normal = tmv3_strivenApiEffectiveSoftLimit_(
+    status,
+    cfg,
+    {
+      canaryActive:false,
+      mode:'CANARY_WRITE',
+      extraCalls:20
+    }
+  );
+  const canary = tmv3_strivenApiEffectiveSoftLimit_(
+    status,
+    cfg,
+    {
+      canaryActive:true,
+      mode:'CANARY_WRITE',
+      extraCalls:20
+    }
+  );
+  const shadow = tmv3_strivenApiEffectiveSoftLimit_(
+    status,
+    cfg,
+    {
+      canaryActive:true,
+      mode:'SHADOW_READ_ONLY',
+      extraCalls:20
+    }
+  );
+  const capped = tmv3_strivenApiEffectiveSoftLimit_(
+    {softLimit:4995},
+    cfg,
+    {
+      canaryActive:true,
+      mode:'CANARY_WRITE',
+      extraCalls:20
+    }
+  );
+
+  check(
+    'CANARY_API_ALLOWANCE_INACTIVE_KEEPS_BASE_LIMIT',
+    normal === 1200,
+    normal
+  );
+  check(
+    'CANARY_API_ALLOWANCE_EXACT_MODE_ADDS_ONLY_CONFIGURED_CALLS',
+    canary === 1220,
+    canary
+  );
+  check(
+    'CANARY_API_ALLOWANCE_SHADOW_MODE_CANNOT_BYPASS_LIMIT',
+    shadow === 1200,
+    shadow
+  );
+  check(
+    'CANARY_API_ALLOWANCE_NEVER_EXCEEDS_PLAN_LIMIT',
+    capped === 5000,
+    capped
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 canary API budget regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_liveHardeningRegression() {
   const issue1 =
     tmv3_issue1SingleDecisionAuthorityRegression();
@@ -1840,19 +1934,23 @@ function tmv3_liveHardeningRegression() {
     tmv3_issue2CreateSafetyRegression();
   const titleNormalization =
     tmv3_titleNormalizationRegression();
+  const canaryApiBudget =
+    tmv3_canaryApiBudgetRegression();
 
   const result = {
     status:
       issue1.status === 'PASS' &&
       issue2.status === 'PASS' &&
-      titleNormalization.status === 'PASS'
+      titleNormalization.status === 'PASS' &&
+      canaryApiBudget.status === 'PASS'
         ? 'PASS'
         : 'FAIL',
     version:TMV3.VERSION,
     mode:TMV3.MODE,
     issue1:issue1,
     issue2:issue2,
-    titleNormalization:titleNormalization
+    titleNormalization:titleNormalization,
+    canaryApiBudget:canaryApiBudget
   };
 
   Logger.log(
