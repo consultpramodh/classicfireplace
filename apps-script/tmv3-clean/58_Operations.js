@@ -4464,6 +4464,16 @@ function tmv3_runConfiguredCanary_MANUAL() {
     );
   }
 
+  TMV3_CANARY_API_ALLOWANCE_ACTIVE = true;
+
+  try {
+    return tmv3_runConfiguredCanaryWithAllowance_();
+  } finally {
+    TMV3_CANARY_API_ALLOWANCE_ACTIVE = false;
+  }
+}
+
+function tmv3_runConfiguredCanaryWithAllowance_() {
   const policy = tmv3_operationPolicy_();
   const vertical = tmv3_clean_(policy.canaryVertical);
   const eventId = tmv3_clean_(policy.canaryEventId);
