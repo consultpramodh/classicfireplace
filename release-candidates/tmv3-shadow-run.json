@@ -7,12 +7,12 @@
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
-  "forceVersionedDeployment": true,
+  "forceVersionedDeployment": false,
   "vertical": "",
   "eventId": "",
   "taskId": 18722,
   "expectedPlan": "",
-  "requestTag": "TASK18722_FRESH_STRIVEN_IDENTITY_READ_20260930",
+  "requestTag": "TASK18722_DEPLOYED_EXEC_FRESH_READ_20260930",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
