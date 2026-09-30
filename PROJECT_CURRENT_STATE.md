@@ -334,3 +334,31 @@ Verification:
 - no manual function invocation is required for Jane; the next installed Calendar/scheduled/fallback trigger will attempt the canary automatically.
 
 Exact next action: **observe the next automatic trigger result, then verify Jane's created Type-105 Task, Customer/Location/Requested By, Pool 8, blank Description, no SO/InfoCustomFields/Field 854, Calendar backlinks, and subsequent `CONVERGED_NO_CHANGE`. Do not ask the operator to run the canary manually.**
+
+## 3.11.36 PreInspection CF Preinspects guest sync — DEPLOYED
+
+PreInspection Calendar rule clarified 2026-09-30:
+
+- On Stephen's secondary PreInspection calendar, if the Calendar event creator is **not** `stephen@classicfireplace.ca`, the event must include **CF Preinspects** as an additional guest.
+- This applies to events created by any other staff member, including Pramodh; only Stephen-created events are excluded.
+- Guest reconciliation is idempotent: if CF Preinspects is already present, no write is performed.
+- Missing creator fails closed for review; the system does not guess.
+- The automatic guest sync runs from the existing scheduled/hourly automation path and is throttled to avoid recursive Calendar-trigger storms.
+- The shared guest identity is the configured primary PreInspection calendar ID `c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com` (display name **CF Preinspects**).
+- Logical duplicate copies remain merged by Event ID + occurrence start, so Stephen + CF Preinspects copies represent one inspection record.
+
+Deployment evidence:
+
+- source commit: `099e661c28628de1490c4cc8708231750a3310e6`
+- release: `3.11.36-preinspect-guest-sync-r1`
+- guarded bootstrap run: `36751661982` — **SUCCESS**
+- PRE source parity: **VERIFIED**
+- bound Apps Script remote parity: **22/22 files**
+- current tracked non-Stephen-created Stephen-calendar inspections were backfilled and read back with CF Preinspects present; Jane was also verified with CF Preinspects present.
+
+Duplication audit after the guest correction found two visible content duplicates only:
+
+1. Jane Bisset — prior `Cust#62638...` title preserved as the first description line duplicates the current canonical Calendar title.
+2. Darryl Law & Cindy Hum — a legacy `Pre-Inspection Task Link` block duplicates Task #18534 already present in the current `Striven Links` block.
+
+Do not collapse raw/normalized internal resolver fields merely because they look repetitive; several are intentional evidence/migration fields. Focus deduplication on user-visible Calendar content and duplicate managed link blocks.
