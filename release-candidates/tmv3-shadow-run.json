@@ -3,7 +3,7 @@
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "DIRECT_STEP7_PREVIEW",
+  "runMode": "PREVIEW_STEP7",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "2g1s53ho1qf09d19vsep0p3v0h@google.com",
   "taskId": 0,
   "expectedPlan": "CREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8",
-  "requestTag": "JANE_BISSET_DIRECT_PREWRITE_STEP7_DEV_TRANSPORT_20260930",
+  "requestTag": "JANE_BISSET_PREWRITE_STEP7_DEV_WEBAPP_20260930",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
