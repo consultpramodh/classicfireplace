@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_36_PREINSPECT_GUEST_SYNC_R1",
+  "release": "TMV3_3_11_37_PREINSPECT_GUEST_FILTER_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "CANARY_WRITE",
-  "expectedLiveCommit": "a7e3e6cca571dba4e828ee4faf40db2f9a625e4d"
+  "expectedLiveCommit": "099e661c28628de1490c4cc8708231750a3310e6"
 }

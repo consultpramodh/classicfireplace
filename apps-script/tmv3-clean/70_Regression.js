@@ -2120,6 +2120,10 @@ function tmv3_preInspectionGuestSyncRegression() {
   const primary =
     'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com';
   const owner = 'stephen@classicfireplace.ca';
+  const excluded = [
+    owner,
+    'pramodh@classicfireplace.ca'
+  ];
   const cases = [];
 
   function check(name, actual, expected) {
@@ -2127,65 +2131,114 @@ function tmv3_preInspectionGuestSyncRegression() {
       name:name,
       pass:
         actual.status === expected.status &&
-        actual.addGuest === expected.addGuest,
+        actual.action === expected.action,
       actual:actual,
       expected:expected
     });
   }
 
   check(
-    'STEPHEN_CREATED_EVENT_DOES_NOT_ADD_SHARED_GUEST',
+    'STEPHEN_CREATED_WITH_GUEST_REMOVES_CF_PREINSPECTS',
     tmv3_preInspectionGuestSyncDecision_(
       [owner],
-      [],
+      [primary],
       owner,
-      primary
+      primary,
+      false,
+      excluded
     ),
-    { status:'SKIP_STEPHEN_CREATED', addGuest:false }
+    { status:'REMOVE_EXCLUDED_CREATOR', action:'REMOVE' }
   );
 
   check(
-    'TERRY_CREATED_EVENT_ADDS_CF_PREINSPECTS',
+    'PRAMODH_CREATED_WITH_GUEST_REMOVES_CF_PREINSPECTS',
     tmv3_preInspectionGuestSyncDecision_(
-      ['terry@classicfireplace.ca'],
-      [],
+      ['pramodh@classicfireplace.ca'],
+      [primary],
       owner,
-      primary
+      primary,
+      false,
+      excluded
     ),
-    { status:'ADD_CF_PREINSPECTS', addGuest:true }
+    { status:'REMOVE_EXCLUDED_CREATOR', action:'REMOVE' }
   );
 
   check(
-    'PRAMODH_CREATED_EVENT_ADDS_CF_PREINSPECTS',
+    'PRAMODH_CREATED_WITHOUT_GUEST_STAYS_CLEAN',
     tmv3_preInspectionGuestSyncDecision_(
       ['pramodh@classicfireplace.ca'],
       [],
       owner,
-      primary
+      primary,
+      false,
+      excluded
     ),
-    { status:'ADD_CF_PREINSPECTS', addGuest:true }
+    { status:'EXCLUDED_CREATOR_CLEAN', action:'NONE' }
   );
 
   check(
-    'EXISTING_CF_PREINSPECTS_GUEST_IS_IDEMPOTENT',
+    'NON_CUSTOMER_TEAM_MEETING_REMOVES_CF_PREINSPECTS',
+    tmv3_preInspectionGuestSyncDecision_(
+      ['terry@classicfireplace.ca'],
+      [primary],
+      owner,
+      primary,
+      true,
+      excluded
+    ),
+    { status:'REMOVE_NON_CUSTOMER_EVENT', action:'REMOVE' }
+  );
+
+  check(
+    'NON_CUSTOMER_WITHOUT_GUEST_STAYS_CLEAN',
+    tmv3_preInspectionGuestSyncDecision_(
+      ['terry@classicfireplace.ca'],
+      [],
+      owner,
+      primary,
+      true,
+      excluded
+    ),
+    { status:'NON_CUSTOMER_EVENT_CLEAN', action:'NONE' }
+  );
+
+  check(
+    'TERRY_CUSTOMER_PREINSPECTION_ADDS_CF_PREINSPECTS',
+    tmv3_preInspectionGuestSyncDecision_(
+      ['terry@classicfireplace.ca'],
+      [],
+      owner,
+      primary,
+      false,
+      excluded
+    ),
+    { status:'ADD_CF_PREINSPECTS', action:'ADD' }
+  );
+
+  check(
+    'ELIGIBLE_EXISTING_CF_PREINSPECTS_IS_IDEMPOTENT',
     tmv3_preInspectionGuestSyncDecision_(
       ['adam@classicfireplace.ca'],
       [primary],
       owner,
-      primary
+      primary,
+      false,
+      excluded
     ),
-    { status:'ALREADY_PRESENT', addGuest:false }
+    { status:'ALREADY_PRESENT', action:'NONE' }
   );
 
   check(
-    'MISSING_CREATOR_FAILS_CLOSED',
+    'MISSING_CREATOR_CUSTOMER_EVENT_FAILS_CLOSED',
     tmv3_preInspectionGuestSyncDecision_(
       [],
-      [],
+      [primary],
       owner,
-      primary
+      primary,
+      false,
+      excluded
     ),
-    { status:'REVIEW_CREATOR_MISSING', addGuest:false }
+    { status:'REVIEW_CREATOR_MISSING', action:'NONE' }
   );
 
   const failures = cases.filter(function(item) {

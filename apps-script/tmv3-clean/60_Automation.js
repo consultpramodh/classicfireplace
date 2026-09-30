@@ -469,7 +469,9 @@ function tmv3_preInspectionGuestSyncDecision_(
   creatorEmails,
   guestEmails,
   ownerEmail,
-  primaryCalendarId
+  primaryCalendarId,
+  nonCustomer,
+  excludedCreatorEmails
 ) {
   const owner = tmv3_normEmail_(ownerEmail);
   const primary = tmv3_normEmail_(primaryCalendarId);
@@ -483,38 +485,59 @@ function tmv3_preInspectionGuestSyncDecision_(
       .map(tmv3_normEmail_)
       .filter(Boolean)
   );
+  const excluded = tmv3_unique_(
+    (excludedCreatorEmails || [owner])
+      .map(tmv3_normEmail_)
+      .filter(Boolean)
+  );
+  const hasPrimary = guests.indexOf(primary) !== -1;
 
   if (!owner || !primary) {
     return {
       status:'BLOCKED_CONFIG',
-      addGuest:false
+      action:'NONE'
+    };
+  }
+
+  if (nonCustomer === true) {
+    return {
+      status:hasPrimary
+        ? 'REMOVE_NON_CUSTOMER_EVENT'
+        : 'NON_CUSTOMER_EVENT_CLEAN',
+      action:hasPrimary ? 'REMOVE' : 'NONE'
     };
   }
 
   if (!creators.length) {
     return {
       status:'REVIEW_CREATOR_MISSING',
-      addGuest:false
+      action:'NONE'
     };
   }
 
-  if (creators.indexOf(owner) !== -1) {
+  const excludedCreator = creators.some(function(email) {
+    return excluded.indexOf(email) !== -1;
+  });
+
+  if (excludedCreator) {
     return {
-      status:'SKIP_STEPHEN_CREATED',
-      addGuest:false
+      status:hasPrimary
+        ? 'REMOVE_EXCLUDED_CREATOR'
+        : 'EXCLUDED_CREATOR_CLEAN',
+      action:hasPrimary ? 'REMOVE' : 'NONE'
     };
   }
 
-  if (guests.indexOf(primary) !== -1) {
+  if (hasPrimary) {
     return {
       status:'ALREADY_PRESENT',
-      addGuest:false
+      action:'NONE'
     };
   }
 
   return {
     status:'ADD_CF_PREINSPECTS',
-    addGuest:true
+    action:'ADD'
   };
 }
 
@@ -535,6 +558,11 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
   const ownerEmail = tmv3_clean_(
     cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca'
   );
+  const excludedCreatorEmails =
+    cfg.secondaryGuestExcludedCreatorEmails || [
+      ownerEmail,
+      'pramodh@classicfireplace.ca'
+    ];
   const intervalMinutes = Math.max(
     1,
     Number(policy.preInspectionGuestSyncIntervalMinutes || 5)
@@ -579,8 +607,11 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
       reason:tmv3_clean_(options.reason || 'AUTO'),
       scanned:0,
       writes:0,
+      added:0,
+      removed:0,
       alreadyPresent:0,
-      stephenCreatedSkipped:0,
+      cleanExcluded:0,
+      cleanNonCustomer:0,
       creatorMissing:0,
       deferred:0,
       errors:[]
@@ -619,26 +650,37 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
           },
           []
         );
+        const nonCustomer = tmv3_step2PreInspectionNonCustomer_({
+          title:tmv3_clean_(event.getTitle()),
+          isAllDay:event.isAllDayEvent()
+        });
         const decision = tmv3_preInspectionGuestSyncDecision_(
           creators,
           guests,
           ownerEmail,
-          primaryId
+          primaryId,
+          nonCustomer,
+          excludedCreatorEmails
         );
 
-        if (decision.status === 'SKIP_STEPHEN_CREATED') {
-          result.stephenCreatedSkipped++;
-          return;
-        }
         if (decision.status === 'ALREADY_PRESENT') {
           result.alreadyPresent++;
+          return;
+        }
+        if (decision.status === 'EXCLUDED_CREATOR_CLEAN') {
+          result.cleanExcluded++;
+          return;
+        }
+        if (decision.status === 'NON_CUSTOMER_EVENT_CLEAN') {
+          result.cleanNonCustomer++;
           return;
         }
         if (decision.status === 'REVIEW_CREATOR_MISSING') {
           result.creatorMissing++;
           return;
         }
-        if (!decision.addGuest) {
+        if (decision.action === 'NONE') {
+          if (decision.status !== 'BLOCKED_CONFIG') return;
           result.errors.push(
             'Guest decision blocked for Event ' +
             tmv3_clean_(event.getId()) +
@@ -653,7 +695,15 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
         }
 
         try {
-          event.addGuest(primaryId);
+          if (decision.action === 'ADD') {
+            event.addGuest(primaryId);
+          } else if (decision.action === 'REMOVE') {
+            event.removeGuest(primaryId);
+          } else {
+            throw new Error(
+              'Unsupported guest action ' + decision.action
+            );
+          }
 
           const readbackGuests = (event.getGuestList
             ? event.getGuestList(true)
@@ -665,16 +715,25 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
               );
             })
             .filter(Boolean);
-
-          if (
+          const stillPresent =
             readbackGuests.indexOf(
               tmv3_normEmail_(primaryId)
-            ) === -1
-          ) {
-            throw new Error('guest read-back did not contain CF Preinspects');
+            ) !== -1;
+
+          if (decision.action === 'ADD' && !stillPresent) {
+            throw new Error(
+              'guest read-back did not contain CF Preinspects'
+            );
+          }
+          if (decision.action === 'REMOVE' && stillPresent) {
+            throw new Error(
+              'guest read-back still contained CF Preinspects'
+            );
           }
 
           result.writes++;
+          if (decision.action === 'ADD') result.added++;
+          if (decision.action === 'REMOVE') result.removed++;
         } catch (err) {
           result.errors.push(
             'Event ' + tmv3_clean_(event.getId()) + ': ' +
