@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_29_JANE_CANARY_R1",
+  "release": "TMV3_3_11_30_JANE_CANARY_RELOCK_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
-  "mode": "CANARY_WRITE",
-  "expectedLiveCommit": "e08d707f9f72357b6407ab39145728faf99c2fb4"
+  "mode": "SHADOW_READ_ONLY",
+  "expectedLiveCommit": "454662e807329f7c1999965445a5ed1aa9db48a3"
 }
