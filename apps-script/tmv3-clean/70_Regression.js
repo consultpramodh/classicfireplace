@@ -1857,7 +1857,7 @@ function tmv3_canaryApiBudgetRegression() {
     {
       canaryActive:false,
       mode:'CANARY_WRITE',
-      extraCalls:20
+      extraCalls:50
     }
   );
   const canary = tmv3_strivenApiEffectiveSoftLimit_(
@@ -1866,7 +1866,7 @@ function tmv3_canaryApiBudgetRegression() {
     {
       canaryActive:true,
       mode:'CANARY_WRITE',
-      extraCalls:20
+      extraCalls:50
     }
   );
   const shadow = tmv3_strivenApiEffectiveSoftLimit_(
@@ -1895,7 +1895,7 @@ function tmv3_canaryApiBudgetRegression() {
   );
   check(
     'CANARY_API_ALLOWANCE_EXACT_MODE_ADDS_ONLY_CONFIGURED_CALLS',
-    canary === 1220,
+    canary === 1250,
     canary
   );
   check(

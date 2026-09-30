@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.34-automatic-jane-canary-r1';
+const TMV3_VERSION = '3.11.35-jane-budget-1250-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -72,7 +72,7 @@ const TMV3 = Object.freeze({
     canaryExpectedCustomerId: '62638',
     canaryExpectedLocationId: '58275',
     canaryExpectedAction: 'CREATE_TASK',
-    canaryApiExtraCalls: 20,
+    canaryApiExtraCalls: 50,
     installRemindersEnabled: true,
     preInspectionMissingDetailEmailsEnabled: false
   }),
