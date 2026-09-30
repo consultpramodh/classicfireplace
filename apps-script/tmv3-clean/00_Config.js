@@ -1,8 +1,8 @@
-const TMV3_VERSION = '3.11.28-calendar-auth-bootstrap-r1';
+const TMV3_VERSION = '3.11.29-jane-canary-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
-const TMV3_MODE = 'SHADOW_READ_ONLY';
+const TMV3_MODE = 'CANARY_WRITE';
 
 const TMV3_HARD_RULES = Object.freeze({
   version:'2026-09-29-r2',
@@ -65,7 +65,10 @@ const TMV3 = Object.freeze({
   OPERATIONS: Object.freeze({
     manualWritesEnabled: true,
     automationWritesEnabled: false,
-    autoMaxWritesPerRun: 10,
+    autoMaxWritesPerRun: 1,
+    canaryEventId: '2g1s53ho1qf09d19vsep0p3v0h@google.com',
+    canaryVertical: 'PreInspection',
+    canaryDate: '2026-09-30',
     installRemindersEnabled: true,
     preInspectionMissingDetailEmailsEnabled: false
   }),
