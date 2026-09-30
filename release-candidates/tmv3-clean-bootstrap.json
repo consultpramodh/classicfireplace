@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_28_CALENDAR_AUTH_BOOTSTRAP_R1",
+  "release": "TMV3_3_11_29_JANE_CANARY_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
-  "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "facafb7dfe6b137d2ccfc024e3860d0ac97c1604"
+  "mode": "CANARY_WRITE",
+  "expectedLiveCommit": "e08d707f9f72357b6407ab39145728faf99c2fb4"
 }

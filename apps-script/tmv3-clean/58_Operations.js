@@ -674,6 +674,15 @@ function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
 
   let bundle = tmv3_step7BundleFromContract_(contract);
 
+  if (
+    TMV3.MODE === 'CANARY_WRITE' &&
+    !tmv3_canaryWriteEventAllowed_(bundle.eventRecord)
+  ) {
+    throw new Error(
+      'CANARY_WRITE blocked: this Step 7 contract is not the authorized canary event.'
+    );
+  }
+
   tmv3_step7FreshCriticalOwnership_(
     contract,
     bundle.eventRecord
@@ -4247,12 +4256,25 @@ function tmv3_canaryWriteEventAllowed_(eventRecord) {
 
   const eventId = tmv3_clean_(policy.canaryEventId);
   const vertical = tmv3_clean_(policy.canaryVertical);
+  const allowedDate = tmv3_clean_(policy.canaryDate);
+  const eventStart = eventRecord && eventRecord.start
+    ? new Date(eventRecord.start)
+    : null;
+  const eventDate =
+    eventStart && !isNaN(eventStart.getTime())
+      ? Utilities.formatDate(
+          eventStart,
+          TMV3_TIMEZONE,
+          'yyyy-MM-dd'
+        )
+      : '';
 
-  if (!eventId) return false;
+  if (!eventId || !allowedDate) return false;
 
   return (
     tmv3_clean_(eventRecord && eventRecord.eventId) === eventId &&
-    (!vertical || tmv3_clean_(eventRecord && eventRecord.vertical) === vertical)
+    (!vertical || tmv3_clean_(eventRecord && eventRecord.vertical) === vertical) &&
+    eventDate === allowedDate
   );
 }
 
