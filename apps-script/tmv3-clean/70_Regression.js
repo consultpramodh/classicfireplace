@@ -2116,6 +2116,96 @@ function tmv3_automaticCanaryRegression() {
   };
 }
 
+function tmv3_preInspectionGuestSyncRegression() {
+  const primary =
+    'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com';
+  const owner = 'stephen@classicfireplace.ca';
+  const cases = [];
+
+  function check(name, actual, expected) {
+    cases.push({
+      name:name,
+      pass:
+        actual.status === expected.status &&
+        actual.addGuest === expected.addGuest,
+      actual:actual,
+      expected:expected
+    });
+  }
+
+  check(
+    'STEPHEN_CREATED_EVENT_DOES_NOT_ADD_SHARED_GUEST',
+    tmv3_preInspectionGuestSyncDecision_(
+      [owner],
+      [],
+      owner,
+      primary
+    ),
+    { status:'SKIP_STEPHEN_CREATED', addGuest:false }
+  );
+
+  check(
+    'TERRY_CREATED_EVENT_ADDS_CF_PREINSPECTS',
+    tmv3_preInspectionGuestSyncDecision_(
+      ['terry@classicfireplace.ca'],
+      [],
+      owner,
+      primary
+    ),
+    { status:'ADD_CF_PREINSPECTS', addGuest:true }
+  );
+
+  check(
+    'PRAMODH_CREATED_EVENT_ADDS_CF_PREINSPECTS',
+    tmv3_preInspectionGuestSyncDecision_(
+      ['pramodh@classicfireplace.ca'],
+      [],
+      owner,
+      primary
+    ),
+    { status:'ADD_CF_PREINSPECTS', addGuest:true }
+  );
+
+  check(
+    'EXISTING_CF_PREINSPECTS_GUEST_IS_IDEMPOTENT',
+    tmv3_preInspectionGuestSyncDecision_(
+      ['adam@classicfireplace.ca'],
+      [primary],
+      owner,
+      primary
+    ),
+    { status:'ALREADY_PRESENT', addGuest:false }
+  );
+
+  check(
+    'MISSING_CREATOR_FAILS_CLOSED',
+    tmv3_preInspectionGuestSyncDecision_(
+      [],
+      [],
+      owner,
+      primary
+    ),
+    { status:'REVIEW_CREATOR_MISSING', addGuest:false }
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 PreInspection guest sync regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_liveHardeningRegression() {
   const issue1 =
     tmv3_issue1SingleDecisionAuthorityRegression();
@@ -2127,6 +2217,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_canaryApiBudgetRegression();
   const automaticCanary =
     tmv3_automaticCanaryRegression();
+  const preInspectionGuestSync =
+    tmv3_preInspectionGuestSyncRegression();
 
   const result = {
     status:
@@ -2134,7 +2226,8 @@ function tmv3_liveHardeningRegression() {
       issue2.status === 'PASS' &&
       titleNormalization.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
-      automaticCanary.status === 'PASS'
+      automaticCanary.status === 'PASS' &&
+      preInspectionGuestSync.status === 'PASS'
         ? 'PASS'
         : 'FAIL',
     version:TMV3.VERSION,
@@ -2143,7 +2236,8 @@ function tmv3_liveHardeningRegression() {
     issue2:issue2,
     titleNormalization:titleNormalization,
     canaryApiBudget:canaryApiBudget,
-    automaticCanary:automaticCanary
+    automaticCanary:automaticCanary,
+    preInspectionGuestSync:preInspectionGuestSync
   };
 
   Logger.log(

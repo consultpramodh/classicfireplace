@@ -465,7 +465,247 @@ function tmv3_runProductionAutomationCycle_(reason, options) {
   return result;
 }
 
+function tmv3_preInspectionGuestSyncDecision_(
+  creatorEmails,
+  guestEmails,
+  ownerEmail,
+  primaryCalendarId
+) {
+  const owner = tmv3_normEmail_(ownerEmail);
+  const primary = tmv3_normEmail_(primaryCalendarId);
+  const creators = tmv3_unique_(
+    (creatorEmails || [])
+      .map(tmv3_normEmail_)
+      .filter(Boolean)
+  );
+  const guests = tmv3_unique_(
+    (guestEmails || [])
+      .map(tmv3_normEmail_)
+      .filter(Boolean)
+  );
+
+  if (!owner || !primary) {
+    return {
+      status:'BLOCKED_CONFIG',
+      addGuest:false
+    };
+  }
+
+  if (!creators.length) {
+    return {
+      status:'REVIEW_CREATOR_MISSING',
+      addGuest:false
+    };
+  }
+
+  if (creators.indexOf(owner) !== -1) {
+    return {
+      status:'SKIP_STEPHEN_CREATED',
+      addGuest:false
+    };
+  }
+
+  if (guests.indexOf(primary) !== -1) {
+    return {
+      status:'ALREADY_PRESENT',
+      addGuest:false
+    };
+  }
+
+  return {
+    status:'ADD_CF_PREINSPECTS',
+    addGuest:true
+  };
+}
+
+function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
+  options = options || {};
+  const policy = tmv3_operationPolicy_();
+  const cfg = TMV3.VERTICALS.PreInspection;
+
+  if (policy.preInspectionGuestSyncEnabled !== true) {
+    return { status:'DISABLED', writes:0 };
+  }
+
+  if (!tmv3_operationWritesEnabled_('AUTO')) {
+    return { status:'AUTO_WRITES_GATED', writes:0 };
+  }
+
+  const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+  const ownerEmail = tmv3_clean_(
+    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca'
+  );
+  const intervalMinutes = Math.max(
+    1,
+    Number(policy.preInspectionGuestSyncIntervalMinutes || 5)
+  );
+  const maxWrites = Math.max(
+    1,
+    Number(policy.preInspectionGuestSyncMaxWrites || 50)
+  );
+  const cache = CacheService.getScriptCache();
+  const throttleKey = 'TMV3_PREINSPECTION_GUEST_SYNC_ACTIVE';
+
+  if (options.force !== true && cache.get(throttleKey)) {
+    return { status:'THROTTLED', writes:0 };
+  }
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) {
+    return { status:'LOCK_BUSY', writes:0 };
+  }
+
+  try {
+    if (options.force !== true && cache.get(throttleKey)) {
+      return { status:'THROTTLED', writes:0 };
+    }
+
+    cache.put(
+      throttleKey,
+      String(new Date().getTime()),
+      Math.min(21600, intervalMinutes * 60)
+    );
+
+    const start = new Date();
+    start.setDate(start.getDate() - Number(cfg.lookbackDays || 0));
+    start.setHours(0,0,0,0);
+
+    const end = new Date();
+    end.setDate(end.getDate() + Number(cfg.lookaheadDays || 365));
+    end.setHours(23,59,59,999);
+
+    const result = {
+      status:'PASS',
+      reason:tmv3_clean_(options.reason || 'AUTO'),
+      scanned:0,
+      writes:0,
+      alreadyPresent:0,
+      stephenCreatedSkipped:0,
+      creatorMissing:0,
+      deferred:0,
+      errors:[]
+    };
+
+    (cfg.secondaryCalendarIds || []).forEach(function(calendarId) {
+      const cal = CalendarApp.getCalendarById(calendarId);
+
+      if (!cal) {
+        result.errors.push(
+          'Calendar unavailable: ' + calendarId
+        );
+        return;
+      }
+
+      cal.getEvents(start, end).forEach(function(event) {
+        result.scanned++;
+
+        const creators = tmv3_safeCalendar_(
+          function() {
+            return event.getCreators
+              ? (event.getCreators() || [])
+              : [];
+          },
+          []
+        );
+        const guests = tmv3_safeCalendar_(
+          function() {
+            return (event.getGuestList ? event.getGuestList(true) : [])
+              .map(function(guest) {
+                return guest && guest.getEmail
+                  ? guest.getEmail()
+                  : '';
+              })
+              .filter(Boolean);
+          },
+          []
+        );
+        const decision = tmv3_preInspectionGuestSyncDecision_(
+          creators,
+          guests,
+          ownerEmail,
+          primaryId
+        );
+
+        if (decision.status === 'SKIP_STEPHEN_CREATED') {
+          result.stephenCreatedSkipped++;
+          return;
+        }
+        if (decision.status === 'ALREADY_PRESENT') {
+          result.alreadyPresent++;
+          return;
+        }
+        if (decision.status === 'REVIEW_CREATOR_MISSING') {
+          result.creatorMissing++;
+          return;
+        }
+        if (!decision.addGuest) {
+          result.errors.push(
+            'Guest decision blocked for Event ' +
+            tmv3_clean_(event.getId()) +
+            ': ' + decision.status
+          );
+          return;
+        }
+
+        if (result.writes >= maxWrites) {
+          result.deferred++;
+          return;
+        }
+
+        try {
+          event.addGuest(primaryId);
+
+          const readbackGuests = (event.getGuestList
+            ? event.getGuestList(true)
+            : []
+          )
+            .map(function(guest) {
+              return tmv3_normEmail_(
+                guest && guest.getEmail ? guest.getEmail() : ''
+              );
+            })
+            .filter(Boolean);
+
+          if (
+            readbackGuests.indexOf(
+              tmv3_normEmail_(primaryId)
+            ) === -1
+          ) {
+            throw new Error('guest read-back did not contain CF Preinspects');
+          }
+
+          result.writes++;
+        } catch (err) {
+          result.errors.push(
+            'Event ' + tmv3_clean_(event.getId()) + ': ' +
+            String(err && err.message || err)
+          );
+        }
+      });
+    });
+
+    if (result.errors.length) result.status = 'ATTENTION';
+
+    tmv3_audit_(
+      'PreInspection',
+      '',
+      '',
+      'PREINSPECTION_CF_PREINSPECTS_GUEST_SYNC',
+      result.status,
+      JSON.stringify(result)
+    );
+
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function tmv3_calendarReconciliationFallback() {
+  tmv3_reconcilePreInspectionSharedGuest_AUTO_({
+    reason:'CALENDAR_RECONCILIATION_FALLBACK'
+  });
+
   const hour = Number(
     Utilities.formatDate(
       new Date(),
@@ -567,6 +807,10 @@ function tmv3_scheduledShadow() {
 }
 
 function tmv3_scheduledOperations() {
+  tmv3_reconcilePreInspectionSharedGuest_AUTO_({
+    reason:'SCHEDULED_OPERATIONS'
+  });
+
   if (tmv3_executionStage_() < 7) {
     return {
       stage:tmv3_executionStage_(),

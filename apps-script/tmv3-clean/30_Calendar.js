@@ -277,8 +277,7 @@ function tmv3_preInspectionStep1SourceAllowed_(cfg, calCfg, creator) {
   if (calCfg.role !== 'SECONDARY_STEPHEN') return true;
 
   const ignored = (cfg.secondaryIgnoredCreatorEmails || [
-    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca',
-    'pramodh@classicfireplace.ca'
+    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca'
   ])
     .map(function(v) { return tmv3_norm_(v); })
     .filter(Boolean);
@@ -296,8 +295,9 @@ function tmv3_preInspectionStep1SourceAllowed_(cfg, calCfg, creator) {
     return false;
   }
 
-  // Stephen-created and Pramodh-created events on Stephen's personal
-  // calendar are operational blockers/internal events for this workflow.
+  // Only Stephen-created events on Stephen's personal calendar are excluded.
+  // Events created there by any other person remain part of the inspection stream
+  // and must also carry CF Preinspects as a guest via automated guest sync.
   return !creators.some(function(email) {
     return ignored.indexOf(email) !== -1;
   });

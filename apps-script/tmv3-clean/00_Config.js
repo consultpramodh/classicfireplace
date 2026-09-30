@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.35-jane-budget-1250-r1';
+const TMV3_VERSION = '3.11.36-preinspect-guest-sync-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -74,7 +74,10 @@ const TMV3 = Object.freeze({
     canaryExpectedAction: 'CREATE_TASK',
     canaryApiExtraCalls: 50,
     installRemindersEnabled: true,
-    preInspectionMissingDetailEmailsEnabled: false
+    preInspectionMissingDetailEmailsEnabled: false,
+    preInspectionGuestSyncEnabled: true,
+    preInspectionGuestSyncIntervalMinutes: 5,
+    preInspectionGuestSyncMaxWrites: 50
   }),
   API_BUDGET: Object.freeze({
     planDailyLimit: 5000,
@@ -193,8 +196,7 @@ const TMV3 = Object.freeze({
       secondaryCalendarIds: ['classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'],
       secondaryOwnerEmail: 'stephen@classicfireplace.ca',
       secondaryIgnoredCreatorEmails: [
-        'stephen@classicfireplace.ca',
-        'pramodh@classicfireplace.ca'
+        'stephen@classicfireplace.ca'
       ],
       calendarOrdersPageLinkRequired: true,
       calendarTaskLinkRequired: true,
