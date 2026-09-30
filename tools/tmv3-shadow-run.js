@@ -1100,7 +1100,7 @@ function doPost(e) {
       ) || {};
       var fieldValues = {};
       Object.keys(rawTask).forEach(function(key) {
-        if (/date|time|complete|done|close|status|finish|budget|type/i.test(key)) {
+        if (/date|time|complete|done|close|status|finish|budget|type|name|customer|location|contact|order|request|assign|pool/i.test(key)) {
           fieldValues[key] = rawTask[key];
         }
       });
