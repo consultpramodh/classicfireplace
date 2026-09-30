@@ -1,18 +1,18 @@
 {
-  "release": "TMV3_3_11_29_JANE_CANARY_R1",
+  "release": "TMV3_3_11_34_AUTOMATIC_JANE_CANARY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEMA",
+  "runMode": "TRIGGER_INVENTORY",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "",
   "eventId": "",
-  "taskId": 18722,
+  "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TASK18722_DEPLOYED_EXEC_FRESH_READ_20260930",
+  "requestTag": "TMV3_VERIFY_LIVE_TRIGGER_INVENTORY_BEFORE_JANE_AUTO_RUN_20260930",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1200
 }
