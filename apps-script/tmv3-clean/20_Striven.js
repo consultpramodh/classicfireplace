@@ -4,6 +4,8 @@ var TMV3_RUNTIME_METRICS = {
   strivenApiBudgetBlocks: 0
 };
 
+var TMV3_CANARY_API_ALLOWANCE_ACTIVE = false;
+
 function tmv3_resetRuntimeMetrics_() {
   TMV3_RUNTIME_METRICS = {
     strivenApiCalls: 0,
@@ -79,13 +81,51 @@ function tmv3_strivenApiBudgetStatus_() {
   };
 }
 
+function tmv3_strivenApiEffectiveSoftLimit_(status, cfg, context) {
+  status = status || {};
+  cfg = cfg || tmv3_strivenApiBudgetConfig_();
+  context = context || {};
+
+  const baseSoftLimit = Number(
+    status.softLimit || cfg.v3DailySoftLimit || 1200
+  );
+  const planDailyLimit = Number(cfg.planDailyLimit || 5000);
+  const active =
+    Object.prototype.hasOwnProperty.call(context, 'canaryActive')
+      ? context.canaryActive === true
+      : TMV3_CANARY_API_ALLOWANCE_ACTIVE === true;
+  const mode =
+    Object.prototype.hasOwnProperty.call(context, 'mode')
+      ? String(context.mode || '')
+      : String(TMV3.MODE || '');
+  const configuredExtra =
+    Object.prototype.hasOwnProperty.call(context, 'extraCalls')
+      ? Number(context.extraCalls || 0)
+      : Number(
+          TMV3.OPERATIONS &&
+          TMV3.OPERATIONS.canaryApiExtraCalls ||
+          0
+        );
+  const extra =
+    active && mode === 'CANARY_WRITE'
+      ? Math.max(0, configuredExtra)
+      : 0;
+
+  return Math.min(
+    planDailyLimit,
+    baseSoftLimit + extra
+  );
+}
+
 function tmv3_reserveStrivenApiCall_(label) {
   const cfg = tmv3_strivenApiBudgetConfig_();
   const keys = tmv3_strivenApiBudgetKeys_();
   const props = PropertiesService.getScriptProperties();
   const status = tmv3_strivenApiBudgetStatus_();
+  const effectiveSoftLimit =
+    tmv3_strivenApiEffectiveSoftLimit_(status, cfg);
 
-  if (status.exhausted || status.count >= status.softLimit) {
+  if (status.exhausted || status.count >= effectiveSoftLimit) {
     TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks =
       Number(TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks || 0) + 1;
 
@@ -93,7 +133,10 @@ function tmv3_reserveStrivenApiCall_(label) {
       'TMV3_STRIVEN_API_DAILY_GUARD: blocked ' +
       String(label || 'Striven API call') +
       '. V3 daily usage=' + status.count +
-      '/' + status.softLimit +
+      '/' + effectiveSoftLimit +
+      (effectiveSoftLimit !== status.softLimit
+        ? ' (base soft limit ' + status.softLimit + ')'
+        : '') +
       '; reserved for other workflows=' +
       Number(cfg.reserveForOtherWorkflows || 0) +
       (status.exhaustedReason
@@ -111,7 +154,8 @@ function tmv3_reserveStrivenApiCall_(label) {
   return {
     date: status.date,
     count: nextCount,
-    softLimit: status.softLimit
+    softLimit: effectiveSoftLimit,
+    baseSoftLimit: status.softLimit
   };
 }
 
