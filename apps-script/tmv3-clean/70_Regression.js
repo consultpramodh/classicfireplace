@@ -1169,6 +1169,32 @@ function tmv3_titleNormalizationRegression() {
     plan.after
   );
 
+  const lisaEscapedCalendarDescription =
+    '<p>Large Traditional Gas. Full reno so should be open for us to install. ' +
+    'She asked for quotes for an H5 and H6. I advised that would be a lot of heat ' +
+    'and suggested a Bentley. She still seems very sold on the Valor though' +
+    '&lt;br&gt;&lt;br&gt;&lt;strong&gt;&amp;#45;&amp;#45;&amp;#45;&amp;#45;&amp;#45;' +
+    'Striven Links&amp;#45;&amp;#45;&amp;#45;&amp;#45;&amp;#45;&lt;/strong&gt;' +
+    '&lt;br&gt;&lt;a href=&quot;https://classicfireplace.striven.com/next/crm#/sales-orders?accountId=62542&quot;&gt;' +
+    'View Sales Orders – Lisa Wilson Duff (#62542)&lt;/a&gt;' +
+    '&lt;br&gt;&lt;a href=&quot;https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=18790&quot;&gt;' +
+    'Task #18790 – Lisa Wilson Duff - 47 Cousins Dr, Aurora, ON L4G 1B4, CANADA - (905) 717-0625&lt;/a&gt;</p>';
+
+  const lisaReadableDescription =
+    tmv3_calendarReadableDescription_(lisaEscapedCalendarDescription);
+
+  check(
+    'CALENDAR_DOUBLE_ESCAPED_HTML_READABLE',
+    lisaReadableDescription ===
+      'Large Traditional Gas. Full reno so should be open for us to install. ' +
+      'She asked for quotes for an H5 and H6. I advised that would be a lot of heat ' +
+      'and suggested a Bentley. She still seems very sold on the Valor though\n\n' +
+      '-----Striven Links-----\n' +
+      'View Sales Orders – Lisa Wilson Duff (#62542)\n' +
+      'Task #18790 – Lisa Wilson Duff - 47 Cousins Dr, Aurora, ON L4G 1B4, CANADA - (905) 717-0625',
+    lisaReadableDescription
+  );
+
   const lineBreaks = 'Line 1\nLine 2\n\nLine 4';
   plan = tmv3_titleDescriptionPlan_(
     'Old Title',
