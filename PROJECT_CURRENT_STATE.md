@@ -283,3 +283,26 @@ The canary must prove:
 `Calendar event → Customer → Location → identity evidence → Type 105 CREATE → Requested By → Pool 8 → blank Description → no SO → no InfoCustomFields/Field 854 → Calendar links/title → authoritative read-back → NO_CHANGE`
 
 Only after that single-record path converges should automatic write scope be widened.
+
+## 3.11.33 Jane canary title-context + bounded API allowance — DEPLOYED
+
+The 2026-09-30 Jane Bisset canary failure was traced to CREATE Task-name construction using the raw Calendar event after Step 7 had already verified Customer/Location. The title builder therefore lost the verified identity context and returned `Customer/Location identity is not fully verified.`
+
+Release sequence:
+
+- `3.11.31-preinspect-create-title-context-r1` — rehydrates Task-name construction from the already-verified Step 7 Customer/Location context; regression `PREINSPECTION_CREATE_EXECUTION_REUSES_VERIFIED_IDENTITY_CONTEXT` added.
+- `3.11.32-jane-exact-canary-r1` — adds `tmv3_runConfiguredCanary_MANUAL()`, hard-bound to Jane Event `2g1s53ho1qf09d19vsep0p3v0h@google.com`, Customer `62638`, Location `58275`, date `2026-09-30`, and expected action `CREATE_TASK`.
+- `3.11.33-jane-budget-allowance-r1` — permits only that exact manual canary to consume at most 20 additional Striven calls above the V3 1200 soft cap; all other executions retain the 1200 cap; the allowance is cleared in `finally` and never exceeds the 5000 plan limit.
+
+Verification:
+
+- PR #96 merged at `6d68fd2b768e81c276cbd354ba560df4d6069baa`.
+- syntax: PASS for `00_Config.js`, `20_Striven.js`, `58_Operations.js`, `70_Regression.js`.
+- bounded allowance regression: **4/4 PASS**.
+- guarded bootstrap run `36742906454`: **SUCCESS**.
+- PRE source parity: **VERIFIED**.
+- bound Apps Script remote parity: **22/22 files**.
+- ledger run `36742906246`: **SUCCESS**.
+- automation writes remain disabled; the only authorized production write path is the exact configured Jane manual canary.
+
+Exact next action: refresh the Apps Script editor and run `tmv3_runConfiguredCanary_MANUAL()` once. Do not run `tmv3_runSafeReadyRows_MANUAL()`. After completion, read back the created Type-105 Task and Jane Calendar event, then run the same configured canary again and require convergence / no duplicate write before returning V3 to `SHADOW_READ_ONLY`.
