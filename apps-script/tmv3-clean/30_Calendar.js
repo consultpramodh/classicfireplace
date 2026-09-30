@@ -418,18 +418,45 @@ function tmv3_identityEvidenceDescriptionRaw_(rawDescription, preservedTitle) {
   return text;
 }
 
-function tmv3_calendarReadableDescription_(value) {
-  return tmv3_clean_(
-    String(value || '')
-      .replace(/<\s*br\s*\/?>/gi, '\n')
-      .replace(/<\s*\/p\s*>/gi, '\n')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/gi, ' ')
+function tmv3_decodeCalendarHtmlEntities_(value) {
+  let text = String(value === null || value === undefined ? '' : value);
+
+  // Google Calendar can preserve already-HTML-formatted text as escaped HTML.
+  // Decode before stripping tags so escaped markup becomes markup first.
+  // Two bounded passes cover double-escaped entities such as &amp;#45;.
+  for (let pass = 0; pass < 2; pass++) {
+    const decoded = text
       .replace(/&amp;/gi, '&')
+      .replace(/&nbsp;/gi, ' ')
       .replace(/&lt;/gi, '<')
       .replace(/&gt;/gi, '>')
       .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
       .replace(/&#39;/gi, "'")
+      .replace(/&#x([0-9a-f]+);/gi, function(match, hex) {
+        const codePoint = parseInt(hex, 16);
+        return isNaN(codePoint) ? match : String.fromCodePoint(codePoint);
+      })
+      .replace(/&#(\d+);/g, function(match, decimal) {
+        const codePoint = parseInt(decimal, 10);
+        return isNaN(codePoint) ? match : String.fromCodePoint(codePoint);
+      });
+
+    if (decoded === text) break;
+    text = decoded;
+  }
+
+  return text;
+}
+
+function tmv3_calendarReadableDescription_(value) {
+  const decoded = tmv3_decodeCalendarHtmlEntities_(value);
+
+  return tmv3_clean_(
+    decoded
+      .replace(/<\s*br\s*\/?>/gi, '\n')
+      .replace(/<\s*\/p\s*>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n[ \t]+/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
