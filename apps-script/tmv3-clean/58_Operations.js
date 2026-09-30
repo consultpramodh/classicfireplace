@@ -4455,6 +4455,139 @@ function tmv3_runSafeReadyRows_MANUAL() {
   return tmv3_runSafeReadyRows_('MANUAL');
 }
 
+function tmv3_runConfiguredCanary_MANUAL() {
+  tmv3_assertOperationWrite_('MANUAL');
+
+  if (TMV3.MODE !== 'CANARY_WRITE') {
+    throw new Error(
+      'Configured canary runner is available only in CANARY_WRITE mode.'
+    );
+  }
+
+  const policy = tmv3_operationPolicy_();
+  const vertical = tmv3_clean_(policy.canaryVertical);
+  const eventId = tmv3_clean_(policy.canaryEventId);
+  const expectedCustomerId = tmv3_clean_(
+    policy.canaryExpectedCustomerId
+  );
+  const expectedLocationId = tmv3_clean_(
+    policy.canaryExpectedLocationId
+  );
+  const expectedAction = tmv3_clean_(
+    policy.canaryExpectedAction
+  );
+
+  if (
+    !TMV3.VERTICALS[vertical] ||
+    !eventId ||
+    !expectedCustomerId ||
+    !expectedLocationId ||
+    !expectedAction
+  ) {
+    throw new Error(
+      'Configured canary is incomplete. Vertical, Event ID, Customer ID, Location ID and expected action are required.'
+    );
+  }
+
+  const eventRecord = tmv3_findFreshEventRecord_(
+    vertical,
+    eventId
+  );
+
+  if (!tmv3_canaryWriteEventAllowed_(eventRecord)) {
+    throw new Error(
+      'Configured canary event/date/vertical guard rejected the fresh Calendar event.'
+    );
+  }
+
+  const executable = tmv3_step7FreshPlansForEvent_(
+    vertical,
+    eventId
+  ).filter(function(contract) {
+    return (
+      !tmv3_clean_(contract.blocker) &&
+      Array.isArray(contract.actions) &&
+      contract.actions.length > 0
+    );
+  });
+
+  if (executable.length !== 1) {
+    throw new Error(
+      'Configured canary requires exactly one executable fresh Step 7 contract; found ' +
+      executable.length + '.'
+    );
+  }
+
+  const contract = tmv3_step7ValidateExecutionContract_(
+    executable[0]
+  );
+
+  if (
+    tmv3_clean_(contract.expectedCustomerId) !==
+      expectedCustomerId
+  ) {
+    throw new Error(
+      'Configured canary Customer mismatch. Expected ' +
+      expectedCustomerId + ', fresh Step 7 resolved ' +
+      tmv3_clean_(contract.expectedCustomerId) + '.'
+    );
+  }
+
+  if (
+    tmv3_clean_(contract.expectedLocationId) !==
+      expectedLocationId
+  ) {
+    throw new Error(
+      'Configured canary Location mismatch. Expected ' +
+      expectedLocationId + ', fresh Step 7 resolved ' +
+      tmv3_clean_(contract.expectedLocationId) + '.'
+    );
+  }
+
+  if (
+    contract.actions.indexOf(expectedAction) === -1
+  ) {
+    throw new Error(
+      'Configured canary expected action ' +
+      expectedAction + ' is not authorized by fresh Step 7. Fresh plan: ' +
+      contract.plan + '.'
+    );
+  }
+
+  if (
+    expectedAction === TMV3_STEP7_ACTION.CREATE_TASK &&
+    Number(contract.taskId || 0)
+  ) {
+    throw new Error(
+      'Configured CREATE canary stopped because fresh Step 7 already resolved Task ' +
+      contract.taskId + '.'
+    );
+  }
+
+  tmv3_audit_(
+    vertical,
+    eventId,
+    contract.taskId || '',
+    'CONFIGURED_CANARY_GUARD',
+    'PASS',
+    JSON.stringify({
+      plan:contract.plan,
+      expectedCustomerId:expectedCustomerId,
+      expectedLocationId:expectedLocationId,
+      expectedAction:expectedAction
+    })
+  );
+
+  return tmv3_executeFreshStep7Selection_(
+    {
+      previousPlan:contract.plan,
+      contract:contract
+    },
+    'MANUAL',
+    'ALL'
+  );
+}
+
 function tmv3_runSafeReadyRows_AUTO() {
   return tmv3_runSafeReadyRows_('AUTO');
 }

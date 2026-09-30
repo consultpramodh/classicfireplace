@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_31_PREINSPECT_CREATE_TITLE_CONTEXT_R1",
+  "release": "TMV3_3_11_32_JANE_EXACT_CANARY_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
-  "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "ca41b248d94c27deb00cdeba62e72b27631ee859"
+  "mode": "CANARY_WRITE",
+  "expectedLiveCommit": "9c4b94d4e180a4822e812261a3015708c0b031b1"
 }
