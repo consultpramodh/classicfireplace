@@ -1,18 +1,18 @@
 {
-  "release": "TMV3_3_11_39_POST_RELOCK_HARDENING_R1",
+  "release": "TMV3_3_11_39_PREINSPECTION_STEP7_CLOSURE_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "LIVE_HARDENING_REGRESSION",
+  "runMode": "STEP7_PREINSPECTION",
   "batchOffset": 0,
   "batchLimit": 0,
-  "refreshSources": false,
+  "refreshSources": true,
   "forceVersionedDeployment": false,
-  "vertical": "",
+  "vertical": "PreInspection",
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_39_POST_RELOCK_HARDENING_20261001",
+  "requestTag": "TMV3_3_11_39_PREINSPECTION_STEP7_CLOSURE_20261001",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1500
 }
