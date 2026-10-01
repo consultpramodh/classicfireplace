@@ -1197,7 +1197,8 @@ function tmv3_stripAuthoredCalendarNotes_(description) {
  *   explicitly exposes the corresponding title action.
  ************************************************************/
 
-function tmv3_titleDescriptionPlan_(currentTitle, desiredTitle, rawDescription) {
+function tmv3_titleDescriptionPlan_(currentTitle, desiredTitle, rawDescription, options) {
+  options = options || {};
   const oldTitle = tmv3_clean_(currentTitle);
   const newTitle = tmv3_clean_(desiredTitle);
   const before = String(rawDescription === undefined || rawDescription === null ? '' : rawDescription);
@@ -1244,17 +1245,25 @@ function tmv3_titleDescriptionPlan_(currentTitle, desiredTitle, rawDescription) 
     };
   }
 
+  const preserveOldTitle = options.preserveOldTitle !== false;
   const prefix = oldTitle + '\n\n';
   const alreadyPreserved =
-    before === oldTitle ||
-    before.indexOf(prefix) === 0;
+    preserveOldTitle &&
+    (
+      before === oldTitle ||
+      before.indexOf(prefix) === 0
+    );
   const after =
-    alreadyPreserved
+    !preserveOldTitle
       ? before
       : (
-          before
-            ? prefix + before
-            : oldTitle
+          alreadyPreserved
+            ? before
+            : (
+                before
+                  ? prefix + before
+                  : oldTitle
+              )
         );
 
   return {
@@ -1428,7 +1437,11 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
     copy.plan = tmv3_titleDescriptionPlan_(
       copy.beforeTitle,
       desired,
-      copy.beforeDescription
+      copy.beforeDescription,
+      {
+        preserveOldTitle:
+          eventRecord.vertical !== 'PreInspection'
+      }
     );
     if (copy.plan.status === 'BLOCKED') {
       throw new Error(
@@ -4068,7 +4081,11 @@ function tmv3_titleNormalizationPreview_(contract) {
       ? tmv3_titleDescriptionPlan_(
           currentCalendarTitle,
           desiredCalendar.value,
-          rawDescription
+          rawDescription,
+          {
+            preserveOldTitle:
+              previewRecord.vertical !== 'PreInspection'
+          }
         )
       : {
           status:'NOT_PLANNED',

@@ -78,6 +78,15 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - Canonical PreInspection Calendar title format is **`<Customer Number> - <Customer Name> - <Phone>`**. Legacy `C#` and `Cust#` titles remain readable, but all new normalization uses the bare Customer Number with no prefix.
 - Customer identity, customer-owned Location, date/time, Requested By, Pool 8, Task Type, Calendar links, and canonical titles are the automation-owned fields.
 - Primary/shared and Stephen secondary Calendar handling must remain supported; managed links/titles must be verified on the actual required copies.
+- PreInspection Calendar description presentation is frozen:
+  - do not prepend or preserve an old Calendar title inside the description;
+  - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
+  - use one bold **Notes:** section when authored notes are present;
+  - use exactly one managed **`-----Striven Links-----`** block at the bottom;
+  - leave one blank line after the links heading and between the two managed links;
+  - Sales Orders link text: **`View Sales Orders – <Customer Name> (#<Customer Number>)`**;
+  - Task link text: **`Task #<Task ID> - Preinspect - <Customer Name> - <Phone>`**;
+  - no raw URLs, generic `Customer` labels, numeric-only Task labels, or duplicate legacy link blocks.
 
 ### Mandatory reflection gate
 

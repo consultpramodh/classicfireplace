@@ -1433,6 +1433,71 @@ function tmv3_titleNormalizationRegression() {
       '62400 - John Smith - (416) 555-1212',
     JSON.stringify(preCalendar)
   );
+  const preNoTitlePreserve = tmv3_titleDescriptionPlan_(
+    'C#62400 - John Smith - (416) 555-1212',
+    '62400 - John Smith - (416) 555-1212',
+    '<b>Notes:</b> Existing authored note',
+    { preserveOldTitle:false }
+  );
+  check(
+    'PREINSPECTION_TITLE_NORMALIZATION_DOES_NOT_PREPEND_OLD_TITLE',
+    preNoTitlePreserve.titleChange === true &&
+      preNoTitlePreserve.descriptionChange === false &&
+      preNoTitlePreserve.after ===
+        '<b>Notes:</b> Existing authored note',
+    JSON.stringify(preNoTitlePreserve)
+  );
+
+  const preLinkPlan = tmv3_buildCalendarLinkPlan_(
+    Object.assign({}, pre, {
+      title:'62400 - John Smith - (416) 555-1212',
+      customerNumber:'62400',
+      calendarCustomerName:'John Smith'
+    }),
+    [{
+      customerId:'35659',
+      customer:'John Smith',
+      taskId:'18845',
+      task:'18845'
+    }]
+  );
+  check(
+    'PREINSPECTION_LINK_LABELS_ARE_MEANINGFUL_AND_STABLE',
+    preLinkPlan.links.length === 2 &&
+      preLinkPlan.links[0].label ===
+        'View Sales Orders – John Smith (#62400)' &&
+      preLinkPlan.links[1].label ===
+        'Task #18845 - Preinspect - John Smith - (416) 555-1212',
+    JSON.stringify(preLinkPlan.links)
+  );
+
+  const preDescription = tmv3_managedCalendarDescription_(
+    '62400 - John Smith - (416) 555-1212\n\n' +
+      '<b>Notes:</b> Line one\nwrapped continuation\n\nSecond paragraph\n\n' +
+      '<b>-----Striven Links-----</b><br>' +
+      '<a href="https://old.example">old</a>',
+    preLinkPlan
+  );
+  check(
+    'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN',
+    preDescription.indexOf(
+      '62400 - John Smith - (416) 555-1212'
+    ) === -1 &&
+      preDescription.indexOf(
+        '<b>Notes:</b><br>Line one wrapped continuation<br><br>Second paragraph'
+      ) !== -1 &&
+      preDescription.indexOf(
+        '<b>-----Striven Links-----</b><br><br>'
+      ) !== -1 &&
+      preDescription.indexOf(
+        'View Sales Orders – John Smith (#62400)'
+      ) !== -1 &&
+      preDescription.indexOf(
+        'Task #18845 - Preinspect - John Smith - (416) 555-1212'
+      ) !== -1 &&
+      preDescription.indexOf('old.example') === -1,
+    preDescription
+  );
   check(
     'PREINSPECTION_CANONICAL_BARE_NUMBER_PARSES_CUSTOMER_NUMBER',
     tmv3_extractCustomerNumberForVertical_(

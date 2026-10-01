@@ -18,16 +18,52 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
       throw new Error('PreInspection Calendar links require Customer ID.');
     }
 
+    const customer = eventRecord.step4 && eventRecord.step4.customer || null;
+    const customerName = tmv3_clean_(
+      first.customer ||
+      (customer && customer['Name']) ||
+      eventRecord.calendarCustomerName ||
+      tmv3_preInspectionCalendarCustomerName_(
+        eventRecord.title || '',
+        eventRecord.customerNumber || ''
+      )
+    );
+    const customerNumber = tmv3_clean_(
+      (customer && customer['Customer Number']) ||
+      eventRecord.customerNumber ||
+      tmv3_extractCustomerNumberForVertical_(
+        'PreInspection',
+        eventRecord.title || ''
+      )
+    );
+    const phone = tmv3_titlePhoneDisplay_(
+      eventRecord.phone ||
+      (customer && customer['Primary Phone']) ||
+      ''
+    );
+
+    if (!customerName || !customerNumber || !phone) {
+      throw new Error(
+        'PreInspection Calendar links require verified Customer Name, Customer Number and Phone.'
+      );
+    }
+
     links.push({
-      key: 'CUSTOMER_SALES_ORDERS_PAGE',
+      key:'CUSTOMER_SALES_ORDERS_PAGE',
       label:
         'View Sales Orders – ' +
-        (first.customer || 'Customer') +
-        ' (#' + first.customerId + ')',
+        customerName +
+        ' (#' + customerNumber + ')',
       url:
         TMV3.CUSTOMER_ORDERS_PAGE_BASE +
         encodeURIComponent(first.customerId)
     });
+
+    eventRecord.__tmv3PreInspectionLinkIdentity = {
+      customerName:customerName,
+      customerNumber:customerNumber,
+      phone:phone
+    };
   } else if (cfg.calendarOrderLinkRequired) {
     if (!first.orderId) {
       throw new Error(cfg.orderLabel + ' Calendar link requires internal Order ID.');
@@ -56,12 +92,19 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
       if (taskSeen[taskId]) return;
       taskSeen[taskId] = true;
 
-      links.push({
-        key:
-          record.serviceFireplaceNumber
-            ? 'TASK_FP_' + record.serviceFireplaceNumber
-            : 'TASK_' + taskId,
-        label:
+      let label = '';
+
+      if (eventRecord.vertical === 'PreInspection') {
+        const identity =
+          eventRecord.__tmv3PreInspectionLinkIdentity || {};
+        label =
+          'Task #' + taskId +
+          ' - Preinspect - ' +
+          tmv3_clean_(identity.customerName) +
+          ' - ' +
+          tmv3_clean_(identity.phone);
+      } else {
+        label =
           (
             record.serviceFireplaceNumber
               ? 'FP#' + record.serviceFireplaceNumber + ' – '
@@ -69,7 +112,15 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
           ) +
           'Task #' +
           taskId +
-          (record.task ? ' – ' + record.task : ''),
+          (record.task ? ' – ' + record.task : '');
+      }
+
+      links.push({
+        key:
+          record.serviceFireplaceNumber
+            ? 'TASK_FP_' + record.serviceFireplaceNumber
+            : 'TASK_' + taskId,
+        label:label,
         url:
           TMV3.TASK_URL_BASE +
           encodeURIComponent(taskId)
@@ -77,11 +128,19 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
     });
   }
 
+  const preIdentity =
+    eventRecord.__tmv3PreInspectionLinkIdentity || null;
+  try { delete eventRecord.__tmv3PreInspectionLinkIdentity; } catch (ignored) {}
+
   return {
     vertical: eventRecord.vertical,
     eventId: eventRecord.eventId,
     occurrenceStart: eventRecord.start ? tmv3_iso_(eventRecord.start) : '',
     calendarIds: tmv3_requiredCalendarCopiesForEvent_(eventRecord),
+    currentTitle:tmv3_clean_(eventRecord.title),
+    customerName:preIdentity ? preIdentity.customerName : '',
+    customerNumber:preIdentity ? preIdentity.customerNumber : '',
+    phone:preIdentity ? preIdentity.phone : '',
     links: links
   };
 }
@@ -145,7 +204,13 @@ function tmv3_requiredCalendarCopies_(vertical) {
 }
 
 function tmv3_managedCalendarDescription_(existingDescription, plan) {
-  const authored = tmv3_stripManagedLinkBlocks_(existingDescription);
+  const authored = plan && plan.vertical === 'PreInspection'
+    ? tmv3_preInspectionCalendarNotesHtml_(
+        existingDescription,
+        plan
+      )
+    : tmv3_stripManagedLinkBlocks_(existingDescription);
+
   const linkLines = (plan.links || []).map(function(link) {
     return '<a href="' +
       tmv3_calendarHtmlEscape_(link.url) +
@@ -154,15 +219,120 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
       '</a>';
   });
 
+  const linkJoin =
+    plan && plan.vertical === 'PreInspection'
+      ? '<br><br>'
+      : '<br>';
+
   const managed =
     '<b>' + TMV3_FINAL_LINK_HEADING + '</b>' +
-    (linkLines.length ? '<br>' + linkLines.join('<br>') : '');
+    (
+      linkLines.length
+        ? (
+            plan && plan.vertical === 'PreInspection'
+              ? '<br><br>'
+              : '<br>'
+          ) + linkLines.join(linkJoin)
+        : ''
+    );
 
   return (
     authored
       ? authored.replace(/\s+$/, '') + '<br><br>'
       : ''
   ) + managed;
+}
+
+
+function tmv3_preInspectionTitleVariants_(plan) {
+  plan = plan || {};
+  const number = tmv3_clean_(plan.customerNumber);
+  const name = tmv3_clean_(plan.customerName);
+  const phone = tmv3_clean_(plan.phone);
+  const current = tmv3_clean_(plan.currentTitle);
+  const variants = [current];
+
+  if (number && name && phone) {
+    variants.push(number + ' - ' + name + ' - ' + phone);
+    variants.push('C#' + number + ' - ' + name + ' - ' + phone);
+    variants.push('Cust#' + number + ' - ' + name + ' - ' + phone);
+  }
+
+  return tmv3_unique_(variants.map(tmv3_clean_).filter(Boolean));
+}
+
+function tmv3_stripPreInspectionPreservedTitle_(html, plan) {
+  let text = String(html || '');
+
+  tmv3_preInspectionTitleVariants_(plan).forEach(function(title) {
+    const candidates = [
+      title,
+      tmv3_calendarHtmlEscape_(title)
+    ];
+
+    candidates.forEach(function(candidate) {
+      const esc = tmv3_regexEscape_(candidate);
+      text = text.replace(
+        new RegExp(
+          '^\\s*(?:<p[^>]*>\\s*)?' +
+          esc +
+          '\\s*(?:<\\/p>)?\\s*(?:(?:<br\\s*\\/?>|\\r?\\n)\\s*){0,2}',
+          'i'
+        ),
+        ''
+      );
+    });
+  });
+
+  return text.replace(/^\s+/, '');
+}
+
+function tmv3_normalizePreInspectionAuthoredWraps_(html) {
+  let text = String(html || '')
+    .replace(/\r\n?/g, '\n');
+
+  const marker = '__TMV3_PARAGRAPH_BREAK__';
+  text = text
+    .replace(/\n\s*\n+/g, marker)
+    .replace(/[ \t]*\n[ \t]*/g, ' ')
+    .replace(new RegExp(marker, 'g'), '<br><br>')
+    .replace(/\*\*Notes:\*\*/gi, '<b>Notes:</b>')
+    .replace(/\*\*Sales Order:\*\*/gi, '<b>Sales Order:</b>')
+    .replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>')
+    .trim();
+
+  return text;
+}
+
+function tmv3_preInspectionCalendarNotesHtml_(description, plan) {
+  let authored = tmv3_stripManagedLinkBlocks_(description || '');
+  authored = tmv3_stripPreInspectionPreservedTitle_(
+    authored,
+    plan || {}
+  );
+  authored = tmv3_normalizePreInspectionAuthoredWraps_(authored);
+
+  if (!authored) return '';
+
+  const hasNotesHeading =
+    /<b>\s*Notes:\s*<\/b>/i.test(authored) ||
+    /(^|<br\s*\/?>)\s*Notes:\s*/i.test(authored);
+
+  if (!hasNotesHeading) {
+    authored = '<b>Notes:</b><br>' + authored;
+  } else {
+    authored = authored
+      .replace(
+        /<b>\s*Notes:\s*<\/b>\s*(?!<br)/i,
+        '<b>Notes:</b><br>'
+      )
+      .replace(
+        /(^|<br\s*\/?>)\s*Notes:\s*(?!<br)/i,
+        '$1<b>Notes:</b><br>'
+      );
+  }
+
+  return authored;
 }
 
 function tmv3_calendarHtmlEscape_(value) {
