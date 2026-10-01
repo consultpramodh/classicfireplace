@@ -282,14 +282,18 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
     .replace(/\r\n?/g, '\n')
     .trim();
 
+  text = text
+    .replace(/\s*\*\*\s*Sales Order:\s*\*\*\s*/gi, '\n\n__TMV3_SO__ ')
+    .replace(/\s*\*\*\s*Notes:\s*\*\*\s*/gi, '\n\n__TMV3_NOTES__ ');
+
   const marker = '__TMV3_PARAGRAPH_BREAK__';
 
   text = text
     .replace(/\n\s*\n+/g, marker)
     .replace(/[ \t]*\n[ \t]*/g, ' ')
     .replace(new RegExp(marker, 'g'), '\n\n')
-    .replace(/\*\*\s*Notes:\s*\*\*/gi, '**Notes:**')
-    .replace(/\*\*\s*Sales Order:\s*\*\*/gi, '**Sales Order:**')
+    .replace(/__TMV3_SO__/g, '**Sales Order:**')
+    .replace(/__TMV3_NOTES__/g, '**Notes:**')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
@@ -330,6 +334,31 @@ function tmv3_calendarMarkdownLabel_(value) {
     .replace(/\]/g, '\\]');
 }
 
+
+function tmv3_managedCalendarBlockStart_(value) {
+  const text = String(value || '');
+  const patterns = [
+    /(?:<b>\s*)?(?:\*\*\s*)?\\?-{5}\s*Striven Links\s*-{5}(?:\s*\*\*)?(?:\s*<\/b>)?/i,
+    /(?:<b>\s*)?(?:\*\*\s*)?Striven Links(?:\s*\*\*)?(?:\s*<\/b>)?/i,
+    /-{5,}\s*Pre-Inspection Task Link\s*-{5,}/i,
+    /-{5,}\s*Pre Inspection Task Link\s*-{5,}/i,
+    /-{5,}\s*Install Striven Task Link\s*-{5,}/i,
+    /-{5,}\s*Delivery Striven Links\s*-{5,}/i,
+    /-{5,}\s*Service Striven Links\s*-{5,}/i,
+    /-{5,}\s*Delivery Task Link\s*-{5,}/i
+  ];
+
+  let best = -1;
+
+  patterns.forEach(function(pattern) {
+    const match = pattern.exec(text);
+    if (!match) return;
+    if (best === -1 || match.index < best) best = match.index;
+  });
+
+  return best;
+}
+
 function tmv3_stripManagedLinkBlocks_(description) {
   let text = tmv3_stripV3ManagedBlock_(description);
 
@@ -338,54 +367,13 @@ function tmv3_stripManagedLinkBlocks_(description) {
     ''
   );
 
-  const legacyHeadings = [
-    'Install Striven Task Link',
-    'Delivery Striven Links',
-    'Service Striven Links',
-    'Delivery Task Link',
-    'Pre-Inspection Task Link',
-    'Pre Inspection Task Link'
-  ];
-
-  legacyHeadings.forEach(function(heading) {
-    const rx = new RegExp(
-      '(?:\\r?\\n|\\s)*-{5,}\\s*' +
-      tmv3_regexEscape_(heading) +
-      '\\s*-{5,}[\\s\\S]*?-{10,}',
-      'gi'
-    );
-    text = text.replace(rx, '');
-  });
-
-  // Canonical markdown managed block.
-  text = text.replace(
-    /(?:\r?\n|\s)*\*\*\s*\\?-{5}Striven Links-{5}\s*\*\*[\s\S]*$/i,
-    ''
-  );
-
-  // Plain/connector-rendered managed block.
-  text = text.replace(
-    /(?:\r?\n|\s)*\\?-{5}Striven Links-{5}[\s\S]*$/i,
-    ''
-  );
-
-  // Accidental literal HTML block written by CalendarApp.
-  text = text.replace(
-    /(?:\r?\n|\s)*<b>\s*\\?-{5}Striven Links-{5}\s*<\/b>[\s\S]*$/i,
-    ''
-  );
-
-  // Older compact renderer used a plain "Striven Links" heading.
-  text = text.replace(
-    /(?:<br\s*\/?>|\r?\n|\s)*<b>\s*Striven Links\s*<\/b>[\s\S]*$/i,
-    ''
-  );
-  text = text.replace(
-    /(?:\r?\n|\s)+Striven Links\s*[\s\S]*$/i,
-    ''
-  );
+  const managedStart = tmv3_managedCalendarBlockStart_(text);
+  if (managedStart >= 0) {
+    text = text.slice(0, managedStart);
+  }
 
   return text
+    .replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>')
     .replace(/(?:\r?\n\s*){3,}/g, '\n\n')
     .replace(/^\s+|\s+$/g, '');
 }
