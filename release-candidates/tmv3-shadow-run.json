@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_PREINSPECTION_DESCRIPTION_FORMAT_VERIFY",
+  "release": "TMV3_PREINSPECTION_LEGACY_LINK_CLEANUP_VERIFY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_PREINSPECTION_DESCRIPTION_FORMAT_VERIFY_20261001",
+  "requestTag": "TMV3_PREINSPECTION_LEGACY_LINK_CLEANUP_VERIFY_20261001",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1500
 }
