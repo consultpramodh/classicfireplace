@@ -205,40 +205,27 @@ function tmv3_requiredCalendarCopies_(vertical) {
 
 function tmv3_managedCalendarDescription_(existingDescription, plan) {
   const authored = plan && plan.vertical === 'PreInspection'
-    ? tmv3_preInspectionCalendarNotesHtml_(
+    ? tmv3_preInspectionCalendarNotesText_(
         existingDescription,
         plan
       )
     : tmv3_stripManagedLinkBlocks_(existingDescription);
 
   const linkLines = (plan.links || []).map(function(link) {
-    return '<a href="' +
-      tmv3_calendarHtmlEscape_(link.url) +
-      '">' +
-      tmv3_calendarHtmlEscape_(link.label) +
-      '</a>';
+    return '[' +
+      tmv3_calendarMarkdownLabel_(link.label) +
+      '](' +
+      String(link.url || '') +
+      ')';
   });
 
-  const linkJoin =
-    plan && plan.vertical === 'PreInspection'
-      ? '<br><br>'
-      : '<br>';
-
   const managed =
-    '<b>' + TMV3_FINAL_LINK_HEADING + '</b>' +
-    (
-      linkLines.length
-        ? (
-            plan && plan.vertical === 'PreInspection'
-              ? '<br><br>'
-              : '<br>'
-          ) + linkLines.join(linkJoin)
-        : ''
-    );
+    '**' + TMV3_FINAL_LINK_HEADING + '**' +
+    (linkLines.length ? '\n\n' + linkLines.join('\n\n') : '');
 
   return (
     authored
-      ? authored.replace(/\s+$/, '') + '<br><br>'
+      ? authored.replace(/\s+$/, '') + '\n\n'
       : ''
   ) + managed;
 }
@@ -261,50 +248,55 @@ function tmv3_preInspectionTitleVariants_(plan) {
   return tmv3_unique_(variants.map(tmv3_clean_).filter(Boolean));
 }
 
-function tmv3_stripPreInspectionPreservedTitle_(html, plan) {
-  let text = String(html || '');
+function tmv3_stripPreInspectionPreservedTitle_(value, plan) {
+  let text = tmv3_decodeCalendarHtmlEntities_(
+    String(value || '')
+  );
 
   tmv3_preInspectionTitleVariants_(plan).forEach(function(title) {
-    const candidates = [
-      title,
-      tmv3_calendarHtmlEscape_(title)
-    ];
-
-    candidates.forEach(function(candidate) {
-      const esc = tmv3_regexEscape_(candidate);
-      text = text.replace(
-        new RegExp(
-          '^\\s*(?:<p[^>]*>\\s*)?' +
-          esc +
-          '\\s*(?:<\\/p>)?\\s*(?:(?:<br\\s*\\/?>|\\r?\\n)\\s*){0,2}',
-          'i'
-        ),
-        ''
-      );
-    });
+    const esc = tmv3_regexEscape_(title);
+    text = text.replace(
+      new RegExp(
+        '^\\s*(?:<p[^>]*>\\s*)?' +
+        esc +
+        '\\s*(?:<\\/p>)?\\s*(?:(?:<br\\s*\\/?>|\\r?\\n)\\s*){0,2}',
+        'i'
+      ),
+      ''
+    );
   });
 
   return text.replace(/^\s+/, '');
 }
 
-function tmv3_normalizePreInspectionAuthoredWraps_(html) {
-  let text = String(html || '')
-    .replace(/\r\n?/g, '\n');
+function tmv3_normalizePreInspectionAuthoredWraps_(value) {
+  let text = tmv3_decodeCalendarHtmlEntities_(
+    String(value || '')
+  )
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*\/p\s*>/gi, '\n\n')
+    .replace(/<\s*p[^>]*>/gi, '')
+    .replace(/<\s*b\s*>/gi, '**')
+    .replace(/<\s*\/b\s*>/gi, '**')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\r\n?/g, '\n')
+    .trim();
 
   const marker = '__TMV3_PARAGRAPH_BREAK__';
+
   text = text
     .replace(/\n\s*\n+/g, marker)
     .replace(/[ \t]*\n[ \t]*/g, ' ')
-    .replace(new RegExp(marker, 'g'), '<br><br>')
-    .replace(/\*\*Notes:\*\*/gi, '<b>Notes:</b>')
-    .replace(/\*\*Sales Order:\*\*/gi, '<b>Sales Order:</b>')
-    .replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>')
+    .replace(new RegExp(marker, 'g'), '\n\n')
+    .replace(/\*\*\s*Notes:\s*\*\*/gi, '**Notes:**')
+    .replace(/\*\*\s*Sales Order:\s*\*\*/gi, '**Sales Order:**')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
   return text;
 }
 
-function tmv3_preInspectionCalendarNotesHtml_(description, plan) {
+function tmv3_preInspectionCalendarNotesText_(description, plan) {
   let authored = tmv3_stripManagedLinkBlocks_(description || '');
   authored = tmv3_stripPreInspectionPreservedTitle_(
     authored,
@@ -314,45 +306,38 @@ function tmv3_preInspectionCalendarNotesHtml_(description, plan) {
 
   if (!authored) return '';
 
-  const hasNotesHeading =
-    /<b>\s*Notes:\s*<\/b>/i.test(authored) ||
-    /(^|<br\s*\/?>)\s*Notes:\s*/i.test(authored);
+  const notesPattern =
+    /(^|\n\n)\s*(?:\*\*)?Notes:(?:\*\*)?\s*/i;
 
-  if (!hasNotesHeading) {
-    authored = '<b>Notes:</b><br>' + authored;
+  if (!notesPattern.test(authored)) {
+    authored = '**Notes:** ' + authored;
   } else {
-    authored = authored
-      .replace(
-        /<b>\s*Notes:\s*<\/b>\s*(?!<br)/i,
-        '<b>Notes:</b><br>'
-      )
-      .replace(
-        /(^|<br\s*\/?>)\s*Notes:\s*(?!<br)/i,
-        '$1<b>Notes:</b><br>'
-      );
+    authored = authored.replace(
+      notesPattern,
+      function(match, prefix) {
+        return (prefix || '') + '**Notes:** ';
+      }
+    );
   }
 
-  return authored;
+  return authored.trim();
 }
 
-function tmv3_calendarHtmlEscape_(value) {
+function tmv3_calendarMarkdownLabel_(value) {
   return String(value == null ? '' : value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/\\/g, '\\\\')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]');
 }
 
 function tmv3_stripManagedLinkBlocks_(description) {
   let text = tmv3_stripV3ManagedBlock_(description);
 
-  // Older comment-managed PreInspection footer.
   text = text.replace(
     /<!--\s*PREINSPECT_STRIVEN_TASK_LINK_START\s*-->[\s\S]*?<!--\s*PREINSPECT_STRIVEN_TASK_LINK_END\s*-->/gi,
     ''
   );
 
-  // Known automation-owned dashed link blocks from the old engine.
   const legacyHeadings = [
     'Install Striven Task Link',
     'Delivery Striven Links',
@@ -372,13 +357,21 @@ function tmv3_stripManagedLinkBlocks_(description) {
     text = text.replace(rx, '');
   });
 
-  // Finalized compact Striven Links block (no TMV3 comments, no raw URLs).
+  // Canonical markdown managed block.
   text = text.replace(
-    /(?:<br\s*\/?>|\r?\n|\s)*<b>\s*-{5}Striven Links-{5}\s*<\/b>[\s\S]*$/i,
+    /(?:\r?\n|\s)*\*\*\s*\\?-{5}Striven Links-{5}\s*\*\*[\s\S]*$/i,
     ''
   );
+
+  // Plain/connector-rendered managed block.
   text = text.replace(
-    /(?:\r?\n|\s)*-{5}Striven Links-{5}[\s\S]*$/i,
+    /(?:\r?\n|\s)*\\?-{5}Striven Links-{5}[\s\S]*$/i,
+    ''
+  );
+
+  // Accidental literal HTML block written by CalendarApp.
+  text = text.replace(
+    /(?:\r?\n|\s)*<b>\s*\\?-{5}Striven Links-{5}\s*<\/b>[\s\S]*$/i,
     ''
   );
 
@@ -393,7 +386,6 @@ function tmv3_stripManagedLinkBlocks_(description) {
   );
 
   return text
-    .replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>')
     .replace(/(?:\r?\n\s*){3,}/g, '\n\n')
     .replace(/^\s+|\s+$/g, '');
 }
