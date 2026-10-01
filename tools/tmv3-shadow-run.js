@@ -927,6 +927,20 @@ function doPost(e) {
         }
       }
 
+      // Retarget only the temporary canary authorization to this exact
+      // manifest-scoped PreInspection event. The live V3 source is restored
+      // after the run and its canonical source hash is parity-checked.
+      if (!TMV3.OPERATIONS) {
+        throw new Error('TEST_WRITE requires TMV3.OPERATIONS.');
+      }
+      TMV3.OPERATIONS.canaryVertical = freshVertical;
+      TMV3.OPERATIONS.canaryEventId = freshEventId;
+      TMV3.OPERATIONS.canaryDate = allowedDate || Utilities.formatDate(
+        freshEventForScope.start,
+        TMV3_TIMEZONE,
+        'yyyy-MM-dd'
+      );
+
       var freshPlans = tmv3_step7FreshPlansForEvent_(
         freshVertical,
         freshEventId
