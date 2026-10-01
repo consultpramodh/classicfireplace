@@ -256,6 +256,47 @@ function buildTemporaryRunner(pre, token) {
           canaryModePatchCount++;
         }
 
+        if (
+          f.name === '00_Config' &&
+          RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+        ) {
+          const scopedEventId = String(RELEASE_MANIFEST.eventId || '');
+          const scopedVertical = String(RELEASE_MANIFEST.vertical || '');
+          const scopedDate = String(RELEASE_MANIFEST.allowedDate || '');
+
+          if (!scopedEventId || scopedVertical !== 'PreInspection' || !scopedDate) {
+            fail('Fresh-event canary requires exact PreInspection eventId + allowedDate.');
+          }
+
+          const eventMatches = source.match(/canaryEventId:\s*'[^']*',/g) || [];
+          const verticalMatches = source.match(/canaryVertical:\s*'[^']*',/g) || [];
+          const dateMatches = source.match(/canaryDate:\s*'[^']*',/g) || [];
+
+          if (
+            eventMatches.length !== 1 ||
+            verticalMatches.length !== 1 ||
+            dateMatches.length !== 1
+          ) {
+            fail(
+              'Fresh-event canary config patch expected exactly one event/vertical/date anchor.'
+            );
+          }
+
+          source = source
+            .replace(
+              /canaryEventId:\s*'[^']*',/,
+              'canaryEventId: ' + JSON.stringify(scopedEventId) + ','
+            )
+            .replace(
+              /canaryVertical:\s*'[^']*',/,
+              'canaryVertical: ' + JSON.stringify(scopedVertical) + ','
+            )
+            .replace(
+              /canaryDate:\s*'[^']*',/,
+              'canaryDate: ' + JSON.stringify(scopedDate) + ','
+            );
+        }
+
         // Explicit test-write runs may borrow a small, bounded slice of the
         // reserved Striven API capacity. This only exists in the temporary
         // canary source and is restored immediately after execution.
@@ -926,20 +967,6 @@ function doPost(e) {
           );
         }
       }
-
-      // Retarget only the temporary canary authorization to this exact
-      // manifest-scoped PreInspection event. The live V3 source is restored
-      // after the run and its canonical source hash is parity-checked.
-      if (!TMV3.OPERATIONS) {
-        throw new Error('TEST_WRITE requires TMV3.OPERATIONS.');
-      }
-      TMV3.OPERATIONS.canaryVertical = freshVertical;
-      TMV3.OPERATIONS.canaryEventId = freshEventId;
-      TMV3.OPERATIONS.canaryDate = allowedDate || Utilities.formatDate(
-        freshEventForScope.start,
-        TMV3_TIMEZONE,
-        'yyyy-MM-dd'
-      );
 
       var freshPlans = tmv3_step7FreshPlansForEvent_(
         freshVertical,
