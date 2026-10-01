@@ -1,6 +1,6 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-09-29 (America/Toronto)
+**Last updated:** 2026-10-01 (America/Toronto)
 
 ## Canonical project
 
@@ -10,13 +10,50 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.28-calendar-auth-bootstrap-r1`
+- V3 version: `3.11.39-sahand-verified-relock-r1`
 - Hard-rule version: `2026-09-29-r2`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
 
 The four verticals remain Install, Delivery, Service, and PreInspection.
+
+## 2026-10-01 verified checkpoint
+
+- Active objective completed through the Sahand PreInspection canary and V3 safety relock.
+- Sahand KASHI Sep 30 PreInspection:
+  - Event ID: `6c52vhhs3hgcbp3rhca477bcat@google.com`
+  - Customer: `62689`
+  - Location: `58321`
+  - Created/read-back Task: `18845`
+  - Task Type: `105 — Pre Inspection`
+  - Step 7 converged to `NO_CHANGE` after authoritative read-back.
+  - Calendar title/link write-back was verified on the required Calendar copy.
+  - Evidence run: `36915253338` — **SUCCESS**.
+- Release `3.11.39-sahand-verified-relock-r1` deployed to the existing bound Apps Script project in `SHADOW_READ_ONLY`.
+  - manual writes: **disabled**
+  - automation writes: **disabled**
+  - deployment/bootstrap verification run: `36917570298` — **SUCCESS**
+  - remote source parity: **22/22 files**
+  - bootstrap evidence status: `CLEAN_V3_SOURCE_VERIFIED`
+- Live hardening regression run `36917709693` — **SUCCESS**.
+  - mode: `SHADOW_READ_ONLY`
+  - single Step 7 decision authority: **PASS**
+  - persisted Task ID + failed fresh read fails closed: **PASS**
+  - title/description normalization regression: **PASS**
+  - canary API-budget regression: **PASS**
+  - automatic-canary guard regression: **PASS**
+  - PreInspection guest-sync regression: **PASS**
+- Bootstrap expected-live checkpoint advanced to source commit `4785b5f067e47f4d8e807ebc854973f157a19b98`.
+  - verification run: `36918291159` — **SUCCESS**
+- Pending closure proof: rerun the full Sep 30 PreInspection Step 7 read-only audit after the V3 daily API budget resets.
+  - attempted run: `36917898587`
+  - blocked safely by `TMV3_STRIVEN_API_DAILY_GUARD`
+  - observed V3 usage: `1416 / 1200`
+  - no Striven write was authorized.
+  - do **not** bypass the guard or use the prior canary allowance in `SHADOW_READ_ONLY`.
+  - the budget counter is keyed to the `America/Toronto` calendar date, so the read-only closure audit is the first next action on the next local date.
+
 
 ## Mandatory source of truth
 
