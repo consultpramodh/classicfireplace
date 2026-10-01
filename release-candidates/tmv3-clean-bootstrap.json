@@ -7,5 +7,5 @@
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "2bca35b02769382c967ff8498fb3c73befde1e47"
+  "expectedLiveCommit": "aea710a883fe0b0e0bb847856fd44a63a02fb706"
 }
