@@ -10,7 +10,7 @@
 
 - System: **Task Mapping V3**
 - Source: `apps-script/tmv3-clean/`
-- V3 version: `3.11.41-preinspection-bare-customer-number-r1`
+- V3 version: `3.11.46-calendar-heading-wrap-r1`
 - Hard-rule version: `2026-10-01-r3`
 - Execution stage: `7`
 - Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
@@ -61,3 +61,25 @@ Rules:
 ## Next exact action
 
 After the V3 daily Striven API budget resets, rerun the pending full Sep 30 PreInspection Step 7 read-only closure audit. Do not bypass the API budget guard.
+
+
+## Frozen PreInspection Calendar description
+
+```
+**Notes:** <human-authored notes>
+
+**-----Striven Links-----**
+
+[View Sales Orders – <Customer Name> (#<Customer Number>)](<customer sales-orders URL>)
+
+[Task #<Task ID> - Preinspect - <Customer Name> - <Phone>](<task URL>)
+```
+
+- Existing Sales Order section may appear above Notes.
+- Human-authored wording is preserved; only accidental hard wraps/automation-owned formatting are normalized.
+- No old title line inside the description.
+- No HTML tags.
+- No duplicate managed link sections.
+- Both CF Preinspects and Stephen copies must match for shared customer appointments.
+- 2026-10-01 live audit: **15/15 + 15/15 clean; 0 copy mismatches**.
+- Live regression: `36928670626` — **SUCCESS**.

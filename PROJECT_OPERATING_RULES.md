@@ -79,6 +79,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - Customer identity, customer-owned Location, date/time, Requested By, Pool 8, Task Type, Calendar links, and canonical titles are the automation-owned fields.
 - Primary/shared and Stephen secondary Calendar handling must remain supported; managed links/titles must be verified on the actual required copies.
 - PreInspection Calendar description presentation is frozen:
+  - use Google Calendar-compatible Markdown/plain text; **do not write literal HTML tags** such as `<b>`, `<br>`, or `<a>` through `CalendarApp.setDescription()`;
   - do not prepend or preserve an old Calendar title inside the description;
   - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
   - use one bold **Notes:** section when authored notes are present;

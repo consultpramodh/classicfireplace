@@ -10,13 +10,43 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.41-preinspection-bare-customer-number-r1`
+- V3 version: `3.11.46-calendar-heading-wrap-r1`
 - Hard-rule version: `2026-10-01-r3`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
 
 The four verticals remain Install, Delivery, Service, and PreInspection.
+
+## 2026-10-01 FINAL PreInspection Calendar description standard
+
+The visible Calendar description format is frozen. Internal code release numbers may change; this presentation must not change unless the business rule is explicitly changed.
+
+- Human-authored notes are preserved.
+- Accidental hard line-wraps are joined into readable paragraphs.
+- Existing Sales Order text, when present, remains above Notes.
+- Notes heading: `**Notes:**`.
+- Do not preserve/prepend an old Calendar title inside the description.
+- Exactly one managed links block appears at the bottom:
+  - heading: `**-----Striven Links-----**`
+  - blank line after the heading and between links
+  - `View Sales Orders – <Customer Name> (#<Customer Number>)`
+  - `Task #<Task ID> - Preinspect - <Customer Name> - <Phone>`
+- No raw URLs, generic `Customer` labels, numeric-only Task labels, duplicate legacy link blocks, or literal HTML tags.
+
+Verification:
+- Live formatter regression run `36928670626` — **SUCCESS**.
+- Calendar title/description regression suite: **60 cases PASS**.
+- `PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN`: PASS.
+- `PREINSPECTION_ESCAPED_MARKDOWN_LINK_BLOCK_REPLACED_ONCE`: PASS.
+- `PREINSPECTION_SALES_ORDER_AND_NOTES_HEADING_BOUNDARY_PRESERVED`: PASS.
+- `PREINSPECTION_DESCRIPTION_CONTAINS_NO_LITERAL_HTML_TAGS`: PASS.
+- Current Calendar backfill audit:
+  - CF Preinspects: **15/15 customer appointments clean**
+  - Stephen Calendar: **15/15 customer appointments clean**
+  - shared physical copies: **15**
+  - cross-calendar description mismatches: **0**
+
 
 ## 2026-10-01 FINAL PreInspection Calendar title standard
 
