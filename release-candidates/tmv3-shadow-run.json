@@ -1,18 +1,18 @@
 {
-  "release": "TMV3_3_11_39_PREINSPECTION_STEP7_CLOSURE_R1",
+  "release": "TMV3_3_11_40_PREINSPECTION_COPY_PARITY_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_PREINSPECTION",
+  "runMode": "LIVE_HARDENING_REGRESSION",
   "batchOffset": 0,
   "batchLimit": 0,
-  "refreshSources": true,
+  "refreshSources": false,
   "forceVersionedDeployment": false,
-  "vertical": "PreInspection",
+  "vertical": "",
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_39_PREINSPECTION_STEP7_CLOSURE_20261001",
+  "requestTag": "TMV3_3_11_40_PREINSPECTION_COPY_PARITY_VERIFY_20261001",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1500
 }
