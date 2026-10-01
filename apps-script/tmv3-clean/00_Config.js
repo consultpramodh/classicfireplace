@@ -1,11 +1,11 @@
-const TMV3_VERSION = '3.11.40-preinspection-copy-parity-r1';
+const TMV3_VERSION = '3.11.41-preinspection-bare-customer-number-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-09-29-r2',
+  version:'2026-10-01-r3',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
@@ -47,7 +47,7 @@ const TMV3_HARD_RULES = Object.freeze({
     defaultPoolId:8,
     requestedBySource:'CALENDAR_CREATOR_ORGANIZER_EMPLOYEE',
     organizerIsAssignee:false,
-    calendarTitlePrefix:'C#'
+    calendarTitlePrefix:''
   })
 });
 
