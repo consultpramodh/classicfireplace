@@ -382,6 +382,16 @@ function tmv3_stripManagedLinkBlocks_(description) {
     ''
   );
 
+  // Older compact renderer used a plain "Striven Links" heading.
+  text = text.replace(
+    /(?:<br\s*\/?>|\r?\n|\s)*<b>\s*Striven Links\s*<\/b>[\s\S]*$/i,
+    ''
+  );
+  text = text.replace(
+    /(?:\r?\n|\s)+Striven Links\s*[\s\S]*$/i,
+    ''
+  );
+
   return text
     .replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br><br>')
     .replace(/(?:\r?\n\s*){3,}/g, '\n\n')

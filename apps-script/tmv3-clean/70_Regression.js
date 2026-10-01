@@ -1478,6 +1478,18 @@ function tmv3_titleNormalizationRegression() {
       '<a href="https://old.example">old</a>',
     preLinkPlan
   );
+  const legacyPlainLinksCleaned =
+    tmv3_stripManagedLinkBlocks_(
+      'Existing note\n\nStriven Links\n\n' +
+      '[View Sales Orders – John Smith (#62400)](https://example.test/customer)\n\n' +
+      '[Task #18845 - Preinspect - John Smith - (416) 555-1212](https://example.test/task)'
+    );
+  check(
+    'PREINSPECTION_PLAIN_STRIVEN_LINKS_LEGACY_BLOCK_REMOVED',
+    legacyPlainLinksCleaned === 'Existing note',
+    legacyPlainLinksCleaned
+  );
+
   check(
     'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN',
     preDescription.indexOf(
