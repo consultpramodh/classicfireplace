@@ -234,12 +234,27 @@ function buildTemporaryRunner(pre, token) {
       );
 
       if (canaryWrite) {
-        const patched = source.replace(
-          "const TMV3_MODE = 'SHADOW_READ_ONLY';",
-          "const TMV3_MODE = 'CANARY_WRITE';"
-        );
-        if (patched !== source) canaryModePatchCount++;
-        source = patched;
+        const shadowModeAnchor =
+          source.indexOf("const TMV3_MODE = 'SHADOW_READ_ONLY';") !== -1;
+        const canaryModeAnchor =
+          source.indexOf("const TMV3_MODE = 'CANARY_WRITE';") !== -1;
+
+        if (shadowModeAnchor && canaryModeAnchor) {
+          fail('Canary temp-source mode guard found conflicting TMV3_MODE anchors.');
+        }
+
+        if (shadowModeAnchor) {
+          source = source.replace(
+            "const TMV3_MODE = 'SHADOW_READ_ONLY';",
+            "const TMV3_MODE = 'CANARY_WRITE';"
+          );
+          canaryModePatchCount++;
+        } else if (canaryModeAnchor) {
+          // Live V3 may already be in guarded CANARY_WRITE mode. Treat that
+          // single canonical anchor as valid rather than requiring a no-op
+          // SHADOW_READ_ONLY -> CANARY_WRITE replacement.
+          canaryModePatchCount++;
+        }
 
         // Explicit test-write runs may borrow a small, bounded slice of the
         // reserved Striven API capacity. This only exists in the temporary
