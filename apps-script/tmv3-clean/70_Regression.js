@@ -1496,10 +1496,10 @@ function tmv3_titleNormalizationRegression() {
       '62400 - John Smith - (416) 555-1212'
     ) === -1 &&
       preDescription.indexOf(
-        '**Notes:** Line one wrapped continuation\\n\\nSecond paragraph'
+        '**Notes:** Line one wrapped continuation\n\nSecond paragraph'
       ) !== -1 &&
       preDescription.indexOf(
-        '**-----Striven Links-----**\\n\\n'
+        '**-----Striven Links-----**\n\n'
       ) !== -1 &&
       preDescription.indexOf(
         'View Sales Orders – John Smith (#62400)'
