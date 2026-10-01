@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_38_SEP30_SAHAND_EXACT_WRITE_R1",
+  "release": "TMV3_3_11_38_SEP30_SAHAND_EXACT_WRITE_R2",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -12,7 +12,7 @@
   "eventId": "6c52vhhs3hgcbp3rhca477bcat@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_SEP30_SAHAND_EXACT_CREATE_OR_REUSE_20261001",
+  "requestTag": "TMV3_SEP30_SAHAND_EXACT_CREATE_OR_REUSE_R2_20261001",
   "allowedDate": "2026-09-30",
   "testWriteApiSoftLimit": 1500
 }
