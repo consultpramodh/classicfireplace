@@ -1,6 +1,6 @@
 # Task Mapping — Latest Checkpoint
 
-**Checkpoint date:** 2026-09-25 (America/Toronto)
+**Checkpoint date:** 2026-10-01 (America/Toronto)
 
 ## Canonical branch
 
@@ -10,67 +10,54 @@
 
 - System: **Task Mapping V3**
 - Source: `apps-script/tmv3-clean/`
-- V3 version: `3.11.14-legacy-assignment-parity-r1`
+- V3 version: `3.11.41-preinspection-bare-customer-number-r1`
+- Hard-rule version: `2026-10-01-r3`
 - Execution stage: `7`
 - Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Mode: `SHADOW_READ_ONLY`
+- Automation business writes: **disabled**
 
-## Latest verified checkpoint
+## Frozen PreInspection format
 
-**Install Task 16735 assignment mismatch: CLOSED**
+Canonical Calendar title:
 
-Legacy-rule assignment parity was applied and then verified with a single-task canary.
+`<Customer Number> - <Customer Name> - <Phone>`
 
-Before:
-- desired assignment: `employee:15`
-- actual assignment: `employee:41`
-- plan: `PATCH_ASSIGNMENTS`
+Example:
 
-Canary result:
-- employee 15 added
-- employee 41 preserved
-- no unrelated Task mutation
+`62689 - Sahand KASHI - (416) 953-7693`
 
-Fresh post-write verification:
-- desired: `employee:15`
-- actual: `employee:15,employee:41`
-- assignment check: `MATCH`
-- Step 7 plan: `NO_CHANGE`
-- blocker: none
+Rules:
 
-Evidence:
-- canary run: `36198082523`
-- post-write run: `36198236398`
-- evidence file: `test-evidence/2026-09-25-tmv3-task-16735-assignment-canary-verified.md`
+- no `C#`, `Cust#`, or `Customer #` prefix in new canonical output;
+- legacy `C#` and `Cust#` remain readable only for backward compatibility;
+- Stephen-sourced customer PreInspection appointments require managed title/links verified on both Stephen + CF Preinspects;
+- Task Type = 105 — Pre Inspection;
+- Task Description exactly blank at CREATE;
+- no Sales Order attached at CREATE;
+- no InfoCustomFields at CREATE;
+- Pool 8 — Pre-Inspection Pool;
+- Requested By = Calendar organizer/creator;
+- Field 854 is not managed.
 
-## Read-only verification transport
+## Latest verified evidence
 
-The V3 verifier now reuses the Apps Script HEAD/test deployment through the authenticated `/dev` endpoint.
-
-Verified outcome:
-
-- no new versioned deployment required for read-only probes;
-- previous `RESOURCE_EXHAUSTED` deployment path avoided;
-- exact pre-run source restored;
-- source-head hash parity verified.
+- source commit: `aea710a883fe0b0e0bb847856fd44a63a02fb706`
+- deployment run: `36921160480` — **SUCCESS**
+- live hardening regression: `36921281078` — **SUCCESS**
+- bootstrap checkpoint: `36921498527` — **SUCCESS**
+- canonical title regression: `62400 - John Smith - (416) 555-1212` — **PASS**
+- legacy `C#` parser — **PASS**
+- legacy `Cust#` parser — **PASS**
+- hard-rule assertion — **PASS**
+- Sahand title read-back on CF Preinspects and Stephen — **VERIFIED**
 
 ## Current safety state
 
 - `SHADOW_READ_ONLY` remains active.
-- Automation business writes remain disabled.
-- CREATE/RECREATE production use remains gated.
-- No broad V3 cutover has occurred.
-
-## Remaining release gates
-
-1. Complete and verify the **Assignment Reconciliation feature** across all four verticals using legacy behavior.
-2. Run feature-level assignment regression plus fresh current-data validation.
-3. Complete guarded CREATE/RECREATE feature verification with read-back and Calendar backlink proof.
-4. Run final four-vertical regression.
-5. Controlled production cutover and first scheduled-cycle verification.
+- No broad V3 production cutover has occurred.
+- Internal release numbers may change for code/rollback purposes; the frozen visible format does not change unless the user explicitly changes the business rule.
 
 ## Next exact action
 
-**Finish Assignment Reconciliation as a feature-level gate.**
-
-Individual Tasks such as `16735`, `18394`, `18690`, and `18540` are test/canary cases only; they are not separate project milestones.
+After the V3 daily Striven API budget resets, rerun the pending full Sep 30 PreInspection Step 7 read-only closure audit. Do not bypass the API budget guard.
