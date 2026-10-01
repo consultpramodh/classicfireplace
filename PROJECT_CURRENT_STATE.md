@@ -10,13 +10,37 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.39-sahand-verified-relock-r1`
+- V3 version: `3.11.40-preinspection-copy-parity-r1`
 - Hard-rule version: `2026-09-29-r2`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
 
 The four verticals remain Install, Delivery, Service, and PreInspection.
+
+## 2026-10-01 PreInspection two-calendar parity correction
+
+- Sahand KASHI Event `6c52vhhs3hgcbp3rhca477bcat` exposed a verification defect:
+  - CF Preinspects had the canonical `C#62689...` title and Striven Customer/Task links.
+  - Stephen's organizer copy still had the old title and no Striven links.
+  - The prior success condition had verified one logical Calendar event without proving every required physical Calendar copy.
+- Sahand was corrected directly on Stephen's organizer copy and then re-read from both calendars.
+  - CF Preinspects: title + Customer link + Task #18845 link verified.
+  - Stephen calendar: title + Customer link + Task #18845 link verified.
+  - The two copies now match for the managed title/description content.
+- Release `3.11.40-preinspection-copy-parity-r1` changes the completion contract:
+  - Stephen-sourced customer PreInspection appointments require both Stephen + CF Preinspects copies.
+  - title normalization uses the same required-copy set.
+  - missing required PreInspection copies fail closed before Calendar link completion is reported.
+  - genuine primary-only CF Preinspects appointments do not invent a Stephen copy.
+- Source commit: `2bca35b02769382c967ff8498fb3c73befde1e47`.
+- Guarded deployment run: `36919579614` — **SUCCESS**.
+- Live hardening regression run: `36919711895` — **SUCCESS**.
+  - `PREINSPECTION_STEPHEN_SOURCE_REQUIRES_BOTH_COPIES`: PASS
+  - `PREINSPECTION_TITLE_NORMALIZATION_REQUIRES_BOTH_COPIES`: PASS
+  - `PREINSPECTION_PRIMARY_ONLY_DOES_NOT_INVENT_SECONDARY_COPY`: PASS
+- Bootstrap live checkpoint advanced and verified by run `36919852881` — **SUCCESS**.
+- Cross-calendar scan for Sep 30 through Oct 2 found no remaining Sahand-style missing managed information. Four shared events differ only because the CF copy still contains a legacy duplicate `Pre-Inspection Task Link` block; both copies already contain the current managed Customer/Task links.
 
 ## 2026-10-01 verified checkpoint
 
