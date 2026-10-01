@@ -1298,17 +1298,9 @@ function tmv3_assertTitleNormalizationWriteAuthorized_(contract, action, scope) 
 }
 
 function tmv3_titleNormalizationCalendarIds_(eventRecord) {
-  const ids = [];
-
-  (eventRecord && eventRecord.sourceCalendarIds || []).forEach(function(id) {
-    const clean = tmv3_clean_(id);
-    if (clean && ids.indexOf(clean) === -1) ids.push(clean);
-  });
-
-  const direct = tmv3_clean_(eventRecord && eventRecord.calendarId);
-  if (direct && ids.indexOf(direct) === -1) ids.push(direct);
-
-  return ids;
+  return tmv3_requiredCalendarCopiesForEvent_(
+    eventRecord || {}
+  );
 }
 
 function tmv3_titleMissingRequiredCalendarIds_(requiredIds, copies) {
@@ -1774,10 +1766,19 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     });
   });
 
-  // PreInspection may legitimately exist on only one configured source
-  // Calendar. Patch every copy that actually exists and verify it. Missing
-  // mirror copies are reported as attention, but must not block the Task link
-  // from being written back to the real appointment.
+  if (
+    eventRecord.vertical === 'PreInspection' &&
+    missingCalendarCopies.length
+  ) {
+    throw new Error(
+      'Required PreInspection Calendar copy/copies were not found: ' +
+      missingCalendarCopies.join(', ') +
+      '. No Calendar link write was performed.'
+    );
+  }
+
+  // Non-PreInspection verticals may legitimately exist on only one configured source
+  // Calendar. Patch every copy that actually exists and verify it.
   const results = [];
   copies.forEach(function(copy) {
     const before = String(copy.event.getDescription() || '');

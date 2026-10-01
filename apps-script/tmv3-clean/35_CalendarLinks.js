@@ -97,6 +97,35 @@ function tmv3_requiredCalendarCopiesForEvent_(eventRecord) {
       .filter(Boolean)
   );
 
+  if (vertical === 'PreInspection') {
+    const cfg = TMV3.VERTICALS.PreInspection || {};
+    const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+    const secondaryIds = (cfg.secondaryCalendarIds || [])
+      .map(tmv3_clean_)
+      .filter(Boolean);
+
+    const hasSecondarySource = secondaryIds.some(function(id) {
+      return sourceIds.indexOf(id) !== -1;
+    });
+    const mirrorRequired =
+      !!(record.step2 && record.step2.mirrorRequired === true);
+
+    // A Stephen-calendar customer appointment that is mirrored to
+    // CF Preinspects is one logical appointment but two required physical
+    // Calendar copies. Execution is not complete until both copies are
+    // found and verified.
+    if (hasSecondarySource || mirrorRequired) {
+      return tmv3_unique_(
+        sourceIds.concat(primaryId ? [primaryId] : [])
+      );
+    }
+
+    // Primary-only PreInspection appointments are valid; do not invent a
+    // Stephen-calendar copy when the appointment did not originate there.
+    if (sourceIds.length) return sourceIds;
+    return [primaryId].filter(Boolean);
+  }
+
   if (sourceIds.length) return sourceIds;
   return tmv3_requiredCalendarCopies_(vertical);
 }

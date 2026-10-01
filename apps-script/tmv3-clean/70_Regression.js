@@ -2298,6 +2298,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_automaticCanaryRegression();
   const preInspectionGuestSync =
     tmv3_preInspectionGuestSyncRegression();
+  const preInspectionCalendarCopyParity =
+    tmv3_preInspectionCalendarCopyParityRegression();
 
   const result = {
     status:
@@ -2306,7 +2308,8 @@ function tmv3_liveHardeningRegression() {
       titleNormalization.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
       automaticCanary.status === 'PASS' &&
-      preInspectionGuestSync.status === 'PASS'
+      preInspectionGuestSync.status === 'PASS' &&
+      preInspectionCalendarCopyParity.status === 'PASS'
         ? 'PASS'
         : 'FAIL',
     version:TMV3.VERSION,
@@ -2316,7 +2319,8 @@ function tmv3_liveHardeningRegression() {
     titleNormalization:titleNormalization,
     canaryApiBudget:canaryApiBudget,
     automaticCanary:automaticCanary,
-    preInspectionGuestSync:preInspectionGuestSync
+    preInspectionGuestSync:preInspectionGuestSync,
+    preInspectionCalendarCopyParity:preInspectionCalendarCopyParity
   };
 
   Logger.log(
@@ -2336,3 +2340,77 @@ function tmv3_liveHardeningRegression() {
   return result;
 }
 
+
+
+function tmv3_preInspectionCalendarCopyParityRegression() {
+  const cfg = TMV3.VERTICALS.PreInspection;
+  const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+  const secondaryId = tmv3_clean_(
+    (cfg.secondaryCalendarIds || [])[0]
+  );
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail === undefined ? '' : detail
+    });
+  }
+
+  const stephenSource = {
+    vertical:'PreInspection',
+    calendarId:secondaryId,
+    sourceCalendarIds:[secondaryId],
+    step2:{ mirrorRequired:true }
+  };
+
+  const requiredFromStephen =
+    tmv3_requiredCalendarCopiesForEvent_(stephenSource);
+  check(
+    'PREINSPECTION_STEPHEN_SOURCE_REQUIRES_BOTH_COPIES',
+    requiredFromStephen.length === 2 &&
+      requiredFromStephen.indexOf(secondaryId) !== -1 &&
+      requiredFromStephen.indexOf(primaryId) !== -1,
+    JSON.stringify(requiredFromStephen)
+  );
+
+  const titleIds =
+    tmv3_titleNormalizationCalendarIds_(stephenSource);
+  check(
+    'PREINSPECTION_TITLE_NORMALIZATION_REQUIRES_BOTH_COPIES',
+    titleIds.length === 2 &&
+      titleIds.indexOf(secondaryId) !== -1 &&
+      titleIds.indexOf(primaryId) !== -1,
+    JSON.stringify(titleIds)
+  );
+
+  const primaryOnly =
+    tmv3_requiredCalendarCopiesForEvent_({
+      vertical:'PreInspection',
+      calendarId:primaryId,
+      sourceCalendarIds:[primaryId],
+      step2:{ mirrorRequired:false }
+    });
+  check(
+    'PREINSPECTION_PRIMARY_ONLY_DOES_NOT_INVENT_SECONDARY_COPY',
+    primaryOnly.length === 1 &&
+      primaryOnly[0] === primaryId,
+    JSON.stringify(primaryOnly)
+  );
+
+  const result = {
+    status:cases.every(function(item) {
+      return item.pass === true;
+    }) ? 'PASS' : 'FAIL',
+    cases:cases
+  };
+
+  if (result.status !== 'PASS') {
+    throw new Error(
+      'PreInspection Calendar-copy parity regression failed.'
+    );
+  }
+
+  return result;
+}
