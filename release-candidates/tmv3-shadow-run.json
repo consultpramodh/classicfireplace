@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_40_PREINSPECTION_COPY_PARITY_VERIFY_R1",
+  "release": "TMV3_3_11_41_PREINSPECTION_BARE_CUSTOMER_NUMBER_VERIFY_R1",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_40_PREINSPECTION_COPY_PARITY_VERIFY_20261001",
+  "requestTag": "TMV3_3_11_41_PREINSPECTION_BARE_CUSTOMER_NUMBER_VERIFY_20261001",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1500
 }
