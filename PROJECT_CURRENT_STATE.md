@@ -10,18 +10,41 @@
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.40-preinspection-copy-parity-r1`
-- Hard-rule version: `2026-09-29-r2`
+- V3 version: `3.11.41-preinspection-bare-customer-number-r1`
+- Hard-rule version: `2026-10-01-r3`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
 
 The four verticals remain Install, Delivery, Service, and PreInspection.
 
+## 2026-10-01 FINAL PreInspection Calendar title standard
+
+**Canonical format is frozen as: `<Customer Number> - <Customer Name> - <Phone>`.**
+
+- Example: `62689 - Sahand KASHI - (416) 953-7693`
+- Do not add `C#`, `Cust#`, `Customer #`, or another label to newly normalized titles.
+- Legacy `C#...` and `Cust#...` titles remain parse-compatible only so old appointments continue to resolve safely.
+- This is a business-format standard, not a release-specific experiment. Later internal V3 release numbers must not change this visible format unless the user explicitly changes the business rule.
+- Sahand Event `6c52vhhs3hgcbp3rhca477bcat` was updated on both CF Preinspects and Stephen's Calendar to the bare-number format with description, links, time, and location preserved.
+- Source release: `3.11.41-preinspection-bare-customer-number-r1`
+- Hard-rule version: `2026-10-01-r3`
+- Source commit: `aea710a883fe0b0e0bb847856fd44a63a02fb706`
+- Guarded deployment run: `36921160480` — **SUCCESS**
+- Live hardening regression run: `36921281078` — **SUCCESS**
+  - canonical bare-number title: PASS
+  - legacy `C#` parsing: PASS
+  - legacy `Cust#` parsing: PASS
+  - hard-rule assertion: PASS
+- Verified bootstrap checkpoint run: `36921498527` — **SUCCESS**
+
+**Historical note:** any `C#...` examples below are historical execution evidence from before this explicit rule change; they are not the current canonical format.
+
+
 ## 2026-10-01 PreInspection two-calendar parity correction
 
 - Sahand KASHI Event `6c52vhhs3hgcbp3rhca477bcat` exposed a verification defect:
-  - CF Preinspects had the canonical `C#62689...` title and Striven Customer/Task links.
+  - At that time, CF Preinspects had the then-canonical `C#62689...` title and Striven Customer/Task links.
   - Stephen's organizer copy still had the old title and no Striven links.
   - The prior success condition had verified one logical Calendar event without proving every required physical Calendar copy.
 - Sahand was corrected directly on Stephen's organizer copy and then re-read from both calendars.
@@ -150,7 +173,7 @@ V3 remains consolidated under the existing module set. **Do not add Step 8/9/10 
 - Technician-completed fields are not prefilled.
 - Default assignment is **Pool 8 — Pre-Inspection Pool**.
 - Calendar organizer/creator resolves **Requested By** and is not automatically Assigned To.
-- Canonical PreInspection Calendar title uses `C#<Customer Number> - <Customer Name> - <Phone>`; legacy `Cust#` remains parse-compatible.
+- Canonical PreInspection Calendar title uses `<Customer Number> - <Customer Name> - <Phone>` with no prefix; legacy `C#` and `Cust#` remain parse-compatible only.
 - Primary/shared and Stephen secondary Calendar handling remains supported.
 - Managed links/titles are verified on the actual required Calendar copies.
 
@@ -196,7 +219,7 @@ A violation throws before the Task POST.
 - Bound project remains `SHADOW_READ_ONLY`
 - Evidence file: `test-evidence/2026-09-29-tmv3-hard-rules-r1.md`
 
-## 3.11.26 PreInspection C# title standard — VERIFIED
+## Historical — 3.11.26 PreInspection C# title standard — superseded 2026-10-01
 
 - Canonical PreInspection Calendar prefix changed from `Cust#` to `C#`.
 - Canonical format: `C#<Customer Number> - <Customer Name> - <Phone>`.
