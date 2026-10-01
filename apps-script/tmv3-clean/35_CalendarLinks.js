@@ -338,13 +338,13 @@ function tmv3_calendarMarkdownLabel_(value) {
 function tmv3_managedCalendarBlockStart_(value) {
   const text = String(value || '');
   const patterns = [
-    /(?:<b>\s*)?(?:\*\*\s*)?\\?-{5}\s*Striven Links\s*-{5}(?:\s*\*\*)?(?:\s*<\/b>)?/i,
-    /(?:<b>\s*)?(?:\*\*\s*)?Striven Links(?:\s*\*\*)?(?:\s*<\/b>)?/i,
+    /(?:<b>\s*)?(?:\*\*\s*)?\\?-{5}\s*Striven\s+Links\s*-{5}(?:\s*\*\*)?(?:\s*<\/b>)?/i,
+    /(?:<b>\s*)?(?:\*\*\s*)?Striven\s+Links(?:\s*\*\*)?(?:\s*<\/b>)?/i,
     /-{5,}\s*Pre-Inspection Task Link\s*-{5,}/i,
     /-{5,}\s*Pre Inspection Task Link\s*-{5,}/i,
     /-{5,}\s*Install Striven Task Link\s*-{5,}/i,
-    /-{5,}\s*Delivery Striven Links\s*-{5,}/i,
-    /-{5,}\s*Service Striven Links\s*-{5,}/i,
+    /-{5,}\s*Delivery Striven\s+Links\s*-{5,}/i,
+    /-{5,}\s*Service Striven\s+Links\s*-{5,}/i,
     /-{5,}\s*Delivery Task Link\s*-{5,}/i
   ];
 

@@ -1512,7 +1512,7 @@ function tmv3_titleNormalizationRegression() {
   );
   const escapedMarkdownLegacy = tmv3_managedCalendarDescription_(
     '**Notes:** Existing note\n\n' +
-      '**\\-----Striven Links-----**\n\n' +
+      '**\\-----Striven\nLinks-----**\n\n' +
       '[View Sales Orders – John Smith (#62400)](https://old.example/customer)\n\n' +
       '[Task #18845 - Preinspect - John Smith - (416) 555-1212](https://old.example/task)',
     preLinkPlan
