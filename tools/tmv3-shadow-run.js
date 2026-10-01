@@ -1627,7 +1627,8 @@ async function main() {
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
         RUN_MODE === 'CANARY_STEP7' ||
-        RUN_MODE === 'CANARY_TITLE'
+        RUN_MODE === 'CANARY_TITLE' ||
+        RUN_MODE === 'CANARY_REFRESH'
       ) &&
       RELEASE_MANIFEST.forceVersionedDeployment !== true
     ) {
