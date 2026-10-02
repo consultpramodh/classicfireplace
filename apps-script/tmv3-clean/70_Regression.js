@@ -1507,8 +1507,8 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN',
     preDescription.indexOf(
-      '62400 - John Smith - (416) 555-1212'
-    ) === -1 &&
+      '62400 - John Smith - (416) 555-1212\n\n'
+    ) === 0 &&
       preDescription.indexOf(
         'Line one wrapped continuation\n\nSecond paragraph'
       ) !== -1 &&
