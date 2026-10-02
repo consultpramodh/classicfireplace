@@ -295,6 +295,23 @@ function buildTemporaryRunner(pre, token) {
               /canaryDate:\s*'[^']*',/,
               'canaryDate: ' + JSON.stringify(scopedDate) + ','
             );
+
+          const manualWriteMatches =
+            source.match(/manualWritesEnabled:\s*false,/g) || [];
+
+          if (manualWriteMatches.length !== 1) {
+            fail(
+              'Fresh-event canary manual-write patch expected exactly one disabled policy anchor.'
+            );
+          }
+
+          // Temporary runner only: allow MANUAL writes for this exact
+          // PreInspection event/date canary. The live bound source remains
+          // SHADOW_READ_ONLY with manualWritesEnabled=false.
+          source = source.replace(
+            /manualWritesEnabled:\s*false,/,
+            'manualWritesEnabled: true,'
+          );
         }
 
         // Explicit test-write runs may borrow a small, bounded slice of the
