@@ -1,18 +1,18 @@
 {
-  "release": "TMV3_OCT2_DAVID_BUSH_EVENT_FIX",
+  "release": "TMV3_OCT2_FINAL_PREINSPECTION_FORMAT_VERIFY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "CANARY_WRITE",
-  "writesEnabled": true,
-  "runMode": "CANARY_EVENT_WRITE_FRESH",
+  "mode": "SHADOW_READ_ONLY",
+  "writesEnabled": false,
+  "runMode": "LIVE_HARDENING_REGRESSION",
   "batchOffset": 0,
   "batchLimit": 0,
-  "refreshSources": true,
+  "refreshSources": false,
   "forceVersionedDeployment": false,
-  "vertical": "PreInspection",
-  "eventId": "6orcm25smd0odir7oprg1b1bpa@google.com",
+  "vertical": "",
+  "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_OCT2_DAVID_BUSH_EVENT_FIX",
-  "allowedDate": "2026-10-02",
-  "testWriteApiSoftLimit": 1500
+  "requestTag": "TMV3_OCT2_FINAL_PREINSPECTION_FORMAT_VERIFY",
+  "allowedDate": "",
+  "testWriteApiSoftLimit": 0
 }
