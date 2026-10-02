@@ -95,14 +95,20 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
       let label = '';
 
       if (eventRecord.vertical === 'PreInspection') {
-        const identity =
-          eventRecord.__tmv3PreInspectionLinkIdentity || {};
-        label =
-          'Task #' + taskId +
-          ' - Preinspect - ' +
-          tmv3_clean_(identity.customerName) +
-          ' - ' +
-          tmv3_clean_(identity.phone);
+        const desiredTaskName = tmv3_desiredTaskName_(eventRecord, {});
+        const taskName =
+          desiredTaskName &&
+          desiredTaskName.status === 'READY'
+            ? tmv3_clean_(desiredTaskName.value)
+            : tmv3_clean_(record.task);
+
+        if (!taskName) {
+          throw new Error(
+            'PreInspection Calendar Task link requires a verified Task Name.'
+          );
+        }
+
+        label = 'Task #' + taskId + ' – ' + taskName;
       } else {
         label =
           (
@@ -220,8 +226,8 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
   });
 
   const managed =
-    '**' + TMV3_FINAL_LINK_HEADING + '**' +
-    (linkLines.length ? '\n\n' + linkLines.join('\n\n') : '');
+    TMV3_FINAL_LINK_HEADING +
+    (linkLines.length ? '\n' + linkLines.join('\n') : '');
 
   return (
     authored
