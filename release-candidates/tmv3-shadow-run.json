@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_OCT2_JIM_FARQUHAR_EVENT_FIX_R2",
+  "release": "TMV3_OCT2_JIM_FARQUHAR_EVENT_FIX_R3",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -12,7 +12,7 @@
   "eventId": "05nab34g5e064rch0b49ermimd@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_OCT2_JIM_FARQUHAR_EVENT_FIX_R2",
+  "requestTag": "TMV3_OCT2_JIM_FARQUHAR_EVENT_FIX_R3",
   "allowedDate": "2026-10-02",
   "testWriteApiSoftLimit": 1500
 }
