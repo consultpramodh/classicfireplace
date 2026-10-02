@@ -1,18 +1,18 @@
 {
-  "release": "TMV3_OCT2_PREINSPECTION_FRESH_AUDIT",
+  "release": "TMV3_OCT2_NO_NOTES_HEADING_VERIFY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP7_PREINSPECTION",
+  "runMode": "LIVE_HARDENING_REGRESSION",
   "batchOffset": 0,
-  "batchLimit": 75,
-  "refreshSources": true,
+  "batchLimit": 0,
+  "refreshSources": false,
   "forceVersionedDeployment": false,
-  "vertical": "PreInspection",
+  "vertical": "",
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_OCT2_PREINSPECTION_FRESH_AUDIT",
+  "requestTag": "TMV3_OCT2_NO_NOTES_HEADING_VERIFY",
   "allowedDate": "",
-  "testWriteApiSoftLimit": 1500
+  "testWriteApiSoftLimit": 0
 }
