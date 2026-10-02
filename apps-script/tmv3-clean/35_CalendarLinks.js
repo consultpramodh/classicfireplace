@@ -280,6 +280,7 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
     .replace(/<\s*\/b\s*>/gi, '**')
     .replace(/<[^>]+>/g, '')
     .replace(/\r\n?/g, '\n')
+    .replace(/ {2,}\n/g, '\n\n')
     .trim();
 
   text = text
