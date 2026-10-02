@@ -1513,8 +1513,10 @@ function tmv3_titleNormalizationRegression() {
         'Line one wrapped continuation\n\nSecond paragraph'
       ) !== -1 &&
       preDescription.indexOf(
-        '-----Striven Links-----\n'
+        '-----Striven Links-----  \n'
       ) !== -1 &&
+      preDescription.indexOf('\n\n[View Sales Orders') === -1 &&
+      preDescription.indexOf('\n\n[Task #18845') === -1 &&
       preDescription.indexOf(
         'View Sales Orders – John Smith (#62400)'
       ) !== -1 &&
