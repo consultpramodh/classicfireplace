@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_OCT2_JIM_FARQUHAR_EVENT_FIX_R3",
+  "release": "TMV3_OCT2_DAVID_BUSH_EVENT_FIX",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -9,10 +9,10 @@
   "refreshSources": true,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "05nab34g5e064rch0b49ermimd@google.com",
+  "eventId": "6orcm25smd0odir7oprg1b1bpa@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_OCT2_JIM_FARQUHAR_EVENT_FIX_R3",
+  "requestTag": "TMV3_OCT2_DAVID_BUSH_EVENT_FIX",
   "allowedDate": "2026-10-02",
   "testWriteApiSoftLimit": 1500
 }
