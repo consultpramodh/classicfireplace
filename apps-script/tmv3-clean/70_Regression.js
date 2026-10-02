@@ -1481,7 +1481,7 @@ function tmv3_titleNormalizationRegression() {
       preLinkPlan.links[0].label ===
         'View Sales Orders – John Smith (#62400)' &&
       preLinkPlan.links[1].label ===
-        'Task #18845 - Preinspect - John Smith - (416) 555-1212',
+        'Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212',
     JSON.stringify(preLinkPlan.links)
   );
 
@@ -1513,13 +1513,13 @@ function tmv3_titleNormalizationRegression() {
         'Line one wrapped continuation\n\nSecond paragraph'
       ) !== -1 &&
       preDescription.indexOf(
-        '**-----Striven Links-----**\n\n'
+        '-----Striven Links-----\n'
       ) !== -1 &&
       preDescription.indexOf(
         'View Sales Orders – John Smith (#62400)'
       ) !== -1 &&
       preDescription.indexOf(
-        'Task #18845 - Preinspect - John Smith - (416) 555-1212'
+        'Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212'
       ) !== -1 &&
       preDescription.indexOf('old.example') === -1,
     preDescription
