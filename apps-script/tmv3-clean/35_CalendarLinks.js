@@ -227,7 +227,7 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
 
   const managed =
     TMV3_FINAL_LINK_HEADING +
-    (linkLines.length ? '\n' + linkLines.join('\n') : '');
+    (linkLines.length ? '  \n' + linkLines.join('  \n') : '');
 
   return (
     authored
