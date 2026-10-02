@@ -303,7 +303,10 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
 
 function tmv3_preInspectionCalendarNotesText_(description, plan) {
   let authored = tmv3_stripManagedLinkBlocks_(description || '');
-  authored = tmv3_stripPreInspectionPreservedTitle_(authored, plan || {});
+
+  // Preserve the exact pre-normalization Calendar title when it was
+  // previously migrated into the description. It is business-authored
+  // historical context and must survive later link refreshes.
   authored = tmv3_normalizePreInspectionAuthoredWraps_(authored);
 
   if (!authored) return '';
