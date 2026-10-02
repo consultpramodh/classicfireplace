@@ -302,29 +302,19 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
 
 function tmv3_preInspectionCalendarNotesText_(description, plan) {
   let authored = tmv3_stripManagedLinkBlocks_(description || '');
-  authored = tmv3_stripPreInspectionPreservedTitle_(
-    authored,
-    plan || {}
-  );
+  authored = tmv3_stripPreInspectionPreservedTitle_(authored, plan || {});
   authored = tmv3_normalizePreInspectionAuthoredWraps_(authored);
 
   if (!authored) return '';
 
-  const notesPattern =
-    /(^|\n\n)\s*(?:\*\*)?Notes:(?:\*\*)?\s*/i;
+  authored = authored.replace(
+    /(^|\n\n)\s*(?:\*\*)?Notes:(?:\*\*)?\s*/ig,
+    function(match, prefix) {
+      return prefix || '';
+    }
+  );
 
-  if (!notesPattern.test(authored)) {
-    authored = '**Notes:** ' + authored;
-  } else {
-    authored = authored.replace(
-      notesPattern,
-      function(match, prefix) {
-        return (prefix || '') + '**Notes:** ';
-      }
-    );
-  }
-
-  return authored.trim();
+  return authored.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function tmv3_calendarMarkdownLabel_(value) {

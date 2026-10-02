@@ -1436,7 +1436,7 @@ function tmv3_titleNormalizationRegression() {
   const preNoTitlePreserve = tmv3_titleDescriptionPlan_(
     'C#62400 - John Smith - (416) 555-1212',
     '62400 - John Smith - (416) 555-1212',
-    '<b>Notes:</b> Existing authored note',
+    'Existing authored note',
     { preserveOldTitle:false }
   );
   check(
@@ -1444,7 +1444,7 @@ function tmv3_titleNormalizationRegression() {
     preNoTitlePreserve.titleChange === true &&
       preNoTitlePreserve.descriptionChange === false &&
       preNoTitlePreserve.after ===
-        '<b>Notes:</b> Existing authored note',
+        'Existing authored note',
     JSON.stringify(preNoTitlePreserve)
   );
 
@@ -1473,7 +1473,7 @@ function tmv3_titleNormalizationRegression() {
 
   const preDescription = tmv3_managedCalendarDescription_(
     '62400 - John Smith - (416) 555-1212\n\n' +
-      '<b>Notes:</b> Line one\nwrapped continuation\n\nSecond paragraph\n\n' +
+      'Line one\nwrapped continuation\n\nSecond paragraph\n\n' +
       '<b>-----Striven Links-----</b><br>' +
       '<a href="https://old.example">old</a>',
     preLinkPlan
@@ -1496,7 +1496,7 @@ function tmv3_titleNormalizationRegression() {
       '62400 - John Smith - (416) 555-1212'
     ) === -1 &&
       preDescription.indexOf(
-        '**Notes:** Line one wrapped continuation\n\nSecond paragraph'
+        'Line one wrapped continuation\n\nSecond paragraph'
       ) !== -1 &&
       preDescription.indexOf(
         '**-----Striven Links-----**\n\n'
@@ -1511,7 +1511,7 @@ function tmv3_titleNormalizationRegression() {
     preDescription
   );
   const escapedMarkdownLegacy = tmv3_managedCalendarDescription_(
-    '**Notes:** Existing note\n\n' +
+    'Existing note\n\n' +
       '**\\-----Striven\nLinks-----**\n\n' +
       '[View Sales Orders – John Smith (#62400)](https://old.example/customer)\n\n' +
       '[Task #18845 - Preinspect - John Smith - (416) 555-1212](https://old.example/task)',
@@ -1523,20 +1523,27 @@ function tmv3_titleNormalizationRegression() {
       escapedMarkdownLegacy.match(/Striven Links/g) || []
     ).length === 1 &&
       escapedMarkdownLegacy.indexOf('old.example') === -1 &&
-      escapedMarkdownLegacy.indexOf('**Notes:** Existing note') === 0,
+      escapedMarkdownLegacy.indexOf('Existing note') === 0,
     escapedMarkdownLegacy
   );
 
   const headingBreakLegacy = tmv3_managedCalendarDescription_(
-    '**Sales Order:** SO#585434  \n**Notes:** Keep these notes',
+    '**Sales Order:** SO#585434  \nKeep these notes',
     preLinkPlan
   );
   check(
     'PREINSPECTION_SALES_ORDER_AND_NOTES_HEADING_BOUNDARY_PRESERVED',
     headingBreakLegacy.indexOf(
-      '**Sales Order:** SO#585434\n\n**Notes:** Keep these notes'
+      '**Sales Order:** SO#585434\n\nKeep these notes'
     ) === 0,
     headingBreakLegacy
+  );
+
+  check(
+    'PREINSPECTION_NOTES_HEADING_IS_NOT_EMITTED',
+    preDescription.indexOf('**Notes:**') === -1 &&
+      preDescription.indexOf('Notes:') === -1,
+    preDescription
   );
 
   check(
