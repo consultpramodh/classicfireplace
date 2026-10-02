@@ -82,11 +82,12 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
   - use Google Calendar-compatible Markdown/plain text; **do not write literal HTML tags** such as `<b>`, `<br>`, or `<a>` through `CalendarApp.setDescription()`;
   - when a Calendar title is normalized, prepend the exact original Calendar title to the description, followed by one blank line; never duplicate it on later runs;
   - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
-  - use one bold **Notes:** section when authored notes are present;
-  - use exactly one managed **`-----Striven Links-----`** block at the bottom;
-  - leave one blank line after the links heading and between the two managed links;
-  - Sales Orders link text: **`View Sales Orders – <Customer Name> (#<Customer Number>)`**;
-  - Task link text: **`Task #<Task ID> - Preinspect - <Customer Name> - <Phone>`**;
+  - do **not** add a `Notes:` heading; preserve the human-authored notes directly;
+  - use exactly one managed `-----Striven Links-----` block at the bottom;
+  - the managed block is exactly three consecutive visible lines with no blank lines inside it;
+  - line 1: `-----Striven Links-----`;
+  - line 2: hyperlinked `View Sales Orders – <Customer Name> (#<Customer Number>)`;
+  - line 3: hyperlinked `Task #<Task ID> – <Task Name>`;
   - no raw URLs, generic `Customer` labels, numeric-only Task labels, or duplicate legacy link blocks.
 
 ### Mandatory reflection gate
