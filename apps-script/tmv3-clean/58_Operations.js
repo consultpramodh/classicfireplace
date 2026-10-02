@@ -1439,8 +1439,7 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
       desired,
       copy.beforeDescription,
       {
-        preserveOldTitle:
-          eventRecord.vertical !== 'PreInspection'
+        preserveOldTitle:true
       }
     );
     if (copy.plan.status === 'BLOCKED') {
@@ -4083,8 +4082,7 @@ function tmv3_titleNormalizationPreview_(contract) {
           desiredCalendar.value,
           rawDescription,
           {
-            preserveOldTitle:
-              previewRecord.vertical !== 'PreInspection'
+            preserveOldTitle:true
           }
         )
       : {

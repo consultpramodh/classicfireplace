@@ -80,7 +80,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - Primary/shared and Stephen secondary Calendar handling must remain supported; managed links/titles must be verified on the actual required copies.
 - PreInspection Calendar description presentation is frozen:
   - use Google Calendar-compatible Markdown/plain text; **do not write literal HTML tags** such as `<b>`, `<br>`, or `<a>` through `CalendarApp.setDescription()`;
-  - do not prepend or preserve an old Calendar title inside the description;
+  - when a Calendar title is normalized, prepend the exact original Calendar title to the description, followed by one blank line; never duplicate it on later runs;
   - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
   - use one bold **Notes:** section when authored notes are present;
   - use exactly one managed **`-----Striven Links-----`** block at the bottom;

@@ -1433,19 +1433,33 @@ function tmv3_titleNormalizationRegression() {
       '62400 - John Smith - (416) 555-1212',
     JSON.stringify(preCalendar)
   );
-  const preNoTitlePreserve = tmv3_titleDescriptionPlan_(
+  const preTitlePreserve = tmv3_titleDescriptionPlan_(
     'C#62400 - John Smith - (416) 555-1212',
     '62400 - John Smith - (416) 555-1212',
     'Existing authored note',
-    { preserveOldTitle:false }
+    { preserveOldTitle:true }
   );
   check(
-    'PREINSPECTION_TITLE_NORMALIZATION_DOES_NOT_PREPEND_OLD_TITLE',
-    preNoTitlePreserve.titleChange === true &&
-      preNoTitlePreserve.descriptionChange === false &&
-      preNoTitlePreserve.after ===
-        'Existing authored note',
-    JSON.stringify(preNoTitlePreserve)
+    'PREINSPECTION_TITLE_NORMALIZATION_PRESERVES_OLD_TITLE',
+    preTitlePreserve.titleChange === true &&
+      preTitlePreserve.descriptionChange === true &&
+      preTitlePreserve.after ===
+        'C#62400 - John Smith - (416) 555-1212\n\nExisting authored note',
+    JSON.stringify(preTitlePreserve)
+  );
+
+  const preTitleAlreadyPreserved = tmv3_titleDescriptionPlan_(
+    'C#62400 - John Smith - (416) 555-1212',
+    '62400 - John Smith - (416) 555-1212',
+    'C#62400 - John Smith - (416) 555-1212\n\nExisting authored note',
+    { preserveOldTitle:true }
+  );
+  check(
+    'PREINSPECTION_OLD_TITLE_IS_NOT_DUPLICATED',
+    preTitleAlreadyPreserved.titleChange === true &&
+      preTitleAlreadyPreserved.descriptionChange === false &&
+      preTitleAlreadyPreserved.alreadyPreserved === true,
+    JSON.stringify(preTitleAlreadyPreserved)
   );
 
   const preLinkPlan = tmv3_buildCalendarLinkPlan_(
