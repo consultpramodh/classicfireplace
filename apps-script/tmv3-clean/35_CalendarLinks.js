@@ -283,8 +283,8 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
     .trim();
 
   text = text
-    .replace(/\s*\*\*\s*Sales Order:\s*\*\*\s*/gi, '\n\n__TMV3_SO__ ')
-    .replace(/\s*\*\*\s*Notes:\s*\*\*\s*/gi, '\n\n__TMV3_NOTES__ ');
+    .replace(/\*\*\s*Sales Order:\s*\*\*/gi, '__TMV3_SO__')
+    .replace(/\*\*\s*Notes:\s*\*\*/gi, '\n\n__TMV3_NOTES_BREAK__');
 
   const marker = '__TMV3_PARAGRAPH_BREAK__';
 
@@ -293,7 +293,7 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
     .replace(/[ \t]*\n[ \t]*/g, ' ')
     .replace(new RegExp(marker, 'g'), '\n\n')
     .replace(/__TMV3_SO__/g, '**Sales Order:**')
-    .replace(/__TMV3_NOTES__/g, '**Notes:**')
+    .replace(/__TMV3_NOTES_BREAK__/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
