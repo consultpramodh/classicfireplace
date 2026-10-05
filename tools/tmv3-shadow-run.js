@@ -1927,6 +1927,7 @@ async function main() {
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
       RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
+      RUN_MODE === 'CUSTOMER_PROBE' ||
       RUN_MODE === 'TASK_SCHEDULE'
     ) {
       const action =
