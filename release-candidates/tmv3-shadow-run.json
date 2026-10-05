@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_51_STAGE3_STAGE4_LIVE_REFRESH_VERIFY",
+  "release": "TMV3_3_11_52_API_EFFICIENT_LIVE_REFRESH_VERIFY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,8 +12,8 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_51_STAGE3_STAGE4_LIVE_REFRESH_VERIFY",
+  "requestTag": "TMV3_3_11_52_API_EFFICIENT_LIVE_REFRESH_VERIFY",
   "allowedDate": "",
-  "testWriteApiSoftLimit": 0,
+  "testWriteApiSoftLimit": 1500,
   "customerId": 0
 }
