@@ -104,6 +104,9 @@ function tmv3_step4IdentityIndex_() {
     customerByPhone: {},
     locationsByCustomer: {},
     locationById: {},
+    locationsByNormalizedAddress: {},
+    locationsByPostal: {},
+    locationsByStreetNo: {},
     orderById: {},
     taskById: {}
   };
@@ -133,6 +136,31 @@ function tmv3_step4IdentityIndex_() {
         refs.locationsByCustomer[customerId] = [];
       }
       refs.locationsByCustomer[customerId].push(row);
+    }
+
+    const fullAddress = tmv3_locationFullAddress_(row);
+    const normalizedAddress = tmv3_normalizeAddress_(fullAddress);
+    const addressParts = tmv3_addressParts_(fullAddress);
+
+    if (normalizedAddress) {
+      if (!refs.locationsByNormalizedAddress[normalizedAddress]) {
+        refs.locationsByNormalizedAddress[normalizedAddress] = [];
+      }
+      refs.locationsByNormalizedAddress[normalizedAddress].push(row);
+    }
+
+    if (addressParts.postal) {
+      if (!refs.locationsByPostal[addressParts.postal]) {
+        refs.locationsByPostal[addressParts.postal] = [];
+      }
+      refs.locationsByPostal[addressParts.postal].push(row);
+    }
+
+    if (addressParts.streetNo) {
+      if (!refs.locationsByStreetNo[addressParts.streetNo]) {
+        refs.locationsByStreetNo[addressParts.streetNo] = [];
+      }
+      refs.locationsByStreetNo[addressParts.streetNo].push(row);
     }
   });
 
@@ -672,28 +700,34 @@ function tmv3_step4ResolvePreInspectionIdentity_(record, refs, anchor) {
 
 function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
   const explicit = tmv3_clean_(record.customerNumber);
+  const exactCustomer = explicit
+    ? (refs.customerByNumber[explicit] || null)
+    : null;
 
-  if (explicit) {
-    const exactCustomer = refs.customerByNumber[explicit] || null;
-
-    if (exactCustomer) {
-      return {
-        status: 'MATCHED',
-        customer: exactCustomer,
-        location: null,
-        evidence: ['CUSTOMER_NUMBER_EXACT']
-      };
-    }
-
+  if (exactCustomer) {
     return {
-      status: 'REVIEW',
-      errorCode: 'EXPLICIT_CUSTOMER_NUMBER_NOT_FOUND',
-      reason:
-        'Explicit Calendar Customer # ' +
-        explicit +
-        ' does not resolve to a Customer; other evidence will not silently override it.',
-      evidence: []
+      status: 'MATCHED',
+      customer: exactCustomer,
+      location: null,
+      evidence: ['CUSTOMER_NUMBER_EXACT']
     };
+  }
+
+  // A Calendar Task relationship is stronger than a loose name/address
+  // search, but only when the cached Task belongs to the intended vertical
+  // and its Customer-owned Location matches the Calendar job site.
+  const taskIdentity = tmv3_step4TaskIdentityCandidate_(
+    record,
+    refs
+  );
+
+  if (taskIdentity.status === 'MATCHED') {
+    if (explicit) {
+      taskIdentity.evidence = [
+        'EXPLICIT_CUSTOMER_NUMBER_STALE_RECOVERED_BY_TASK'
+      ].concat(taskIdentity.evidence || []);
+    }
+    return taskIdentity;
   }
 
   const phone = tmv3_phone10_(record.phone);
@@ -701,18 +735,9 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
     ? (refs.customerByPhone[phone] || []).slice()
     : [];
 
-  if (phoneMatches.length === 1) {
-    return {
-      status: 'MATCHED',
-      customer: phoneMatches[0],
-      location: null,
-      evidence: ['CUSTOMER_PRIMARY_PHONE_EXACT']
-    };
-  }
-
   const addressCandidates = tmv3_step4AddressCandidates_(
     record.location,
-    refs.locations
+    refs
   );
 
   const ownerIds = tmv3_unique_(
@@ -722,6 +747,105 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
       })
       .filter(Boolean)
   );
+
+  // An explicit Calendar Customer # that is not present in the current cache
+  // may be stale/incorrect. Do not silently ignore it; recover only when
+  // independent evidence proves exactly one different Customer.
+  if (explicit) {
+    if (phoneMatches.length === 1) {
+      const phoneCustomer = phoneMatches[0];
+      const phoneCustomerId = tmv3_clean_(
+        phoneCustomer['Customer ID']
+      );
+      const ownedByPhoneCustomer =
+        addressCandidates.locations.filter(function(location) {
+          return (
+            tmv3_clean_(location['Customer ID']) ===
+            phoneCustomerId
+          );
+        });
+
+      if (
+        ownedByPhoneCustomer.length &&
+        (
+          addressCandidates.matchType === 'EXACT' ||
+          addressCandidates.matchType === 'STRONG'
+        )
+      ) {
+        return {
+          status: 'MATCHED',
+          customer: phoneCustomer,
+          location:
+            ownedByPhoneCustomer.length === 1
+              ? ownedByPhoneCustomer[0]
+              : null,
+          evidence: [
+            'EXPLICIT_CUSTOMER_NUMBER_STALE',
+            'CUSTOMER_PRIMARY_PHONE_EXACT',
+            'CUSTOMER_' +
+              addressCandidates.matchType +
+              '_ADDRESS_CORROBORATES_PHONE'
+          ]
+        };
+      }
+    }
+
+    if (ownerIds.length === 1 && refs.customerById[ownerIds[0]]) {
+      const addressCustomer = refs.customerById[ownerIds[0]];
+      const nameMatch = tmv3_nameCorroboratesCustomer_(
+        record.title + ' ' +
+          tmv3_identityDescriptionForRecord_(record),
+        addressCustomer['Name']
+      );
+      const surnameMatch =
+        addressCandidates.matchType === 'EXACT' &&
+        tmv3_step4SurnameCorroboratesCustomer_(
+          record,
+          addressCustomer
+        );
+
+      if (nameMatch || surnameMatch) {
+        const owned =
+          addressCandidates.locations.filter(function(location) {
+            return (
+              tmv3_clean_(location['Customer ID']) ===
+              ownerIds[0]
+            );
+          });
+
+        return {
+          status: 'MATCHED',
+          customer: addressCustomer,
+          location: owned.length === 1 ? owned[0] : null,
+          evidence: [
+            'EXPLICIT_CUSTOMER_NUMBER_STALE',
+            surnameMatch
+              ? 'EXACT_ADDRESS_SAME_SURNAME_RECOVERY'
+              : 'CUSTOMER_NAME_AND_ADDRESS_RECOVERY'
+          ]
+        };
+      }
+    }
+
+    return {
+      status: 'REVIEW',
+      errorCode: 'EXPLICIT_CUSTOMER_NUMBER_NOT_FOUND',
+      reason:
+        'Explicit Calendar Customer # ' +
+        explicit +
+        ' does not resolve to a Customer and no independent phone/address proof identifies one replacement Customer.',
+      evidence: []
+    };
+  }
+
+  if (phoneMatches.length === 1) {
+    return {
+      status: 'MATCHED',
+      customer: phoneMatches[0],
+      location: null,
+      evidence: ['CUSTOMER_PRIMARY_PHONE_EXACT']
+    };
+  }
 
   if (ownerIds.length) {
     // Shared phone numbers are not an immediate failure. If the Calendar
@@ -746,7 +870,9 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
           customer: customer,
           location: owned.length === 1 ? owned[0] : null,
           evidence: [
-            'SHARED_PHONE_RESOLVED_BY_' + addressCandidates.matchType + '_ADDRESS'
+            'SHARED_PHONE_RESOLVED_BY_' +
+              addressCandidates.matchType +
+              '_ADDRESS'
           ]
         };
       }
@@ -758,8 +884,14 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
         record,
         customer
       );
+      const surnameMatch =
+        addressCandidates.matchType === 'EXACT' &&
+        tmv3_step4SurnameCorroboratesCustomer_(
+          record,
+          customer
+        );
 
-      if (corroboration.matched) {
+      if (corroboration.matched || surnameMatch) {
         const owned = addressCandidates.locations.filter(function(location) {
           return tmv3_clean_(location['Customer ID']) === ownerIds[0];
         });
@@ -769,8 +901,15 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
           customer: customer,
           location: owned.length === 1 ? owned[0] : null,
           evidence: [
-            'CUSTOMER_FROM_' + addressCandidates.matchType + '_ADDRESS'
-          ].concat(corroboration.evidence)
+            'CUSTOMER_FROM_' +
+              addressCandidates.matchType +
+              '_ADDRESS'
+          ].concat(
+            corroboration.evidence || [],
+            surnameMatch
+              ? ['EXACT_ADDRESS_SAME_SURNAME_HOUSEHOLD']
+              : []
+          )
         };
       }
 
@@ -778,7 +917,7 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
         status: 'REVIEW',
         errorCode: 'ADDRESS_OWNER_NOT_CORROBORATED',
         reason:
-          'Calendar address points to one Customer, but name/phone evidence does not corroborate that household.',
+          'Calendar address points to one Customer, but name/phone/surname evidence does not corroborate that household.',
         customer: customer,
         evidence: [
           addressCandidates.matchType + '_ADDRESS_OWNER_ONLY'
@@ -790,7 +929,8 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
       const nameHits = ownerIds.filter(function(ownerId) {
         const customer = refs.customerById[ownerId];
         return customer && tmv3_nameCorroboratesCustomer_(
-          record.title + ' ' + tmv3_identityDescriptionForRecord_(record),
+          record.title + ' ' +
+            tmv3_identityDescriptionForRecord_(record),
           customer['Name']
         );
       });
@@ -811,10 +951,45 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
         };
       }
 
+      if (addressCandidates.matchType === 'EXACT') {
+        const surnameHits = ownerIds.filter(function(ownerId) {
+          const customer = refs.customerById[ownerId];
+          return customer &&
+            tmv3_step4SurnameCorroboratesCustomer_(
+              record,
+              customer
+            );
+        });
+
+        if (
+          surnameHits.length === 1 &&
+          refs.customerById[surnameHits[0]]
+        ) {
+          const customer = refs.customerById[surnameHits[0]];
+          const owned =
+            addressCandidates.locations.filter(function(location) {
+              return (
+                tmv3_clean_(location['Customer ID']) ===
+                surnameHits[0]
+              );
+            });
+
+          return {
+            status: 'MATCHED',
+            customer: customer,
+            location: owned.length === 1 ? owned[0] : null,
+            evidence: [
+              'AMBIGUOUS_EXACT_ADDRESS_RESOLVED_BY_SURNAME'
+            ]
+          };
+        }
+      }
+
       return {
         status: 'REVIEW',
         errorCode: 'AMBIGUOUS_ADDRESS_OWNER',
-        reason: 'Calendar address is associated with multiple Customers and no unique corroboration wins.',
+        reason:
+          'Calendar address is associated with multiple Customers and no unique phone/name/surname corroboration wins.',
         evidence: []
       };
     }
@@ -823,7 +998,8 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
   if (phoneMatches.length > 1) {
     const nameHits = phoneMatches.filter(function(customer) {
       return tmv3_nameCorroboratesCustomer_(
-        record.title + ' ' + tmv3_identityDescriptionForRecord_(record),
+        record.title + ' ' +
+          tmv3_identityDescriptionForRecord_(record),
         customer['Name']
       );
     });
@@ -840,7 +1016,8 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
     return {
       status: 'REVIEW',
       errorCode: 'AMBIGUOUS_CUSTOMER_PHONE',
-      reason: 'Calendar phone matches multiple Customers and address/name evidence does not identify one.',
+      reason:
+        'Calendar phone matches multiple Customers and address/name evidence does not identify one.',
       evidence: []
     };
   }
@@ -848,12 +1025,144 @@ function tmv3_step4ResolveCustomerFromCalendarEvidence_(record, refs) {
   return {
     status: 'REVIEW',
     errorCode: 'CUSTOMER_UNRESOLVED',
-    reason: 'No deterministic Customer match was proven from Customer #, phone, or Calendar address.',
+    reason:
+      'No deterministic Customer match was proven from Customer #, cached Task, phone, or Calendar address.',
     evidence: []
   };
 }
 
-function tmv3_step4AddressCandidates_(calendarAddress, locations) {
+function tmv3_step4TaskMatchesVertical_(task, vertical) {
+  const cfg = TMV3.VERTICALS[vertical] || {};
+  const taskTypeId = Number(task && task['Task Type ID'] || 0);
+
+  if (
+    Number(cfg.taskTypeId || 0) > 0 &&
+    taskTypeId === Number(cfg.taskTypeId)
+  ) {
+    return true;
+  }
+
+  const hay = tmv3_norm_(
+    tmv3_clean_(task && task['Task Type']) +
+    ' ' +
+    tmv3_clean_(task && task['Name'])
+  );
+
+  return (cfg.taskTypeNames || []).some(function(name) {
+    const needle = tmv3_norm_(name);
+    return needle && hay.indexOf(needle) !== -1;
+  });
+}
+
+function tmv3_step4TaskIdentityCandidate_(record, refs) {
+  const taskId = tmv3_clean_(
+    record &&
+    (
+      record.existingTaskId ||
+      record.taskNumber
+    )
+  );
+
+  if (!taskId) return { status:'NO_MATCH', evidence:[] };
+
+  const task = refs.taskById && refs.taskById[taskId];
+  if (!task) {
+    return {
+      status:'NO_MATCH',
+      evidence:['CALENDAR_TASK_ID_NOT_IN_TASK_CACHE']
+    };
+  }
+
+  if (!tmv3_step4TaskMatchesVertical_(task, record.vertical)) {
+    return {
+      status:'NO_MATCH',
+      evidence:['CALENDAR_TASK_WRONG_VERTICAL']
+    };
+  }
+
+  const customerId = tmv3_clean_(task['Customer ID']);
+  const locationId = tmv3_clean_(task['Location ID']);
+  const customer = customerId
+    ? refs.customerById[customerId]
+    : null;
+  const location = locationId
+    ? refs.locationById[locationId]
+    : null;
+
+  if (!customer || !location) {
+    return {
+      status:'NO_MATCH',
+      evidence:['CALENDAR_TASK_IDENTITY_INCOMPLETE']
+    };
+  }
+
+  if (tmv3_clean_(location['Customer ID']) !== customerId) {
+    return {
+      status:'NO_MATCH',
+      evidence:['CALENDAR_TASK_LOCATION_CUSTOMER_CONFLICT']
+    };
+  }
+
+  const addressMatch = tmv3_resolveOwnedLocation_(
+    customer,
+    record.location,
+    [location]
+  );
+
+  if (addressMatch.status !== 'MATCHED') {
+    return {
+      status:'NO_MATCH',
+      evidence:['CALENDAR_TASK_LOCATION_ADDRESS_MISMATCH']
+    };
+  }
+
+  return {
+    status:'MATCHED',
+    customer:customer,
+    location:location,
+    evidence:[
+      'CUSTOMER_FROM_CACHED_CALENDAR_TASK',
+      'LOCATION_FROM_CACHED_CALENDAR_TASK'
+    ]
+  };
+}
+
+function tmv3_step4SurnameCorroboratesCustomer_(record, customer) {
+  const customerName = tmv3_norm_(
+    customer && customer['Name']
+  );
+
+  if (!customerName) return false;
+
+  // Do not turn business/common suffixes into pseudo-surnames.
+  if (
+    /\b(ltd|inc|corp|corporation|company|design|build|homes|store)\b/.test(
+      customerName
+    )
+  ) {
+    return false;
+  }
+
+  const parts = customerName
+    .split(' ')
+    .filter(function(part) {
+      return part && part.length >= 3 && part !== 'and';
+    });
+
+  if (!parts.length) return false;
+
+  const surname = parts[parts.length - 1];
+  const hay = tmv3_norm_(
+    tmv3_clean_(record && record.title) +
+    ' ' +
+    tmv3_identityDescriptionForRecord_(record || {})
+  );
+  const tokens = hay.split(' ').filter(Boolean);
+
+  return tokens.indexOf(surname) !== -1;
+}
+
+function tmv3_step4AddressCandidates_(calendarAddress, refs) {
   const target = tmv3_normalizeAddress_(calendarAddress);
 
   if (!target) {
@@ -863,11 +1172,18 @@ function tmv3_step4AddressCandidates_(calendarAddress, locations) {
     };
   }
 
-  const exact = (locations || []).filter(function(location) {
-    return tmv3_normalizeAddress_(
-      tmv3_locationFullAddress_(location)
-    ) === target;
-  });
+  const exactIndex =
+    refs &&
+    refs.locationsByNormalizedAddress &&
+    refs.locationsByNormalizedAddress[target];
+
+  const exact = exactIndex
+    ? exactIndex.slice()
+    : (refs.locations || []).filter(function(location) {
+        return tmv3_normalizeAddress_(
+          tmv3_locationFullAddress_(location)
+        ) === target;
+      });
 
   if (exact.length) {
     return {
@@ -877,8 +1193,25 @@ function tmv3_step4AddressCandidates_(calendarAddress, locations) {
   }
 
   const targetParts = tmv3_addressParts_(calendarAddress);
+  let candidates = refs.locations || [];
 
-  const strong = (locations || []).filter(function(location) {
+  if (
+    targetParts.postal &&
+    refs.locationsByPostal &&
+    refs.locationsByPostal[targetParts.postal]
+  ) {
+    candidates =
+      refs.locationsByPostal[targetParts.postal].slice();
+  } else if (
+    targetParts.streetNo &&
+    refs.locationsByStreetNo &&
+    refs.locationsByStreetNo[targetParts.streetNo]
+  ) {
+    candidates =
+      refs.locationsByStreetNo[targetParts.streetNo].slice();
+  }
+
+  const strong = candidates.filter(function(location) {
     return tmv3_addressStrongMatch_(
       targetParts,
       tmv3_addressParts_(

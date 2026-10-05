@@ -2326,6 +2326,231 @@ function tmv3_stage4IdentityRecoveryRegression() {
     JSON.stringify(step5.step5)
   );
 
+  const monaCustomer = {
+    'Customer ID':'62179',
+    'Customer Number':'62179',
+    'Name':'Mona Azarin',
+    'Primary Phone':'4168186940',
+    'Primary Email':''
+  };
+  const monaLocation = {
+    'Location ID':'57865',
+    'Customer ID':'62179',
+    'Address 1':'22 Simpson Ave',
+    'Address 2':'',
+    'City':'Toronto',
+    'Province':'ON',
+    'Postal Code':'M4K 1A2',
+    'Phone':''
+  };
+  const monaAddress = tmv3_normalizeAddress_(
+    tmv3_locationFullAddress_(monaLocation)
+  );
+  const monaRefs = {
+    customers:[monaCustomer],
+    locations:[monaLocation],
+    customerById:{'62179':monaCustomer},
+    customerByNumber:{'62179':monaCustomer},
+    customerByPhone:{'4168186940':[monaCustomer]},
+    locationById:{'57865':monaLocation},
+    locationsByCustomer:{'62179':[monaLocation]},
+    locationsByNormalizedAddress:{},
+    locationsByPostal:{'M4K1A2':[monaLocation]},
+    locationsByStreetNo:{'22':[monaLocation]},
+    taskById:{}
+  };
+  monaRefs.locationsByNormalizedAddress[monaAddress] = [
+    monaLocation
+  ];
+
+  const monaResolved = tmv3_step4IdentityRecords_(
+    [{
+      vertical:'PreInspection',
+      logicalKey:'stage4-stale-number-test',
+      title:'62734 - Mona AZARIN 416.818.6940',
+      description:'',
+      descriptionClean:'',
+      rawDescription:'',
+      location:'22 Simpson Ave, Toronto, ON M4K 1A2',
+      phone:'4168186940',
+      customerNumber:'62734',
+      existingTaskId:'',
+      taskNumber:'',
+      step3:{
+        disposition:'BLOCKED',
+        code:'PREINSPECTION_BUSINESS_ANCHOR_UNRESOLVED',
+        reason:'Customer number does not resolve in current cache.',
+        anchor:{}
+      }
+    }],
+    monaRefs
+  )[0];
+
+  check(
+    'STAGE4_STALE_EXPLICIT_CUSTOMER_NUMBER_RECOVERS_WITH_PHONE_AND_ADDRESS',
+    monaResolved.step4.disposition === 'IDENTITY_ONLY' &&
+      String(
+        monaResolved.step4.customer &&
+        monaResolved.step4.customer['Customer ID']
+      ) === '62179' &&
+      String(
+        monaResolved.step4.location &&
+        monaResolved.step4.location['Location ID']
+      ) === '57865' &&
+      (monaResolved.step4.evidence || []).indexOf(
+        'EXPLICIT_CUSTOMER_NUMBER_STALE'
+      ) !== -1,
+    JSON.stringify(monaResolved.step4)
+  );
+
+  const duhanCustomer = {
+    'Customer ID':'61620',
+    'Customer Number':'61620',
+    'Name':'Niharika Duhan',
+    'Primary Phone':'',
+    'Primary Email':''
+  };
+  const duhanLocation = {
+    'Location ID':'99001',
+    'Customer ID':'61620',
+    'Address 1':'171 Willowbrook Dr',
+    'Address 2':'',
+    'City':'Whitby',
+    'Province':'ON',
+    'Postal Code':'L1R 2X9',
+    'Phone':''
+  };
+  const duhanAddress = tmv3_normalizeAddress_(
+    tmv3_locationFullAddress_(duhanLocation)
+  );
+  const duhanRefs = {
+    customers:[duhanCustomer],
+    locations:[duhanLocation],
+    customerById:{'61620':duhanCustomer},
+    customerByNumber:{'61620':duhanCustomer},
+    customerByPhone:{},
+    locationById:{'99001':duhanLocation},
+    locationsByCustomer:{'61620':[duhanLocation]},
+    locationsByNormalizedAddress:{},
+    locationsByPostal:{'L1R2X9':[duhanLocation]},
+    locationsByStreetNo:{'171':[duhanLocation]},
+    taskById:{}
+  };
+  duhanRefs.locationsByNormalizedAddress[duhanAddress] = [
+    duhanLocation
+  ];
+
+  const duhanResolved = tmv3_step4IdentityRecords_(
+    [{
+      vertical:'Service',
+      logicalKey:'stage4-household-surname-test',
+      title:'(TBC) Duhan - Chris 3-5',
+      description:'',
+      descriptionClean:'',
+      rawDescription:'',
+      location:'171 Willowbrook Dr, Whitby, ON L1R 2X9',
+      phone:'',
+      customerNumber:'',
+      existingTaskId:'',
+      taskNumber:'',
+      step3:{
+        disposition:'BLOCKED',
+        code:'ANCHOR_ORDER_NUMBER_MISSING',
+        reason:'Work Order number/link is required.',
+        anchor:{}
+      }
+    }],
+    duhanRefs
+  )[0];
+
+  check(
+    'STAGE4_EXACT_ADDRESS_SAME_SURNAME_RECOVERS_HOUSEHOLD',
+    duhanResolved.step4.disposition === 'IDENTITY_ONLY' &&
+      String(
+        duhanResolved.step4.customer &&
+        duhanResolved.step4.customer['Customer ID']
+      ) === '61620' &&
+      (duhanResolved.step4.evidence || []).indexOf(
+        'EXACT_ADDRESS_SAME_SURNAME_HOUSEHOLD'
+      ) !== -1,
+    JSON.stringify(duhanResolved.step4)
+  );
+
+  const bloomCustomer = {
+    'Customer ID':'30003',
+    'Customer Number':'30003',
+    'Name':'Jeff Bloom',
+    'Primary Phone':'',
+    'Primary Email':''
+  };
+  const bloomLocation = {
+    'Location ID':'88001',
+    'Customer ID':'30003',
+    'Address 1':'106 Kingsmount Park Rd',
+    'Address 2':'',
+    'City':'Toronto',
+    'Province':'ON',
+    'Postal Code':'M4L 3L5',
+    'Phone':''
+  };
+  const bloomTask = {
+    'Task ID':'18870',
+    'Task Type ID':'',
+    'Task Type':'Service',
+    'Name':'Level 1 - SO#585645 - Jeff Bloom',
+    'Customer ID':'30003',
+    'Location ID':'88001'
+  };
+  const bloomRefs = {
+    customers:[bloomCustomer],
+    locations:[bloomLocation],
+    customerById:{'30003':bloomCustomer},
+    customerByNumber:{'30003':bloomCustomer},
+    customerByPhone:{},
+    locationById:{'88001':bloomLocation},
+    locationsByCustomer:{'30003':[bloomLocation]},
+    locationsByNormalizedAddress:{},
+    locationsByPostal:{'M4L3L5':[bloomLocation]},
+    locationsByStreetNo:{'106':[bloomLocation]},
+    taskById:{'18870':bloomTask}
+  };
+
+  const taskCandidate = tmv3_step4TaskIdentityCandidate_(
+    {
+      vertical:'Service',
+      existingTaskId:'18870',
+      taskNumber:'18870',
+      location:'106 Kingsmount Park Rd, Toronto, ON M4L 3L5'
+    },
+    bloomRefs
+  );
+
+  check(
+    'STAGE4_CACHED_TASK_IDENTITY_RESOLVES_CUSTOMER_AND_LOCATION',
+    taskCandidate.status === 'MATCHED' &&
+      String(
+        taskCandidate.customer &&
+        taskCandidate.customer['Customer ID']
+      ) === '30003' &&
+      String(
+        taskCandidate.location &&
+        taskCandidate.location['Location ID']
+      ) === '88001',
+    JSON.stringify(taskCandidate)
+  );
+
+  const indexedAddress = tmv3_step4AddressCandidates_(
+    '22 Simpson Ave, Toronto, ON M4K 1A2',
+    monaRefs
+  );
+  check(
+    'STAGE4_EXACT_ADDRESS_INDEX_RETURNS_CACHED_LOCATION',
+    indexedAddress.matchType === 'EXACT' &&
+      indexedAddress.locations.length === 1 &&
+      String(indexedAddress.locations[0]['Location ID']) === '57865',
+    JSON.stringify(indexedAddress)
+  );
+
   const failures = cases.filter(function(item) {
     return !item.pass;
   });
