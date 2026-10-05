@@ -1889,6 +1889,7 @@ async function main() {
 
     if (
       RUN_MODE === 'STEP1' ||
+      RUN_MODE === 'SOURCE_REFRESH' ||
       RUN_MODE === 'STEP1_INSTALL_LIVE' ||
       RUN_MODE === 'STEP2_INSTALL_LIVE' ||
       RUN_MODE === 'STEP3_INSTALL_LIVE' ||
@@ -1944,6 +1945,8 @@ async function main() {
           RUN_MODE === 'STEP6_INSTALL_LIVE'
         )
           ? 'installStep1LiveSync'
+          : RUN_MODE === 'SOURCE_REFRESH'
+            ? 'refreshSources'
           : RUN_MODE === 'STEP2'
             ? 'step2Calendar'
             : RUN_MODE === 'STEP3'
@@ -2122,6 +2125,8 @@ async function main() {
               ? 'V3_STEP2_LIVE_SYNC_VERIFIED'
               : RUN_MODE === 'STEP1_INSTALL_LIVE'
               ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
+              : RUN_MODE === 'SOURCE_REFRESH'
+                ? 'V3_SOURCE_REFRESH_VERIFIED'
               : RUN_MODE === 'STEP2'
                 ? 'V3_STEP2_CALENDAR_VERIFIED'
                 : RUN_MODE === 'STEP3'
@@ -2160,6 +2165,7 @@ async function main() {
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1:
+            RUN_MODE === 'SOURCE_REFRESH' ||
             RUN_MODE === 'TASK_SCHEMA' ||
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
             RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
@@ -2191,6 +2197,8 @@ async function main() {
             ? 'V3_STEP2_LIVE_SYNC_VERIFIED'
             : RUN_MODE === 'STEP1_INSTALL_LIVE'
             ? 'V3_STEP1_LIVE_SYNC_VERIFIED'
+            : RUN_MODE === 'SOURCE_REFRESH'
+              ? 'V3_SOURCE_REFRESH_VERIFIED'
             : RUN_MODE === 'STEP2'
               ? 'V3_STEP2_CALENDAR_VERIFIED'
               : RUN_MODE === 'STEP3'
