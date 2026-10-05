@@ -3,6 +3,22 @@
 **Last updated:** 2026-10-05 (America/Toronto)
 
 
+## 2026-10-05 STAGE 4 REQUEST-RESOLUTION MILESTONE
+
+- **Verified live source:** `3.11.53-stage4-identity-recovery-r1`.
+- Live cached mapping completed at 2026-10-05 16:57 America/Toronto with `STEP6_TASK_DECISION PASS`.
+- Current operator tabs contain **zero `NOT RUN — STEP 3` rows and zero `NOT RUN — STEP 4` rows** across Install, Delivery, Service, and PreInspection.
+- Eligible requests whose SO/WO anchor is unavailable now still receive a Stage-4 identity outcome:
+  - deterministic Customer + Customer-owned Location => `IDENTITY_ONLY`;
+  - ambiguous/unproven identity => explicit Stage-4 `REVIEW`;
+  - `IDENTITY_ONLY` remains barred from Stage 5 until its required business anchor is resolved.
+- Routine Stage-4 mapping performs no per-Customer Contact API reads.
+- Stage-4 live recovery materially restored Service processing: cached 3.11.53 mapping produced 86 single-task matches, 2 multi-task matches and 1 recreate candidate out of 136 Service rows; remaining rows stop at explicit Stage-4/anchor outcomes rather than the former Contact API-guard failure.
+- **Next deterministic Stage-4 refinement:** `3.11.54-stage4-deterministic-recovery-r1` is canonical in GitHub and awaiting guarded Apps Script deployment. It adds stale explicit Customer-number recovery with independent proof, exact-address/same-surname household recovery, cached Task identity recovery, and indexed Location lookup. Ambiguous cases remain REVIEW.
+- Do not begin Stage 5 remediation until 3.11.54 is either live-verified or explicitly abandoned/reconciled.
+
+
+
 ## 2026-10-05 CURRENT AUTOMATION BASELINE
 
 - **Verified live Apps Script source:** `3.11.51-stage3-stage4-cache-first-r1` (source release commit `75c5b27f60cd209d6c3022b6762d60c1f9ebbd75`). Guarded bootstrap completed with PRE source parity, clasp push, remote re-clone, and `CLEAN_V3_SOURCE_VERIFIED`.
