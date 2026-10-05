@@ -149,29 +149,215 @@ function tmv3_step4IdentityIndex_() {
   return refs;
 }
 
+function tmv3_step4AnchorPendingIdentityAllowed_(step3) {
+  const code = tmv3_clean_(step3 && step3.code);
+
+  const allowed = {
+    ANCHOR_ORDER_NUMBER_MISSING:true,
+    ANCHOR_ORDER_NOT_FOUND:true,
+    ANCHOR_TRANSACTION_TYPE_MISMATCH:true,
+    ANCHOR_ORDER_AMBIGUOUS:true,
+    PREINSPECTION_BUSINESS_ANCHOR_UNRESOLVED:true,
+    PREINSPECTION_SO_AMBIGUOUS:true
+  };
+
+  return (
+    step3 &&
+    step3.disposition !== 'VERIFIED' &&
+    allowed[code] === true
+  );
+}
+
 function tmv3_step4IdentityRecords_(step3Records, refs) {
   return (step3Records || []).map(function(record) {
     const step3 = record.step3 || {};
 
-    if (step3.disposition !== 'VERIFIED') {
+    if (step3.disposition === 'VERIFIED') {
       return Object.assign({}, record, {
-        step4: {
-          disposition: 'NOT_RUN',
-          code: 'STEP3_' + (step3.disposition || 'UNKNOWN'),
-          reason: 'Identity resolution did not run because Step 3 is not VERIFIED.',
-          customer: null,
-          location: null,
-          contact: null,
-          contactStatus: 'NOT_RUN',
-          evidence: [],
-          warnings: []
-        }
+        step4: tmv3_step4ResolveIdentity_(record, refs)
       });
     }
 
-    const result = tmv3_step4ResolveIdentity_(record, refs);
-    return Object.assign({}, record, { step4: result });
+    if (tmv3_step4AnchorPendingIdentityAllowed_(step3)) {
+      return Object.assign({}, record, {
+        step4: tmv3_step4ResolveIdentityWithoutAnchor_(
+          record,
+          refs,
+          step3
+        )
+      });
+    }
+
+    return Object.assign({}, record, {
+      step4: {
+        disposition: 'NOT_RUN',
+        code: 'STEP3_' + (step3.disposition || 'UNKNOWN'),
+        reason: 'Identity resolution did not run because Step 3 is not VERIFIED.',
+        customer: null,
+        location: null,
+        contact: null,
+        contactStatus: 'NOT_RUN',
+        evidence: [],
+        warnings: []
+      }
+    });
   });
+}
+
+function tmv3_step4ResolveIdentityWithoutAnchor_(record, refs, step3) {
+  let resolved = null;
+
+  if (record.vertical === 'Service') {
+    resolved = tmv3_step4ResolveServiceIdentity_(
+      record,
+      refs,
+      {}
+    );
+  } else if (record.vertical === 'PreInspection') {
+    resolved = tmv3_step4ResolvePreInspectionIdentity_(
+      record,
+      refs,
+      {}
+    );
+  } else {
+    resolved = tmv3_step4ResolveCalendarIdentityOnly_(
+      record,
+      refs
+    );
+  }
+
+  if (!resolved || resolved.disposition !== 'VERIFIED') {
+    return resolved || tmv3_step4Decision_(
+      'REVIEW',
+      'IDENTITY_ONLY_RESOLUTION_FAILED',
+      'Business anchor is pending and Calendar identity could not be resolved deterministically.',
+      null,
+      null,
+      null,
+      'NOT_RESOLVED',
+      [],
+      [tmv3_clean_(step3 && step3.reason)]
+    );
+  }
+
+  const cfg = TMV3.VERTICALS[record.vertical] || {};
+  const label = cfg.orderLabel ||
+    (record.vertical === 'Service' ? 'Work Order' : 'Sales Order');
+
+  return tmv3_step4Decision_(
+    'IDENTITY_ONLY',
+    'IDENTITY_VERIFIED_ANCHOR_PENDING',
+    'Customer and Customer-owned Location are verified. ' +
+      label +
+      ' remains unresolved and is still required before Task resolution.',
+    resolved.customer,
+    resolved.location,
+    resolved.contact,
+    resolved.contactStatus,
+    (resolved.evidence || []).concat([
+      'IDENTITY_VERIFIED_WITHOUT_BUSINESS_ANCHOR'
+    ]),
+    (resolved.warnings || []).concat([
+      tmv3_clean_(step3 && step3.reason),
+      label + ' must be resolved before Stage 5.'
+    ]).filter(Boolean)
+  );
+}
+
+function tmv3_step4ResolveCalendarIdentityOnly_(record, refs) {
+  const recovery = tmv3_step4ResolveCustomerFromCalendarEvidence_(
+    record,
+    refs
+  );
+
+  if (recovery.status !== 'MATCHED') {
+    return tmv3_step4Decision_(
+      recovery.status === 'BLOCKED' ? 'BLOCKED' : 'REVIEW',
+      recovery.errorCode || 'IDENTITY_CUSTOMER_UNRESOLVED',
+      recovery.reason || 'Customer could not be resolved deterministically from Calendar evidence.',
+      recovery.customer || null,
+      recovery.location || null,
+      null,
+      'NOT_RESOLVED',
+      recovery.evidence || [],
+      []
+    );
+  }
+
+  const customer = recovery.customer;
+  let location = recovery.location || null;
+  let locationEvidence = recovery.evidence || [];
+  let locationStatus = location ? 'MATCHED' : '';
+
+  if (!location) {
+    const locationResult = tmv3_step4ResolveLocation_(
+      record,
+      refs,
+      customer,
+      ''
+    );
+
+    if (
+      locationResult.status !== 'MATCHED' &&
+      locationResult.status !== 'CREATE_REQUIRED'
+    ) {
+      return tmv3_step4Decision_(
+        locationResult.status === 'BLOCKED' ? 'BLOCKED' : 'REVIEW',
+        locationResult.errorCode,
+        locationResult.reason,
+        customer,
+        null,
+        null,
+        'NOT_RESOLVED',
+        (recovery.evidence || []).concat(
+          locationResult.evidence || []
+        ),
+        []
+      );
+    }
+
+    location = locationResult.location || null;
+    locationStatus = locationResult.status;
+    locationEvidence = (recovery.evidence || []).concat(
+      locationResult.evidence || []
+    );
+  }
+
+  const contactResult = tmv3_step4ResolveContact_(
+    record,
+    customer,
+    ''
+  );
+
+  const warnings = [];
+  if (locationStatus === 'CREATE_REQUIRED') {
+    warnings.push(
+      'Location will need to be created on the verified Customer before any Task write.'
+    );
+  }
+  if (contactResult.status === 'REVIEW') {
+    warnings.push(
+      contactResult.reason || 'Contact requires review.'
+    );
+  } else if (contactResult.status === 'NO_MATCH') {
+    warnings.push(
+      'No deterministic Contact match; Customer and Location identity remain usable.'
+    );
+  }
+
+  return tmv3_step4Decision_(
+    'VERIFIED',
+    'CALENDAR_IDENTITY_VERIFIED',
+    'Customer and Customer-owned Location are verified from deterministic Calendar evidence.',
+    customer,
+    location,
+    contactResult.status === 'MATCHED'
+      ? contactResult.contact
+      : null,
+    contactResult.status,
+    locationEvidence.concat(contactResult.evidence || []),
+    warnings
+  );
 }
 
 function tmv3_step4ResolveIdentity_(record, refs) {
@@ -1046,6 +1232,7 @@ function tmv3_step4Counts_(records) {
     total:0,
     step3Verified:0,
     verified:0,
+    identityOnly:0,
     review:0,
     blocked:0,
     notRun:0,
@@ -1062,6 +1249,7 @@ function tmv3_step4Counts_(records) {
         total:0,
         step3Verified:0,
         verified:0,
+        identityOnly:0,
         review:0,
         blocked:0,
         notRun:0
@@ -1081,6 +1269,9 @@ function tmv3_step4Counts_(records) {
     if (disposition === 'VERIFIED') {
       counts.verified++;
       bucket.verified++;
+    } else if (disposition === 'IDENTITY_ONLY') {
+      counts.identityOnly++;
+      bucket.identityOnly++;
     } else if (disposition === 'REVIEW') {
       counts.review++;
       bucket.review++;
@@ -1147,7 +1338,7 @@ function tmv3_step4OperatorRow_(record) {
   const step3 = record.step3 || {};
   const step4 = record.step4 || {};
 
-  if (step3.disposition !== 'VERIFIED') {
+  if (!step4.disposition || step4.disposition === 'NOT_RUN') {
     return row;
   }
 
@@ -1342,7 +1533,7 @@ function tmv3_step4Verify_(records, step3Records) {
     if (!s4) missingDecision++;
 
     if (
-      s4 === 'VERIFIED' &&
+      (s4 === 'VERIFIED' || s4 === 'IDENTITY_ONLY') &&
       (
         !record.step4.customer ||
         !tmv3_clean_(record.step4.customer['Customer ID']) ||
@@ -1357,6 +1548,19 @@ function tmv3_step4Verify_(records, step3Records) {
     }
 
     if (s3 !== 'VERIFIED' && s4 !== 'NOT_RUN') {
+      const pendingAnchorAllowed =
+        tmv3_step4AnchorPendingIdentityAllowed_(record.step3) &&
+        ['IDENTITY_ONLY','REVIEW','BLOCKED'].indexOf(s4) !== -1;
+
+      if (!pendingAnchorAllowed) {
+        nonVerifiedAdvanced++;
+      }
+    }
+
+    if (
+      s4 === 'IDENTITY_ONLY' &&
+      !tmv3_step4AnchorPendingIdentityAllowed_(record.step3)
+    ) {
       nonVerifiedAdvanced++;
     }
   });
