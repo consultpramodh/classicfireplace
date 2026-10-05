@@ -2214,6 +2214,137 @@ function tmv3_stage3Stage4CacheFirstRegression() {
   };
 }
 
+function tmv3_stage4IdentityRecoveryRegression() {
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail === undefined ? '' : detail
+    });
+  }
+
+  check(
+    'STAGE4_ORDER_NOT_FOUND_MAY_ADVANCE_TO_IDENTITY_ONLY',
+    tmv3_step4AnchorPendingIdentityAllowed_({
+      disposition:'BLOCKED',
+      code:'ANCHOR_ORDER_NOT_FOUND'
+    }) === true,
+    'ANCHOR_ORDER_NOT_FOUND'
+  );
+
+  check(
+    'STAGE4_MISSING_ORDER_NUMBER_MAY_ADVANCE_TO_IDENTITY_ONLY',
+    tmv3_step4AnchorPendingIdentityAllowed_({
+      disposition:'BLOCKED',
+      code:'ANCHOR_ORDER_NUMBER_MISSING'
+    }) === true,
+    'ANCHOR_ORDER_NUMBER_MISSING'
+  );
+
+  check(
+    'STAGE4_CUSTOMER_SO_CONFLICT_CANNOT_BYPASS_ANCHOR',
+    tmv3_step4AnchorPendingIdentityAllowed_({
+      disposition:'REVIEW',
+      code:'PREINSPECTION_CUSTOMER_SO_CONFLICT'
+    }) === false,
+    'PREINSPECTION_CUSTOMER_SO_CONFLICT'
+  );
+
+  const customer = {
+    'Customer ID':'9001',
+    'Customer Number':'62001',
+    'Name':'Example Customer',
+    'Primary Phone':'4165550101',
+    'Primary Email':''
+  };
+  const location = {
+    'Location ID':'9101',
+    'Customer ID':'9001',
+    'Address 1':'1 Example Street',
+    'Address 2':'',
+    'City':'Toronto',
+    'Province':'ON',
+    'Postal Code':'M1M 1M1',
+    'Phone':'4165550101'
+  };
+
+  const refs = {
+    customerById:{'9001':customer},
+    customerByNumber:{'62001':customer},
+    customerByPhone:{'4165550101':[customer]},
+    locationById:{'9101':location},
+    locations:[location],
+    locationsByCustomer:{'9001':[location]},
+    taskById:{}
+  };
+
+  const record = {
+    vertical:'Install',
+    logicalKey:'stage4-recovery-test',
+    title:'Example Customer 416-555-0101',
+    description:'',
+    descriptionClean:'',
+    rawDescription:'',
+    location:'1 Example Street, Toronto, ON M1M 1M1',
+    phone:'4165550101',
+    customerNumber:'',
+    existingTaskId:'',
+    step3:{
+      disposition:'BLOCKED',
+      code:'ANCHOR_ORDER_NOT_FOUND',
+      reason:'Sales Order is not present in the current anchor source.',
+      anchor:{}
+    }
+  };
+
+  const resolved = tmv3_step4IdentityRecords_(
+    [record],
+    refs
+  )[0];
+
+  check(
+    'STAGE4_DETERMINISTIC_CALENDAR_IDENTITY_BECOMES_IDENTITY_ONLY',
+    resolved.step4.disposition === 'IDENTITY_ONLY' &&
+      resolved.step4.customer &&
+      String(resolved.step4.customer['Customer ID']) === '9001' &&
+      resolved.step4.location &&
+      String(resolved.step4.location['Location ID']) === '9101',
+    JSON.stringify(resolved.step4)
+  );
+
+  const step5 = tmv3_step5TaskRecords_(
+    [resolved],
+    {}
+  )[0];
+
+  check(
+    'STAGE5_REMAINS_BLOCKED_FOR_IDENTITY_ONLY',
+    step5.step5.disposition === 'NOT_RUN' &&
+      step5.step5.code === 'STEP4_IDENTITY_ONLY',
+    JSON.stringify(step5.step5)
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 Stage 4 identity recovery regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    version:TMV3.VERSION,
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_canaryApiBudgetRegression() {
   const cfg = {
     v3DailySoftLimit:1200,
@@ -2651,6 +2782,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_foundation0Regression();
   const stage3Stage4CacheFirst =
     tmv3_stage3Stage4CacheFirstRegression();
+  const stage4IdentityRecovery =
+    tmv3_stage4IdentityRecoveryRegression();
   const canaryApiBudget =
     tmv3_canaryApiBudgetRegression();
   const automaticCanary =
@@ -2667,6 +2800,7 @@ function tmv3_liveHardeningRegression() {
       titleNormalization.status === 'PASS' &&
       foundation0.status === 'PASS' &&
       stage3Stage4CacheFirst.status === 'PASS' &&
+      stage4IdentityRecovery.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
       automaticCanary.status === 'PASS' &&
       preInspectionGuestSync.status === 'PASS' &&
@@ -2680,6 +2814,7 @@ function tmv3_liveHardeningRegression() {
     titleNormalization:titleNormalization,
     foundation0:foundation0,
     stage3Stage4CacheFirst:stage3Stage4CacheFirst,
+    stage4IdentityRecovery:stage4IdentityRecovery,
     canaryApiBudget:canaryApiBudget,
     automaticCanary:automaticCanary,
     preInspectionGuestSync:preInspectionGuestSync,
