@@ -1990,6 +1990,8 @@ async function main() {
                         ? 'step7Reconcile'
                       : RUN_MODE === 'INSTALL_DUE_SAMPLES'
                     ? 'installDueSamples'
+                    : RUN_MODE === 'CUSTOMER_PROBE'
+                      ? 'customerProbe'
                     : RUN_MODE === 'TASK_SCHEDULE'
                       ? 'taskScheduleProbe'
                     : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
