@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_53_STAGE4_IDENTITY_RECOVERY_R1",
+  "release": "TMV3_3_11_54_STAGE4_DETERMINISTIC_RECOVERY_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "4f6a1c5d7a7ae671a8a017f0d21f33c3ee7d7573"
+  "expectedLiveCommit": "e21c38695f20b1d54c18283c2e12a5e096fc7f44"
 }
