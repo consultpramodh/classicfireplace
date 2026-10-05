@@ -2043,6 +2043,10 @@ async function main() {
             : (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO')
               ? '6ftlsr2e9fn31hpm6dj05cuthi@google.com'
               : '',
+        customerId:
+          RUN_MODE === 'CUSTOMER_PROBE'
+            ? Number(RELEASE_MANIFEST.customerId || 0)
+            : 0,
         taskId:
           (
             RUN_MODE === 'TASK_SCHEDULE' ||
