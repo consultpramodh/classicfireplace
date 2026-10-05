@@ -286,9 +286,28 @@ function tmv3_operationalSourceRefreshState_() {
   };
 }
 
+function tmv3_operationalSourceMinAgeMinutes_() {
+  return Math.max(
+    1,
+    Number(
+      TMV3.OPERATIONS &&
+      TMV3.OPERATIONS.sourceRefreshMinMinutes ||
+      120
+    )
+  );
+}
+
 function tmv3_refreshOperationalSourcesIfNeeded_(maxAgeMinutes, force) {
   const state = tmv3_operationalSourceRefreshState_();
-  const maxAge = Math.max(1, Number(maxAgeMinutes || 15));
+  const minimumAge = tmv3_operationalSourceMinAgeMinutes_();
+  const requestedAge = Math.max(
+    1,
+    Number(maxAgeMinutes || minimumAge)
+  );
+  const maxAge =
+    force === true
+      ? requestedAge
+      : Math.max(minimumAge, requestedAge);
   const stale =
     force === true ||
     state.ageMinutes === null ||
@@ -299,10 +318,13 @@ function tmv3_refreshOperationalSourcesIfNeeded_(maxAgeMinutes, force) {
       status:'CACHE_FRESH',
       refreshed:false,
       lastRefresh:state.lastRefresh,
-      ageMinutes:state.ageMinutes
+      ageMinutes:state.ageMinutes,
+      requestedMaxAgeMinutes:requestedAge,
+      effectiveMaxAgeMinutes:maxAge
     };
   }
 
+  // Full refresh validates all sources before advancing this timestamp.
   const result = tmv3_refreshSources();
   const refreshedAt = new Date().toISOString();
   PropertiesService.getScriptProperties().setProperty(
@@ -314,6 +336,8 @@ function tmv3_refreshOperationalSourcesIfNeeded_(maxAgeMinutes, force) {
     status:'REFRESHED',
     refreshed:true,
     refreshedAt:refreshedAt,
+    requestedMaxAgeMinutes:requestedAge,
+    effectiveMaxAgeMinutes:maxAge,
     result:result
   };
 }
@@ -333,7 +357,31 @@ function tmv3_stage7ConfiguredCanaryEnabled_(
 function tmv3_stage7AutomaticCanaryCycle_(reason) {
   const stage = tmv3_executionStage_();
   const policy = tmv3_operationPolicy_();
+  let sources = null;
+  let sourceError = '';
   let mapped = null;
+
+  try {
+    sources = tmv3_refreshOperationalSourcesIfNeeded_(
+      tmv3_operationalSourceMinAgeMinutes_(),
+      false
+    );
+  } catch (err) {
+    sourceError = String(err && err.message || err);
+    sources = {
+      status:'FAILED_KEEP_LAST_GOOD',
+      refreshed:false,
+      error:sourceError
+    };
+
+    tmv3_audit_(
+      'SYSTEM','','','STAGE7_SOURCE_REFRESH','ATTENTION',
+      JSON.stringify({
+        reason:tmv3_clean_(reason),
+        error:sourceError
+      })
+    );
+  }
 
   try {
     mapped = tmv3_calendarStageRefresh_(
@@ -354,6 +402,19 @@ function tmv3_stage7AutomaticCanaryCycle_(reason) {
     );
   }
 
+  if (sourceError) {
+    return {
+      status:'SOURCE_REFRESH_ATTENTION',
+      stage:stage,
+      sources:sources,
+      mapped:mapped,
+      writes:{
+        status:'AUTO_WRITES_GATED_SOURCE_REFRESH_FAILED',
+        writes:0
+      }
+    };
+  }
+
   if (
     !tmv3_stage7ConfiguredCanaryEnabled_(
       stage,
@@ -364,6 +425,7 @@ function tmv3_stage7AutomaticCanaryCycle_(reason) {
     return {
       status:'CALENDAR_STAGE_GATED',
       stage:stage,
+      sources:sources,
       mapped:mapped,
       writes:{
         status:'AUTO_WRITES_GATED',
@@ -404,6 +466,7 @@ function tmv3_stage7AutomaticCanaryCycle_(reason) {
   return {
     status:'STAGE7_AUTOMATIC_CANARY_CYCLE',
     stage:stage,
+    sources:sources,
     mapped:mapped,
     writes:writes
   };
@@ -838,7 +901,12 @@ function tmv3_dailySourceRefresh() {
   }
 
   if (tmv3_executionStage_() === 7) {
-    const sources = tmv3_step5RefreshTaskSources_();
+    // Stage 7 still depends on Stage 3/4 source integrity. Refresh the complete
+    // shared snapshot here instead of refreshing Task reports alone.
+    const sources = tmv3_refreshOperationalSourcesIfNeeded_(
+      tmv3_operationalSourceMinAgeMinutes_(),
+      true
+    );
     const mapped = tmv3_step6TaskDecisionRunCached(
       'DAILY_STAGE7_RECONCILIATION_VIEW_REFRESH'
     );

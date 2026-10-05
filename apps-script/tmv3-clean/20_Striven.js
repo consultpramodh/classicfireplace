@@ -288,6 +288,7 @@ function tmv3_fetchJson_(url, options) {
 function tmv3_reportRows_(propertyAliases) {
   const baseUrl = tmv3_property_(propertyAliases, true);
   const all = [];
+  let naturalTermination = false;
 
   for (let pageIndex = 0; pageIndex < TMV3.MAX_PAGES; pageIndex++) {
     const sep = baseUrl.indexOf('?') === -1 ? '?' : '&';
@@ -302,29 +303,89 @@ function tmv3_reportRows_(propertyAliases) {
     const json = tmv3_fetchJson_(url, { method: 'get' });
     const rows = tmv3_extractReportRows_(json);
 
-    if (!rows.length) break;
+    if (!rows.length) {
+      naturalTermination = true;
+      break;
+    }
 
     Array.prototype.push.apply(all, rows);
 
-    if (rows.length < TMV3.PAGE_SIZE) break;
+    if (rows.length < TMV3.PAGE_SIZE) {
+      naturalTermination = true;
+      break;
+    }
+  }
+
+  if (!naturalTermination) {
+    throw new Error(
+      'TMV3_REPORT_PAGINATION_TRUNCATED: report remained full through ' +
+      TMV3.MAX_PAGES +
+      ' pages at PageSize ' +
+      TMV3.PAGE_SIZE +
+      '. Existing cache was preserved.'
+    );
   }
 
   return all;
 }
 
 function tmv3_extractReportRows_(json) {
-  if (!json) return [];
   if (Array.isArray(json)) return json;
+
+  if (!json || typeof json !== 'object') {
+    throw new Error(
+      'TMV3_REPORT_SCHEMA_INVALID: expected an array or report object.'
+    );
+  }
 
   const keys = ['data','Data','rows','Rows','Items','items'];
 
   for (let i = 0; i < keys.length; i++) {
-    if (Array.isArray(json[keys[i]])) {
+    if (Object.prototype.hasOwnProperty.call(json, keys[i])) {
+      if (!Array.isArray(json[keys[i]])) {
+        throw new Error(
+          'TMV3_REPORT_SCHEMA_INVALID: field ' +
+          keys[i] +
+          ' is present but is not an array.'
+        );
+      }
       return json[keys[i]];
     }
   }
 
-  return [];
+  throw new Error(
+    'TMV3_REPORT_SCHEMA_INVALID: no recognized report-row array was returned.'
+  );
+}
+
+function tmv3_assertSourceReplacementSafe_(label, rows, sheetName) {
+  if (!Array.isArray(rows)) {
+    throw new Error(
+      'TMV3_SOURCE_REPLACEMENT_BLOCKED: ' +
+      String(label || 'source') +
+      ' did not produce an array.'
+    );
+  }
+
+  const priorRows = sheetName
+    ? tmv3_rows_(sheetName).length
+    : 0;
+
+  if (!rows.length && priorRows > 0) {
+    throw new Error(
+      'TMV3_SOURCE_EMPTY_KEEP_LAST_GOOD: ' +
+      String(label || 'source') +
+      ' returned zero rows while the existing verified cache contains ' +
+      priorRows +
+      ' row(s). Existing cache was preserved.'
+    );
+  }
+
+  return {
+    label: String(label || ''),
+    incomingRows: rows.length,
+    priorRows: priorRows
+  };
 }
 
 function tmv3_refreshSources() {
@@ -405,6 +466,28 @@ function tmv3_refreshSources() {
     function(r) {
       return r[0];
     }
+  );
+
+  // Validate the complete snapshot before replacing any last-known-good cache.
+  tmv3_assertSourceReplacementSafe_(
+    'Customers',
+    customers,
+    TMV3.SHEETS.CUSTOMERS
+  );
+  tmv3_assertSourceReplacementSafe_(
+    'Locations',
+    locations,
+    TMV3.SHEETS.LOCATIONS
+  );
+  tmv3_assertSourceReplacementSafe_(
+    'Orders',
+    orders,
+    TMV3.SHEETS.ORDERS
+  );
+  tmv3_assertSourceReplacementSafe_(
+    'Tasks',
+    tasks,
+    TMV3.SHEETS.TASKS
   );
 
   tmv3_replaceRows_(
@@ -1425,7 +1508,18 @@ function tmv3_getCustomerContacts_(customerId, options) {
 
   if (!forceFresh) {
     try {
-      cache.put(cacheKey, JSON.stringify(contacts), 1800);
+      cache.put(
+        cacheKey,
+        JSON.stringify(contacts),
+        Math.max(
+          1800,
+          Number(
+            TMV3.OPERATIONS &&
+            TMV3.OPERATIONS.customerContactsCacheSeconds ||
+            21600
+          )
+        )
+      );
     } catch (ignored) {}
   }
 

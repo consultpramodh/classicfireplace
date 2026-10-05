@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.49-preinspection-link-format-r1';
+const TMV3_VERSION = '3.11.50-foundation0-source-freshness-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -77,7 +77,9 @@ const TMV3 = Object.freeze({
     preInspectionMissingDetailEmailsEnabled: false,
     preInspectionGuestSyncEnabled: true,
     preInspectionGuestSyncIntervalMinutes: 5,
-    preInspectionGuestSyncMaxWrites: 50
+    preInspectionGuestSyncMaxWrites: 50,
+    sourceRefreshMinMinutes: 120,
+    customerContactsCacheSeconds: 21600
   }),
   API_BUDGET: Object.freeze({
     planDailyLimit: 5000,

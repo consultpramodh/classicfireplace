@@ -32,6 +32,17 @@ function tmv3_step4RefreshIdentitySources_() {
         return tmv3_normalizeLocation_(row, customerNumberToId);
       });
 
+  tmv3_assertSourceReplacementSafe_(
+    'Stage 4 Customers',
+    customers,
+    TMV3.SHEETS.CUSTOMERS
+  );
+  tmv3_assertSourceReplacementSafe_(
+    'Stage 4 Locations',
+    locations,
+    TMV3.SHEETS.LOCATIONS
+  );
+
   tmv3_replaceRows_(
     TMV3.SHEETS.CUSTOMERS,
     [
