@@ -233,6 +233,23 @@ function buildTemporaryRunner(pre, token) {
         'function TMPV3_original_doPost('
       );
 
+      // Read-only verification may borrow a small bounded slice of the
+      // reserved Striven capacity when the daily V3 soft limit has already
+      // been reached. This modifies only temporary runner source; live V3
+      // configuration remains unchanged.
+      const testSoftLimit = Number(
+        RELEASE_MANIFEST.testWriteApiSoftLimit || 0
+      );
+      if (
+        testSoftLimit > 1200 &&
+        testSoftLimit <= 1500
+      ) {
+        source = source.replace(
+          'v3DailySoftLimit: 1200,',
+          'v3DailySoftLimit: ' + testSoftLimit + ','
+        );
+      }
+
       if (canaryWrite) {
         const shadowModeAnchor =
           source.indexOf("const TMV3_MODE = 'SHADOW_READ_ONLY';") !== -1;
@@ -314,19 +331,6 @@ function buildTemporaryRunner(pre, token) {
           );
         }
 
-        // Explicit test-write runs may borrow a small, bounded slice of the
-        // reserved Striven API capacity. This only exists in the temporary
-        // canary source and is restored immediately after execution.
-        const testSoftLimit = Number(RELEASE_MANIFEST.testWriteApiSoftLimit || 0);
-        if (
-          testSoftLimit > 1200 &&
-          testSoftLimit <= 1500
-        ) {
-          source = source.replace(
-            'v3DailySoftLimit: 1200,',
-            'v3DailySoftLimit: ' + testSoftLimit + ','
-          );
-        }
 
         // The live PreInspection RECREATE path may still rely only on the
         // shared Task cache, which intentionally excludes on-demand Type 105
@@ -473,7 +477,7 @@ function doPost(e) {
     if (body.action === 'step3Anchor') {
       var step3 = tmv3_step3BusinessAnchorRun(
         'GITHUB_STEP3_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step3.status === 'PASS',
@@ -485,7 +489,7 @@ function doPost(e) {
     if (body.action === 'step4Identity') {
       var step4 = tmv3_step4IdentityRun(
         'GITHUB_STEP4_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step4.status === 'PASS',
@@ -497,7 +501,7 @@ function doPost(e) {
     if (body.action === 'step5Task') {
       var step5 = tmv3_step5TaskResolutionRun(
         'GITHUB_STEP5_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step5.status === 'PASS',
@@ -509,7 +513,7 @@ function doPost(e) {
     if (body.action === 'step6Decision') {
       var step6 = tmv3_step6TaskDecisionRun(
         'GITHUB_STEP6_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step6.status === 'PASS',
