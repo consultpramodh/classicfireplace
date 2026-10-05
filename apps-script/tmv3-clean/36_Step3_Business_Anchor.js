@@ -39,6 +39,17 @@ function tmv3_step3RefreshAnchorSources_() {
     approved.concat(deliveryApproved, serviceOrders)
   );
 
+  tmv3_assertSourceReplacementSafe_(
+    'Stage 3 Customers',
+    customers,
+    TMV3.SHEETS.CUSTOMERS
+  );
+  tmv3_assertSourceReplacementSafe_(
+    'Stage 3 Orders',
+    orders,
+    TMV3.SHEETS.ORDERS
+  );
+
   tmv3_replaceRows_(
     TMV3.SHEETS.CUSTOMERS,
     [

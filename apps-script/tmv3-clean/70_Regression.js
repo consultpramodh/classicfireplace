@@ -2005,6 +2005,95 @@ function tmv3_titleNormalizationRegression() {
   };
 }
 
+function tmv3_foundation0Regression() {
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail === undefined ? '' : detail
+    });
+  }
+
+  check(
+    'FOUNDATION0_OPERATIONAL_SOURCE_TTL_AT_LEAST_120_MIN',
+    tmv3_operationalSourceMinAgeMinutes_() >= 120,
+    tmv3_operationalSourceMinAgeMinutes_()
+  );
+
+  const contactTtl = Number(
+    TMV3.OPERATIONS &&
+    TMV3.OPERATIONS.customerContactsCacheSeconds ||
+    0
+  );
+  check(
+    'FOUNDATION0_CONTACT_CACHE_AT_LEAST_6_HOURS',
+    contactTtl >= 21600,
+    contactTtl
+  );
+
+  check(
+    'FOUNDATION0_EMPTY_ARRAY_IS_VALID_REPORT',
+    tmv3_extractReportRows_([]).length === 0,
+    '[]'
+  );
+
+  check(
+    'FOUNDATION0_EXPLICIT_EMPTY_DATA_ARRAY_IS_VALID_REPORT',
+    tmv3_extractReportRows_({ Data:[] }).length === 0,
+    '{Data:[]}'
+  );
+
+  let invalidShapeBlocked = false;
+  try {
+    tmv3_extractReportRows_({ status:'ok' });
+  } catch (err) {
+    invalidShapeBlocked =
+      /TMV3_REPORT_SCHEMA_INVALID/.test(
+        String(err && err.message || err)
+      );
+  }
+  check(
+    'FOUNDATION0_UNKNOWN_REPORT_SHAPE_FAILS_CLOSED',
+    invalidShapeBlocked,
+    'unrecognized object'
+  );
+
+  let nullShapeBlocked = false;
+  try {
+    tmv3_extractReportRows_(null);
+  } catch (err) {
+    nullShapeBlocked =
+      /TMV3_REPORT_SCHEMA_INVALID/.test(
+        String(err && err.message || err)
+      );
+  }
+  check(
+    'FOUNDATION0_NULL_REPORT_FAILS_CLOSED',
+    nullShapeBlocked,
+    'null'
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 Foundation 0 regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    version:TMV3.VERSION,
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_canaryApiBudgetRegression() {
   const cfg = {
     v3DailySoftLimit:1200,
@@ -2438,6 +2527,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_issue2CreateSafetyRegression();
   const titleNormalization =
     tmv3_titleNormalizationRegression();
+  const foundation0 =
+    tmv3_foundation0Regression();
   const canaryApiBudget =
     tmv3_canaryApiBudgetRegression();
   const automaticCanary =
@@ -2452,6 +2543,7 @@ function tmv3_liveHardeningRegression() {
       issue1.status === 'PASS' &&
       issue2.status === 'PASS' &&
       titleNormalization.status === 'PASS' &&
+      foundation0.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
       automaticCanary.status === 'PASS' &&
       preInspectionGuestSync.status === 'PASS' &&
@@ -2463,6 +2555,7 @@ function tmv3_liveHardeningRegression() {
     issue1:issue1,
     issue2:issue2,
     titleNormalization:titleNormalization,
+    foundation0:foundation0,
     canaryApiBudget:canaryApiBudget,
     automaticCanary:automaticCanary,
     preInspectionGuestSync:preInspectionGuestSync,

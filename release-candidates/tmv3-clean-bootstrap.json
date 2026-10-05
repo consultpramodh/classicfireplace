@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_49_PREINSPECTION_LINK_FORMAT_R1",
+  "release": "TMV3_3_11_50_FOUNDATION0_SOURCE_FRESHNESS_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "eb37b626dd514f26f310334bad5a6aac9f0b8b46"
+  "expectedLiveCommit": "6ad027874452be6904cfe569ca5a27fee4fd061f"
 }
