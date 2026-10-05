@@ -1,6 +1,20 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-10-01 (America/Toronto)
+**Last updated:** 2026-10-05 (America/Toronto)
+
+
+## 2026-10-05 CURRENT AUTOMATION BASELINE
+
+- **Verified live Apps Script source:** `3.11.51-stage3-stage4-cache-first-r1` (source release commit `75c5b27f60cd209d6c3022b6762d60c1f9ebbd75`). Guarded bootstrap completed with PRE source parity, clasp push, remote re-clone, and `CLEAN_V3_SOURCE_VERIFIED`.
+- **Canonical GitHub source:** `3.11.52-api-efficient-source-tiering-r1` (source release commit `4f6a1c5d7a7ae671a8a017f0d21f33c3ee7d7573`). Deployment is queued while GitHub Actions runner assignment is delayed.
+- **Stage 3 already live in 3.11.51:** business anchors are filtered by vertical transaction type. Install accepts Sales Order evidence; Delivery requires Delivery-approved order evidence; Service requires Work Order evidence; PreInspection uses Sales Order evidence only.
+- **Stage 4 already live in 3.11.51:** routine mapping performs no per-Customer Contact API lookup. Contact lookup/corroboration is deferred to the fresh write gate when a mutation actually requires Contact ownership.
+- **API-saving source tiering in 3.11.52:** Customer/Location master sources use a 360-minute minimum refresh cadence; Orders/Tasks remain on a 120-minute operational cadence. The V3 daily soft limit remains 1,200.
+- **Latest visible operator workbook is not yet proof of 3.11.51/3.11.52 behavior.** Its Overview still shows `3.11.49-preinspection-link-format-r1` because the controlled full refresh was blocked by `TMV3_STRIVEN_API_DAILY_GUARD` at `1200/1200`.
+- **Controlled verification:** one FULL refresh/map is queued behind the 3.11.52 deployment with a temporary runner-only soft limit of 1,500. This does not change the live 1,200 soft limit.
+- **Measured API cost:** historical TM Audit entries show a full source refresh at about 14 V3 Striven calls. The larger consumption came from repeated per-record reads; routine Stage 4 Contact reads have therefore been removed.
+- **Operational diagnosis rule:** use the latest successfully refreshed operator-sheet rows. Older Calendar rows are regression/history evidence only.
+
 
 ## Canonical project
 
