@@ -1101,6 +1101,60 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'customerProbe') {
+      var customerId = Number(body.customerId || 0);
+      if (!customerId) {
+        throw new Error('Customer probe requires a positive Customer ID.');
+      }
+
+      var probe = {
+        customerId:customerId,
+        customer:null,
+        customerError:'',
+        contacts:null,
+        contactsError:'',
+        locations:null,
+        locationsError:''
+      };
+
+      try {
+        probe.customer = tmv3_fetchJson_(
+          TMV3.API_BASE + '/v1/customers/' + encodeURIComponent(customerId),
+          { method:'get' }
+        );
+      } catch (errCustomer) {
+        probe.customerError = String(errCustomer && errCustomer.message || errCustomer);
+      }
+
+      try {
+        probe.contacts = tmv3_getCustomerContacts_(
+          customerId,
+          { forceFresh:true }
+        );
+      } catch (errContacts) {
+        probe.contactsError = String(errContacts && errContacts.message || errContacts);
+      }
+
+      try {
+        probe.locations = tmv3_fetchJson_(
+          TMV3.API_BASE + '/v1/customers/' +
+            encodeURIComponent(customerId) + '/locations',
+          { method:'get' }
+        );
+      } catch (errLocations) {
+        probe.locationsError = String(errLocations && errLocations.message || errLocations);
+      }
+
+      return TMPV3_shadowResponse_({
+        ok:
+          !!probe.customer ||
+          Array.isArray(probe.contacts) ||
+          !!probe.locations,
+        status:'CUSTOMER_PROBE_COMPLETE',
+        probe:probe
+      });
+    }
+
     if (body.action === 'taskScheduleProbe') {
       var scheduleVertical = String(body.vertical || '');
       var scheduleEventId = String(body.eventId || '');
