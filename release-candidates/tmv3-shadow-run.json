@@ -1,19 +1,19 @@
 {
-  "release": "TMV3_SHAWN_62731_CUSTOMER_PROBE",
+  "release": "TMV3_3_11_51_STAGE3_STAGE4_LIVE_REFRESH_VERIFY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "CUSTOMER_PROBE",
+  "runMode": "FULL",
   "batchOffset": 0,
   "batchLimit": 0,
-  "refreshSources": false,
+  "refreshSources": true,
   "forceVersionedDeployment": false,
   "vertical": "",
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_SHAWN_62731_CUSTOMER_PROBE",
+  "requestTag": "TMV3_3_11_51_STAGE3_STAGE4_LIVE_REFRESH_VERIFY",
   "allowedDate": "",
   "testWriteApiSoftLimit": 0,
-  "customerId": 62731
+  "customerId": 0
 }
