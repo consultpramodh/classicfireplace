@@ -138,6 +138,41 @@ function tmv3_step3AnchorIndex_() {
   return refs;
 }
 
+function tmv3_step3AllowedOrderTypes_(vertical) {
+  const v = tmv3_clean_(vertical);
+
+  if (v === 'Install') return ['SALES_ORDER'];
+  if (v === 'Delivery') return ['DELIVERY_APPROVED'];
+  if (v === 'Service') return ['WORK_ORDER'];
+  if (v === 'PreInspection') {
+    return ['SALES_ORDER', 'DELIVERY_APPROVED'];
+  }
+
+  return [];
+}
+
+function tmv3_step3OrderTypes_(order) {
+  return tmv3_unique_(
+    tmv3_clean_(order && order['Order Type'])
+      .split('|')
+      .map(function(type) {
+        return tmv3_clean_(type).toUpperCase();
+      })
+      .filter(Boolean)
+  );
+}
+
+function tmv3_step3OrderMatchesVertical_(order, vertical) {
+  const allowed = tmv3_step3AllowedOrderTypes_(vertical);
+  const actual = tmv3_step3OrderTypes_(order);
+
+  if (!allowed.length || !actual.length) return false;
+
+  return actual.some(function(type) {
+    return allowed.indexOf(type) !== -1;
+  });
+}
+
 function tmv3_step3BusinessAnchorRecords_(step2Records, refs) {
   return (step2Records || []).map(function(record) {
     const step2 = record.step2 || {};
@@ -180,6 +215,11 @@ function tmv3_step3ResolveOrderAnchor_(record, refs) {
   }
 
   candidates = tmv3_step3UniqueOrders_(candidates);
+  const unfilteredCandidates = candidates.slice();
+
+  candidates = candidates.filter(function(order) {
+    return tmv3_step3OrderMatchesVertical_(order, record.vertical);
+  });
 
   if (!existingOrderId && !orderNumber) {
     return tmv3_step3Decision_(
@@ -192,6 +232,23 @@ function tmv3_step3ResolveOrderAnchor_(record, refs) {
   }
 
   if (!candidates.length) {
+    if (unfilteredCandidates.length) {
+      return tmv3_step3Decision_(
+        'BLOCKED',
+        'ANCHOR_TRANSACTION_TYPE_MISMATCH',
+        label +
+          ' number/link exists in the shared Order cache, but not as the transaction type allowed for ' +
+          record.vertical +
+          '. Expected: ' +
+          tmv3_step3AllowedOrderTypes_(record.vertical).join(' or ') +
+          '.',
+        null,
+        evidence.concat([
+          'ORDER_NUMBER_PRESENT_WRONG_TRANSACTION_TYPE'
+        ])
+      );
+    }
+
     return tmv3_step3Decision_(
       'BLOCKED',
       'ANCHOR_ORDER_NOT_FOUND',
@@ -421,7 +478,14 @@ function tmv3_step3ResolvePreInspectionOrderEvidence_(record, refs, unresolvedCa
 
   uniqueNumbers.forEach(function(number) {
     const matches = tmv3_step3UniqueOrders_(
-      (refs.ordersByNumber[number] || []).slice()
+      (refs.ordersByNumber[number] || [])
+        .filter(function(order) {
+          return tmv3_step3OrderMatchesVertical_(
+            order,
+            'PreInspection'
+          );
+        })
+        .slice()
     );
 
     if (matches.length === 1) {
@@ -510,7 +574,7 @@ function tmv3_step3UniqueOrders_(orders) {
 
 function tmv3_step3AnchorFromOrder_(record, order, customer) {
   return {
-    anchorType: record.vertical === 'Service' ? 'WORK_ORDER_OR_SALES_ORDER' : 'SALES_ORDER',
+    anchorType: record.vertical === 'Service' ? 'WORK_ORDER' : 'SALES_ORDER',
     orderId: tmv3_clean_(order && order['Order ID']),
     orderNumber: tmv3_clean_(order && order['Order Number']),
     orderType: tmv3_clean_(order && order['Order Type']),
