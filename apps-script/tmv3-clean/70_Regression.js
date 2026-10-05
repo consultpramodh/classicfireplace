@@ -2094,6 +2094,111 @@ function tmv3_foundation0Regression() {
   };
 }
 
+function tmv3_stage3Stage4CacheFirstRegression() {
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail === undefined ? '' : detail
+    });
+  }
+
+  const sales = { 'Order Type':'SALES_ORDER' };
+  const delivery = { 'Order Type':'DELIVERY_APPROVED' };
+  const mergedDelivery = {
+    'Order Type':'SALES_ORDER|DELIVERY_APPROVED'
+  };
+  const work = { 'Order Type':'WORK_ORDER' };
+
+  check(
+    'STAGE3_INSTALL_ACCEPTS_SALES_ORDER',
+    tmv3_step3OrderMatchesVertical_(sales, 'Install') === true,
+    sales['Order Type']
+  );
+  check(
+    'STAGE3_INSTALL_REJECTS_WORK_ORDER',
+    tmv3_step3OrderMatchesVertical_(work, 'Install') === false,
+    work['Order Type']
+  );
+  check(
+    'STAGE3_DELIVERY_REQUIRES_DELIVERY_APPROVED',
+    tmv3_step3OrderMatchesVertical_(delivery, 'Delivery') === true &&
+      tmv3_step3OrderMatchesVertical_(mergedDelivery, 'Delivery') === true &&
+      tmv3_step3OrderMatchesVertical_(sales, 'Delivery') === false,
+    'delivery-approved gate'
+  );
+  check(
+    'STAGE3_SERVICE_REQUIRES_WORK_ORDER',
+    tmv3_step3OrderMatchesVertical_(work, 'Service') === true &&
+      tmv3_step3OrderMatchesVertical_(sales, 'Service') === false &&
+      tmv3_step3OrderMatchesVertical_(delivery, 'Service') === false,
+    'work-order gate'
+  );
+  check(
+    'STAGE3_PREINSPECTION_USES_ONLY_SALES_ORDER_EVIDENCE',
+    tmv3_step3OrderMatchesVertical_(sales, 'PreInspection') === true &&
+      tmv3_step3OrderMatchesVertical_(delivery, 'PreInspection') === true &&
+      tmv3_step3OrderMatchesVertical_(work, 'PreInspection') === false,
+    'no work-order corroboration'
+  );
+
+  const deferredContact = tmv3_step4ResolveContact_(
+    { title:'Example', location:'1 Example St' },
+    { 'Customer ID':'12345' },
+    ''
+  );
+  check(
+    'STAGE4_CONTACT_LOOKUP_IS_DEFERRED_WITHOUT_API',
+    deferredContact.status === 'NO_MATCH' &&
+      (deferredContact.evidence || []).indexOf(
+        'CONTACT_LOOKUP_DEFERRED_TO_WRITE_GATE'
+      ) !== -1,
+    JSON.stringify(deferredContact)
+  );
+
+  const corroboration = tmv3_step4CorroborateCustomer_(
+    {
+      title:'Unrelated Name',
+      descriptionClean:'',
+      description:'',
+      location:'1 Example St'
+    },
+    {
+      'Customer ID':'12345',
+      'Name':'Different Customer',
+      'Primary Phone':''
+    }
+  );
+  check(
+    'STAGE4_CONTACT_CORROBORATION_IS_DEFERRED_WITHOUT_API',
+    corroboration.matched === false &&
+      (corroboration.evidence || []).indexOf(
+        'CONTACT_CORROBORATION_DEFERRED_TO_WRITE_GATE'
+      ) !== -1,
+    JSON.stringify(corroboration)
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 Stage 3/4 cache-first regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    version:TMV3.VERSION,
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_canaryApiBudgetRegression() {
   const cfg = {
     v3DailySoftLimit:1200,
@@ -2529,6 +2634,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_titleNormalizationRegression();
   const foundation0 =
     tmv3_foundation0Regression();
+  const stage3Stage4CacheFirst =
+    tmv3_stage3Stage4CacheFirstRegression();
   const canaryApiBudget =
     tmv3_canaryApiBudgetRegression();
   const automaticCanary =
@@ -2544,6 +2651,7 @@ function tmv3_liveHardeningRegression() {
       issue2.status === 'PASS' &&
       titleNormalization.status === 'PASS' &&
       foundation0.status === 'PASS' &&
+      stage3Stage4CacheFirst.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
       automaticCanary.status === 'PASS' &&
       preInspectionGuestSync.status === 'PASS' &&
@@ -2556,6 +2664,7 @@ function tmv3_liveHardeningRegression() {
     issue2:issue2,
     titleNormalization:titleNormalization,
     foundation0:foundation0,
+    stage3Stage4CacheFirst:stage3Stage4CacheFirst,
     canaryApiBudget:canaryApiBudget,
     automaticCanary:automaticCanary,
     preInspectionGuestSync:preInspectionGuestSync,

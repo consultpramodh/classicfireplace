@@ -75,7 +75,7 @@ function tmv3_step4RefreshIdentitySources_() {
   const result = {
     customers: customers.length,
     locations: locations.length,
-    contacts: 'ON_DEMAND_ONLY',
+    contacts: 'DEFERRED_TO_WRITE_GATE_NO_MAPPING_API_READS',
     api: tmv3_runtimeMetrics_()
   };
 
@@ -731,31 +731,12 @@ function tmv3_step4CorroborateCustomer_(record, customer) {
     return { matched: true, evidence: evidence };
   }
 
-  try {
-    const contacts = tmv3_getCustomerContacts_(
-      tmv3_clean_(customer['Customer ID'])
-    );
-
-    const matched = contacts.some(function(contact) {
-      const phones = contact.Phones ||
-        (contact['Phone'] ? [tmv3_phone10_(contact['Phone'])] : []);
-
-      return phones.some(function(phone) {
-        const clean = tmv3_phone10_(phone);
-        return clean && eventPhones.indexOf(clean) !== -1;
-      });
-    });
-
-    if (matched) {
-      evidence.push('CUSTOMER_CONTACT_PHONE_CORROBORATES_ADDRESS');
-      return { matched: true, evidence: evidence };
-    }
-  } catch (err) {
-    return {
-      matched: false,
-      evidence: ['CONTACT_CORROBORATION_READ_FAILED']
-    };
-  }
+  // Stage 4 is a planning/read-model stage. Do not spend one Striven API call
+  // per Customer just to search Contacts. If Customer name/primary phone does
+  // not corroborate the address from cached sources, leave the identity in
+  // REVIEW. A later write-capable path may fresh-verify Contact ownership only
+  // when a Contact is actually required for that mutation.
+  evidence.push('CONTACT_CORROBORATION_DEFERRED_TO_WRITE_GATE');
 
   return { matched: false, evidence: evidence };
 }
@@ -959,21 +940,16 @@ function tmv3_step4ResolveContact_(record, customer, preferredContactId) {
     };
   }
 
-  const ix = tmv3_identityIndex_({
-    contacts: [],
-    locations: [],
-    locationsByCustomer: {},
-    customerByNumber: {},
-    customerByPhone: {},
-    customerById: {}
-  });
-
-  return tmv3_resolveOwnedContact_(
-    customer,
-    '',
-    record,
-    ix
-  );
+  // Routine Stage-4 mapping must be cache/report driven. Source Contacts is not
+  // a maintained master cache, so do not call Striven Contacts customer by
+  // customer here. Contact is optional for identity planning unless the
+  // verified Order already supplied a Contact ID. Any mutation that needs a
+  // Contact must fresh-verify ownership in Step 7 immediately before writing.
+  return {
+    status: 'NO_MATCH',
+    contact: null,
+    evidence: ['CONTACT_LOOKUP_DEFERRED_TO_WRITE_GATE']
+  };
 }
 
 function tmv3_step4Decision_(
@@ -1015,7 +991,7 @@ function tmv3_step4IdentityRun(reason, refreshSources) {
       : {
           customers: tmv3_rows_(TMV3.SHEETS.CUSTOMERS).length,
           locations: tmv3_rows_(TMV3.SHEETS.LOCATIONS).length,
-          contacts: 'ON_DEMAND_ONLY',
+          contacts: 'DEFERRED_TO_WRITE_GATE_NO_MAPPING_API_READS',
           source: 'CACHED_IDENTITY_SOURCES'
         };
 
