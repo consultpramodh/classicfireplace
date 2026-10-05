@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.51-stage3-stage4-cache-first-r1';
+const TMV3_VERSION = '3.11.52-api-efficient-source-tiering-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -79,6 +79,7 @@ const TMV3 = Object.freeze({
     preInspectionGuestSyncIntervalMinutes: 5,
     preInspectionGuestSyncMaxWrites: 50,
     sourceRefreshMinMinutes: 120,
+    masterSourceRefreshMinMinutes: 360,
     customerContactsCacheSeconds: 21600
   }),
   API_BUDGET: Object.freeze({

@@ -2022,6 +2022,21 @@ function tmv3_foundation0Regression() {
     tmv3_operationalSourceMinAgeMinutes_()
   );
 
+  check(
+    'FOUNDATION0_MASTER_SOURCE_TTL_AT_LEAST_360_MIN',
+    tmv3_masterSourceMinAgeMinutes_() >= 360,
+    tmv3_masterSourceMinAgeMinutes_()
+  );
+
+  check(
+    'FOUNDATION0_MASTER_TIER_REFRESHES_LESS_OFTEN_THAN_TRANSACTIONS',
+    tmv3_masterSourceMinAgeMinutes_() >
+      tmv3_operationalSourceMinAgeMinutes_(),
+    tmv3_masterSourceMinAgeMinutes_() +
+      ' vs ' +
+      tmv3_operationalSourceMinAgeMinutes_()
+  );
+
   const contactTtl = Number(
     TMV3.OPERATIONS &&
     TMV3.OPERATIONS.customerContactsCacheSeconds ||

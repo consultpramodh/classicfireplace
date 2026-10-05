@@ -388,9 +388,8 @@ function tmv3_assertSourceReplacementSafe_(label, rows, sheetName) {
   };
 }
 
-function tmv3_refreshSources() {
+function tmv3_refreshMasterSources_() {
   tmv3_assertShadow_();
-  tmv3_resetRuntimeMetrics_();
 
   const customers =
     tmv3_reportRows_(TMV3.PROPERTIES.CUSTOMERS)
@@ -409,10 +408,71 @@ function tmv3_refreshSources() {
         return tmv3_normalizeLocation_(r, customerNumberToId);
       });
 
-  // Contacts are resolved on demand by Customer through the Striven API.
-  // The cache sheet remains as a normalized optional surface, but V3 does not
-  // require a full Contacts report refresh for each mapping run.
-  const contacts = [];
+  tmv3_assertSourceReplacementSafe_(
+    'Customers',
+    customers,
+    TMV3.SHEETS.CUSTOMERS
+  );
+  tmv3_assertSourceReplacementSafe_(
+    'Locations',
+    locations,
+    TMV3.SHEETS.LOCATIONS
+  );
+
+  tmv3_replaceRows_(
+    TMV3.SHEETS.CUSTOMERS,
+    [
+      'Customer ID',
+      'Customer Number',
+      'Name',
+      'Primary Phone',
+      'Primary Email',
+      'Fingerprint'
+    ],
+    customers
+  );
+
+  tmv3_replaceRows_(
+    TMV3.SHEETS.LOCATIONS,
+    [
+      'Location ID',
+      'Customer ID',
+      'Address 1',
+      'Address 2',
+      'City',
+      'Province',
+      'Postal Code',
+      'Phone',
+      'Fingerprint'
+    ],
+    locations
+  );
+
+  // Stage 4 no longer performs routine Contact API reads. Keep the optional
+  // Contact cache surface explicitly empty so stale Contact rows cannot become
+  // planning evidence.
+  tmv3_replaceRows_(
+    TMV3.SHEETS.CONTACTS,
+    [
+      'Contact ID',
+      'Customer ID',
+      'Name',
+      'Phone',
+      'Email',
+      'Fingerprint'
+    ],
+    []
+  );
+
+  return {
+    customers: customers.length,
+    locations: locations.length,
+    contacts: 0
+  };
+}
+
+function tmv3_refreshTransactionSources_() {
+  tmv3_assertShadow_();
 
   const approved =
     tmv3_reportRows_(TMV3.PROPERTIES.APPROVED_ORDERS)
@@ -468,17 +528,6 @@ function tmv3_refreshSources() {
     }
   );
 
-  // Validate the complete snapshot before replacing any last-known-good cache.
-  tmv3_assertSourceReplacementSafe_(
-    'Customers',
-    customers,
-    TMV3.SHEETS.CUSTOMERS
-  );
-  tmv3_assertSourceReplacementSafe_(
-    'Locations',
-    locations,
-    TMV3.SHEETS.LOCATIONS
-  );
   tmv3_assertSourceReplacementSafe_(
     'Orders',
     orders,
@@ -488,48 +537,6 @@ function tmv3_refreshSources() {
     'Tasks',
     tasks,
     TMV3.SHEETS.TASKS
-  );
-
-  tmv3_replaceRows_(
-    TMV3.SHEETS.CUSTOMERS,
-    [
-      'Customer ID',
-      'Customer Number',
-      'Name',
-      'Primary Phone',
-      'Primary Email',
-      'Fingerprint'
-    ],
-    customers
-  );
-
-  tmv3_replaceRows_(
-    TMV3.SHEETS.LOCATIONS,
-    [
-      'Location ID',
-      'Customer ID',
-      'Address 1',
-      'Address 2',
-      'City',
-      'Province',
-      'Postal Code',
-      'Phone',
-      'Fingerprint'
-    ],
-    locations
-  );
-
-  tmv3_replaceRows_(
-    TMV3.SHEETS.CONTACTS,
-    [
-      'Contact ID',
-      'Customer ID',
-      'Name',
-      'Phone',
-      'Email',
-      'Fingerprint'
-    ],
-    contacts
   );
 
   tmv3_replaceRows_(
@@ -572,6 +579,25 @@ function tmv3_refreshSources() {
     tasks
   );
 
+  return {
+    orders: orders.length,
+    tasks: tasks.length
+  };
+}
+
+function tmv3_refreshSources() {
+  tmv3_assertShadow_();
+  tmv3_resetRuntimeMetrics_();
+
+  const master = tmv3_refreshMasterSources_();
+  const transactions = tmv3_refreshTransactionSources_();
+  const refreshedAt = new Date().toISOString();
+
+  PropertiesService.getScriptProperties().setProperties({
+    TMV3_LAST_MASTER_SOURCE_REFRESH: refreshedAt,
+    TMV3_LAST_OPERATIONAL_SOURCE_REFRESH: refreshedAt
+  }, false);
+
   tmv3_audit_(
     'SYSTEM',
     '',
@@ -579,25 +605,24 @@ function tmv3_refreshSources() {
     'REFRESH_SOURCES',
     'PASS',
     'Customers ' +
-      customers.length +
+      master.customers +
       '; Locations ' +
-      locations.length +
-      '; Contacts ' +
-      contacts.length +
-      '; Orders ' +
-      orders.length +
+      master.locations +
+      '; Contacts 0; Orders ' +
+      transactions.orders +
       '; Tasks ' +
-      tasks.length +
+      transactions.tasks +
       '; API ' +
       JSON.stringify(tmv3_runtimeMetrics_())
   );
 
   return {
-    customers: customers.length,
-    locations: locations.length,
-    contacts: contacts.length,
-    orders: orders.length,
-    tasks: tasks.length,
+    customers: master.customers,
+    locations: master.locations,
+    contacts: 0,
+    orders: transactions.orders,
+    tasks: transactions.tasks,
+    refreshedAt: refreshedAt,
     api: tmv3_runtimeMetrics_()
   };
 }

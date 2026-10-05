@@ -276,14 +276,27 @@ function tmv3_calendarStageRefresh_(reason) {
   return tmv3_shadowMapFromCache();
 }
 
-function tmv3_operationalSourceRefreshState_() {
+function tmv3_sourceRefreshState_(propertyKey) {
   const props = PropertiesService.getScriptProperties();
-  const raw = props.getProperty('TMV3_LAST_OPERATIONAL_SOURCE_REFRESH');
+  const raw = props.getProperty(propertyKey);
   const ms = raw ? new Date(raw).getTime() : 0;
+
   return {
     lastRefresh:raw || '',
     ageMinutes:ms ? Math.max(0, (Date.now() - ms) / 60000) : null
   };
+}
+
+function tmv3_operationalSourceRefreshState_() {
+  return tmv3_sourceRefreshState_(
+    'TMV3_LAST_OPERATIONAL_SOURCE_REFRESH'
+  );
+}
+
+function tmv3_masterSourceRefreshState_() {
+  return tmv3_sourceRefreshState_(
+    'TMV3_LAST_MASTER_SOURCE_REFRESH'
+  );
 }
 
 function tmv3_operationalSourceMinAgeMinutes_() {
@@ -297,48 +310,104 @@ function tmv3_operationalSourceMinAgeMinutes_() {
   );
 }
 
-function tmv3_refreshOperationalSourcesIfNeeded_(maxAgeMinutes, force) {
-  const state = tmv3_operationalSourceRefreshState_();
-  const minimumAge = tmv3_operationalSourceMinAgeMinutes_();
-  const requestedAge = Math.max(
-    1,
-    Number(maxAgeMinutes || minimumAge)
+function tmv3_masterSourceMinAgeMinutes_() {
+  return Math.max(
+    tmv3_operationalSourceMinAgeMinutes_(),
+    Number(
+      TMV3.OPERATIONS &&
+      TMV3.OPERATIONS.masterSourceRefreshMinMinutes ||
+      360
+    )
   );
-  const maxAge =
-    force === true
-      ? requestedAge
-      : Math.max(minimumAge, requestedAge);
-  const stale =
-    force === true ||
-    state.ageMinutes === null ||
-    state.ageMinutes >= maxAge;
+}
 
-  if (!stale) {
+function tmv3_refreshOperationalSourcesIfNeeded_(maxAgeMinutes, force) {
+  const operationalState = tmv3_operationalSourceRefreshState_();
+  const masterState = tmv3_masterSourceRefreshState_();
+  const operationalMinimum = tmv3_operationalSourceMinAgeMinutes_();
+  const masterMinimum = tmv3_masterSourceMinAgeMinutes_();
+  const requestedOperationalAge = Math.max(
+    1,
+    Number(maxAgeMinutes || operationalMinimum)
+  );
+  const operationalMaxAge =
+    force === true
+      ? requestedOperationalAge
+      : Math.max(operationalMinimum, requestedOperationalAge);
+
+  const operationalStale =
+    force === true ||
+    operationalState.ageMinutes === null ||
+    operationalState.ageMinutes >= operationalMaxAge;
+
+  const masterStale =
+    force === true ||
+    masterState.ageMinutes === null ||
+    masterState.ageMinutes >= masterMinimum;
+
+  if (!operationalStale && !masterStale) {
     return {
       status:'CACHE_FRESH',
       refreshed:false,
-      lastRefresh:state.lastRefresh,
-      ageMinutes:state.ageMinutes,
-      requestedMaxAgeMinutes:requestedAge,
-      effectiveMaxAgeMinutes:maxAge
+      master:{
+        refreshed:false,
+        lastRefresh:masterState.lastRefresh,
+        ageMinutes:masterState.ageMinutes,
+        effectiveMaxAgeMinutes:masterMinimum
+      },
+      transactions:{
+        refreshed:false,
+        lastRefresh:operationalState.lastRefresh,
+        ageMinutes:operationalState.ageMinutes,
+        requestedMaxAgeMinutes:requestedOperationalAge,
+        effectiveMaxAgeMinutes:operationalMaxAge
+      }
     };
   }
 
-  // Full refresh validates all sources before advancing this timestamp.
-  const result = tmv3_refreshSources();
-  const refreshedAt = new Date().toISOString();
-  PropertiesService.getScriptProperties().setProperty(
-    'TMV3_LAST_OPERATIONAL_SOURCE_REFRESH',
-    refreshedAt
-  );
+  tmv3_resetRuntimeMetrics_();
+
+  const props = PropertiesService.getScriptProperties();
+  let masterResult = null;
+  let transactionResult = null;
+  let masterRefreshedAt = masterState.lastRefresh;
+  let operationalRefreshedAt = operationalState.lastRefresh;
+
+  if (masterStale) {
+    masterResult = tmv3_refreshMasterSources_();
+    masterRefreshedAt = new Date().toISOString();
+    props.setProperty(
+      'TMV3_LAST_MASTER_SOURCE_REFRESH',
+      masterRefreshedAt
+    );
+  }
+
+  if (operationalStale) {
+    transactionResult = tmv3_refreshTransactionSources_();
+    operationalRefreshedAt = new Date().toISOString();
+    props.setProperty(
+      'TMV3_LAST_OPERATIONAL_SOURCE_REFRESH',
+      operationalRefreshedAt
+    );
+  }
 
   return {
     status:'REFRESHED',
     refreshed:true,
-    refreshedAt:refreshedAt,
-    requestedMaxAgeMinutes:requestedAge,
-    effectiveMaxAgeMinutes:maxAge,
-    result:result
+    master:{
+      refreshed:masterStale,
+      refreshedAt:masterRefreshedAt,
+      effectiveMaxAgeMinutes:masterMinimum,
+      result:masterResult
+    },
+    transactions:{
+      refreshed:operationalStale,
+      refreshedAt:operationalRefreshedAt,
+      requestedMaxAgeMinutes:requestedOperationalAge,
+      effectiveMaxAgeMinutes:operationalMaxAge,
+      result:transactionResult
+    },
+    api:tmv3_runtimeMetrics_()
   };
 }
 
