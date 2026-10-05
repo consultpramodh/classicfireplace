@@ -477,7 +477,7 @@ function doPost(e) {
     if (body.action === 'step3Anchor') {
       var step3 = tmv3_step3BusinessAnchorRun(
         'GITHUB_STEP3_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step3.status === 'PASS',
@@ -489,7 +489,7 @@ function doPost(e) {
     if (body.action === 'step4Identity') {
       var step4 = tmv3_step4IdentityRun(
         'GITHUB_STEP4_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step4.status === 'PASS',
@@ -501,7 +501,7 @@ function doPost(e) {
     if (body.action === 'step5Task') {
       var step5 = tmv3_step5TaskResolutionRun(
         'GITHUB_STEP5_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step5.status === 'PASS',
@@ -513,7 +513,7 @@ function doPost(e) {
     if (body.action === 'step6Decision') {
       var step6 = tmv3_step6TaskDecisionRun(
         'GITHUB_STEP6_VERIFY',
-        true
+        body.refreshSources === true
       );
       return TMPV3_shadowResponse_({
         ok:step6.status === 'PASS',
