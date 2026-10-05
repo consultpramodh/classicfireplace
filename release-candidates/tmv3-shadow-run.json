@@ -1,18 +1,18 @@
 {
-  "release": "TMV3_SHAWN_REFRESH",
+  "release": "TMV3_SHAWN_62731_END_TO_END",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "SHADOW_READ_ONLY",
-  "writesEnabled": false,
-  "runMode": "STEP7_PREINSPECTION",
+  "mode": "CANARY_WRITE",
+  "writesEnabled": true,
+  "runMode": "CANARY_EVENT_WRITE_FRESH",
   "batchOffset": 0,
-  "batchLimit": 1,
-  "refreshSources": true,
+  "batchLimit": 0,
+  "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "",
+  "eventId": "5r8jjlgs69797ce15jld2iq9it@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_SHAWN_REFRESH",
-  "allowedDate": "",
-  "testWriteApiSoftLimit": 0
+  "requestTag": "TMV3_SHAWN_62731_END_TO_END",
+  "allowedDate": "2026-10-05",
+  "testWriteApiSoftLimit": 1500
 }
