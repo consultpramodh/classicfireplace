@@ -1249,7 +1249,7 @@ function doPost(e) {
     }
 
     if (body.action === 'preInspectionStage5DateTest') {
-      var targetDate = String(body.allowedDate || '');
+      var targetDate = String(body.allowedDate || '2026-10-05');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
         throw new Error('Historical PreInspection Stage-5 test requires YYYY-MM-DD allowedDate.');
       }
