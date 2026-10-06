@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_54_FINAL_STAGE4_SWEEP",
+  "release": "TMV3_STAGE5_PREINSPECTION_SEARCH_SCHEMA_PROBE",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "STEP4",
+  "runMode": "PREINSPECTION_SEARCH_SCHEMA",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_54_FINAL_STAGE4_SWEEP",
+  "requestTag": "TMV3_STAGE5_PREINSPECTION_SEARCH_SCHEMA_PROBE",
   "allowedDate": "",
   "testWriteApiSoftLimit": 0,
   "customerId": 0
