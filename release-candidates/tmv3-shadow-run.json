@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_59_NO_OPEN_TASK_POLICY_REGRESSION_VERIFY",
+  "release": "TMV3_3_11_60_POLICY_REGRESSION_REVERIFY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_59_NO_OPEN_TASK_POLICY_REGRESSION_VERIFY",
+  "requestTag": "TMV3_3_11_60_POLICY_REGRESSION_REVERIFY",
   "allowedDate": "",
   "testWriteApiSoftLimit": 0,
   "customerId": 0
