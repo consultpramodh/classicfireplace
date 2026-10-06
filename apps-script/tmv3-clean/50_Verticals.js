@@ -160,7 +160,20 @@ function tmv3_verifiedTitleContext_(record) {
     (location && location['Primary Phone'])
   );
 
-  const address = tmv3_titleLocationDisplay_(location, record.location);
+  const address =
+    tmv3_titleLocationDisplay_(location, record.location) ||
+    (
+      step4.locationStatus === 'CREATE_REQUIRED' &&
+      tmv3_clean_(record.location)
+        ? tmv3_titleLocationDisplay_(
+            {
+              'Address 1':tmv3_clean_(record.location),
+              'City':tmv3_titleCityFromAddress_(record.location)
+            },
+            record.location
+          )
+        : ''
+    );
 
   return {
     verified: verified,

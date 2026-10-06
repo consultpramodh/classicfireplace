@@ -1426,6 +1426,29 @@ function tmv3_titleNormalizationRegression() {
     preExecutionTitleError || preExecutionTitle
   );
 
+  const preCreateLocationRecord = baseRecord('PreInspection');
+  preCreateLocationRecord.location =
+    '123 Littles Rd, Scarborough, ON M1B 5G9, Canada';
+  preCreateLocationRecord.step4 = Object.assign(
+    {},
+    preCreateLocationRecord.step4,
+    {
+      location:null,
+      locationStatus:'CREATE_REQUIRED',
+      evidence:['NEW_CUSTOMER_LOCATION_REQUIRED']
+    }
+  );
+  const preCreateLocationName =
+    tmv3_desiredTaskName_(preCreateLocationRecord);
+
+  check(
+    'PREINSPECTION_CREATE_REQUIRED_ADDRESS_BUILDS_CANONICAL_TASK_NAME',
+    preCreateLocationName.status === 'READY' &&
+      preCreateLocationName.value ===
+        'John Smith - 123 Littles Rd, Scarborough - (416) 555-1212',
+    JSON.stringify(preCreateLocationName)
+  );
+
   const prePolicy = tmv3_preInspectionCreatePolicy();
   check(
     'PREINSPECTION_CANONICAL_CALENDAR_TITLE',
