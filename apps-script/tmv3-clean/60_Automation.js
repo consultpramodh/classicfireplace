@@ -598,69 +598,27 @@ function tmv3_runProductionAutomationCycle_(reason, options) {
 }
 
 function tmv3_preInspectionGuestSyncDecision_(
-  creatorEmails,
   guestEmails,
-  ownerEmail,
-  primaryCalendarId,
-  nonCustomer,
-  excludedCreatorEmails
+  stephenEmail
 ) {
-  const owner = tmv3_normEmail_(ownerEmail);
-  const primary = tmv3_normEmail_(primaryCalendarId);
-  const creators = tmv3_unique_(
-    (creatorEmails || [])
-      .map(tmv3_normEmail_)
-      .filter(Boolean)
+  const stephen = tmv3_normEmail_(
+    stephenEmail ||
+    'stephen@classicfireplace.ca'
   );
   const guests = tmv3_unique_(
     (guestEmails || [])
       .map(tmv3_normEmail_)
       .filter(Boolean)
   );
-  const excluded = tmv3_unique_(
-    (excludedCreatorEmails || [owner])
-      .map(tmv3_normEmail_)
-      .filter(Boolean)
-  );
-  const hasPrimary = guests.indexOf(primary) !== -1;
 
-  if (!owner || !primary) {
+  if (!stephen) {
     return {
       status:'BLOCKED_CONFIG',
       action:'NONE'
     };
   }
 
-  if (nonCustomer === true) {
-    return {
-      status:hasPrimary
-        ? 'REMOVE_NON_CUSTOMER_EVENT'
-        : 'NON_CUSTOMER_EVENT_CLEAN',
-      action:hasPrimary ? 'REMOVE' : 'NONE'
-    };
-  }
-
-  if (!creators.length) {
-    return {
-      status:'REVIEW_CREATOR_MISSING',
-      action:'NONE'
-    };
-  }
-
-  const excludedCreator = creators.some(function(email) {
-    return excluded.indexOf(email) !== -1;
-  });
-
-  if (excludedCreator) {
-    return {
-      status:hasPrimary
-        ? 'REMOVE_EXCLUDED_CREATOR'
-        : 'EXCLUDED_CREATOR_CLEAN',
-      action:hasPrimary ? 'REMOVE' : 'NONE'
-    };
-  }
-
-  if (hasPrimary) {
+  if (guests.indexOf(stephen) !== -1) {
     return {
       status:'ALREADY_PRESENT',
       action:'NONE'
@@ -668,7 +626,7 @@ function tmv3_preInspectionGuestSyncDecision_(
   }
 
   return {
-    status:'ADD_CF_PREINSPECTS',
+    status:'ADD_STEPHEN',
     action:'ADD'
   };
 }
@@ -682,31 +640,45 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
     return { status:'DISABLED', writes:0 };
   }
 
-  if (!tmv3_operationWritesEnabled_('AUTO')) {
-    return { status:'AUTO_WRITES_GATED', writes:0 };
+  const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+  const stephenEmail = tmv3_clean_(
+    cfg.secondaryOwnerEmail ||
+    'stephen@classicfireplace.ca'
+  );
+
+  if (!primaryId || !stephenEmail) {
+    return {
+      status:'BLOCKED_CONFIG',
+      writes:0,
+      errors:[
+        'CF Preinspects Calendar ID or Stephen guest email is not configured.'
+      ]
+    };
   }
 
-  const primaryId = tmv3_clean_(cfg.primaryCalendarId);
-  const ownerEmail = tmv3_clean_(
-    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca'
-  );
-  const excludedCreatorEmails =
-    cfg.secondaryGuestExcludedCreatorEmails || [
-      ownerEmail,
-      'pramodh@classicfireplace.ca'
-    ];
   const intervalMinutes = Math.max(
     1,
-    Number(policy.preInspectionGuestSyncIntervalMinutes || 5)
+    Number(
+      policy.preInspectionGuestSyncIntervalMinutes ||
+      5
+    )
   );
   const maxWrites = Math.max(
     1,
-    Number(policy.preInspectionGuestSyncMaxWrites || 50)
+    Number(
+      policy.preInspectionGuestSyncMaxWrites ||
+      50
+    )
   );
   const cache = CacheService.getScriptCache();
-  const throttleKey = 'TMV3_PREINSPECTION_GUEST_SYNC_ACTIVE';
+  const throttleKey =
+    'TMV3_PREINSPECTION_STEPPHEN_GUEST_SYNC_ACTIVE'
+      .replace('STEPPHEN', 'STEPHEN');
 
-  if (options.force !== true && cache.get(throttleKey)) {
+  if (
+    options.force !== true &&
+    cache.get(throttleKey)
+  ) {
     return { status:'THROTTLED', writes:0 };
   }
 
@@ -716,7 +688,10 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
   }
 
   try {
-    if (options.force !== true && cache.get(throttleKey)) {
+    if (
+      options.force !== true &&
+      cache.get(throttleKey)
+    ) {
       return { status:'THROTTLED', writes:0 };
     }
 
@@ -727,161 +702,164 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
     );
 
     const start = new Date();
-    start.setDate(start.getDate() - Number(cfg.lookbackDays || 0));
+    start.setDate(
+      start.getDate() -
+      Number(cfg.lookbackDays || 0)
+    );
     start.setHours(0,0,0,0);
 
     const end = new Date();
-    end.setDate(end.getDate() + Number(cfg.lookaheadDays || 365));
+    end.setDate(
+      end.getDate() +
+      Number(cfg.lookaheadDays || 365)
+    );
     end.setHours(23,59,59,999);
 
     const result = {
       status:'PASS',
-      reason:tmv3_clean_(options.reason || 'AUTO'),
+      reason:tmv3_clean_(
+        options.reason ||
+        'AUTO'
+      ),
+      authoritativeCalendar:'CF Preinspects',
+      primaryCalendarId:primaryId,
+      requiredGuest:stephenEmail,
       scanned:0,
       writes:0,
       added:0,
-      removed:0,
       alreadyPresent:0,
-      cleanExcluded:0,
-      cleanNonCustomer:0,
-      creatorMissing:0,
       deferred:0,
       errors:[]
     };
 
-    (cfg.secondaryCalendarIds || []).forEach(function(calendarId) {
-      const cal = CalendarApp.getCalendarById(calendarId);
+    const cal =
+      CalendarApp.getCalendarById(primaryId);
 
-      if (!cal) {
-        result.errors.push(
-          'Calendar unavailable: ' + calendarId
-        );
-        return;
-      }
+    if (!cal) {
+      result.status = 'ATTENTION';
+      result.errors.push(
+        'CF Preinspects Calendar unavailable: ' +
+        primaryId
+      );
+      return result;
+    }
 
-      cal.getEvents(start, end).forEach(function(event) {
+    cal.getEvents(start, end).forEach(
+      function(event) {
         result.scanned++;
 
-        const creators = tmv3_safeCalendar_(
-          function() {
-            return event.getCreators
-              ? (event.getCreators() || [])
-              : [];
-          },
-          []
-        );
         const guests = tmv3_safeCalendar_(
           function() {
-            return (event.getGuestList ? event.getGuestList(true) : [])
+            return (
+              event.getGuestList
+                ? event.getGuestList(true)
+                : []
+            )
               .map(function(guest) {
-                return guest && guest.getEmail
-                  ? guest.getEmail()
-                  : '';
+                return (
+                  guest &&
+                  guest.getEmail
+                    ? guest.getEmail()
+                    : ''
+                );
               })
               .filter(Boolean);
           },
           []
         );
-        const nonCustomer = tmv3_step2PreInspectionNonCustomer_({
-          title:tmv3_clean_(event.getTitle()),
-          isAllDay:event.isAllDayEvent()
-        });
-        const decision = tmv3_preInspectionGuestSyncDecision_(
-          creators,
-          guests,
-          ownerEmail,
-          primaryId,
-          nonCustomer,
-          excludedCreatorEmails
-        );
 
-        if (decision.status === 'ALREADY_PRESENT') {
+        const decision =
+          tmv3_preInspectionGuestSyncDecision_(
+            guests,
+            stephenEmail
+          );
+
+        if (
+          decision.status ===
+          'ALREADY_PRESENT'
+        ) {
           result.alreadyPresent++;
           return;
         }
-        if (decision.status === 'EXCLUDED_CREATOR_CLEAN') {
-          result.cleanExcluded++;
-          return;
-        }
-        if (decision.status === 'NON_CUSTOMER_EVENT_CLEAN') {
-          result.cleanNonCustomer++;
-          return;
-        }
-        if (decision.status === 'REVIEW_CREATOR_MISSING') {
-          result.creatorMissing++;
-          return;
-        }
-        if (decision.action === 'NONE') {
-          if (decision.status !== 'BLOCKED_CONFIG') return;
+
+        if (
+          decision.action === 'NONE'
+        ) {
           result.errors.push(
             'Guest decision blocked for Event ' +
             tmv3_clean_(event.getId()) +
-            ': ' + decision.status
+            ': ' +
+            decision.status
           );
           return;
         }
 
-        if (result.writes >= maxWrites) {
+        if (
+          result.writes >= maxWrites
+        ) {
           result.deferred++;
           return;
         }
 
         try {
-          if (decision.action === 'ADD') {
-            event.addGuest(primaryId);
-          } else if (decision.action === 'REMOVE') {
-            event.removeGuest(primaryId);
-          } else {
-            throw new Error(
-              'Unsupported guest action ' + decision.action
-            );
-          }
+          event.addGuest(stephenEmail);
 
-          const readbackGuests = (event.getGuestList
-            ? event.getGuestList(true)
-            : []
+          const readbackGuests = (
+            event.getGuestList
+              ? event.getGuestList(true)
+              : []
           )
             .map(function(guest) {
               return tmv3_normEmail_(
-                guest && guest.getEmail ? guest.getEmail() : ''
+                guest &&
+                guest.getEmail
+                  ? guest.getEmail()
+                  : ''
               );
             })
             .filter(Boolean);
-          const stillPresent =
-            readbackGuests.indexOf(
-              tmv3_normEmail_(primaryId)
-            ) !== -1;
 
-          if (decision.action === 'ADD' && !stillPresent) {
+          if (
+            readbackGuests.indexOf(
+              tmv3_normEmail_(
+                stephenEmail
+              )
+            ) === -1
+          ) {
             throw new Error(
-              'guest read-back did not contain CF Preinspects'
-            );
-          }
-          if (decision.action === 'REMOVE' && stillPresent) {
-            throw new Error(
-              'guest read-back still contained CF Preinspects'
+              'Stephen guest read-back failed.'
             );
           }
 
           result.writes++;
-          if (decision.action === 'ADD') result.added++;
-          if (decision.action === 'REMOVE') result.removed++;
+          result.added++;
         } catch (err) {
           result.errors.push(
-            'Event ' + tmv3_clean_(event.getId()) + ': ' +
-            String(err && err.message || err)
+            'Event ' +
+            tmv3_clean_(event.getId()) +
+            ': ' +
+            String(
+              err &&
+              err.message ||
+              err
+            )
           );
         }
-      });
-    });
+      }
+    );
 
-    if (result.errors.length) result.status = 'ATTENTION';
+    if (result.errors.length) {
+      result.status = 'ATTENTION';
+    }
 
     tmv3_audit_(
       'PreInspection',
       '',
       '',
-      'PREINSPECTION_CF_PREINSPECTS_GUEST_SYNC',
+      'PREINSPECTION_STEPPHEN_GUEST_SYNC'.replace(
+        'STEPPHEN',
+        'STEPHEN'
+      ),
       result.status,
       JSON.stringify(result)
     );
@@ -1065,6 +1043,11 @@ function tmv3_installReminderCheck() {
 }
 
 function tmv3_calendarEventUpdated() {
+  const guestSync =
+    tmv3_reconcilePreInspectionSharedGuest_AUTO_({
+      reason:'CALENDAR_EVENT_UPDATED'
+    });
+
   const lock = LockService.getScriptLock();
   const cache = CacheService.getScriptCache();
   const dirtyKey = 'TMV3_CALENDAR_EVENT_UPDATE_DIRTY';
@@ -1124,6 +1107,7 @@ function tmv3_calendarEventUpdated() {
       status:rerun ? 'REFRESHED_AND_RERUN' : 'REFRESHED',
       first:first,
       rerun:rerun,
+      guestSync:guestSync,
       writes:
         (rerun && rerun.writes) ||
         (first && first.writes) ||
