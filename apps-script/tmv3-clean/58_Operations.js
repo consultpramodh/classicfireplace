@@ -1655,43 +1655,35 @@ function tmv3_findEventCopyRobust_(calendarId, eventId) {
 function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
   if (
     !eventRecord ||
-    eventRecord.vertical !== 'PreInspection' ||
-    !(eventRecord.step2 && eventRecord.step2.mirrorRequired === true)
+    eventRecord.vertical !== 'PreInspection'
   ) {
     return { status:'NOT_NEEDED', writePerformed:false };
   }
 
   tmv3_assertOperationWrite_(scope);
 
-  const primaryId = tmv3_clean_(
-    TMV3.VERTICALS.PreInspection.primaryCalendarId
-  );
-  if (!primaryId) {
-    throw new Error('PreInspection primary Calendar ID is not configured.');
-  }
-
-  const sourceIds = tmv3_unique_(
-    []
-      .concat(eventRecord.sourceCalendarIds || [])
-      .concat(eventRecord.calendarId || [])
-      .map(tmv3_clean_)
-      .filter(function(id) {
-        return id && id !== primaryId;
-      })
+  const cfg = TMV3.VERTICALS.PreInspection || {};
+  const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+  const stephenEmail = tmv3_normEmail_(
+    cfg.secondaryOwnerEmail ||
+    'stephen@classicfireplace.ca'
   );
 
-  let sourceCopy = null;
-  for (let i = 0; i < sourceIds.length; i++) {
-    sourceCopy = tmv3_findEventCopyRobust_(
-      sourceIds[i],
-      eventRecord.eventId
-    );
-    if (sourceCopy && sourceCopy.event) break;
-  }
-
-  if (!sourceCopy || !sourceCopy.event) {
+  if (!primaryId || !stephenEmail) {
     throw new Error(
-      'PreInspection mirror is required, but the source Calendar event could not be found.'
+      'PreInspection primary Calendar or Stephen guest email is not configured.'
+    );
+  }
+
+  const primaryCopy = tmv3_findEventCopyRobust_(
+    primaryId,
+    eventRecord.eventId
+  );
+
+  if (!primaryCopy || !primaryCopy.event) {
+    throw new Error(
+      'Authoritative CF Preinspects event could not be found for Event ' +
+      eventRecord.eventId + '.'
     );
   }
 
@@ -1705,39 +1697,44 @@ function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
       .filter(Boolean);
   }
 
-  if (guestEmails(sourceCopy.event).indexOf(tmv3_normEmail_(primaryId)) !== -1) {
+  if (
+    guestEmails(primaryCopy.event).indexOf(
+      stephenEmail
+    ) !== -1
+  ) {
     return {
-      status:'ALREADY_PRESENT',
+      status:'STEPHEN_ALREADY_PRESENT',
       writePerformed:false,
       primaryCalendarId:primaryId,
-      sourceCalendarId:sourceCopy.calendar.getId
-        ? sourceCopy.calendar.getId()
-        : ''
+      stephenEmail:stephenEmail
     };
   }
 
-  sourceCopy.event.addGuest(primaryId);
+  primaryCopy.event.addGuest(stephenEmail);
 
   const readback = tmv3_findEventCopyRobust_(
-    sourceIds[0],
+    primaryId,
     eventRecord.eventId
   );
+
   if (
     !readback ||
     !readback.event ||
-    guestEmails(readback.event).indexOf(tmv3_normEmail_(primaryId)) === -1
+    guestEmails(readback.event).indexOf(
+      stephenEmail
+    ) === -1
   ) {
     throw new Error(
-      'PreInspection mirror guest read-back failed for Event ' +
+      'PreInspection Stephen guest read-back failed for Event ' +
       eventRecord.eventId + '.'
     );
   }
 
   return {
-    status:'MIRROR_GUEST_WRITTEN_AND_VERIFIED',
+    status:'STEPHEN_GUEST_WRITTEN_AND_VERIFIED',
     writePerformed:true,
     primaryCalendarId:primaryId,
-    sourceCalendarId:sourceIds[0]
+    stephenEmail:stephenEmail
   };
 }
 
