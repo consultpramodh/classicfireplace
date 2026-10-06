@@ -1248,6 +1248,141 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'preInspectionStage5DateTest') {
+      var targetDate = String(body.allowedDate || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+        throw new Error('Historical PreInspection Stage-5 test requires YYYY-MM-DD allowedDate.');
+      }
+
+      var dayStart = new Date(targetDate + 'T00:00:00-04:00');
+      var dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+      var cfg = TMV3.VERTICALS.PreInspection;
+      var rawRecords = [];
+
+      tmv3_verticalCalendars_('PreInspection', cfg).forEach(function(calCfg) {
+        var cal = CalendarApp.getCalendarById(calCfg.calendarId);
+        if (!cal) return;
+
+        var resolvedCalCfg = Object.assign({}, calCfg, {
+          calendarName: tmv3_safeCalendar_(function() {
+            return cal.getName ? cal.getName() : '';
+          }, '')
+        });
+
+        cal.getEvents(dayStart, dayEnd).forEach(function(event) {
+          var record = tmv3_calendarEvent_(
+            'PreInspection',
+            cfg,
+            resolvedCalCfg,
+            event,
+            {
+              stage:'STEP1',
+              applyEligibility:false,
+              mergeLogical:true
+            }
+          );
+          if (record) rawRecords.push(record);
+        });
+      });
+
+      var step1Records = tmv3_mergeLogicalCalendarRecords_(rawRecords);
+      var step2Records = tmv3_step2CalendarRecords_(step1Records);
+      var step3Records = tmv3_step3BusinessAnchorRecords_(
+        step2Records,
+        tmv3_step3AnchorIndex_()
+      );
+      var step4Records = tmv3_step4IdentityRecords_(
+        step3Records,
+        tmv3_step4IdentityIndex_()
+      );
+
+      tmv3_resetRuntimeMetrics_();
+
+      var results = step4Records.map(function(record) {
+        var s2 = record.step2 || {};
+        var s3 = record.step3 || {};
+        var s4 = record.step4 || {};
+        var test = {
+          eventId:record.eventId,
+          title:record.title,
+          start:tmv3_iso_(record.start),
+          existingTaskId:tmv3_clean_(record.existingTaskId),
+          step2:s2.disposition || '',
+          step3:s3.disposition || '',
+          step4:s4.disposition || '',
+          customerId:tmv3_clean_(s4.customer && s4.customer['Customer ID']),
+          locationId:tmv3_clean_(s4.location && s4.location['Location ID']),
+          stage5:'NOT_RUN',
+          stage5Code:'STEP4_' + (s4.disposition || 'UNKNOWN'),
+          taskIds:[],
+          candidateSource:'',
+          error:''
+        };
+
+        if (s4.disposition !== 'VERIFIED') return test;
+
+        try {
+          var candidates = [];
+          if (record.existingTaskId) {
+            var linked = tmv3_getTaskById_(record.existingTaskId);
+            candidates = linked ? [linked] : [];
+            test.candidateSource = 'EXACT_CALENDAR_TASK_READ';
+          } else {
+            candidates = tmv3_searchPreInspectionTasks_(s4.customer);
+            test.candidateSource = 'CUSTOMER_TYPE105_SEARCH';
+          }
+
+          var decision = tmv3_preInspectionTaskDecision_(
+            record,
+            s4.customer,
+            s4.location,
+            candidates
+          );
+
+          test.stage5 =
+            decision.status === 'MATCHED'
+              ? 'MATCHED'
+              : decision.status === 'CLEAR'
+                ? 'NO_TASK'
+                : 'REVIEW';
+          test.stage5Code =
+            decision.status === 'MATCHED'
+              ? 'PREINSPECTION_TASK_MATCHED'
+              : decision.status === 'CLEAR'
+                ? 'PREINSPECTION_NO_OPEN_TASK'
+                : (decision.errorCode || 'PREINSPECTION_TASK_REVIEW');
+          test.taskIds = (decision.task ? [decision.task] : [])
+            .concat(decision.historyTasks || [])
+            .map(function(task) {
+              return tmv3_clean_(task && task['Task ID']);
+            })
+            .filter(Boolean);
+          test.reason = decision.reason || '';
+          test.evidence = decision.evidence || [];
+        } catch (err) {
+          test.stage5 = 'REVIEW';
+          test.stage5Code = 'HISTORICAL_TEST_READ_ERROR';
+          test.error = String(err && err.message || err);
+        }
+
+        return test;
+      });
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'PREINSPECTION_STAGE5_DATE_TEST_COMPLETE',
+        targetDate:targetDate,
+        records:results,
+        counts:results.reduce(function(acc, row) {
+          acc.total++;
+          acc[row.stage5] = (acc[row.stage5] || 0) + 1;
+          return acc;
+        }, {total:0}),
+        api:tmv3_runtimeMetrics_(),
+        writesPerformed:false
+      });
+    }
+
     if (body.action === 'preInspectionSearchSchemaProbe') {
       var searchJson = tmv3_fetchJson_(
         TMV3.API_BASE + '/v2/tasks/search',
@@ -1962,6 +2097,7 @@ async function main() {
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA' ||
+      RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
       RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
       RUN_MODE === 'CUSTOMER_PROBE' ||
@@ -2033,6 +2169,8 @@ async function main() {
                       ? 'customerProbe'
                     : RUN_MODE === 'TASK_SCHEDULE'
                       ? 'taskScheduleProbe'
+                    : RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST'
+                    ? 'preInspectionStage5DateTest'
                     : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
                     ? 'preInspectionSearchSchemaProbe'
                     : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
@@ -2195,6 +2333,8 @@ async function main() {
                             ? 'V3_STEP7_RECONCILIATION_VERIFIED'
                             : RUN_MODE === 'TASK_SCHEDULE'
                           ? 'V3_TASK_SCHEDULE_VERIFIED'
+                        : RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST'
+                        ? 'V3_PREINSPECTION_STAGE5_DATE_TEST_VERIFIED'
                         : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
                         ? 'V3_PREINSPECTION_SEARCH_SCHEMA_PROBED'
                         : RUN_MODE === 'TASK_SCHEMA'
@@ -2202,6 +2342,7 @@ async function main() {
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1:
             RUN_MODE === 'SOURCE_REFRESH' ||
+            RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST' ||
             RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA' ||
             RUN_MODE === 'TASK_SCHEMA' ||
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
