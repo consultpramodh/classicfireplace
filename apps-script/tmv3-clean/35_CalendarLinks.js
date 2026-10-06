@@ -165,11 +165,15 @@ function tmv3_requiredCalendarCopiesForEvent_(eventRecord) {
   if (vertical === 'PreInspection') {
     const cfg = TMV3.VERTICALS.PreInspection || {};
     const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+    const secondaryIds = (cfg.secondaryCalendarIds || [])
+      .map(tmv3_clean_)
+      .filter(Boolean);
 
-    // CF Preinspects is authoritative. Stephen receives the organizer-owned
-    // event as a guest; Calendar business writes occur only on the primary
-    // event and Google Calendar propagates that event to Stephen's copy.
-    return [primaryId].filter(Boolean);
+    // CF Preinspects remains the sole intake authority, but presentation
+    // state must converge on every configured PreInspection Calendar copy.
+    return tmv3_unique_(
+      [primaryId].concat(secondaryIds).filter(Boolean)
+    );
   }
 
   if (sourceIds.length) return sourceIds;
@@ -184,10 +188,30 @@ function tmv3_requiredCalendarCopies_(vertical) {
   }
 
   if (vertical === 'PreInspection') {
-    return [cfg.primaryCalendarId].filter(Boolean);
+    return tmv3_unique_(
+      [cfg.primaryCalendarId]
+        .concat(cfg.secondaryCalendarIds || [])
+        .map(tmv3_clean_)
+        .filter(Boolean)
+    );
   }
 
   return (cfg.calendarIds || []).slice();
+}
+
+function tmv3_calendarHtmlEscape_(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function tmv3_calendarHtmlText_(value) {
+  return tmv3_calendarHtmlEscape_(value)
+    .replace(/\r\n?/g, '\n')
+    .replace(/\n/g, '<br>');
 }
 
 function tmv3_managedCalendarDescription_(existingDescription, plan) {
@@ -199,20 +223,22 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
     : tmv3_stripManagedLinkBlocks_(existingDescription);
 
   const linkLines = (plan.links || []).map(function(link) {
-    return '[' +
-      tmv3_calendarMarkdownLabel_(link.label) +
-      '](' +
-      String(link.url || '') +
-      ')';
+    return '<a href="' +
+      tmv3_calendarHtmlEscape_(String(link.url || '')) +
+      '">' +
+      tmv3_calendarHtmlEscape_(link.label) +
+      '</a>';
   });
 
   const managed =
-    TMV3_FINAL_LINK_HEADING +
-    (linkLines.length ? '  \n' + linkLines.join('  \n') : '');
+    '<b>' +
+    tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
+    '</b>' +
+    (linkLines.length ? '<br>' + linkLines.join('<br>') : '');
 
   return (
     authored
-      ? authored.replace(/\s+$/, '') + '\n\n'
+      ? tmv3_calendarHtmlText_(authored.replace(/\s+$/, '')) + '<br><br>'
       : ''
   ) + managed;
 }

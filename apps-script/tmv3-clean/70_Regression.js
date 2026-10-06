@@ -1643,8 +1643,13 @@ function tmv3_titleNormalizationRegression() {
   );
 
   check(
-    'PREINSPECTION_DESCRIPTION_CONTAINS_NO_LITERAL_HTML_TAGS',
-    !/<\/?(?:b|br|a)\b/i.test(preDescription),
+    'PREINSPECTION_STRIVEN_LINKS_RENDER_AS_CLICKABLE_HTML_ANCHORS',
+    preDescription.indexOf(
+      '<a href="https://classicfireplace.striven.com/next/crm#/sales-orders?accountId=35659">View Sales Orders – John Smith (#62400)</a>'
+    ) !== -1 &&
+      preDescription.indexOf(
+        '<a href="https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=18845">Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212</a>'
+      ) !== -1,
     preDescription
   );
 
@@ -3672,9 +3677,10 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
     );
 
   check(
-    'PREINSPECTION_BUSINESS_WRITES_TARGET_PRIMARY_ONLY',
-    requiredFromSecondary.length === 1 &&
-      requiredFromSecondary[0] === primaryId,
+    'PREINSPECTION_BUSINESS_WRITES_TARGET_BOTH_CALENDAR_COPIES',
+    requiredFromSecondary.length === 2 &&
+      requiredFromSecondary.indexOf(primaryId) !== -1 &&
+      requiredFromSecondary.indexOf(secondaryId) !== -1,
     JSON.stringify(requiredFromSecondary)
   );
 
@@ -3684,9 +3690,10 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
     );
 
   check(
-    'PREINSPECTION_TITLE_NORMALIZATION_TARGETS_PRIMARY_ONLY',
-    titleIds.length === 1 &&
-      titleIds[0] === primaryId,
+    'PREINSPECTION_TITLE_NORMALIZATION_TARGETS_BOTH_CALENDAR_COPIES',
+    titleIds.length === 2 &&
+      titleIds.indexOf(primaryId) !== -1 &&
+      titleIds.indexOf(secondaryId) !== -1,
     JSON.stringify(titleIds)
   );
 
@@ -3700,9 +3707,11 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
     });
 
   check(
-    'PREINSPECTION_PRIMARY_REMAINS_SINGLE_WRITE_AUTHORITY',
-    primaryOnly.length === 1 &&
-      primaryOnly[0] === primaryId,
+    'PREINSPECTION_PRIMARY_REMAINS_INTAKE_AUTHORITY_WITH_DUAL_PRESENTATION',
+    primaryOnly.length === 2 &&
+      primaryOnly.indexOf(primaryId) !== -1 &&
+      primaryOnly.indexOf(secondaryId) !== -1 &&
+      cfg.primarySourceOnly === true,
     JSON.stringify(primaryOnly)
   );
 

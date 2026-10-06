@@ -6,10 +6,13 @@
 
 The **CF Preinspects** calendar is the single authoritative PreInspection source.
 
-- Stephen's Calendar is mirror-only and does not create an independent Task Mapping record.
+- Stephen's Calendar is mirror-only for intake and does not create an independent Task Mapping record.
+- CF Preinspects remains the sole authoritative intake source.
+- Both CF Preinspects and Stephen's Calendar must converge to the same canonical presentation state after a verified write.
 - Every CF Preinspects event must include `stephen@classicfireplace.ca` as a required guest.
-- Canonical Calendar title: `<Customer Number> - <Customer Name> - <Phone>`.
-- Calendar description contains human-authored notes plus exactly one managed `-----Striven Links-----` block.
+- Canonical Calendar title on both copies: `<Customer Number> - <Customer Name> - <Phone>`.
+- Calendar description on both copies contains the same human-authored notes plus exactly one managed `-----Striven Links-----` block.
+- The Customer Sales Orders label and Task label in the managed block must be real clickable hyperlinks, not Markdown text.
 - Do not copy an old Calendar title into the description.
 
 From the CF Preinspects event, retain Customer Number, phone, address/location, optional Sales Order evidence, event date/time, and organizer/creator email.
@@ -108,11 +111,12 @@ Never blindly retry an uncertain Task CREATE. Reconcile first.
 After Task read-back succeeds:
 
 - preserve human-authored notes;
-- maintain exactly one `-----Striven Links-----` block;
-- include the Customer Sales Orders link;
-- include one verified Task link when a deterministic Task exists;
+- maintain exactly one `-----Striven Links-----` block on both configured PreInspection Calendar copies;
+- include the Customer Sales Orders link as a clickable hyperlink;
+- include one verified Task link as a clickable hyperlink when a deterministic Task exists;
+- normalize the canonical Calendar title on both copies;
 - ensure Stephen remains a required guest;
-- read the CF Preinspects event back and verify the managed state.
+- read both Calendar copies back and verify the same managed presentation state.
 
 ## I. Technician completion and Install handoff
 
