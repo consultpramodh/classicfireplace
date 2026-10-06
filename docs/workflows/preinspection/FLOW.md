@@ -1,116 +1,131 @@
 # PreInspection — Canonical Business Flow
 
-**Status:** agreed target design as of 2026-09-11. This documents the desired business flow; it does not claim every stage is implemented or runtime-verified.
+**Status:** current operating contract as of 2026-10-06.
 
-## A. Read Calendar identifiers
+## A. Authoritative Calendar intake
 
-From the Google Calendar event, look for one or more of:
+The **CF Preinspects** calendar is the single authoritative PreInspection source.
 
-1. Customer Number
-2. Sales Order Number
-3. Customer Phone Number
-4. Customer Address
+- Stephen's Calendar is mirror-only and does not create an independent Task Mapping record.
+- Every CF Preinspects event must include `stephen@classicfireplace.ca` as a required guest.
+- Canonical Calendar title: `<Customer Number> - <Customer Name> - <Phone>`.
+- Calendar description contains human-authored notes plus exactly one managed `-----Striven Links-----` block.
+- Do not copy an old Calendar title into the description.
 
-Also retain the **Calendar organizer email** as the authoritative PreInspection Requested By / sales-rep identity.
+From the CF Preinspects event, retain Customer Number, phone, address/location, optional Sales Order evidence, event date/time, and organizer/creator email.
 
-Multiple customer identifiers should corroborate one another rather than create competing workflows.
+The organizer/creator email is the authoritative source for PreInspection Requested By.
 
-## B. Resolve the customer
+## B. Resolve the Customer
 
-### Customer Number branch
+Evidence may include:
 
-Use Customer Number to resolve the Striven customer, then retrieve and cross-check Customer ID, name, phone, locations/addresses, and associated contacts.
+1. Customer Number;
+2. exact Sales Order Number;
+3. normalized phone;
+4. Customer-owned address/location;
+5. existing verified Task evidence when available.
 
-### Sales Order branch
+All evidence must converge to one deterministic Customer. Ambiguity or conflicting evidence requires REVIEW.
 
-Use the exact Sales Order Number to resolve its customer, then retrieve the customer's canonical identity, locations, and contacts. The SO is evidence for customer resolution; it is **not** required to be attached to a newly created PreInspection task.
+A Sales Order may corroborate Customer identity, but it is **not required to create a PreInspection Task and is not attached at CREATE**.
 
-### Phone branch
+## C. Resolve the Location
 
-Normalize the phone, match it against the Contacts dataset, identify the owning customer, then retrieve canonical customer and location details. Multiple unrelated matches require REVIEW.
+Resolve the Calendar job-site address against Locations owned by the verified Customer.
 
-### Address branch
+- exactly one owned Location match → use it;
+- no owned Location but identity/address is deterministic → `CREATE_LOCATION` before Task CREATE;
+- multiple plausible owned Locations → REVIEW;
+- Location belonging to another Customer → REVIEW.
 
-Normalize the Calendar address, match against customer locations, identify the owning customer, then retrieve canonical customer/contact details. Ambiguous matches require REVIEW.
+No PreInspection Task may be created against an unverified Customer/Location relationship.
 
-## C. Convergence package
+## D. Resolve OPEN PreInspection Tasks — Stage 5
 
-Every customer branch must converge to one verified package containing, where available:
+Resolve Task Type **105 — Pre Inspection** from the shared Task cache.
 
-- Customer ID
-- Customer Number
-- Customer Name
-- Customer Phone
-- Contact ID
-- Contact Name
-- Contact Phone
-- Location ID
-- Full Address
-- Sales Order ID/Number as evidence/context
-- Match Source
-- Match Evidence
-- Match Status
+- exactly one valid OPEN Task for the verified appointment context → MATCH and reuse;
+- multiple valid OPEN Tasks → REVIEW;
+- zero OPEN Tasks → preserve all applicable historical Task evidence and pass to Stage 6;
+- Calendar contains a Task link missing from the cache and no safe cached replacement can be proven → REVIEW / fail closed.
 
-Separately preserve the Calendar organizer email for sales-rep/Requested By resolution.
+Routine Stage 5 must not interpret an incomplete cache as permission to create a replacement Task.
 
-If no unique customer can be established: **REVIEW; no task mutation.**
+## E. Decide CREATE / RECREATE / FULFILLED — Stage 6
 
-If the customer is uniquely verified but the Calendar event itself does not contain the Customer Number: send a **non-blocking, deduplicated email to the event organizer** asking them to add the resolved Customer Number. Continue the task workflow; do not block a valid appointment merely because the Calendar data needs cleanup.
+**NO OPEN TASK does not automatically mean CREATE.**
 
-## D. Resolve the PreInspection task
+For a Stage-5 `NO_TASK` result, apply this decision order:
 
-Look for one valid **OPEN PreInspection Task Type 105** for the resolved customer/location/event context.
+1. **No applicable historical Task** → `CREATE_TASK`.
+2. **Completed/fulfilled Task on the same Calendar event day** → `FULFILLED_NO_RECREATE`.
+3. **Cancelled Task on the same event day** → REVIEW.
+4. **Historical Task exists but its appointment date cannot be proven** → REVIEW.
+5. **Historical Task is dated after the Calendar event** → REVIEW.
+6. **Only older historical Task evidence remains** → `RECREATE_TASK`.
 
-- exactly one valid OPEN task → reuse it;
-- no valid OPEN task → create one clean task;
-- multiple valid OPEN tasks → REVIEW.
+This history gate is mandatory duplicate prevention. Do not skip it.
 
-Do not clone technician-completed field state from a DONE task into a new PreInspection appointment.
+## F. Desired Task state
 
-## E. Synchronize desired task state
+When an OPEN Task is reused or a CREATE/RECREATE is authorized, the desired PreInspection state is:
 
-The task should be reconciled to:
+- Task Type — **105 — Pre Inspection**
+- Task name — `<Customer Name> - <Street, City> - <Phone>`
+- Customer — verified Customer
+- Location — verified Customer-owned Location
+- Requested By — exact Calendar organizer/creator → Striven Employee (`Type: employee`)
+- Start/Due — CF Preinspects date/time
+- Assigned Pool — **Pool 8 — Pre-Inspection Pool**
+- Task Description — **blank on CREATE**; technician-owned afterward
+- Field 854 — **not managed by Task Mapping**
+- InfoCustomFields at CREATE — none
+- technician-completed assessment fields — not prefilled
+- Sales Order — not required and not attached merely to CREATE/RECREATE
 
-- Customer — resolved customer
-- Location — resolved customer location
-- **Requested By — Striven Employee resolved by exact Google Calendar organizer email (`Type: employee`)**
-- Start Date/Time — Google Calendar
-- Due Date/Time — Google Calendar
-- Assigned Pool — Pool 8
-- Custom Field 854 Install Notes — Calendar-authored notes only
-- Task Description — technician-owned; blank on create and not overwritten by Calendar notes
-- Technician-completed fields — not prefilled
-- Sales Order — not required/pushed merely to create the PreInspection task
+The Customer Contact is contextual evidence only and is not PreInspection Requested By.
 
-The customer Contact remains available for customer/contact context, but it is not used as PreInspection Requested By.
+If the organizer email cannot resolve uniquely to a Striven Employee: REVIEW. Do not fall back to a Customer Contact.
 
-If the organizer email is missing, has no Striven Employee match, or resolves ambiguously: **REVIEW and do not fall back to the customer contact.**
+## G. Consequential-write gate — Stage 7
 
-Update only fields that differ from the desired state.
+Before any CREATE/RECREATE or material Task mutation:
 
-## F. Verify and link
+1. reread the authoritative CF Preinspects event;
+2. verify the event fingerprint has not materially changed;
+3. verify Customer and Location ownership;
+4. freshly recheck duplicate/open/historical Task evidence required for the action;
+5. verify Requested By and assignment evidence;
+6. fail closed on ambiguous or stale linked-Task evidence;
+7. perform only the approved mutation;
+8. read the written Task back from Striven.
 
-Read the task back from Striven and verify the material state, including the Requested By Employee ID. Then maintain one idempotent managed Striven Task link in the PreInspection Calendar description while preserving organizer-authored text.
+Never blindly retry an uncertain Task CREATE. Reconcile first.
 
-## G. Technician completion
+## H. Calendar completion
 
-When the PreInspection Task is DONE, preserve technician-entered results. A final Sales Order may now be attached/identified.
+After Task read-back succeeds:
 
-## H. Install Calendar handoff
+- preserve human-authored notes;
+- maintain exactly one `-----Striven Links-----` block;
+- include the Customer Sales Orders link;
+- include one verified Task link when a deterministic Task exists;
+- ensure Stephen remains a required guest;
+- read the CF Preinspects event back and verify the managed state.
 
-Once the PreInspection is DONE **and a final Sales Order is attached**:
+## I. Technician completion and Install handoff
 
-1. use the exact Sales Order Number as the primary anchor;
-2. find the matching Install task/event in the Install workflow;
-3. verify the Install task/event belongs to the same customer;
-4. require exactly one valid Install match;
-5. append the completed PreInspection Task link immediately below the existing Install Task link in the managed Install Calendar description block;
-6. preserve authored Calendar text;
-7. read the Calendar description back and verify both links;
-8. make the operation idempotent so repeated syncs do not duplicate the PreInspection link.
+When the PreInspection Task is DONE:
 
-If zero Install matches exist, perform no Calendar write and retry on a later reconciliation. If multiple matches exist, REVIEW rather than guessing.
+- preserve technician-entered results;
+- resolve a unique final Sales Order only where needed for the downstream Install handoff;
+- locate exactly one same-customer Install target;
+- append the completed PreInspection Task link to the managed Install Calendar block;
+- make the operation idempotent and read-back verified.
 
-## I. Final Sales Order handoff
+No final SO yet or no Install match yet → `DEFERRED_RETRY`. Multiple/mismatched targets → REVIEW.
 
-The intended final lifecycle also includes a guarded DONE PreInspection → Sales Order Internal Notes handoff. This remains a separate downstream write and must require unique final-SO resolution plus idempotent/read-back verification before production use.
+## J. Final Sales Order handoff
+
+Any DONE PreInspection → Sales Order Internal Notes write remains a separate guarded downstream mutation and requires unique final-SO resolution plus idempotent/read-back verification.

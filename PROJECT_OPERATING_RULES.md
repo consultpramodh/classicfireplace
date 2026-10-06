@@ -65,6 +65,9 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 
 ### PreInspection
 
+- **CF Preinspects is the single authoritative PreInspection Calendar source.**
+- **Stephen's Calendar is mirror-only.** It must not introduce an independent PreInspection appointment into Task Mapping.
+- Every CF Preinspects event in the operating horizon must include **stephen@classicfireplace.ca** as a required guest. Guest enforcement is Calendar-only, idempotent, and must not remove unrelated attendees.
 - **Sales Order is not required to create the Task.**
 - **Never attach a Sales Order to the PreInspection Task at CREATE.**
 - Task Type must be **105 — Pre Inspection**.
@@ -74,21 +77,30 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - PreInspection CREATE must not prefill `InfoCustomFields`.
 - Do not prefill technician-completed fields such as Difficulty of Job, Job Risk, Finishing, Electrical Work, or Custom Metal Work.
 - Default assignment is **Pool 8 — Pre-Inspection Pool**.
-- Calendar organizer/creator resolves **Requested By**. The organizer is not automatically `Assigned To`.
+- Calendar organizer/creator resolves **Requested By** as a Striven Employee. The organizer is not automatically `Assigned To`.
 - Canonical PreInspection Calendar title format is **`<Customer Number> - <Customer Name> - <Phone>`**. Legacy `C#` and `Cust#` titles remain readable, but all new normalization uses the bare Customer Number with no prefix.
-- Customer identity, customer-owned Location, date/time, Requested By, Pool 8, Task Type, Calendar links, and canonical titles are the automation-owned fields.
-- Primary/shared and Stephen secondary Calendar handling must remain supported; managed links/titles must be verified on the actual required copies.
+- Canonical PreInspection Task name is **`<Customer Name> - <Street, City> - <Phone>`**.
+- Customer identity, customer-owned Location, date/time, Requested By, Pool 8, Task Type, Calendar links, canonical title, and Stephen guest participation are automation-owned fields.
+- **NO OPEN TASK is not permission to CREATE by itself.** Stage 6 must apply the history/duplicate gate before any create decision:
+  - exactly one valid OPEN Type-105 Task → reuse/reconcile it;
+  - multiple valid OPEN Tasks → **REVIEW**;
+  - zero OPEN Tasks + zero applicable history → **CREATE_TASK**;
+  - same-day completed/fulfilled Task → **FULFILLED_NO_RECREATE**;
+  - same-day cancelled Task → **REVIEW**;
+  - historical Task with unproven appointment date → **REVIEW**;
+  - historical Task dated after the Calendar appointment → **REVIEW**;
+  - only older historical Task evidence → **RECREATE_TASK**;
+  - Calendar carries a Task link that is absent from the current cache and no safe cached fallback exists → **REVIEW / fail closed**, never create a duplicate.
+- If Customer is verified but the job-site Location does not yet exist, resolve **CREATE_LOCATION first, then CREATE_TASK**. Do not create a Task against an unverified Location.
+- Every CREATE/RECREATE still requires the final fresh duplicate/relationship verification at the write gate before Striven mutation.
 - PreInspection Calendar description presentation is frozen:
   - use Google Calendar-compatible Markdown/plain text; **do not write literal HTML tags** such as `<b>`, `<br>`, or `<a>` through `CalendarApp.setDescription()`;
-  - when a Calendar title is normalized, prepend the exact original Calendar title to the description, followed by one blank line; never duplicate it on later runs;
+  - **do not prepend or preserve the old Calendar title in the description** when normalizing the title;
   - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
   - do **not** add a `Notes:` heading; preserve the human-authored notes directly;
   - use exactly one managed `-----Striven Links-----` block at the bottom;
-  - the managed block is exactly three consecutive visible lines with no blank lines inside it;
-  - line 1: `-----Striven Links-----`;
-  - line 2: hyperlinked `View Sales Orders – <Customer Name> (#<Customer Number>)`;
-  - line 3: hyperlinked `Task #<Task ID> – <Task Name>`;
-  - no raw URLs, generic `Customer` labels, numeric-only Task labels, or duplicate legacy link blocks.
+  - the block contains the Customer Sales Orders link and, only when a Task is deterministically known, one Task link;
+  - no raw URLs, old-title echo, generic `Customer` labels, numeric-only Task labels, or duplicate legacy link blocks.
 
 ### Mandatory reflection gate
 

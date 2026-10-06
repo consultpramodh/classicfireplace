@@ -555,6 +555,14 @@ function tmv3_assertHardRules_() {
   requireRule(Number(rules.defaultPoolId || 0) === 8, 'Hard-rule mirror says Pool 8 is required.');
   requireRule(rules.organizerIsAssignee === false, 'PreInspection organizer must not become Assigned To.');
   requireRule(rules.calendarTitlePrefix === '', 'PreInspection canonical Calendar title must use the bare Customer Number with no prefix.');
+  requireRule(rules.noOpenTaskPolicy === 'HISTORY_GATE_BEFORE_CREATE', 'PreInspection NO OPEN TASK must pass the history gate before CREATE.');
+  requireRule(rules.noHistoryDecision === 'CREATE_TASK', 'PreInspection no-history outcome must be CREATE_TASK.');
+  requireRule(rules.sameDayCompletedDecision === 'FULFILLED_NO_RECREATE', 'PreInspection same-day completed history must suppress recreate.');
+  requireRule(rules.sameDayCancelledDecision === 'REVIEW', 'PreInspection same-day cancelled history must require REVIEW.');
+  requireRule(rules.unprovenHistoryDateDecision === 'REVIEW', 'PreInspection unproven history date must require REVIEW.');
+  requireRule(rules.futureHistoryDecision === 'REVIEW', 'PreInspection future history must require REVIEW.');
+  requireRule(rules.olderHistoryDecision === 'RECREATE_TASK', 'PreInspection older history must resolve to RECREATE_TASK.');
+  requireRule(rules.missingLinkedTaskCacheDecision === 'REVIEW_FAIL_CLOSED', 'PreInspection missing linked Task cache evidence must fail closed to REVIEW.');
 
   if (
     typeof TMV3_STEP7_ACTION !== 'undefined' &&

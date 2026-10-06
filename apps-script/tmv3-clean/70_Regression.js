@@ -2808,6 +2808,134 @@ function tmv3_stage5CacheFirstRegression() {
   };
 }
 
+function tmv3_preInspectionNoOpenTaskPolicyRegression() {
+  const cases = [];
+
+  function check(name, decision, disposition, code) {
+    cases.push({
+      name:name,
+      pass:
+        decision &&
+        decision.disposition === disposition &&
+        decision.code === code,
+      actual:decision,
+      expected:{
+        disposition:disposition,
+        code:code
+      }
+    });
+  }
+
+  function record(history) {
+    return {
+      vertical:'PreInspection',
+      start:new Date('2026-10-06T13:00:00-04:00'),
+      step5:{
+        disposition:'NO_TASK',
+        historyTasks:history || []
+      }
+    };
+  }
+
+  check(
+    'PREINSPECTION_NO_HISTORY_CREATES',
+    tmv3_step6NoOpenTaskDecision_(
+      record([])
+    ),
+    'CREATE_TASK',
+    'NO_TASK_OR_HISTORY'
+  );
+
+  check(
+    'PREINSPECTION_SAME_DAY_COMPLETED_DOES_NOT_RECREATE',
+    tmv3_step6NoOpenTaskDecision_(
+      record([{
+        'Task ID':'1001',
+        'Status':'Done',
+        'Start':'2026-10-06T09:00:00-04:00',
+        'Due':'2026-10-06T10:00:00-04:00'
+      }])
+    ),
+    'FULFILLED_NO_RECREATE',
+    'COMPLETED_TASK_ON_EVENT_DAY'
+  );
+
+  check(
+    'PREINSPECTION_SAME_DAY_CANCELLED_REVIEWS',
+    tmv3_step6NoOpenTaskDecision_(
+      record([{
+        'Task ID':'1002',
+        'Status':'Cancelled',
+        'Start':'2026-10-06T09:00:00-04:00',
+        'Due':'2026-10-06T10:00:00-04:00'
+      }])
+    ),
+    'REVIEW',
+    'CANCELLED_TASK_ON_EVENT_DAY'
+  );
+
+  check(
+    'PREINSPECTION_UNDATED_HISTORY_REVIEWS',
+    tmv3_step6NoOpenTaskDecision_(
+      record([{
+        'Task ID':'1003',
+        'Status':'Done',
+        'Start':'',
+        'Due':''
+      }])
+    ),
+    'REVIEW',
+    'HISTORY_DATE_UNPROVEN'
+  );
+
+  check(
+    'PREINSPECTION_FUTURE_HISTORY_REVIEWS',
+    tmv3_step6NoOpenTaskDecision_(
+      record([{
+        'Task ID':'1004',
+        'Status':'Done',
+        'Start':'2026-10-07T09:00:00-04:00',
+        'Due':'2026-10-07T10:00:00-04:00'
+      }])
+    ),
+    'REVIEW',
+    'HISTORY_AFTER_EVENT_DATE'
+  );
+
+  check(
+    'PREINSPECTION_ONLY_OLDER_HISTORY_RECREATES',
+    tmv3_step6NoOpenTaskDecision_(
+      record([{
+        'Task ID':'1005',
+        'Status':'Done',
+        'Start':'2026-10-01T09:00:00-04:00',
+        'Due':'2026-10-01T10:00:00-04:00'
+      }])
+    ),
+    'RECREATE_TASK',
+    'ONLY_OLDER_HISTORY_REMAINS'
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 PreInspection no-open-task policy regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    version:TMV3.VERSION,
+    rulesVersion:TMV3_HARD_RULES.version,
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_canaryApiBudgetRegression() {
   const cfg = {
     v3DailySoftLimit:1200,
@@ -3197,6 +3325,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_stage4IdentityRecoveryRegression();
   const stage5CacheFirst =
     tmv3_stage5CacheFirstRegression();
+  const preInspectionNoOpenTaskPolicy =
+    tmv3_preInspectionNoOpenTaskPolicyRegression();
   const canaryApiBudget =
     tmv3_canaryApiBudgetRegression();
   const automaticCanary =
@@ -3215,6 +3345,7 @@ function tmv3_liveHardeningRegression() {
       stage3Stage4CacheFirst.status === 'PASS' &&
       stage4IdentityRecovery.status === 'PASS' &&
       stage5CacheFirst.status === 'PASS' &&
+      preInspectionNoOpenTaskPolicy.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
       automaticCanary.status === 'PASS' &&
       preInspectionGuestSync.status === 'PASS' &&
@@ -3230,6 +3361,7 @@ function tmv3_liveHardeningRegression() {
     stage3Stage4CacheFirst:stage3Stage4CacheFirst,
     stage4IdentityRecovery:stage4IdentityRecovery,
     stage5CacheFirst:stage5CacheFirst,
+    preInspectionNoOpenTaskPolicy:preInspectionNoOpenTaskPolicy,
     canaryApiBudget:canaryApiBudget,
     automaticCanary:automaticCanary,
     preInspectionGuestSync:preInspectionGuestSync,

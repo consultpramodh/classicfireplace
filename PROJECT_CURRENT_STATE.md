@@ -3,6 +3,27 @@
 **Last updated:** 2026-10-06 (America/Toronto)
 
 
+## 2026-10-06 PREINSPECTION NO-OPEN-TASK POLICY — LOCKED
+
+The PreInspection decision contract is now explicit and must be used for every eligible CF Preinspects event:
+
+- **NO OPEN TASK is not automatic permission to CREATE.**
+- exactly one valid OPEN Type-105 Task → reuse/reconcile;
+- multiple valid OPEN Tasks → REVIEW;
+- zero OPEN Tasks + no applicable history → `CREATE_TASK`;
+- same-day completed/fulfilled Task → `FULFILLED_NO_RECREATE`;
+- same-day cancelled Task → REVIEW;
+- historical Task with unproven appointment date → REVIEW;
+- historical Task dated after the Calendar event → REVIEW;
+- only older historical Task evidence → `RECREATE_TASK`;
+- persisted Calendar Task link absent from cache with no safe fallback → REVIEW / fail closed;
+- verified Customer with a genuinely missing job-site Location → `CREATE_LOCATION` before `CREATE_TASK`;
+- Stage 7 must freshly recheck duplicate/relationship evidence before any CREATE/RECREATE write.
+
+The runtime Stage-6 implementation already follows this sequence in `tmv3_step6NoOpenTaskDecision_()`. Release `3.11.59-preinspection-no-open-task-policy-r1` locks the policy into `TMV3_HARD_RULES`, hard-rule assertions, canonical workflow documentation, and dedicated regression coverage.
+
+
+
 ## 2026-10-06 PREINSPECTION CALENDAR AUTHORITY — VERIFIED
 
 - **Live version:** `3.11.56-preinspection-primary-stephen-guest-r1`.
