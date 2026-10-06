@@ -1248,6 +1248,37 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'preInspectionSearchSchemaProbe') {
+      var searchJson = tmv3_fetchJson_(
+        TMV3.API_BASE + '/v2/tasks/search',
+        {
+          method:'post',
+          contentType:'application/json',
+          payload:JSON.stringify({
+            Type:[105],
+            PageIndex:0,
+            PageSize:5
+          })
+        }
+      ) || {};
+
+      var searchRows = tmv3_extractTaskSearchRows_(searchJson);
+      var first = searchRows.length ? searchRows[0] : {};
+      var normalized = searchRows.length
+        ? tmv3_normalizeV2TaskModel_(first)
+        : {};
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'PREINSPECTION_SEARCH_SCHEMA_COMPLETE',
+        rowCount:searchRows.length,
+        topLevelKeys:Object.keys(searchJson || {}).sort(),
+        firstRowKeys:Object.keys(first || {}).sort(),
+        firstRow:first,
+        normalized:normalized
+      });
+    }
+
     if (body.action === 'taskSchemaProbe') {
       var probeTaskId = Number(body.taskId || 17881);
       var rawTask = tmv3_fetchJson_(
@@ -1930,6 +1961,7 @@ async function main() {
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
       RUN_MODE === 'TASK_SCHEMA' ||
+      RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA' ||
       RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
       RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
       RUN_MODE === 'CUSTOMER_PROBE' ||
@@ -2001,6 +2033,8 @@ async function main() {
                       ? 'customerProbe'
                     : RUN_MODE === 'TASK_SCHEDULE'
                       ? 'taskScheduleProbe'
+                    : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
+                    ? 'preInspectionSearchSchemaProbe'
                     : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
