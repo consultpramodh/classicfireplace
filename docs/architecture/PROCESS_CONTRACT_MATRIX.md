@@ -43,10 +43,32 @@ Before a write plan is executable, prove every required relationship, not merely
 
 If any required relationship is unproven or contradictory: `REVIEW_REQUIRED` or `BLOCKED`.
 
+## Shared Task lifecycle decision gate
+
+This decision contract applies to **Install, Delivery, Service, and PreInspection** after vertical-specific identity and prerequisite resolution:
+
+| Situation | Required decision |
+|---|---|
+| Exactly one valid same-vertical OPEN Task | `MATCH_EXISTING` |
+| Multiple valid OPEN Tasks | `REVIEW_REQUIRED` |
+| Service event with a proven unique FP#1 / FP#2 / ... Task set | `MATCH_EXISTING_MULTI` |
+| No OPEN Task and no applicable history | `CREATE_TASK` |
+| Same-day completed/fulfilled Task | `FULFILLED_NO_RECREATE` |
+| Any applicable cancelled Task history | `REVIEW_REQUIRED` |
+| Historical Task with unproven appointment date | `REVIEW_REQUIRED` |
+| Historical Task dated after the Calendar event | `REVIEW_REQUIRED` |
+| Only older fulfilled/completed Task history | `RECREATE_TASK` |
+| Wrong-vertical Task found | Diagnostic evidence only; never executable match |
+| Required Customer / Location / Sales Order / Work Order unresolved | `BLOCKED` or `REVIEW_REQUIRED` before Task write |
+| Calendar-linked Task cannot be verified and no safe same-vertical fallback exists | `REVIEW_REQUIRED` / fail closed |
+
+Scoring or recency may rank evidence for an operator, but must never convert multiple plausible Task identities into an automatic match.
+
 ## Task mutability
 
 - Normal task field PATCH targets only a safe OPEN task.
 - DONE/COMPLETED/CLOSED/CANCELLED/ON HOLD tasks are not normal PATCH targets.
+- Cancelled tasks are review evidence only; they never authorize automatic RECREATE and are never RECREATE source tasks.
 - Completed-task replacement is a recovery decision, not a normal update.
 
 ## Duplicate prevention
