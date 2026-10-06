@@ -2180,7 +2180,7 @@ function tmv3_findRecreateSourceTask_(bundle) {
 
   (bundle.refs.tasks || []).forEach(function(task) {
     if (!tmv3_taskFitsVertical_(task, vertical, cfg)) return;
-    if (!tmv3_taskIsCompleted_(task['Status'])) return;
+    if (!tmv3_step6IsFulfilledStatus_(task['Status'])) return;
 
     if (
       resolved.orderId &&
@@ -2214,7 +2214,7 @@ function tmv3_findRecreateSourceTask_(bundle) {
 
     candidates = tmv3_searchPreInspectionTasks_(customer).filter(function(task) {
       return (
-        tmv3_taskIsCompleted_(task['Status']) &&
+        tmv3_step6IsFulfilledStatus_(task['Status']) &&
         String(task['Customer ID'] || '') === String(resolved.customerId || '') &&
         String(task['Location ID'] || '') === String(resolved.locationId || '')
       );

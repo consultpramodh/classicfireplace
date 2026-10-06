@@ -671,41 +671,89 @@ function tmv3_resolveEvent_(
         !!order
       );
 
+    if (!safeCreate) {
+      return tmv3_result_(
+        e,
+        {
+          status:'BLOCKED',
+          nextAction:'RESOLVE REQUIRED DATA',
+          issue:'Required Customer / Location / Order prerequisites are not fully verified.',
+          customer:customer,
+          location:location,
+          order:order,
+          contact:contact,
+          evidence:evidence,
+          errorCode:'TASK_PREREQUISITE_UNRESOLVED'
+        }
+      );
+    }
+
+    const lifecycle = tmv3_step6NoOpenTaskDecision_({
+      vertical:e.vertical,
+      start:e.start,
+      step5:{
+        disposition:'NO_TASK',
+        historyTasks:completed
+      }
+    });
+
+    if (lifecycle.disposition === 'REVIEW') {
+      return tmv3_result_(
+        e,
+        {
+          status:'REVIEW',
+          nextAction:'REVIEW TASK HISTORY',
+          issue:lifecycle.reason,
+          customer:customer,
+          location:location,
+          order:order,
+          contact:contact,
+          evidence:evidence.concat(['SHARED_STAGE6_HISTORY_GATE']),
+          errorCode:lifecycle.code
+        }
+      );
+    }
+
+    if (lifecycle.disposition === 'FULFILLED_NO_RECREATE') {
+      const fulfilledTask =
+        (lifecycle.tasks || [])[0] ||
+        completed[0] ||
+        null;
+
+      return tmv3_result_(
+        e,
+        {
+          status:'MATCHED',
+          nextAction:'NONE',
+          issue:lifecycle.reason,
+          customer:customer,
+          location:location,
+          order:order,
+          contact:contact,
+          task:fulfilledTask,
+          evidence:evidence.concat(['SHARED_STAGE6_HISTORY_GATE']),
+          verification:'LIFECYCLE FULFILLED · NO RECREATE',
+          errorCode:lifecycle.code,
+          lastVerified:tmv3_now_()
+        }
+      );
+    }
+
+    const recreate =
+      lifecycle.disposition === 'RECREATE_TASK';
+
     return tmv3_result_(
       e,
       {
-        status:
-          safeCreate
-            ? (
-                completed.length
-                  ? 'READY RECREATE'
-                  : 'READY CREATE'
-              )
-            : 'BLOCKED',
-        nextAction:
-          safeCreate
-            ? (
-                completed.length
-                  ? 'RECREATE TASK'
-                  : 'CREATE TASK'
-              )
-            : 'RESOLVE REQUIRED DATA',
-        issue:
-          completed.length
-            ? 'No applicable OPEN task; completed history exists.'
-            : 'No applicable task found.',
-        customer:
-          customer,
-        location:
-          location,
-        order:
-          order,
-        contact:
-          contact,
-        evidence:
-          evidence,
-        errorCode:
-          ''
+        status:recreate ? 'READY RECREATE' : 'READY CREATE',
+        nextAction:recreate ? 'RECREATE TASK' : 'CREATE TASK',
+        issue:lifecycle.reason,
+        customer:customer,
+        location:location,
+        order:order,
+        contact:contact,
+        evidence:evidence.concat(['SHARED_STAGE6_HISTORY_GATE']),
+        errorCode:lifecycle.code
       }
     );
   }

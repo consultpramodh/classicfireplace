@@ -176,6 +176,16 @@ function tmv3_step6NoOpenTaskDecision_(record) {
     );
   }
 
+  if (cancelled.length) {
+    return tmv3_step6Decision_(
+      'REVIEW',
+      'CANCELLED_TASK_HISTORY',
+      'Cancelled Task history exists for this appointment context. Cancelled history never authorizes automatic CREATE or RECREATE.',
+      cancelled,
+      history
+    );
+  }
+
   const historyDays = history.map(function(task) {
     return tmv3_step6TaskLocalDay_(task);
   });
@@ -206,7 +216,7 @@ function tmv3_step6NoOpenTaskDecision_(record) {
   return tmv3_step6Decision_(
     'RECREATE_TASK',
     'ONLY_OLDER_HISTORY_REMAINS',
-    'No OPEN Task remains and only older historical Task evidence exists.',
+    'No OPEN Task remains and only older fulfilled/completed Task history exists.',
     history,
     history
   );

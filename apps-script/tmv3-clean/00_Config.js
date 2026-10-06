@@ -1,17 +1,30 @@
-const TMV3_VERSION = '3.11.61-preinspection-regression-alignment-r1';
+const TMV3_VERSION = '3.11.62-four-vertical-lifecycle-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-06-r4',
+  version:'2026-10-06-r5',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
     mutationVerification:'READ_BACK_REQUIRED',
     calendarMutationPolicy:'MANAGED_FIELDS_ONLY',
-    newStageFilesPolicy:'DO_NOT_ADD_STEP_8_9_10_FILES'
+    newStageFilesPolicy:'DO_NOT_ADD_STEP_8_9_10_FILES',
+    taskLifecyclePolicy:'SHARED_STAGE6_HISTORY_GATE',
+    singleOpenDecision:'MATCH_EXISTING',
+    multipleOpenDecision:'REVIEW',
+    serviceMultiOpenException:'UNIQUE_FIREPLACE_MARKERS_ONLY',
+    noHistoryDecision:'CREATE_TASK',
+    sameDayCompletedDecision:'FULFILLED_NO_RECREATE',
+    anyCancelledHistoryDecision:'REVIEW',
+    unprovenHistoryDateDecision:'REVIEW',
+    futureHistoryDecision:'REVIEW',
+    olderFulfilledHistoryDecision:'RECREATE_TASK',
+    wrongVerticalTaskDecision:'EVIDENCE_ONLY_NO_EXECUTABLE_MATCH',
+    missingPrerequisiteDecision:'BLOCK_OR_REVIEW_BEFORE_TASK_WRITE',
+    missingLinkedTaskCacheDecision:'REVIEW_FAIL_CLOSED'
   }),
   Install:Object.freeze({
     orderRequired:true,

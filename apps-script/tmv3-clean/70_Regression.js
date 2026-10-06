@@ -2808,6 +2808,177 @@ function tmv3_stage5CacheFirstRegression() {
   };
 }
 
+function tmv3_allVerticalTaskLifecyclePolicyRegression() {
+  const cases = [];
+  const verticals = ['Install','Delivery','Service','PreInspection'];
+
+  function add(name, pass, actual, expected) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      actual:actual,
+      expected:expected
+    });
+  }
+
+  function decide(vertical, history) {
+    return tmv3_step6NoOpenTaskDecision_({
+      vertical:vertical,
+      start:new Date('2026-10-06T13:00:00-04:00'),
+      step5:{
+        disposition:'NO_TASK',
+        historyTasks:history || []
+      }
+    });
+  }
+
+  function expect(vertical, suffix, history, disposition, code) {
+    const decision = decide(vertical, history);
+    add(
+      vertical.toUpperCase() + '_' + suffix,
+      decision.disposition === disposition && decision.code === code,
+      decision,
+      { disposition:disposition, code:code }
+    );
+  }
+
+  verticals.forEach(function(vertical) {
+    expect(vertical, 'NO_HISTORY_CREATES', [],
+      'CREATE_TASK', 'NO_TASK_OR_HISTORY');
+
+    expect(vertical, 'SAME_DAY_COMPLETED_FULFILLS', [{
+      'Task ID':'2001',
+      'Status':'Done',
+      'Start':'2026-10-06T09:00:00-04:00',
+      'Due':'2026-10-06T10:00:00-04:00'
+    }], 'FULFILLED_NO_RECREATE', 'COMPLETED_TASK_ON_EVENT_DAY');
+
+    expect(vertical, 'SAME_DAY_CANCELLED_REVIEWS', [{
+      'Task ID':'2002',
+      'Status':'Cancelled',
+      'Start':'2026-10-06T09:00:00-04:00',
+      'Due':'2026-10-06T10:00:00-04:00'
+    }], 'REVIEW', 'CANCELLED_TASK_ON_EVENT_DAY');
+
+    expect(vertical, 'OLDER_CANCELLED_STILL_REVIEWS', [{
+      'Task ID':'2003',
+      'Status':'Cancelled',
+      'Start':'2026-10-01T09:00:00-04:00',
+      'Due':'2026-10-01T10:00:00-04:00'
+    }], 'REVIEW', 'CANCELLED_TASK_HISTORY');
+
+    expect(vertical, 'UNDATED_HISTORY_REVIEWS', [{
+      'Task ID':'2004',
+      'Status':'Done',
+      'Start':'',
+      'Due':''
+    }], 'REVIEW', 'HISTORY_DATE_UNPROVEN');
+
+    expect(vertical, 'FUTURE_HISTORY_REVIEWS', [{
+      'Task ID':'2005',
+      'Status':'Done',
+      'Start':'2026-10-07T09:00:00-04:00',
+      'Due':'2026-10-07T10:00:00-04:00'
+    }], 'REVIEW', 'HISTORY_AFTER_EVENT_DATE');
+
+    expect(vertical, 'OLDER_FULFILLED_RECREATES', [{
+      'Task ID':'2006',
+      'Status':'Done',
+      'Start':'2026-10-01T09:00:00-04:00',
+      'Due':'2026-10-01T10:00:00-04:00'
+    }], 'RECREATE_TASK', 'ONLY_OLDER_HISTORY_REMAINS');
+  });
+
+  const deliveryWrongVertical = {
+    'Task ID':'3001',
+    'Task Type':'Service',
+    'Task Type ID':'',
+    'Name':'Service - Customer'
+  };
+  add(
+    'DELIVERY_REJECTS_SERVICE_TASK_AS_EXECUTABLE_MATCH',
+    tmv3_taskFitsVertical_(
+      deliveryWrongVertical,
+      'Delivery',
+      TMV3.VERTICALS.Delivery
+    ) === false,
+    deliveryWrongVertical,
+    'wrong-vertical Task rejected'
+  );
+
+  const serviceWrongVertical = {
+    'Task ID':'3002',
+    'Task Type':'Delivery',
+    'Task Type ID':'',
+    'Name':'Delivery - Customer'
+  };
+  add(
+    'SERVICE_REJECTS_DELIVERY_TASK_AS_EXECUTABLE_MATCH',
+    tmv3_taskFitsVertical_(
+      serviceWrongVertical,
+      'Service',
+      TMV3.VERTICALS.Service
+    ) === false,
+    serviceWrongVertical,
+    'wrong-vertical Task rejected'
+  );
+
+  let cancelledRecreateSourceBlocked = false;
+  try {
+    tmv3_findRecreateSourceTask_({
+      eventRecord:{ vertical:'Install' },
+      resolved:{
+        orderId:'SO-REGRESSION',
+        customerId:'CUSTOMER-1',
+        locationId:'LOCATION-1'
+      },
+      refs:{
+        tasks:[{
+          'Task ID':'3003',
+          'Task Type':'Install',
+          'Task Type ID':'',
+          'Name':'Install - Customer',
+          'Status':'Cancelled',
+          'Order ID':'SO-REGRESSION',
+          'Customer ID':'CUSTOMER-1',
+          'Location ID':'LOCATION-1'
+        }]
+      }
+    });
+  } catch (err) {
+    cancelledRecreateSourceBlocked =
+      /RECREATE requires exactly one completed source Task; found 0/.test(
+        String(err && err.message || err)
+      );
+  }
+
+  add(
+    'CANCELLED_TASK_CANNOT_SEED_RECREATE',
+    cancelledRecreateSourceBlocked,
+    cancelledRecreateSourceBlocked,
+    true
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 all-vertical Task lifecycle policy regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    version:TMV3.VERSION,
+    rulesVersion:TMV3_HARD_RULES.version,
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_preInspectionNoOpenTaskPolicyRegression() {
   const cases = [];
 
@@ -3325,6 +3496,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_stage4IdentityRecoveryRegression();
   const stage5CacheFirst =
     tmv3_stage5CacheFirstRegression();
+  const allVerticalTaskLifecyclePolicy =
+    tmv3_allVerticalTaskLifecyclePolicyRegression();
   const preInspectionNoOpenTaskPolicy =
     tmv3_preInspectionNoOpenTaskPolicyRegression();
   const canaryApiBudget =
@@ -3345,6 +3518,7 @@ function tmv3_liveHardeningRegression() {
       stage3Stage4CacheFirst.status === 'PASS' &&
       stage4IdentityRecovery.status === 'PASS' &&
       stage5CacheFirst.status === 'PASS' &&
+      allVerticalTaskLifecyclePolicy.status === 'PASS' &&
       preInspectionNoOpenTaskPolicy.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
       automaticCanary.status === 'PASS' &&
@@ -3361,6 +3535,7 @@ function tmv3_liveHardeningRegression() {
     stage3Stage4CacheFirst:stage3Stage4CacheFirst,
     stage4IdentityRecovery:stage4IdentityRecovery,
     stage5CacheFirst:stage5CacheFirst,
+    allVerticalTaskLifecyclePolicy:allVerticalTaskLifecyclePolicy,
     preInspectionNoOpenTaskPolicy:preInspectionNoOpenTaskPolicy,
     canaryApiBudget:canaryApiBudget,
     automaticCanary:automaticCanary,

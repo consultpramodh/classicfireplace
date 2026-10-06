@@ -528,10 +528,25 @@ function tmv3_assertHardRules_() {
   const errors = [];
   const pre = TMV3.VERTICALS.PreInspection;
   const rules = TMV3_HARD_RULES.PreInspection;
+  const globalRules = TMV3_HARD_RULES.GLOBAL;
 
   function requireRule(ok, message) {
     if (!ok) errors.push(message);
   }
+
+  requireRule(globalRules.taskLifecyclePolicy === 'SHARED_STAGE6_HISTORY_GATE', 'All verticals must use the shared Stage 6 Task history gate.');
+  requireRule(globalRules.singleOpenDecision === 'MATCH_EXISTING', 'Exactly one valid OPEN Task must resolve to MATCH_EXISTING.');
+  requireRule(globalRules.multipleOpenDecision === 'REVIEW', 'Multiple OPEN Tasks must require REVIEW unless the explicit Service multi-fireplace exception applies.');
+  requireRule(globalRules.serviceMultiOpenException === 'UNIQUE_FIREPLACE_MARKERS_ONLY', 'Service multi-task exception must require unique fireplace markers.');
+  requireRule(globalRules.noHistoryDecision === 'CREATE_TASK', 'No Task/history must resolve to CREATE_TASK after prerequisites are verified.');
+  requireRule(globalRules.sameDayCompletedDecision === 'FULFILLED_NO_RECREATE', 'Same-day fulfilled history must suppress recreate.');
+  requireRule(globalRules.anyCancelledHistoryDecision === 'REVIEW', 'Cancelled Task history must never authorize automatic RECREATE.');
+  requireRule(globalRules.unprovenHistoryDateDecision === 'REVIEW', 'Unproven Task history dates must require REVIEW.');
+  requireRule(globalRules.futureHistoryDecision === 'REVIEW', 'Future Task history must require REVIEW.');
+  requireRule(globalRules.olderFulfilledHistoryDecision === 'RECREATE_TASK', 'Only older fulfilled history may resolve to RECREATE_TASK.');
+  requireRule(globalRules.wrongVerticalTaskDecision === 'EVIDENCE_ONLY_NO_EXECUTABLE_MATCH', 'Wrong-vertical Tasks must never become executable matches.');
+  requireRule(globalRules.missingPrerequisiteDecision === 'BLOCK_OR_REVIEW_BEFORE_TASK_WRITE', 'Missing required Customer/Location/Order prerequisites must block before Task writes.');
+  requireRule(globalRules.missingLinkedTaskCacheDecision === 'REVIEW_FAIL_CLOSED', 'Unverified linked Tasks must fail closed to REVIEW.');
 
   requireRule(pre.orderRequired === false, 'PreInspection must not require a Sales Order.');
   requireRule(pre.attachOrderToTask === false, 'PreInspection must not attach a Sales Order to the Task.');
