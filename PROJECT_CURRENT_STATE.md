@@ -3,6 +3,24 @@
 **Last updated:** 2026-10-06 (America/Toronto)
 
 
+## 2026-10-06 PREINSPECTION CALENDAR AUTHORITY — VERIFIED
+
+- **Live version:** `3.11.56-preinspection-primary-stephen-guest-r1`.
+- **Authoritative PreInspection source:** **CF Preinspects only**.
+- Stephen Calendar is **mirror-only** and cannot introduce an independent PreInspection appointment into Stage 1/2.
+- Every CF Preinspects event in the configured operating horizon must include **stephen@classicfireplace.ca** as a required guest.
+- Stephen guest reconciliation is a dedicated Calendar-only rule and does **not** depend on Striven business-write enablement.
+- Guest reconciliation is idempotent: add Stephen when missing; never remove him; preserve all other guests and event business fields.
+- PreInspection Calendar business writes target the authoritative CF Preinspects event only. Calendar-link/title operations also verify Stephen is present.
+- Existing-calendar backfill on 2026-10-06:
+  - 11 upcoming CF Preinspects events in the current 365-day horizon
+  - 11/11 now include `stephen@classicfireplace.ca`
+  - other attendees were preserved.
+- Guarded Apps Script deployment for source release `5fb225d8b6d5e38ce0a14576d8f92ba031219602` completed successfully with `CLEAN_V3_SOURCE_VERIFIED`.
+- Do not reintroduce Stephen Calendar as a business-source calendar. If an appointment exists only on Stephen Calendar, it must be added/moved to CF Preinspects before Task Mapping treats it as authoritative.
+
+
+
 ## 2026-10-06 FINAL STAGE 4 SWEEP — VERIFIED
 
 - **Live version:** `3.11.54-stage4-deterministic-recovery-r1`.
