@@ -1385,10 +1385,7 @@ function doPost(e) {
     }
 
     if (body.action === 'preInspectionStage5DateTest') {
-      var targetDate = String(body.allowedDate || '2026-10-05');
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-        throw new Error('Historical PreInspection Stage-5 test requires YYYY-MM-DD allowedDate.');
-      }
+      var targetDate = '2026-10-05';
 
       var dayStart = new Date(targetDate + 'T00:00:00-04:00');
       var dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
