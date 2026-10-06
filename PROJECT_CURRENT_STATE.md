@@ -1,6 +1,40 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-10-05 (America/Toronto)
+**Last updated:** 2026-10-06 (America/Toronto)
+
+
+## 2026-10-06 FINAL STAGE 4 SWEEP — VERIFIED
+
+- **Live version:** `3.11.54-stage4-deterministic-recovery-r1`.
+- Guarded Apps Script bootstrap for source release `fd9d33061aba71b3611d8e89f564f2203be226aa` completed successfully with `CLEAN_V3_SOURCE_VERIFIED`.
+- Dedicated cached Stage-4 verification completed at **2026-10-06 09:25:44 America/Toronto** with `STEP4_IDENTITY PASS`.
+- Verification used current cached sources and did **not** request another Striven source refresh:
+  - Customers: 34,613
+  - Locations: 30,441
+  - Contacts: deferred to write gate; no routine per-Customer Contact API reads
+  - total Calendar records evaluated: 432
+- Stage-4 outcomes:
+  - VERIFIED: 134
+  - IDENTITY_ONLY: 9
+  - REVIEW: 51
+  - BLOCKED: 0
+  - NOT_RUN: 238, all retained from upstream Step-2 disposition rather than a Step-3/4 execution failure
+- By vertical:
+  - Install: 33 VERIFIED / 3 IDENTITY_ONLY / 7 REVIEW / 2 upstream NOT_RUN
+  - Delivery: 6 VERIFIED / 1 IDENTITY_ONLY / 2 REVIEW
+  - Service: 84 VERIFIED / 3 IDENTITY_ONLY / 38 REVIEW
+  - PreInspection: 11 VERIFIED / 2 IDENTITY_ONLY / 4 REVIEW / 236 upstream NOT_RUN
+- Verification invariants all passed:
+  - missingDecision = 0
+  - verifiedWithoutIdentity = 0
+  - nonVerifiedAdvanced = 0
+  - missingFromStep4 = 0
+  - introducedByStep4 = 0
+  - operator row counts match all four verticals
+- No Task resolution, Calendar writes, or Striven writes were performed by the final Stage-4 sweep.
+- Remaining Stage-4 REVIEW rows are explicit identity-quality outcomes (ambiguous address ownership, multiple Customer-owned Location matches, insufficient corroboration, or no deterministic Customer evidence), not hidden pipeline stops or Contact API failures.
+- **Stage 4 is closed for pipeline progression.** Stage 5 work may start from this baseline; REVIEW and IDENTITY_ONLY rows remain correctly gated from unsafe downstream execution.
+
 
 
 ## 2026-10-05 STAGE 4 REQUEST-RESOLUTION MILESTONE
