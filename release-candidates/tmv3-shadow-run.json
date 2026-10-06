@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_53_STAGE4_SOURCE_REFRESH_VERIFY",
+  "release": "TMV3_3_11_54_FINAL_STAGE4_SWEEP",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "SOURCE_REFRESH",
+  "runMode": "STEP4",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,8 +12,8 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_53_STAGE4_SOURCE_REFRESH_VERIFY",
+  "requestTag": "TMV3_3_11_54_FINAL_STAGE4_SWEEP",
   "allowedDate": "",
-  "testWriteApiSoftLimit": 1225,
+  "testWriteApiSoftLimit": 0,
   "customerId": 0
 }
