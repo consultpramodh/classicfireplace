@@ -22,13 +22,18 @@ function tmv3_step5CachedSourceSummary_() {
   };
 }
 
-function tmv3_step5RefreshTaskSources_() {
+function tmv3_step5RefreshTaskSources_(options) {
+  options = options || {};
   tmv3_assertShadow_();
   tmv3_resetRuntimeMetrics_();
 
-  // One canonical transaction refresh now owns all Task cache population:
-  // Install + Delivery + Service report feeds plus one paged Type-105 search.
-  const refreshed = tmv3_refreshTransactionSources_();
+  // One canonical transaction refresh owns all Task cache population.
+  // PreInspection Task hydration is centralized here and reused by routine
+  // Stage-5 mapping for the configured TTL.
+  const refreshed = tmv3_refreshTransactionSources_({
+    forcePreInspectionTasks:
+      options.forcePreInspectionTasks === true
+  });
   const result = Object.assign({}, refreshed, {
     api: tmv3_runtimeMetrics_()
   });
@@ -455,7 +460,9 @@ function tmv3_step5TaskResolutionRun(reason, refreshSources) {
 
   const sourceSummary =
     refreshSources === true
-      ? tmv3_step5RefreshTaskSources_()
+      ? tmv3_step5RefreshTaskSources_({
+          forcePreInspectionTasks:true
+        })
       : tmv3_step5CachedSourceSummary_();
 
   const step2Snapshot = tmv3_step2CalendarRecords_();

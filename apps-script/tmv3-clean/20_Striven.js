@@ -471,62 +471,136 @@ function tmv3_refreshMasterSources_() {
   };
 }
 
-function tmv3_preInspectionTaskSourceRows_() {
-  const pageSize = Math.max(
+function tmv3_preInspectionTaskRowArray_(task) {
+  return [
+    task['Task ID'],
+    task['Task Number'],
+    task['Task Type ID'],
+    task['Task Type'],
+    task['Status'],
+    task['Name'],
+    task['Customer ID'],
+    task['Location ID'],
+    task['Contact ID'],
+    task['Order ID'],
+    task['Start'],
+    task['Due'],
+    task['Assignees'],
+    task['Pools'],
+    task['URL'],
+    task.Fingerprint
+  ];
+}
+
+function tmv3_preInspectionTaskRefreshTargets_() {
+  const step2Records = tmv3_step2CalendarRecords_()
+    .filter(function(record) {
+      return record.vertical === 'PreInspection';
+    });
+  const step3Records = tmv3_step3BusinessAnchorRecords_(
+    step2Records,
+    tmv3_step3AnchorIndex_()
+  );
+  const step4Records = tmv3_step4IdentityRecords_(
+    step3Records,
+    tmv3_step4IdentityIndex_()
+  );
+
+  return step4Records
+    .filter(function(record) {
+      return (
+        record.step4 &&
+        record.step4.disposition === 'VERIFIED' &&
+        record.step4.customer
+      );
+    })
+    .map(function(record) {
+      return {
+        eventId:tmv3_clean_(record.eventId),
+        existingTaskId:tmv3_clean_(record.existingTaskId),
+        customer:record.step4.customer
+      };
+    });
+}
+
+function tmv3_searchPreInspectionTaskIdsForCustomer_(customer) {
+  const customerId = Number(
+    tmv3_clean_(
+      customer &&
+      customer['Customer ID']
+    ) || 0
+  );
+
+  if (!customerId) {
+    throw new Error(
+      'PreInspection task search requires Customer ID.'
+    );
+  }
+
+  const customerPayload = { Id: customerId };
+  const customerNumber = tmv3_clean_(
+    customer['Customer Number']
+  );
+  const customerName = tmv3_clean_(
+    customer['Name']
+  );
+
+  if (customerNumber) {
+    customerPayload.Number = customerNumber;
+  }
+  if (customerName) {
+    customerPayload.Name = customerName;
+  }
+
+  const maxPages = Math.max(
     1,
     Math.min(
-      100,
+      3,
       Number(
         TMV3.OPERATIONS &&
-        TMV3.OPERATIONS.preInspectionTaskSearchPageSize ||
-        100
+        TMV3.OPERATIONS.preInspectionTaskSearchMaxPages ||
+        3
       )
     )
   );
-  const maxPages = Math.max(
-    1,
-    Number(
-      TMV3.OPERATIONS &&
-      TMV3.OPERATIONS.preInspectionTaskSearchMaxPages ||
-      20
-    )
-  );
 
-  const all = [];
+  const ids = [];
   let previousSignature = '';
-  let totalCount = null;
   let terminatedNaturally = false;
 
-  for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+  for (
+    let pageIndex = 0;
+    pageIndex < maxPages;
+    pageIndex++
+  ) {
     const json = tmv3_fetchJson_(
       TMV3.API_BASE + '/v2/tasks/search',
       {
         method:'post',
         contentType:'application/json',
         payload:JSON.stringify({
+          Customer:customerPayload,
           Type:[105],
           PageIndex:pageIndex,
-          PageSize:pageSize
+          PageSize:100
         })
       }
     ) || {};
 
-    const rows = tmv3_extractTaskSearchRows_(json);
-    const reportedTotal = Number(
-      json.totalCount !== undefined
-        ? json.totalCount
-        : json.TotalCount
-    );
+    const rows =
+      tmv3_extractTaskSearchRows_(json);
 
-    if (isFinite(reportedTotal) && reportedTotal >= 0) {
-      totalCount = reportedTotal;
-    }
-
-    const signature = rows.slice(0, 5).map(function(row) {
-      return tmv3_clean_(
-        tmv3_first_(row, ['id','Id','taskId','TaskId'])
-      );
-    }).join('|');
+    const signature = rows
+      .slice(0, 5)
+      .map(function(row) {
+        return tmv3_clean_(
+          tmv3_first_(
+            row,
+            ['id','Id','taskId','TaskId']
+          )
+        );
+      })
+      .join('|');
 
     if (
       pageIndex > 0 &&
@@ -534,19 +608,29 @@ function tmv3_preInspectionTaskSourceRows_() {
       signature === previousSignature
     ) {
       throw new Error(
-        'TMV3_PREINSPECTION_TASK_PAGINATION_REPEATED: page ' +
+        'TMV3_PREINSPECTION_CUSTOMER_TASK_PAGINATION_REPEATED: Customer ' +
+        customerId +
+        ' repeated page ' +
         pageIndex +
-        ' repeated the prior Task search page.'
+        '.'
       );
     }
 
     previousSignature = signature;
-    Array.prototype.push.apply(all, rows);
+
+    rows.forEach(function(row) {
+      const id = tmv3_clean_(
+        tmv3_first_(
+          row,
+          ['id','Id','taskId','TaskId']
+        )
+      );
+      if (id) ids.push(id);
+    });
 
     if (
       !rows.length ||
-      rows.length < pageSize ||
-      (totalCount !== null && all.length >= totalCount)
+      rows.length < 100
     ) {
       terminatedNaturally = true;
       break;
@@ -555,91 +639,198 @@ function tmv3_preInspectionTaskSourceRows_() {
 
   if (!terminatedNaturally) {
     throw new Error(
-      'TMV3_PREINSPECTION_TASK_PAGINATION_TRUNCATED: Type 105 search reached ' +
-      maxPages +
-      ' full pages without proving completion.'
+      'TMV3_PREINSPECTION_CUSTOMER_TASK_PAGINATION_TRUNCATED: Customer ' +
+      customerId +
+      ' reached the page cap without proving completion.'
     );
   }
 
-  const seen = {};
-  const normalized = [];
+  return tmv3_unique_(ids);
+}
 
-  all.forEach(function(raw) {
-    const task = tmv3_normalizeV2TaskModel_(raw);
-    const taskId = tmv3_clean_(task['Task ID']);
-    const typeId = Number(task['Task Type ID'] || 0);
-    const customerId = tmv3_clean_(task['Customer ID']);
-    const status = tmv3_clean_(task['Status']);
+function tmv3_preInspectionTaskSourceRows_(options) {
+  options = options || {};
 
-    if (!taskId) {
-      throw new Error(
-        'TMV3_PREINSPECTION_TASK_SCHEMA_INVALID: search row is missing Task ID.'
-      );
-    }
-
-    if (typeId !== 105) {
-      throw new Error(
-        'TMV3_PREINSPECTION_TASK_SCHEMA_INVALID: Task ' +
-        taskId +
-        ' returned unexpected Task Type ID ' +
-        typeId +
-        '.'
-      );
-    }
-
-    if (!customerId || !status) {
-      throw new Error(
-        'TMV3_PREINSPECTION_TASK_SCHEMA_INVALID: Task ' +
-        taskId +
-        ' is missing Customer or Status evidence.'
-      );
-    }
-
-    if (seen[taskId]) return;
-    seen[taskId] = true;
-
-    normalized.push([
-      task['Task ID'],
-      task['Task Number'],
-      task['Task Type ID'],
-      task['Task Type'],
-      task['Status'],
-      task['Name'],
-      task['Customer ID'],
-      task['Location ID'],
-      task['Contact ID'],
-      task['Order ID'],
-      task['Start'],
-      task['Due'],
-      task['Assignees'],
-      task['Pools'],
-      task['URL'],
-      task.Fingerprint
-    ]);
+  const prior = tmv3_rows_(
+    TMV3.SHEETS.TASKS
+  ).filter(function(task) {
+    return Number(
+      task['Task Type ID'] || 0
+    ) === 105;
   });
 
-  const prior = tmv3_rows_(TMV3.SHEETS.TASKS)
-    .filter(function(task) {
-      return Number(task['Task Type ID'] || 0) === 105;
-    });
+  const props =
+    PropertiesService.getScriptProperties();
+  const refreshKey =
+    'TMV3_PREINSPECTION_TASK_CACHE_REFRESH_AT';
+  const lastMs = Number(
+    props.getProperty(refreshKey) || 0
+  );
+  const ttlMinutes = Math.max(
+    60,
+    Number(
+      TMV3.OPERATIONS &&
+      TMV3.OPERATIONS.preInspectionTaskCacheMinMinutes ||
+      360
+    )
+  );
+  const ageMinutes = lastMs
+    ? (
+        new Date().getTime() -
+        lastMs
+      ) / 60000
+    : Infinity;
 
-  if (!normalized.length && prior.length) {
+  if (
+    options.force !== true &&
+    prior.length &&
+    ageMinutes < ttlMinutes
+  ) {
+    return {
+      rows:prior.map(
+        tmv3_preInspectionTaskRowArray_
+      ),
+      reused:true,
+      targetCustomers:0,
+      searchedCustomers:0,
+      hydratedTasks:0,
+      priorTasks:prior.length,
+      ageMinutes:Math.round(ageMinutes)
+    };
+  }
+
+  const targets =
+    tmv3_preInspectionTaskRefreshTargets_();
+
+  if (!targets.length) {
+    return {
+      rows:prior.map(
+        tmv3_preInspectionTaskRowArray_
+      ),
+      reused:true,
+      targetCustomers:0,
+      searchedCustomers:0,
+      hydratedTasks:0,
+      priorTasks:prior.length,
+      ageMinutes:isFinite(ageMinutes)
+        ? Math.round(ageMinutes)
+        : null
+    };
+  }
+
+  const customerById = {};
+  const wantedTaskIds = {};
+
+  targets.forEach(function(target) {
+    const customer = target.customer || {};
+    const customerId = tmv3_clean_(
+      customer['Customer ID']
+    );
+
+    if (customerId) {
+      customerById[customerId] = customer;
+    }
+
+    if (target.existingTaskId) {
+      wantedTaskIds[
+        target.existingTaskId
+      ] = true;
+    }
+  });
+
+  const customerIds =
+    Object.keys(customerById);
+
+  customerIds.forEach(function(customerId) {
+    tmv3_searchPreInspectionTaskIdsForCustomer_(
+      customerById[customerId]
+    ).forEach(function(taskId) {
+      wantedTaskIds[taskId] = true;
+    });
+  });
+
+  const taskIds =
+    Object.keys(wantedTaskIds);
+  const maxHydrate = Math.max(
+    1,
+    Number(
+      TMV3.OPERATIONS &&
+      TMV3.OPERATIONS.preInspectionTaskHydrationMaxTasks ||
+      60
+    )
+  );
+
+  if (taskIds.length > maxHydrate) {
     throw new Error(
-      'TMV3_PREINSPECTION_TASK_EMPTY_KEEP_LAST_GOOD: Type 105 search returned 0 rows while the prior Task cache contains ' +
-      prior.length +
-      ' PreInspection Tasks.'
+      'TMV3_PREINSPECTION_TASK_HYDRATION_CAP: ' +
+      taskIds.length +
+      ' Tasks exceed the configured cap of ' +
+      maxHydrate +
+      '.'
     );
   }
 
+  const hydrated = taskIds
+    .map(function(taskId) {
+      return tmv3_getTaskById_(taskId);
+    })
+    .filter(function(task) {
+      const customerId = tmv3_clean_(
+        task &&
+        task['Customer ID']
+      );
+
+      return (
+        task &&
+        Number(
+          task['Task Type ID'] || 0
+        ) === 105 &&
+        !!customerById[customerId]
+      );
+    });
+
+  const seen = {};
+  hydrated.forEach(function(task) {
+    const id = tmv3_clean_(
+      task['Task ID']
+    );
+    if (!id) {
+      throw new Error(
+        'TMV3_PREINSPECTION_TASK_HYDRATION_INVALID: hydrated Task is missing Task ID.'
+      );
+    }
+    if (seen[id]) {
+      throw new Error(
+        'TMV3_PREINSPECTION_TASK_HYDRATION_DUPLICATE: Task ' +
+        id +
+        ' was hydrated more than once.'
+      );
+    }
+    seen[id] = true;
+  });
+
+  props.setProperty(
+    refreshKey,
+    String(new Date().getTime())
+  );
+
   return {
-    rows:normalized,
-    totalCount:totalCount === null ? normalized.length : totalCount,
-    pages:Math.ceil(all.length / pageSize),
-    pageSize:pageSize
+    rows:hydrated.map(
+      tmv3_preInspectionTaskRowArray_
+    ),
+    reused:false,
+    targetCustomers:customerIds.length,
+    searchedCustomers:customerIds.length,
+    hydratedTasks:hydrated.length,
+    priorTasks:prior.length,
+    ageMinutes:isFinite(ageMinutes)
+      ? Math.round(ageMinutes)
+      : null
   };
 }
 
-function tmv3_refreshTransactionSources_() {
+function tmv3_refreshTransactionSources_(options) {
+  options = options || {};
   tmv3_assertShadow_();
 
   const approved =
@@ -690,7 +881,9 @@ function tmv3_refreshTransactionSources_() {
       });
 
   const preInspectionSearch =
-    tmv3_preInspectionTaskSourceRows_();
+    tmv3_preInspectionTaskSourceRows_({
+      force:options.forcePreInspectionTasks === true
+    });
   const preInspectionTasks =
     preInspectionSearch.rows;
 
@@ -763,8 +956,21 @@ function tmv3_refreshTransactionSources_() {
     deliveryTasks: deliveryTasks.length,
     serviceTasks: serviceTasks.length,
     preInspectionTasks: preInspectionTasks.length,
-    preInspectionSearchPages: preInspectionSearch.pages,
-    preInspectionSearchTotalCount: preInspectionSearch.totalCount
+    preInspectionCacheReused: preInspectionSearch.reused === true,
+    preInspectionTargetCustomers: Number(
+      preInspectionSearch.targetCustomers || 0
+    ),
+    preInspectionSearchedCustomers: Number(
+      preInspectionSearch.searchedCustomers || 0
+    ),
+    preInspectionHydratedTasks: Number(
+      preInspectionSearch.hydratedTasks || 0
+    ),
+    preInspectionPriorTasks: Number(
+      preInspectionSearch.priorTasks || 0
+    ),
+    preInspectionCacheAgeMinutes:
+      preInspectionSearch.ageMinutes
   };
 }
 
