@@ -2243,7 +2243,10 @@ async function main() {
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
           RUN_MODE === 'GOLDCON_TASK_SCHEMA' ? 18618 : 0,
         allowedDate:
-          RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+          (
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+            RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST'
+          )
             ? String(RELEASE_MANIFEST.allowedDate || '')
             : '',
         expectedPlan:
