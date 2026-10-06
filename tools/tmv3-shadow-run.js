@@ -412,6 +412,142 @@ function TMPV3_directTitleCanary(vertical, eventId, taskId, expectedPlan) {
   );
 }
 
+function TMPV3_directPreInspectionStage5DateTest(targetDate) {
+  targetDate = String(targetDate || '2026-10-05');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+    throw new Error(
+      'Historical PreInspection Stage-5 test requires YYYY-MM-DD targetDate.'
+    );
+  }
+
+  var dayStart = new Date(targetDate + 'T00:00:00-04:00');
+  var dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  var cfg = TMV3.VERTICALS.PreInspection;
+  var rawRecords = [];
+
+  tmv3_verticalCalendars_('PreInspection', cfg).forEach(function(calCfg) {
+    var cal = CalendarApp.getCalendarById(calCfg.calendarId);
+    if (!cal) return;
+
+    var resolvedCalCfg = Object.assign({}, calCfg, {
+      calendarName: tmv3_safeCalendar_(function() {
+        return cal.getName ? cal.getName() : '';
+      }, '')
+    });
+
+    cal.getEvents(dayStart, dayEnd).forEach(function(event) {
+      var record = tmv3_calendarEvent_(
+        'PreInspection',
+        cfg,
+        resolvedCalCfg,
+        event,
+        {
+          stage:'STEP1',
+          applyEligibility:false,
+          mergeLogical:true
+        }
+      );
+      if (record) rawRecords.push(record);
+    });
+  });
+
+  var step1Records = tmv3_mergeLogicalCalendarRecords_(rawRecords);
+  var step2Records = tmv3_step2CalendarRecords_(step1Records);
+  var step3Records = tmv3_step3BusinessAnchorRecords_(
+    step2Records,
+    tmv3_step3AnchorIndex_()
+  );
+  var step4Records = tmv3_step4IdentityRecords_(
+    step3Records,
+    tmv3_step4IdentityIndex_()
+  );
+
+  tmv3_resetRuntimeMetrics_();
+
+  var results = step4Records.map(function(record) {
+    var s2 = record.step2 || {};
+    var s3 = record.step3 || {};
+    var s4 = record.step4 || {};
+    var test = {
+      eventId:record.eventId,
+      title:record.title,
+      start:tmv3_iso_(record.start),
+      existingTaskId:tmv3_clean_(record.existingTaskId),
+      step2:s2.disposition || '',
+      step3:s3.disposition || '',
+      step4:s4.disposition || '',
+      customerId:tmv3_clean_(s4.customer && s4.customer['Customer ID']),
+      locationId:tmv3_clean_(s4.location && s4.location['Location ID']),
+      stage5:'NOT_RUN',
+      stage5Code:'STEP4_' + (s4.disposition || 'UNKNOWN'),
+      taskIds:[],
+      candidateSource:'',
+      error:''
+    };
+
+    if (s4.disposition !== 'VERIFIED') return test;
+
+    try {
+      var candidates = [];
+      if (record.existingTaskId) {
+        var linked = tmv3_getTaskById_(record.existingTaskId);
+        candidates = linked ? [linked] : [];
+        test.candidateSource = 'EXACT_CALENDAR_TASK_READ';
+      } else {
+        candidates = tmv3_searchPreInspectionTasks_(s4.customer);
+        test.candidateSource = 'CUSTOMER_TYPE105_SEARCH';
+      }
+
+      var decision = tmv3_preInspectionTaskDecision_(
+        record,
+        s4.customer,
+        s4.location,
+        candidates
+      );
+
+      test.stage5 =
+        decision.status === 'MATCHED'
+          ? 'MATCHED'
+          : decision.status === 'CLEAR'
+            ? 'NO_TASK'
+            : 'REVIEW';
+      test.stage5Code =
+        decision.status === 'MATCHED'
+          ? 'PREINSPECTION_TASK_MATCHED'
+          : decision.status === 'CLEAR'
+            ? 'PREINSPECTION_NO_OPEN_TASK'
+            : (decision.errorCode || 'PREINSPECTION_TASK_REVIEW');
+      test.taskIds = (decision.task ? [decision.task] : [])
+        .concat(decision.historyTasks || [])
+        .map(function(task) {
+          return tmv3_clean_(task && task['Task ID']);
+        })
+        .filter(Boolean);
+      test.reason = decision.reason || '';
+      test.evidence = decision.evidence || [];
+    } catch (err) {
+      test.stage5 = 'REVIEW';
+      test.stage5Code = 'HISTORICAL_TEST_READ_ERROR';
+      test.error = String(err && err.message || err);
+    }
+
+    return test;
+  });
+
+  return {
+    status:'PREINSPECTION_STAGE5_DATE_TEST_COMPLETE',
+    targetDate:targetDate,
+    records:results,
+    counts:results.reduce(function(acc, row) {
+      acc.total++;
+      acc[row.stage5] = (acc[row.stage5] || 0) + 1;
+      return acc;
+    }, {total:0}),
+    api:tmv3_runtimeMetrics_(),
+    writesPerformed:false
+  };
+}
+
 function doPost(e) {
   try {
     var body = JSON.parse(
@@ -1627,6 +1763,70 @@ async function main() {
       RUN_MODE !== 'DIRECT_TITLE_PREVIEW'
     ) {
       await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+
+    if (RUN_MODE === 'DIRECT_PREINSPECTION_STAGE5_DATE_TEST') {
+      const direct = await runScriptFunction(
+        'TMPV3_directPreInspectionStage5DateTest',
+        [
+          String(RELEASE_MANIFEST.allowedDate || '2026-10-05')
+        ]
+      );
+
+      const executionError =
+        direct && direct.error
+          ? direct.error
+          : null;
+      if (executionError) {
+        fail(
+          'Apps Script direct historical PreInspection Stage-5 test failed: ' +
+          JSON.stringify(executionError)
+        );
+      }
+
+      const result =
+        direct &&
+        direct.response &&
+        direct.response.result
+          ? direct.response.result
+          : null;
+
+      if (
+        !result ||
+        String(result.status || '') !==
+          'PREINSPECTION_STAGE5_DATE_TEST_COMPLETE'
+      ) {
+        fail(
+          'Direct historical PreInspection Stage-5 test returned no usable result.'
+        );
+      }
+
+      await updateContent(pre);
+      const restored = await getContent();
+      if (canonicalHash(restored) !== preHash) {
+        fail(
+          'V3 source restore failed after direct historical Stage-5 test.'
+        );
+      }
+
+      fs.mkdirSync(outDir, {recursive:true});
+      fs.writeFileSync(
+        path.join(outDir, 'evidence.json'),
+        JSON.stringify({
+          status:'V3_DIRECT_PREINSPECTION_STAGE5_DATE_TEST_VERIFIED',
+          result:result,
+          sourceHeadHashVerified:true,
+          temporaryDeploymentDeleted:false,
+          reusedHeadDeployment:false,
+          verifiedAt:new Date().toISOString()
+        }, null, 2)
+      );
+
+      console.log(
+        'V3_DIRECT_PREINSPECTION_STAGE5_DATE_TEST_VERIFIED'
+      );
+      console.log(JSON.stringify(result));
+      return;
     }
 
     if (RUN_MODE === 'DIRECT_TITLE_PREVIEW') {
