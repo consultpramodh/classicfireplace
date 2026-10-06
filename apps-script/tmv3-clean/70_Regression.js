@@ -3092,13 +3092,7 @@ function tmv3_automaticCanaryRegression() {
 }
 
 function tmv3_preInspectionGuestSyncRegression() {
-  const primary =
-    'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com';
   const owner = 'stephen@classicfireplace.ca';
-  const excluded = [
-    owner,
-    'pramodh@classicfireplace.ca'
-  ];
   const cases = [];
 
   function check(name, actual, expected) {
@@ -3113,108 +3107,62 @@ function tmv3_preInspectionGuestSyncRegression() {
   }
 
   check(
-    'STEPHEN_CREATED_WITH_GUEST_REMOVES_CF_PREINSPECTS',
+    'PRIMARY_EVENT_WITHOUT_STEPHEN_ADDS_STEPHEN',
+    tmv3_preInspectionGuestSyncDecision_(
+      [],
+      owner
+    ),
+    { status:'ADD_STEPHEN', action:'ADD' }
+  );
+
+  check(
+    'PRIMARY_EVENT_WITH_STEPHEN_IS_IDEMPOTENT',
     tmv3_preInspectionGuestSyncDecision_(
       [owner],
-      [primary],
-      owner,
-      primary,
-      false,
-      excluded
-    ),
-    { status:'REMOVE_EXCLUDED_CREATOR', action:'REMOVE' }
-  );
-
-  check(
-    'PRAMODH_CREATED_WITH_GUEST_REMOVES_CF_PREINSPECTS',
-    tmv3_preInspectionGuestSyncDecision_(
-      ['pramodh@classicfireplace.ca'],
-      [primary],
-      owner,
-      primary,
-      false,
-      excluded
-    ),
-    { status:'REMOVE_EXCLUDED_CREATOR', action:'REMOVE' }
-  );
-
-  check(
-    'PRAMODH_CREATED_WITHOUT_GUEST_STAYS_CLEAN',
-    tmv3_preInspectionGuestSyncDecision_(
-      ['pramodh@classicfireplace.ca'],
-      [],
-      owner,
-      primary,
-      false,
-      excluded
-    ),
-    { status:'EXCLUDED_CREATOR_CLEAN', action:'NONE' }
-  );
-
-  check(
-    'NON_CUSTOMER_TEAM_MEETING_REMOVES_CF_PREINSPECTS',
-    tmv3_preInspectionGuestSyncDecision_(
-      ['terry@classicfireplace.ca'],
-      [primary],
-      owner,
-      primary,
-      true,
-      excluded
-    ),
-    { status:'REMOVE_NON_CUSTOMER_EVENT', action:'REMOVE' }
-  );
-
-  check(
-    'NON_CUSTOMER_WITHOUT_GUEST_STAYS_CLEAN',
-    tmv3_preInspectionGuestSyncDecision_(
-      ['terry@classicfireplace.ca'],
-      [],
-      owner,
-      primary,
-      true,
-      excluded
-    ),
-    { status:'NON_CUSTOMER_EVENT_CLEAN', action:'NONE' }
-  );
-
-  check(
-    'TERRY_CUSTOMER_PREINSPECTION_ADDS_CF_PREINSPECTS',
-    tmv3_preInspectionGuestSyncDecision_(
-      ['terry@classicfireplace.ca'],
-      [],
-      owner,
-      primary,
-      false,
-      excluded
-    ),
-    { status:'ADD_CF_PREINSPECTS', action:'ADD' }
-  );
-
-  check(
-    'ELIGIBLE_EXISTING_CF_PREINSPECTS_IS_IDEMPOTENT',
-    tmv3_preInspectionGuestSyncDecision_(
-      ['adam@classicfireplace.ca'],
-      [primary],
-      owner,
-      primary,
-      false,
-      excluded
+      owner
     ),
     { status:'ALREADY_PRESENT', action:'NONE' }
   );
 
   check(
-    'MISSING_CREATOR_CUSTOMER_EVENT_FAILS_CLOSED',
+    'OTHER_GUESTS_DO_NOT_BLOCK_STEPHEN',
+    tmv3_preInspectionGuestSyncDecision_(
+      [
+        'spencer@classicfireplace.ca',
+        'thang@classicfireplace.ca'
+      ],
+      owner
+    ),
+    { status:'ADD_STEPHEN', action:'ADD' }
+  );
+
+  check(
+    'MISSING_STEPHEN_CONFIG_FAILS_CLOSED',
     tmv3_preInspectionGuestSyncDecision_(
       [],
-      [primary],
-      owner,
-      primary,
-      false,
-      excluded
+      ''
     ),
-    { status:'REVIEW_CREATOR_MISSING', action:'NONE' }
+    { status:'BLOCKED_CONFIG', action:'NONE' }
   );
+
+  const calendars = tmv3_verticalCalendars_(
+    'PreInspection',
+    TMV3.VERTICALS.PreInspection
+  );
+
+  cases.push({
+    name:'PREINSPECTION_INTAKE_USES_CF_PREINSPECTS_ONLY',
+    pass:
+      calendars.length === 1 &&
+      tmv3_clean_(calendars[0].calendarId) ===
+        tmv3_clean_(
+          TMV3.VERTICALS.PreInspection.primaryCalendarId
+        ) &&
+      tmv3_clean_(calendars[0].role) ===
+        'PRIMARY_SHARED',
+    actual:calendars,
+    expected:'one PRIMARY_SHARED CF Preinspects source'
+  });
 
   const failures = cases.filter(function(item) {
     return !item.pass;
@@ -3323,30 +3271,35 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
     });
   }
 
-  const stephenSource = {
+  const secondaryOnlyRecord = {
     vertical:'PreInspection',
     calendarId:secondaryId,
     sourceCalendarIds:[secondaryId],
-    step2:{ mirrorRequired:true }
+    sourceCalendarRoles:['SECONDARY_STEPHEN'],
+    step2:{ mirrorRequired:false }
   };
 
-  const requiredFromStephen =
-    tmv3_requiredCalendarCopiesForEvent_(stephenSource);
+  const requiredFromSecondary =
+    tmv3_requiredCalendarCopiesForEvent_(
+      secondaryOnlyRecord
+    );
+
   check(
-    'PREINSPECTION_STEPHEN_SOURCE_REQUIRES_BOTH_COPIES',
-    requiredFromStephen.length === 2 &&
-      requiredFromStephen.indexOf(secondaryId) !== -1 &&
-      requiredFromStephen.indexOf(primaryId) !== -1,
-    JSON.stringify(requiredFromStephen)
+    'PREINSPECTION_BUSINESS_WRITES_TARGET_PRIMARY_ONLY',
+    requiredFromSecondary.length === 1 &&
+      requiredFromSecondary[0] === primaryId,
+    JSON.stringify(requiredFromSecondary)
   );
 
   const titleIds =
-    tmv3_titleNormalizationCalendarIds_(stephenSource);
+    tmv3_titleNormalizationCalendarIds_(
+      secondaryOnlyRecord
+    );
+
   check(
-    'PREINSPECTION_TITLE_NORMALIZATION_REQUIRES_BOTH_COPIES',
-    titleIds.length === 2 &&
-      titleIds.indexOf(secondaryId) !== -1 &&
-      titleIds.indexOf(primaryId) !== -1,
+    'PREINSPECTION_TITLE_NORMALIZATION_TARGETS_PRIMARY_ONLY',
+    titleIds.length === 1 &&
+      titleIds[0] === primaryId,
     JSON.stringify(titleIds)
   );
 
@@ -3355,13 +3308,37 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
       vertical:'PreInspection',
       calendarId:primaryId,
       sourceCalendarIds:[primaryId],
+      sourceCalendarRoles:['PRIMARY_SHARED'],
       step2:{ mirrorRequired:false }
     });
+
   check(
-    'PREINSPECTION_PRIMARY_ONLY_DOES_NOT_INVENT_SECONDARY_COPY',
+    'PREINSPECTION_PRIMARY_REMAINS_SINGLE_WRITE_AUTHORITY',
     primaryOnly.length === 1 &&
       primaryOnly[0] === primaryId,
     JSON.stringify(primaryOnly)
+  );
+
+  const secondaryDecision =
+    tmv3_step2ClassifyPreInspection_({
+      sourceCalendarRoles:['SECONDARY_STEPHEN'],
+      calendarRole:'SECONDARY_STEPHEN',
+      customerNumber:'62020',
+      orderNumber:'585593',
+      phone:'4164621542',
+      location:'58 Fenwood Heights',
+      calendarCustomerName:'Craig Haid and Paul Bruce',
+      descriptionClean:'SO#585593',
+      isAllDay:false,
+      title:'Craig Haid and Paul Bruce'
+    });
+
+  check(
+    'PREINSPECTION_SECONDARY_SOURCE_IS_MIRROR_ONLY',
+    secondaryDecision.disposition === 'SKIP' &&
+      secondaryDecision.code ===
+        'PREINSPECTION_SECONDARY_MIRROR_ONLY',
+    JSON.stringify(secondaryDecision)
   );
 
   const result = {
@@ -3379,3 +3356,4 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
 
   return result;
 }
+
