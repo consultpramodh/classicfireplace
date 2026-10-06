@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_STAGE5_PREINSPECTION_SEARCH_SCHEMA_PROBE",
+  "release": "TMV3_STAGE5_PREINSPECTION_SEARCH_SCHEMA_PROBE_R2",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_STAGE5_PREINSPECTION_SEARCH_SCHEMA_PROBE",
+  "requestTag": "TMV3_STAGE5_PREINSPECTION_SEARCH_SCHEMA_PROBE_R2",
   "allowedDate": "",
   "testWriteApiSoftLimit": 0,
   "customerId": 0
