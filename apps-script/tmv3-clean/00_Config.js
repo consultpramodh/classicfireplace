@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.55-stage5-cache-first-r1';
+const TMV3_VERSION = '3.11.56-preinspection-primary-stephen-guest-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -198,6 +198,8 @@ const TMV3 = Object.freeze({
       taskTypeId: 105,
       taskTypeNames: ['pre inspection', 'pre-inspection', 'preinspection'],
       primaryCalendarId: 'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com',
+      authoritativeCalendarSource: 'CF Preinspects',
+      primarySourceOnly: true,
       secondaryCalendarIds: ['classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'],
       secondaryOwnerEmail: 'stephen@classicfireplace.ca',
       secondaryIgnoredCreatorEmails: [

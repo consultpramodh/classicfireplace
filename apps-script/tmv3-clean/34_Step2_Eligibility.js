@@ -96,87 +96,47 @@ function tmv3_step2ClassifyService_(record) {
 }
 
 function tmv3_step2ClassifyPreInspection_(record) {
-  const roles = record.sourceCalendarRoles || [record.calendarRole || ''];
+  const roles = record.sourceCalendarRoles || [
+    record.calendarRole || ''
+  ];
   const fromShared = roles.indexOf('PRIMARY_SHARED') !== -1;
-  const fromStephen = roles.indexOf('SECONDARY_STEPHEN') !== -1;
-  const cfg = TMV3.VERTICALS.PreInspection;
+  const fromStephen =
+    roles.indexOf('SECONDARY_STEPHEN') !== -1;
 
-  const warnings = tmv3_step2PreInspectionFormatWarnings_(record);
+  const warnings =
+    tmv3_step2PreInspectionFormatWarnings_(record);
 
   if (fromShared) {
-    const mirrorStatus = fromStephen
-      ? 'BOTH_CALENDAR_COPIES_PRESENT'
-      : 'SHARED_ORIGIN_NO_MIRROR_WRITE_REQUIRED';
-
     return tmv3_step2Decision_(
       'ELIGIBLE',
-      warnings.length ? 'PREINSPECTION_SHARED_FORMAT_ATTENTION' : 'PREINSPECTION_SHARED_ELIGIBLE',
-      'Shared CF Preinspects events are part of the PreInspection appointment stream.',
+      warnings.length
+        ? 'PREINSPECTION_SHARED_FORMAT_ATTENTION'
+        : 'PREINSPECTION_SHARED_ELIGIBLE',
+      'CF Preinspects is the authoritative PreInspection source.',
       false,
       warnings,
-      mirrorStatus
+      'PRIMARY_SOURCE'
     );
   }
 
-  if (!fromStephen) {
-    return tmv3_step2Decision_(
-      'REVIEW',
-      'PREINSPECTION_UNKNOWN_SOURCE',
-      'PreInspection event is not traceable to the shared or Stephen source.',
-      false,
-      warnings
-    );
-  }
-
-  if (tmv3_step2PreInspectionNonCustomer_(record)) {
+  if (fromStephen) {
     return tmv3_step2Decision_(
       'SKIP',
-      'PREINSPECTION_NON_CUSTOMER_EVENT',
-      'Stephen-calendar event matches a known non-customer / blocking pattern.',
+      'PREINSPECTION_SECONDARY_MIRROR_ONLY',
+      'Stephen Calendar is mirror-only. PreInspection intake must originate from CF Preinspects.',
       false,
       warnings,
-      'NOT_ELIGIBLE_FOR_MIRROR'
-    );
-  }
-
-  const hasIdentity =
-    !!record.phone &&
-    !!(
-      record.customerNumber ||
-      record.orderNumber ||
-      tmv3_clean_(record.location) ||
-      tmv3_clean_(record.calendarCustomerName)
-    );
-
-  const alternateIdentity =
-    !!record.customerNumber &&
-    !!(
-      record.orderNumber ||
-      tmv3_clean_(record.location)
-    );
-
-  if (hasIdentity || alternateIdentity) {
-    const sharedId = cfg.primaryCalendarId;
-    const guestText = String(record.guests || '').toLowerCase();
-    const alreadyGuest = guestText.indexOf(String(sharedId).toLowerCase()) !== -1;
-
-    return tmv3_step2Decision_(
-      'ELIGIBLE',
-      warnings.length ? 'PREINSPECTION_SECONDARY_FORMAT_ATTENTION' : 'PREINSPECTION_SECONDARY_ELIGIBLE',
-      'Stephen-calendar event has customer-appointment evidence and was created by someone other than Stephen.',
-      !alreadyGuest,
-      warnings,
-      alreadyGuest ? 'SHARED_CALENDAR_ALREADY_GUEST' : 'MIRROR_REQUIRED_NOT_WRITTEN'
+      'SECONDARY_NOT_AUTHORITATIVE'
     );
   }
 
   return tmv3_step2Decision_(
     'REVIEW',
-    'PREINSPECTION_SECONDARY_UNCLEAR',
-    'Stephen-calendar event is not a known blocker, but customer-appointment evidence is incomplete.',
+    'PREINSPECTION_UNKNOWN_SOURCE',
+    'PreInspection event is not traceable to the authoritative CF Preinspects source.',
     false,
     warnings,
-    'NOT_MIRRORED_UNTIL_ELIGIBLE'
+    'UNKNOWN_SOURCE'
   );
 }
 
