@@ -2195,11 +2195,14 @@ async function main() {
                             ? 'V3_STEP7_RECONCILIATION_VERIFIED'
                             : RUN_MODE === 'TASK_SCHEDULE'
                           ? 'V3_TASK_SCHEDULE_VERIFIED'
+                        : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
+                        ? 'V3_PREINSPECTION_SEARCH_SCHEMA_PROBED'
                         : RUN_MODE === 'TASK_SCHEMA'
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1:
             RUN_MODE === 'SOURCE_REFRESH' ||
+            RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA' ||
             RUN_MODE === 'TASK_SCHEMA' ||
             RUN_MODE === 'GOLDCON_TASK_SCHEMA' ||
             RUN_MODE === 'INSTALL_DUE_SAMPLES' ||
