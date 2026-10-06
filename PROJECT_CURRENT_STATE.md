@@ -3,6 +3,32 @@
 **Last updated:** 2026-10-06 (America/Toronto)
 
 
+## 2026-10-06 FOUR-VERTICAL TASK LIFECYCLE — VERIFIED
+
+- Live V3 source: `3.11.62-four-vertical-lifecycle-r1`
+- Hard-rule mirror: `2026-10-06-r5`
+- Source commit: `3a88696c338112a8df40d207e9c40a49cc276e1c`
+- Canonical lifecycle contract: `docs/architecture/PROCESS_CONTRACT_MATRIX.md` (commit `0ec597aad60f018900a423ae493714a144876a7f`)
+- Guarded bootstrap run `37511385056`: PASS
+  - live PRE source matched the verified `3.11.61` baseline;
+  - all V3 source files passed syntax checks;
+  - source pushed to the existing bound Apps Script project;
+  - remote re-clone/file inventory/hash parity passed.
+- Live hardening regression run `37511589075`: PASS.
+- Shared lifecycle behavior is verified for Install, Delivery, Service, and PreInspection:
+  - exactly one valid OPEN Task -> reuse;
+  - multiple OPEN Tasks -> REVIEW, except the existing Service multi-fireplace path requires distinct FP markers;
+  - no OPEN Task + no history -> `CREATE_TASK` after prerequisite verification;
+  - same-day fulfilled/completed Task -> `FULFILLED_NO_RECREATE`;
+  - any applicable cancelled Task history -> REVIEW;
+  - undated history -> REVIEW;
+  - future history -> REVIEW;
+  - only older fulfilled/completed history -> `RECREATE_TASK`;
+  - wrong-vertical Tasks cannot become executable matches;
+  - cancelled Tasks cannot be used as RECREATE source Tasks.
+- V3 remains `SHADOW_READ_ONLY`; this release does not enable general Task/Calendar mutation.
+
+
 ## 2026-10-06 PREINSPECTION NO-OPEN-TASK POLICY — LOCKED
 
 The PreInspection decision contract is now explicit and must be used for every eligible CF Preinspects event:
