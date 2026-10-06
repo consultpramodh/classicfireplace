@@ -1747,10 +1747,30 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     eventRecord,
     scope
   );
-  const records = bundle.records || [bundle.resolved];
+  const records = (bundle.records || [bundle.resolved]).map(function(record) {
+    return Object.assign({}, record || {});
+  });
+
   records.forEach(function(record) {
     tmv3_assertResolvedRecordWritable_(record, { requireTask: true });
   });
+
+  if (
+    eventRecord.vertical === 'PreInspection' &&
+    bundle.contract &&
+    tmv3_clean_(bundle.contract.desiredTaskName)
+  ) {
+    const expectedTaskId = tmv3_clean_(bundle.contract.taskId);
+    records.forEach(function(record) {
+      const recordTaskId = tmv3_clean_(record.taskId);
+      if (
+        !expectedTaskId ||
+        recordTaskId === expectedTaskId
+      ) {
+        record.task = tmv3_clean_(bundle.contract.desiredTaskName);
+      }
+    });
+  }
 
   const plan = tmv3_buildCalendarLinkPlan_(eventRecord, records);
   const copies = [];

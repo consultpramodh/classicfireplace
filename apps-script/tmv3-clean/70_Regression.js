@@ -1508,6 +1508,63 @@ function tmv3_titleNormalizationRegression() {
     JSON.stringify(preLinkPlan.links)
   );
 
+  const preExecutionLinkBundle = {
+    eventRecord:{
+      vertical:'PreInspection',
+      eventId:'evt-pre-link',
+      title:'62400 - John Smith - (416) 555-1212',
+      phone:'4165551212',
+      customerNumber:'62400',
+      calendarCustomerName:'John Smith',
+      step4:pre.step4
+    },
+    records:[{
+      customerId:'35659',
+      taskId:'18845',
+      task:'18845'
+    }],
+    contract:{
+      taskId:'18845',
+      desiredTaskName:'John Smith - 123 Main St, Toronto - (416) 555-1212'
+    }
+  };
+
+  const preExecutionLinkRecords =
+    preExecutionLinkBundle.records.map(function(record) {
+      return Object.assign({}, record || {});
+    });
+
+  if (
+    preExecutionLinkBundle.eventRecord.vertical === 'PreInspection' &&
+    preExecutionLinkBundle.contract &&
+    tmv3_clean_(preExecutionLinkBundle.contract.desiredTaskName)
+  ) {
+    const expectedTaskId =
+      tmv3_clean_(preExecutionLinkBundle.contract.taskId);
+
+    preExecutionLinkRecords.forEach(function(record) {
+      if (
+        !expectedTaskId ||
+        tmv3_clean_(record.taskId) === expectedTaskId
+      ) {
+        record.task =
+          tmv3_clean_(preExecutionLinkBundle.contract.desiredTaskName);
+      }
+    });
+  }
+
+  const preExecutionLinkPlan = tmv3_buildCalendarLinkPlan_(
+    preExecutionLinkBundle.eventRecord,
+    preExecutionLinkRecords
+  );
+
+  check(
+    'PREINSPECTION_EXECUTION_LINK_USES_VERIFIED_TASK_NAME_NOT_NUMERIC_FALLBACK',
+    preExecutionLinkPlan.links[1].label ===
+      'Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212',
+    JSON.stringify(preExecutionLinkPlan.links)
+  );
+
   const preDescription = tmv3_managedCalendarDescription_(
     '62400 - John Smith - (416) 555-1212\n\n' +
       'Line one\nwrapped continuation\n\nSecond paragraph\n\n' +
