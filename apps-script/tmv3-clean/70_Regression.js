@@ -1433,33 +1433,33 @@ function tmv3_titleNormalizationRegression() {
       '62400 - John Smith - (416) 555-1212',
     JSON.stringify(preCalendar)
   );
-  const preTitlePreserve = tmv3_titleDescriptionPlan_(
+  const preTitlePlan = tmv3_titleDescriptionPlan_(
     'C#62400 - John Smith - (416) 555-1212',
     '62400 - John Smith - (416) 555-1212',
     'Existing authored note',
-    { preserveOldTitle:true }
+    { preserveOldTitle:false }
   );
   check(
-    'PREINSPECTION_TITLE_NORMALIZATION_PRESERVES_OLD_TITLE',
-    preTitlePreserve.titleChange === true &&
-      preTitlePreserve.descriptionChange === true &&
-      preTitlePreserve.after ===
-        'C#62400 - John Smith - (416) 555-1212\n\nExisting authored note',
-    JSON.stringify(preTitlePreserve)
+    'PREINSPECTION_TITLE_NORMALIZATION_DOES_NOT_POLLUTE_DESCRIPTION',
+    preTitlePlan.titleChange === true &&
+      preTitlePlan.descriptionChange === false &&
+      preTitlePlan.after === 'Existing authored note',
+    JSON.stringify(preTitlePlan)
   );
 
-  const preTitleAlreadyPreserved = tmv3_titleDescriptionPlan_(
-    'C#62400 - John Smith - (416) 555-1212',
-    '62400 - John Smith - (416) 555-1212',
-    'C#62400 - John Smith - (416) 555-1212\n\nExisting authored note',
-    { preserveOldTitle:true }
+  const preNotesCleaned = tmv3_preInspectionCalendarNotesText_(
+    'C#62400 - John Smith - (416) 555-1212\n\nExisting authored note\n\n------- Pre-Inspection Task Link -------\nTask #18845\nhttps://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=18845',
+    {
+      customerNumber:'62400',
+      customerName:'John Smith',
+      phone:'(416) 555-1212',
+      currentTitle:'62400 - John Smith - (416) 555-1212'
+    }
   );
   check(
-    'PREINSPECTION_OLD_TITLE_IS_NOT_DUPLICATED',
-    preTitleAlreadyPreserved.titleChange === true &&
-      preTitleAlreadyPreserved.descriptionChange === false &&
-      preTitleAlreadyPreserved.alreadyPreserved === true,
-    JSON.stringify(preTitleAlreadyPreserved)
+    'PREINSPECTION_DESCRIPTION_STRIPS_OLD_TITLE_AND_LEGACY_TASK_BLOCK',
+    preNotesCleaned === 'Existing authored note',
+    preNotesCleaned
   );
 
   const preLinkPlan = tmv3_buildCalendarLinkPlan_(
