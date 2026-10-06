@@ -220,7 +220,10 @@ A later task row must never replace an earlier task's managed link for the same 
 
 - Task Type ID 105.
 - Default assigned Pool ID 8.
-- Preferred concise title: `Preinspect - Customer Name - (###) ###-####`.
+- Canonical Calendar title: `<Customer Number> - <Customer Name> - <Phone>`.
+- Canonical Striven Task name: `<Customer Name> - <Street, City> - <Phone>`.
+- CF Preinspects is the single authoritative PreInspection Calendar source.
+- Stephen's Calendar is mirror-only; Stephen is required as a guest on CF Preinspects events.
 
 ## Customer resolution
 
@@ -254,11 +257,18 @@ Guardrails:
 
 This rule applies only to PreInspection. Install/Delivery/Service Requested By logic must not be changed by this contract.
 
-## PreInspect task matching
+## PreInspect task matching and no-open-task decision gate
 
 - Exactly one valid OPEN PreInspection task => reuse/reconcile.
-- No valid OPEN task => eligible CREATE only after all required relationships are proven.
-- Multiple valid OPEN candidates => `REVIEW_REQUIRED`.
+- Multiple valid OPEN candidates => `REVIEW_REQUIRED`; do not guess and do not create another Task.
+- **NO OPEN TASK is not permission to CREATE by itself.** Stage 6 must apply the history/duplicate gate first:
+  - zero OPEN Tasks + zero applicable history => `CREATE_TASK`;
+  - same-day completed/fulfilled Task => `FULFILLED_NO_RECREATE`;
+  - same-day cancelled Task => `REVIEW_REQUIRED`;
+  - undated or future historical Task evidence => `REVIEW_REQUIRED`;
+  - only older historical Task evidence => `RECREATE_TASK`.
+- If the Calendar carries a Task link but the linked Task cannot be verified, fail closed to `REVIEW_REQUIRED`; never create a replacement merely because the linked Task is absent from cache.
+- If Customer is verified but the job-site Location does not yet exist, resolve `CREATE_LOCATION` first and only then `CREATE_TASK`.
 - Do not clone technician-completed state from a DONE task into a new appointment.
 
 ## Create/reconcile field guardrails
@@ -270,7 +280,7 @@ Desired task state:
 - Requested By = resolved organizer Employee.
 - Start/Due = Calendar timing.
 - Assigned Pool = 8.
-- Custom Field 854 Install Notes = Calendar-authored notes only.
+- Field 854 is not managed by Task Mapping automation.
 - Task Description = blank on CREATE and never populated from Calendar notes.
 - Do not prefill technician-completed fields including Difficulty of the Job, Job Risk, Finishing 852, Electrical Work 853, Custom Metal Work 860.
 - Sales Order is not attached merely to create/recreate the PreInspection task.
@@ -289,7 +299,9 @@ Until this branch is implemented/proven, it remains a known lifecycle gap.
 
 - Material Striven writes require read-back verification.
 - Maintain one idempotent managed PreInspection Task link in the Calendar description.
-- Calendar read-back verifies managed link while preserving authored text.
+- Calendar description standard is authored notes followed by exactly one managed `-----Striven Links-----` block; do not preserve old titles or duplicate legacy Task-link blocks.
+- Calendar read-back verifies managed links while preserving authored notes.
+- PreInspection business Calendar writes target CF Preinspects; Stephen remains a guest/mirror, not a second business authority.
 
 ## Technician completion and downstream handoff
 
