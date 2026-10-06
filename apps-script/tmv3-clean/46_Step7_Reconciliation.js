@@ -192,11 +192,7 @@ function tmv3_step7ReconciliationRun(
   const sourceSummary =
     refreshSources === true
       ? tmv3_step5RefreshTaskSources_()
-      : {
-          tasks: tmv3_rows_(TMV3.SHEETS.TASKS).length,
-          preInspectionTasks: 'ON_DEMAND_ONLY',
-          source: 'CACHED_TASK_SOURCES'
-        };
+      : tmv3_step5CachedSourceSummary_();
 
   batchOptions = batchOptions || {};
   const batchOffset = Math.max(0, Number(batchOptions.offset || 0));
@@ -327,11 +323,7 @@ function tmv3_step7CreateCandidateScan(reason, refreshSources) {
   const sourceSummary =
     refreshSources === true
       ? tmv3_step5RefreshTaskSources_()
-      : {
-          tasks: tmv3_rows_(TMV3.SHEETS.TASKS).length,
-          preInspectionTasks: 'ON_DEMAND_ONLY',
-          source: 'CACHED_TASK_SOURCES'
-        };
+      : tmv3_step5CachedSourceSummary_();
 
   const step2Snapshot = tmv3_step2CalendarRecords_();
   const step3Records = tmv3_step3BusinessAnchorRecords_(
