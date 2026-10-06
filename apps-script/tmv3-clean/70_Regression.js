@@ -3265,12 +3265,12 @@ function tmv3_preInspectionGuestSyncRegression() {
   );
 
   check(
-    'MISSING_STEPHEN_CONFIG_FAILS_CLOSED',
+    'MISSING_STEPHEN_ARGUMENT_USES_CANONICAL_FALLBACK',
     tmv3_preInspectionGuestSyncDecision_(
       [],
       ''
     ),
-    { status:'BLOCKED_CONFIG', action:'NONE' }
+    { status:'ADD_STEPHEN', action:'ADD' }
   );
 
   const calendars = tmv3_verticalCalendars_(
