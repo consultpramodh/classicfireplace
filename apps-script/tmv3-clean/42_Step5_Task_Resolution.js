@@ -121,10 +121,11 @@ function tmv3_step5ResolvePreInspection_(record, refs) {
   const warnings = [];
   const evidence = ['PREINSPECTION_TASKS_FROM_SHARED_CACHE'];
 
-  if (
-    record.existingTaskId &&
-    !refs.taskById[tmv3_clean_(record.existingTaskId)]
-  ) {
+  const linkedTaskMissingFromCache =
+    !!record.existingTaskId &&
+    !refs.taskById[tmv3_clean_(record.existingTaskId)];
+
+  if (linkedTaskMissingFromCache) {
     warnings.push(
       'Calendar carries Task ' +
       tmv3_clean_(record.existingTaskId) +
@@ -133,6 +134,18 @@ function tmv3_step5ResolvePreInspection_(record, refs) {
     evidence.push(
       'CALENDAR_TASK_LINK_NOT_IN_CACHE_DEFER_LIVE_READ'
     );
+
+    if (!cachedCandidates.length) {
+      return tmv3_step5Decision_(
+        'REVIEW',
+        'PREINSPECTION_CALENDAR_TASK_NOT_IN_CACHE_NO_SAFE_FALLBACK',
+        'Calendar carries a PreInspection Task link that is absent from the current shared Task cache, and no Customer-owned cached Type-105 Task can safely replace it.',
+        [],
+        0,
+        evidence,
+        warnings
+      );
+    }
   }
 
   try {
@@ -210,12 +223,14 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
   const warnings = [];
 
   let wrongVerticalLinkedTask = null;
+  let linkedTaskMissingFromCache = false;
 
   if (record.existingTaskId) {
     const linkedId = tmv3_clean_(record.existingTaskId);
     let linked = refs.taskById[linkedId] || null;
 
     if (!linked) {
+      linkedTaskMissingFromCache = true;
       warnings.push(
         'Calendar carries Task ' + linkedId +
         ', but it is not present in the current Task cache. Stage 5 will not spend a live Task GET; cached Order or Customer + Location evidence will be used instead.'
@@ -266,6 +281,21 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
       });
 
     evidence.push('TASKS_FROM_VERIFIED_CUSTOMER_LOCATION');
+  }
+
+  if (
+    linkedTaskMissingFromCache &&
+    !candidates.length
+  ) {
+    return tmv3_step5Decision_(
+      'REVIEW',
+      'CALENDAR_LINKED_TASK_NOT_IN_CACHE_NO_SAFE_FALLBACK',
+      'Calendar carries a Task link that is absent from the current Task cache, and no verified cached Task fallback was found. Do not create a replacement Task until the linked Task is freshly verified at the write gate.',
+      [],
+      0,
+      evidence,
+      warnings
+    );
   }
 
   if (
