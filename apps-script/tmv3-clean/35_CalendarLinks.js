@@ -165,29 +165,10 @@ function tmv3_requiredCalendarCopiesForEvent_(eventRecord) {
   if (vertical === 'PreInspection') {
     const cfg = TMV3.VERTICALS.PreInspection || {};
     const primaryId = tmv3_clean_(cfg.primaryCalendarId);
-    const secondaryIds = (cfg.secondaryCalendarIds || [])
-      .map(tmv3_clean_)
-      .filter(Boolean);
 
-    const hasSecondarySource = secondaryIds.some(function(id) {
-      return sourceIds.indexOf(id) !== -1;
-    });
-    const mirrorRequired =
-      !!(record.step2 && record.step2.mirrorRequired === true);
-
-    // A Stephen-calendar customer appointment that is mirrored to
-    // CF Preinspects is one logical appointment but two required physical
-    // Calendar copies. Execution is not complete until both copies are
-    // found and verified.
-    if (hasSecondarySource || mirrorRequired) {
-      return tmv3_unique_(
-        sourceIds.concat(primaryId ? [primaryId] : [])
-      );
-    }
-
-    // Primary-only PreInspection appointments are valid; do not invent a
-    // Stephen-calendar copy when the appointment did not originate there.
-    if (sourceIds.length) return sourceIds;
+    // CF Preinspects is authoritative. Stephen receives the organizer-owned
+    // event as a guest; Calendar business writes occur only on the primary
+    // event and Google Calendar propagates that event to Stephen's copy.
     return [primaryId].filter(Boolean);
   }
 
