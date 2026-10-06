@@ -2570,6 +2570,244 @@ function tmv3_stage4IdentityRecoveryRegression() {
   };
 }
 
+function tmv3_stage5CacheFirstRegression() {
+  const cases = [];
+
+  function check(name, pass, detail) {
+    cases.push({
+      name:name,
+      pass:pass === true,
+      detail:detail === undefined ? '' : detail
+    });
+  }
+
+  const rawSearchRow = {
+    id:18949,
+    title:'Preinspect - Paul Bruce - (416) 462-1542',
+    customer:{
+      id:62020,
+      number:'62020',
+      name:'Paul Bruce & Craig Haid'
+    },
+    type:{ id:105, name:'Pre Inspection' },
+    status:{ id:48, name:'Open' }
+  };
+  const normalizedSearchRow =
+    tmv3_normalizeV2TaskModel_(rawSearchRow);
+
+  check(
+    'STAGE5_PREINSPECTION_SEARCH_ROW_NORMALIZES_WITHOUT_TASK_GET',
+    String(normalizedSearchRow['Task ID']) === '18949' &&
+      Number(normalizedSearchRow['Task Type ID']) === 105 &&
+      String(normalizedSearchRow['Customer ID']) === '62020' &&
+      normalizedSearchRow['Status'] === 'Open',
+    JSON.stringify(normalizedSearchRow)
+  );
+
+  const customer = {
+    'Customer ID':'62020',
+    'Customer Number':'62020',
+    'Name':'Paul Bruce & Craig Haid'
+  };
+  const location = {
+    'Location ID':'58001',
+    'Customer ID':'62020'
+  };
+  const cachedOpen = Object.assign({}, normalizedSearchRow);
+
+  const preDecision = tmv3_preInspectionTaskDecision_(
+    {
+      vertical:'PreInspection',
+      existingTaskId:'',
+      phone:'4164621542',
+      start:new Date('2026-10-06T13:00:00-04:00'),
+      end:new Date('2026-10-06T14:00:00-04:00')
+    },
+    customer,
+    location,
+    [cachedOpen]
+  );
+
+  check(
+    'STAGE5_SINGLE_OPEN_PREINSPECTION_REUSED_FROM_CACHE',
+    preDecision.status === 'MATCHED' &&
+      preDecision.task &&
+      String(preDecision.task['Task ID']) === '18949',
+    JSON.stringify(preDecision)
+  );
+
+  const missingLinkedStandard =
+    tmv3_step5ResolveStandardTask_(
+      {
+        vertical:'Install',
+        existingTaskId:'999999',
+        step3:{ anchor:{} },
+        step4:{
+          customer:{ 'Customer ID':'1' },
+          location:null
+        }
+      },
+      {
+        taskById:{},
+        tasksByOrder:{},
+        tasksByCustomer:{}
+      }
+    );
+
+  check(
+    'STAGE5_MISSING_LINKED_TASK_WITHOUT_CACHE_FALLBACK_REVIEWS',
+    missingLinkedStandard.disposition === 'REVIEW' &&
+      missingLinkedStandard.code ===
+        'CALENDAR_LINKED_TASK_NOT_IN_CACHE_NO_SAFE_FALLBACK',
+    JSON.stringify(missingLinkedStandard)
+  );
+
+  const cachedFallbackTask = {
+    'Task ID':'200',
+    'Task Type':'Delivery',
+    'Name':'Delivery',
+    'Status':'Open',
+    'Customer ID':'1',
+    'Location ID':'10',
+    'Order ID':'20'
+  };
+  const missingLinkWithFallback =
+    tmv3_step5ResolveStandardTask_(
+      {
+        vertical:'Delivery',
+        existingTaskId:'999999',
+        step3:{ anchor:{ orderId:'20' } },
+        step4:{
+          customer:{ 'Customer ID':'1' },
+          location:{ 'Location ID':'10' }
+        }
+      },
+      {
+        taskById:{},
+        tasksByOrder:{ '20':[cachedFallbackTask] },
+        tasksByCustomer:{}
+      }
+    );
+
+  check(
+    'STAGE5_MISSING_LINKED_TASK_USES_VERIFIED_CACHED_FALLBACK',
+    missingLinkWithFallback.disposition === 'MATCHED' &&
+      String(
+        missingLinkWithFallback.tasks[0] &&
+        missingLinkWithFallback.tasks[0]['Task ID']
+      ) === '200' &&
+      missingLinkWithFallback.evidence.indexOf(
+        'CALENDAR_TASK_LINK_NOT_IN_CACHE_DEFER_LIVE_READ'
+      ) !== -1,
+    JSON.stringify(missingLinkWithFallback)
+  );
+
+  const missingLinkedPreInspection =
+    tmv3_step5ResolvePreInspection_(
+      {
+        vertical:'PreInspection',
+        existingTaskId:'999998',
+        step4:{
+          customer:customer,
+          location:location
+        }
+      },
+      {
+        taskById:{},
+        tasksByCustomer:{ '62020':[] }
+      }
+    );
+
+  check(
+    'STAGE5_PREINSPECTION_MISSING_LINK_WITHOUT_CACHE_FALLBACK_REVIEWS',
+    missingLinkedPreInspection.disposition === 'REVIEW' &&
+      missingLinkedPreInspection.code ===
+        'PREINSPECTION_CALENDAR_TASK_NOT_IN_CACHE_NO_SAFE_FALLBACK',
+    JSON.stringify(missingLinkedPreInspection)
+  );
+
+  const completedPartial = Object.assign(
+    {},
+    normalizedSearchRow,
+    {
+      'Task ID':18940,
+      'Task Number':18940,
+      'Status':'Done'
+    }
+  );
+  const historyDecision = tmv3_preInspectionTaskDecision_(
+    {
+      vertical:'PreInspection',
+      existingTaskId:'',
+      phone:'4164621542',
+      start:new Date('2026-10-06T13:00:00-04:00'),
+      end:new Date('2026-10-06T14:00:00-04:00')
+    },
+    customer,
+    location,
+    [completedPartial]
+  );
+
+  const step5History = tmv3_step5Decision_(
+    'NO_TASK',
+    'PREINSPECTION_NO_OPEN_TASK',
+    historyDecision.reason,
+    [],
+    (historyDecision.historyTasks || []).length,
+    ['PREINSPECTION_TASKS_FROM_SHARED_CACHE'],
+    [],
+    historyDecision.historyTasks || []
+  );
+
+  const step6History = tmv3_step6DecisionRecords_([
+    {
+      vertical:'PreInspection',
+      start:new Date('2026-10-06T13:00:00-04:00'),
+      step5:step5History
+    }
+  ])[0].step6;
+
+  check(
+    'STAGE5_PARTIAL_COMPLETED_HISTORY_FAILS_CLOSED_ON_DATE',
+    historyDecision.status === 'CLEAR' &&
+      step6History.disposition === 'REVIEW' &&
+      step6History.code === 'HISTORY_DATE_UNPROVEN',
+    JSON.stringify(step6History)
+  );
+
+  check(
+    'STAGE5_PREINSPECTION_SEARCH_PAGE_IS_BOUNDED',
+    Number(
+      TMV3.OPERATIONS.preInspectionTaskSearchPageSize
+    ) <= 100 &&
+      Number(
+        TMV3.OPERATIONS.preInspectionTaskSearchMaxPages
+      ) <= 20,
+    JSON.stringify({
+      pageSize:TMV3.OPERATIONS.preInspectionTaskSearchPageSize,
+      maxPages:TMV3.OPERATIONS.preInspectionTaskSearchMaxPages
+    })
+  );
+
+  const failures = cases.filter(function(item) {
+    return !item.pass;
+  });
+
+  if (failures.length) {
+    throw new Error(
+      'TMV3 Stage 5 cache-first regression failed: ' +
+      JSON.stringify(failures)
+    );
+  }
+
+  return {
+    status:'PASS',
+    version:TMV3.VERSION,
+    cases:cases.length,
+    results:cases
+  };
+}
+
 function tmv3_canaryApiBudgetRegression() {
   const cfg = {
     v3DailySoftLimit:1200,
@@ -3009,6 +3247,8 @@ function tmv3_liveHardeningRegression() {
     tmv3_stage3Stage4CacheFirstRegression();
   const stage4IdentityRecovery =
     tmv3_stage4IdentityRecoveryRegression();
+  const stage5CacheFirst =
+    tmv3_stage5CacheFirstRegression();
   const canaryApiBudget =
     tmv3_canaryApiBudgetRegression();
   const automaticCanary =
@@ -3026,6 +3266,7 @@ function tmv3_liveHardeningRegression() {
       foundation0.status === 'PASS' &&
       stage3Stage4CacheFirst.status === 'PASS' &&
       stage4IdentityRecovery.status === 'PASS' &&
+      stage5CacheFirst.status === 'PASS' &&
       canaryApiBudget.status === 'PASS' &&
       automaticCanary.status === 'PASS' &&
       preInspectionGuestSync.status === 'PASS' &&
@@ -3040,6 +3281,7 @@ function tmv3_liveHardeningRegression() {
     foundation0:foundation0,
     stage3Stage4CacheFirst:stage3Stage4CacheFirst,
     stage4IdentityRecovery:stage4IdentityRecovery,
+    stage5CacheFirst:stage5CacheFirst,
     canaryApiBudget:canaryApiBudget,
     automaticCanary:automaticCanary,
     preInspectionGuestSync:preInspectionGuestSync,
