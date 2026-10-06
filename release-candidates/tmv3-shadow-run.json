@@ -1,9 +1,9 @@
 {
-  "release": "TMV3_3_11_55_DIRECT_PREINSPECTION_STAGE5_OCT5_TEST",
+  "release": "TMV3_3_11_55_PREINSPECTION_STAGE5_OCT5_TEST_R5",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "DIRECT_PREINSPECTION_STAGE5_DATE_TEST",
+  "runMode": "PREINSPECTION_STAGE5_DATE_TEST",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_55_DIRECT_PREINSPECTION_STAGE5_OCT5_TEST",
+  "requestTag": "TMV3_3_11_55_PREINSPECTION_STAGE5_OCT5_TEST_R5",
   "allowedDate": "2026-10-05",
   "testWriteApiSoftLimit": 0,
   "customerId": 0
