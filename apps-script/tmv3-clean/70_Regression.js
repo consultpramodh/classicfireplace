@@ -1587,13 +1587,13 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN',
     preDescription.indexOf(
-      'Line one wrapped continuation\n\nSecond paragraph\n\n'
+      'Line one wrapped continuation<br><br>Second paragraph<br><br>'
     ) === 0 &&
       preDescription.indexOf(
         '62400 - John Smith - (416) 555-1212'
       ) === -1 &&
       preDescription.indexOf(
-        '-----Striven Links-----  \n'
+        '<b>-----Striven Links-----</b><br>'
       ) !== -1 &&
       (preDescription.match(/Striven Links/g) || []).length === 1 &&
       preDescription.indexOf(
@@ -1630,7 +1630,7 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_SALES_ORDER_AND_NOTES_HEADING_BOUNDARY_PRESERVED',
     headingBreakLegacy.indexOf(
-      '**Sales Order:** SO#585434\n\nKeep these notes'
+      '**Sales Order:** SO#585434<br><br>Keep these notes'
     ) === 0,
     headingBreakLegacy
   );
