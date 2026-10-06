@@ -68,21 +68,16 @@ function tmv3_verticalCalendars_(vertical, cfg) {
   }
 
   if (vertical === 'PreInspection') {
+    // CF Preinspects is the single authoritative appointment source.
+    // Stephen receives the same event as a guest; his Calendar is mirror-only
+    // and must never introduce an independent PreInspection record.
     return [
       {
         calendarId: cfg.primaryCalendarId,
         role: 'PRIMARY_SHARED',
         calendarName: 'CF Preinspects'
       }
-    ].concat(
-      (cfg.secondaryCalendarIds || []).map(function(id) {
-        return {
-          calendarId: id,
-          role: 'SECONDARY_STEPHEN',
-          calendarName: 'Stephen'
-        };
-      })
-    );
+    ];
   }
 
   return (cfg.calendarIds || []).map(function(id) {
@@ -272,35 +267,13 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
 }
 
 function tmv3_preInspectionStep1SourceAllowed_(cfg, calCfg, creator) {
-  // Shared CF Preinspects calendar remains authoritative intake: keep all.
   if (calCfg.role === 'PRIMARY_SHARED') return true;
-  if (calCfg.role !== 'SECONDARY_STEPHEN') return true;
 
-  const ignored = (cfg.secondaryIgnoredCreatorEmails || [
-    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca'
-  ])
-    .map(function(v) { return tmv3_norm_(v); })
-    .filter(Boolean);
-
-  const creators = String(creator || '')
-    .split(',')
-    .map(function(v) { return tmv3_norm_(v); })
-    .filter(Boolean);
-
-  if (!creators.length) {
-    tmv3_audit_(
-      'PreInspection','','','STEP1_SOURCE_SCOPE','REVIEW',
-      'Stephen calendar event had no readable creator; excluded from Step 1 intake.'
-    );
-    return false;
-  }
-
-  // Only Stephen-created events on Stephen's personal calendar are excluded.
-  // Events created there by any other person remain part of the inspection stream
-  // and must also carry CF Preinspects as a guest via automated guest sync.
-  return !creators.some(function(email) {
-    return ignored.indexOf(email) !== -1;
-  });
+  tmv3_audit_(
+    'PreInspection','','','STEP1_SOURCE_SCOPE','SKIP',
+    'PreInspection intake is authoritative only from CF Preinspects. Secondary Calendar copies are mirror-only.'
+  );
+  return false;
 }
 
 function tmv3_mergeLogicalCalendarRecords_(records) {
