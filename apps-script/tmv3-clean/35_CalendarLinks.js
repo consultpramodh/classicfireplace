@@ -291,9 +291,32 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
 function tmv3_preInspectionCalendarNotesText_(description, plan) {
   let authored = tmv3_stripManagedLinkBlocks_(description || '');
 
-  // Preserve the exact pre-normalization Calendar title when it was
-  // previously migrated into the description. It is business-authored
-  // historical context and must survive later link refreshes.
+  // Old Calendar titles are formatting residue, not customer notes.
+  // Strip a preserved title only when the first line independently carries
+  // the same Customer Number and phone as the verified PreInspection plan.
+  authored = tmv3_decodeCalendarHtmlEntities_(String(authored || ''))
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/\r\n?/g, '\n');
+
+  const lines = authored.split('\n');
+  const firstLine = tmv3_clean_(lines[0] || '');
+  const verifiedNumber = tmv3_clean_(plan && plan.customerNumber);
+  const verifiedPhone = tmv3_phone10_(plan && plan.phone);
+
+  if (
+    firstLine &&
+    verifiedNumber &&
+    verifiedPhone &&
+    firstLine.indexOf(verifiedNumber) !== -1 &&
+    tmv3_phone10_(firstLine) === verifiedPhone
+  ) {
+    lines.shift();
+    while (lines.length && !tmv3_clean_(lines[0])) {
+      lines.shift();
+    }
+    authored = lines.join('\n');
+  }
+
   authored = tmv3_normalizePreInspectionAuthoredWraps_(authored);
 
   if (!authored) return '';
