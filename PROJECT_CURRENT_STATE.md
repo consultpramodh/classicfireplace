@@ -20,7 +20,18 @@ The PreInspection decision contract is now explicit and must be used for every e
 - verified Customer with a genuinely missing job-site Location → `CREATE_LOCATION` before `CREATE_TASK`;
 - Stage 7 must freshly recheck duplicate/relationship evidence before any CREATE/RECREATE write.
 
-The runtime Stage-6 implementation already follows this sequence in `tmv3_step6NoOpenTaskDecision_()`. Release `3.11.59-preinspection-no-open-task-policy-r1` locks the policy into `TMV3_HARD_RULES`, hard-rule assertions, canonical workflow documentation, and dedicated regression coverage.
+The runtime Stage-6 implementation follows this sequence in `tmv3_step6NoOpenTaskDecision_()`.
+
+Verification is now complete under live release **`3.11.61-preinspection-regression-alignment-r1`**:
+- hard-rule version: `2026-10-06-r4`;
+- guarded Apps Script bootstrap: **SUCCESS**;
+- ledger verification: **SUCCESS**;
+- live hardening regression: **PASS**;
+- dedicated `preInspectionNoOpenTaskPolicy` regression: **6/6 PASS**;
+- verified branches: no history → CREATE, same-day completed → FULFILLED_NO_RECREATE, same-day cancelled → REVIEW, undated history → REVIEW, future history → REVIEW, older history → RECREATE_TASK;
+- write flags remain disabled in `SHADOW_READ_ONLY`.
+
+This policy is locked into `PROJECT_OPERATING_RULES.md`, `TMV3_HARD_RULES`, hard-rule assertions, the canonical PreInspection workflow docs, and regression coverage.
 
 
 
