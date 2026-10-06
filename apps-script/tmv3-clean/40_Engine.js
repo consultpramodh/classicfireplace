@@ -1573,13 +1573,27 @@ function tmv3_updateOverview_(
 }
 
 
-function tmv3_preInspectionTaskDecision_(eventRecord, customer, location) {
+function tmv3_preInspectionTaskDecision_(eventRecord, customer, location, cachedCandidates) {
   const customerId = tmv3_clean_(customer && customer['Customer ID']);
   const locationId = tmv3_clean_(location && location['Location ID']);
 
   let candidates = [];
 
-  if (eventRecord.existingTaskId) {
+  if (Array.isArray(cachedCandidates)) {
+    candidates = cachedCandidates.slice();
+
+    if (eventRecord.existingTaskId) {
+      const linkedId = tmv3_clean_(eventRecord.existingTaskId);
+      const linked = candidates.filter(function(task) {
+        return tmv3_clean_(task['Task ID']) === linkedId;
+      });
+
+      // Prefer an exact cached Calendar Task link when present. If the link is
+      // stale/missing from cache, continue with the verified Customer's cached
+      // Type-105 candidates rather than spending a live Task GET.
+      if (linked.length === 1) candidates = linked;
+    }
+  } else if (eventRecord.existingTaskId) {
     const linked = tmv3_getTaskById_(eventRecord.existingTaskId);
     candidates = linked ? [linked] : [];
   } else {

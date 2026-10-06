@@ -9,73 +9,29 @@
  * - No reconciliation plan yet.
  ************************************************************/
 
+function tmv3_step5CachedSourceSummary_() {
+  const tasks = tmv3_rows_(TMV3.SHEETS.TASKS);
+  const preInspectionTasks = tasks.filter(function(task) {
+    return Number(task['Task Type ID'] || 0) === 105;
+  }).length;
+
+  return {
+    tasks: tasks.length,
+    preInspectionTasks: preInspectionTasks,
+    source: 'CACHED_TASK_SOURCES'
+  };
+}
+
 function tmv3_step5RefreshTaskSources_() {
   tmv3_assertShadow_();
   tmv3_resetRuntimeMetrics_();
 
-  const orders = tmv3_rows_(TMV3.SHEETS.ORDERS);
-  const orderIdByNumber = {};
-
-  orders.forEach(function(order) {
-    const id = tmv3_clean_(order['Order ID']);
-    const number = tmv3_clean_(order['Order Number']);
-    if (id && number) orderIdByNumber[number] = id;
-  });
-
-  const installTasks =
-    tmv3_reportRows_(TMV3.PROPERTIES.INSTALL_TASKS)
-      .map(function(r) {
-        return tmv3_normalizeTask_(r, 'Install', orderIdByNumber);
-      });
-
-  const deliveryTasks =
-    tmv3_reportRows_(TMV3.PROPERTIES.DELIVERY_TASKS)
-      .map(function(r) {
-        return tmv3_normalizeTask_(r, 'Delivery', orderIdByNumber);
-      });
-
-  const serviceTasks =
-    tmv3_reportRows_(TMV3.PROPERTIES.SERVICE_TASKS)
-      .map(function(r) {
-        return tmv3_normalizeTask_(r, 'Service', orderIdByNumber);
-      });
-
-  const tasks = tmv3_dedupeObjects_(
-    installTasks.concat(deliveryTasks, serviceTasks),
-    function(r) { return r[0]; }
-  );
-
-  tmv3_replaceRows_(
-    TMV3.SHEETS.TASKS,
-    [
-      'Task ID',
-      'Task Number',
-      'Task Type ID',
-      'Task Type',
-      'Status',
-      'Name',
-      'Customer ID',
-      'Location ID',
-      'Contact ID',
-      'Order ID',
-      'Start',
-      'Due',
-      'Assignees',
-      'Pools',
-      'URL',
-      'Fingerprint'
-    ],
-    tasks
-  );
-
-  const result = {
-    installTasks: installTasks.length,
-    deliveryTasks: deliveryTasks.length,
-    serviceTasks: serviceTasks.length,
-    tasks: tasks.length,
-    preInspectionTasks: 'ON_DEMAND_ONLY',
+  // One canonical transaction refresh now owns all Task cache population:
+  // Install + Delivery + Service report feeds plus one paged Type-105 search.
+  const refreshed = tmv3_refreshTransactionSources_();
+  const result = Object.assign({}, refreshed, {
     api: tmv3_runtimeMetrics_()
-  };
+  });
 
   tmv3_audit_(
     'SYSTEM','','','STEP5_REFRESH_TASK_SOURCES','PASS',
@@ -136,7 +92,7 @@ function tmv3_step5TaskRecords_(step4Records, refs) {
 
     const decision =
       record.vertical === 'PreInspection'
-        ? tmv3_step5ResolvePreInspection_(record)
+        ? tmv3_step5ResolvePreInspection_(record, refs)
         : tmv3_step5ResolveStandardTask_(record, refs);
 
     return Object.assign({}, record, { step5: decision });
@@ -148,16 +104,56 @@ function tmv3_step5TaskRecords_(step4Records, refs) {
   return records;
 }
 
-function tmv3_step5ResolvePreInspection_(record) {
+function tmv3_step5ResolvePreInspection_(record, refs) {
   const identity = record.step4 || {};
   const customer = identity.customer;
   const location = identity.location;
+  const customerId = tmv3_clean_(
+    customer && customer['Customer ID']
+  );
+
+  const cachedCandidates = (
+    refs.tasksByCustomer[customerId] || []
+  ).filter(function(task) {
+    return Number(task['Task Type ID'] || 0) === 105;
+  });
+
+  const warnings = [];
+  const evidence = ['PREINSPECTION_TASKS_FROM_SHARED_CACHE'];
+
+  const linkedTaskMissingFromCache =
+    !!record.existingTaskId &&
+    !refs.taskById[tmv3_clean_(record.existingTaskId)];
+
+  if (linkedTaskMissingFromCache) {
+    warnings.push(
+      'Calendar carries Task ' +
+      tmv3_clean_(record.existingTaskId) +
+      ', but it is not present in the current shared Task cache. Stage 5 did not spend a live Task GET.'
+    );
+    evidence.push(
+      'CALENDAR_TASK_LINK_NOT_IN_CACHE_DEFER_LIVE_READ'
+    );
+
+    if (!cachedCandidates.length) {
+      return tmv3_step5Decision_(
+        'REVIEW',
+        'PREINSPECTION_CALENDAR_TASK_NOT_IN_CACHE_NO_SAFE_FALLBACK',
+        'Calendar carries a PreInspection Task link that is absent from the current shared Task cache, and no Customer-owned cached Type-105 Task can safely replace it.',
+        [],
+        0,
+        evidence,
+        warnings
+      );
+    }
+  }
 
   try {
     const decision = tmv3_preInspectionTaskDecision_(
       record,
       customer,
-      location
+      location,
+      cachedCandidates
     );
 
     if (decision.status === 'MATCHED' && decision.task) {
@@ -167,8 +163,8 @@ function tmv3_step5ResolvePreInspection_(record) {
         decision.reason,
         [decision.task],
         (decision.historyTasks || []).length,
-        decision.evidence || [],
-        [],
+        evidence.concat(decision.evidence || []),
+        warnings,
         decision.historyTasks || []
       );
     }
@@ -180,8 +176,8 @@ function tmv3_step5ResolvePreInspection_(record) {
         decision.reason,
         [],
         (decision.historyTasks || []).length,
-        [],
-        [],
+        evidence,
+        warnings,
         decision.historyTasks || []
       );
     }
@@ -192,16 +188,18 @@ function tmv3_step5ResolvePreInspection_(record) {
       decision.reason || 'PreInspection Task candidates require review.',
       [],
       0,
-      decision.evidence || []
+      evidence.concat(decision.evidence || []),
+      warnings
     );
   } catch (err) {
     return tmv3_step5Decision_(
       'REVIEW',
-      'PREINSPECTION_TASK_LOOKUP_ERROR',
+      'PREINSPECTION_TASK_CACHE_RESOLUTION_ERROR',
       String(err && err.message || err),
       [],
       0,
-      []
+      evidence,
+      warnings
     );
   }
 }
@@ -225,26 +223,21 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
   const warnings = [];
 
   let wrongVerticalLinkedTask = null;
+  let linkedTaskMissingFromCache = false;
 
   if (record.existingTaskId) {
     const linkedId = tmv3_clean_(record.existingTaskId);
     let linked = refs.taskById[linkedId] || null;
 
     if (!linked) {
-      try {
-        linked = tmv3_getTaskById_(linkedId);
-        if (linked) evidence.push('CALENDAR_TASK_LINK_LIVE_READ');
-      } catch (err) {
-        return tmv3_step5Decision_(
-          'REVIEW',
-          'CALENDAR_LINKED_TASK_READ_FAILED',
-          'Calendar carries Task ' + linkedId + ', but the Task could not be read.',
-          [],
-          0,
-          [],
-          [String(err && err.message || err)]
-        );
-      }
+      linkedTaskMissingFromCache = true;
+      warnings.push(
+        'Calendar carries Task ' + linkedId +
+        ', but it is not present in the current Task cache. Stage 5 will not spend a live Task GET; cached Order or Customer + Location evidence will be used instead.'
+      );
+      evidence.push(
+        'CALENDAR_TASK_LINK_NOT_IN_CACHE_DEFER_LIVE_READ'
+      );
     } else {
       evidence.push('CALENDAR_TASK_LINK_CACHE_EXACT');
     }
@@ -288,6 +281,21 @@ function tmv3_step5ResolveStandardTask_(record, refs) {
       });
 
     evidence.push('TASKS_FROM_VERIFIED_CUSTOMER_LOCATION');
+  }
+
+  if (
+    linkedTaskMissingFromCache &&
+    !candidates.length
+  ) {
+    return tmv3_step5Decision_(
+      'REVIEW',
+      'CALENDAR_LINKED_TASK_NOT_IN_CACHE_NO_SAFE_FALLBACK',
+      'Calendar carries a Task link that is absent from the current Task cache, and no verified cached Task fallback was found. Do not create a replacement Task until the linked Task is freshly verified at the write gate.',
+      [],
+      0,
+      evidence,
+      warnings
+    );
   }
 
   if (
@@ -448,11 +456,7 @@ function tmv3_step5TaskResolutionRun(reason, refreshSources) {
   const sourceSummary =
     refreshSources === true
       ? tmv3_step5RefreshTaskSources_()
-      : {
-          tasks: tmv3_rows_(TMV3.SHEETS.TASKS).length,
-          preInspectionTasks: 'ON_DEMAND_ONLY',
-          source: 'CACHED_TASK_SOURCES'
-        };
+      : tmv3_step5CachedSourceSummary_();
 
   const step2Snapshot = tmv3_step2CalendarRecords_();
   const step3Refs = tmv3_step3AnchorIndex_();
