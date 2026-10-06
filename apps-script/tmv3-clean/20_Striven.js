@@ -471,6 +471,174 @@ function tmv3_refreshMasterSources_() {
   };
 }
 
+function tmv3_preInspectionTaskSourceRows_() {
+  const pageSize = Math.max(
+    1,
+    Math.min(
+      100,
+      Number(
+        TMV3.OPERATIONS &&
+        TMV3.OPERATIONS.preInspectionTaskSearchPageSize ||
+        100
+      )
+    )
+  );
+  const maxPages = Math.max(
+    1,
+    Number(
+      TMV3.OPERATIONS &&
+      TMV3.OPERATIONS.preInspectionTaskSearchMaxPages ||
+      20
+    )
+  );
+
+  const all = [];
+  let previousSignature = '';
+  let totalCount = null;
+  let terminatedNaturally = false;
+
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+    const json = tmv3_fetchJson_(
+      TMV3.API_BASE + '/v2/tasks/search',
+      {
+        method:'post',
+        contentType:'application/json',
+        payload:JSON.stringify({
+          Type:[105],
+          PageIndex:pageIndex,
+          PageSize:pageSize
+        })
+      }
+    ) || {};
+
+    const rows = tmv3_extractTaskSearchRows_(json);
+    const reportedTotal = Number(
+      json.totalCount !== undefined
+        ? json.totalCount
+        : json.TotalCount
+    );
+
+    if (isFinite(reportedTotal) && reportedTotal >= 0) {
+      totalCount = reportedTotal;
+    }
+
+    const signature = rows.slice(0, 5).map(function(row) {
+      return tmv3_clean_(
+        tmv3_first_(row, ['id','Id','taskId','TaskId'])
+      );
+    }).join('|');
+
+    if (
+      pageIndex > 0 &&
+      signature &&
+      signature === previousSignature
+    ) {
+      throw new Error(
+        'TMV3_PREINSPECTION_TASK_PAGINATION_REPEATED: page ' +
+        pageIndex +
+        ' repeated the prior Task search page.'
+      );
+    }
+
+    previousSignature = signature;
+    Array.prototype.push.apply(all, rows);
+
+    if (
+      !rows.length ||
+      rows.length < pageSize ||
+      (totalCount !== null && all.length >= totalCount)
+    ) {
+      terminatedNaturally = true;
+      break;
+    }
+  }
+
+  if (!terminatedNaturally) {
+    throw new Error(
+      'TMV3_PREINSPECTION_TASK_PAGINATION_TRUNCATED: Type 105 search reached ' +
+      maxPages +
+      ' full pages without proving completion.'
+    );
+  }
+
+  const seen = {};
+  const normalized = [];
+
+  all.forEach(function(raw) {
+    const task = tmv3_normalizeV2TaskModel_(raw);
+    const taskId = tmv3_clean_(task['Task ID']);
+    const typeId = Number(task['Task Type ID'] || 0);
+    const customerId = tmv3_clean_(task['Customer ID']);
+    const status = tmv3_clean_(task['Status']);
+
+    if (!taskId) {
+      throw new Error(
+        'TMV3_PREINSPECTION_TASK_SCHEMA_INVALID: search row is missing Task ID.'
+      );
+    }
+
+    if (typeId !== 105) {
+      throw new Error(
+        'TMV3_PREINSPECTION_TASK_SCHEMA_INVALID: Task ' +
+        taskId +
+        ' returned unexpected Task Type ID ' +
+        typeId +
+        '.'
+      );
+    }
+
+    if (!customerId || !status) {
+      throw new Error(
+        'TMV3_PREINSPECTION_TASK_SCHEMA_INVALID: Task ' +
+        taskId +
+        ' is missing Customer or Status evidence.'
+      );
+    }
+
+    if (seen[taskId]) return;
+    seen[taskId] = true;
+
+    normalized.push([
+      task['Task ID'],
+      task['Task Number'],
+      task['Task Type ID'],
+      task['Task Type'],
+      task['Status'],
+      task['Name'],
+      task['Customer ID'],
+      task['Location ID'],
+      task['Contact ID'],
+      task['Order ID'],
+      task['Start'],
+      task['Due'],
+      task['Assignees'],
+      task['Pools'],
+      task['URL'],
+      task.Fingerprint
+    ]);
+  });
+
+  const prior = tmv3_rows_(TMV3.SHEETS.TASKS)
+    .filter(function(task) {
+      return Number(task['Task Type ID'] || 0) === 105;
+    });
+
+  if (!normalized.length && prior.length) {
+    throw new Error(
+      'TMV3_PREINSPECTION_TASK_EMPTY_KEEP_LAST_GOOD: Type 105 search returned 0 rows while the prior Task cache contains ' +
+      prior.length +
+      ' PreInspection Tasks.'
+    );
+  }
+
+  return {
+    rows:normalized,
+    totalCount:totalCount === null ? normalized.length : totalCount,
+    pages:Math.ceil(all.length / pageSize),
+    pageSize:pageSize
+  };
+}
+
 function tmv3_refreshTransactionSources_() {
   tmv3_assertShadow_();
 
@@ -521,8 +689,17 @@ function tmv3_refreshTransactionSources_() {
         return tmv3_normalizeTask_(r, 'Service', orderIdByNumber);
       });
 
+  const preInspectionSearch =
+    tmv3_preInspectionTaskSourceRows_();
+  const preInspectionTasks =
+    preInspectionSearch.rows;
+
   const tasks = tmv3_dedupeObjects_(
-    installTasks.concat(deliveryTasks, serviceTasks),
+    installTasks.concat(
+      deliveryTasks,
+      serviceTasks,
+      preInspectionTasks
+    ),
     function(r) {
       return r[0];
     }
@@ -581,7 +758,13 @@ function tmv3_refreshTransactionSources_() {
 
   return {
     orders: orders.length,
-    tasks: tasks.length
+    tasks: tasks.length,
+    installTasks: installTasks.length,
+    deliveryTasks: deliveryTasks.length,
+    serviceTasks: serviceTasks.length,
+    preInspectionTasks: preInspectionTasks.length,
+    preInspectionSearchPages: preInspectionSearch.pages,
+    preInspectionSearchTotalCount: preInspectionSearch.totalCount
   };
 }
 
