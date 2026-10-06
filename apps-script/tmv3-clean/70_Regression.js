@@ -1507,23 +1507,23 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN',
     preDescription.indexOf(
-      '62400 - John Smith - (416) 555-1212\n\n'
+      'Line one wrapped continuation\n\nSecond paragraph\n\n'
     ) === 0 &&
       preDescription.indexOf(
-        'Line one wrapped continuation\n\nSecond paragraph'
-      ) !== -1 &&
+        '62400 - John Smith - (416) 555-1212'
+      ) === -1 &&
       preDescription.indexOf(
         '-----Striven Links-----  \n'
       ) !== -1 &&
-      preDescription.indexOf('\n\n[View Sales Orders') === -1 &&
-      preDescription.indexOf('\n\n[Task #18845') === -1 &&
+      (preDescription.match(/Striven Links/g) || []).length === 1 &&
       preDescription.indexOf(
         'View Sales Orders – John Smith (#62400)'
       ) !== -1 &&
       preDescription.indexOf(
         'Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212'
       ) !== -1 &&
-      preDescription.indexOf('old.example') === -1,
+      preDescription.indexOf('old.example') === -1 &&
+      preDescription.indexOf('Pre-Inspection Task Link') === -1,
     preDescription
   );
   const escapedMarkdownLegacy = tmv3_managedCalendarDescription_(
