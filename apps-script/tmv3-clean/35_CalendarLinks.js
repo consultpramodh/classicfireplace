@@ -243,64 +243,62 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
 
 
 
-function tmv3_preInspectionClickableLinkPresent_(description, link) {
-  const text = String(description || '');
-  const url = tmv3_regexEscape_(String(link && link.url || ''));
-  if (!url) return false;
-
-  return new RegExp(
-    '<a\\b[^>]*href=["\\\']' + url + '["\\\'][^>]*>',
-    'i'
-  ).test(text);
-}
-
-function tmv3_preInspectionHtmlLink_(link) {
-  return '<a href="' +
-    tmv3_calendarHtmlEscape_(String(link.url || '')) +
-    '">' +
-    tmv3_calendarHtmlEscape_(String(link.label || '')) +
-    '</a>';
+function tmv3_preInspectionCalendarLinkSourcePresent_(description, link) {
+  const before = String(description || '').replace(/\s+/g, '');
+  const source =
+    '[' +
+    tmv3_calendarMarkdownLabel_(link && link.label || '') +
+    '](' +
+    String(link && link.url || '') +
+    ')';
+  return before.indexOf(source.replace(/\s+/g, '')) !== -1;
 }
 
 function tmv3_preInspectionClickableManagedDescription_(existingDescription, plan) {
   const before = String(existingDescription || '');
   const links = (plan && plan.links) || [];
 
-  const allClickable = links.every(function(link) {
-    return tmv3_preInspectionClickableLinkPresent_(before, link);
+  const allWorkingLinksPresent = links.every(function(link) {
+    return tmv3_preInspectionCalendarLinkSourcePresent_(before, link);
   });
 
-  if (allClickable) {
+  const hasEscapedHtml =
+    /&lt;\/?(?:p|a|br)\b/i.test(before) ||
+    /<\/?(?:p|a|br)\b/i.test(before);
+
+  if (allWorkingLinksPresent && !hasEscapedHtml) {
     return {
       description:before,
-      status:'PRESERVED_EXISTING_CLICKABLE_LINK_BLOCK',
+      status:'PRESERVED_EXISTING_WORKING_LINK_BLOCK',
       changed:false
     };
   }
 
-  // Existing raw Markdown-style links are not valid Calendar hyperlinks.
-  // Rebuild only the managed Striven Links block as actual HTML anchors,
-  // while preserving authored content above it.
   const authored = tmv3_preInspectionCalendarNotesText_(before, plan);
-  const linkHtml = links.map(tmv3_preInspectionHtmlLink_).join('<br>');
 
   const managed =
-    '<p>' +
-    tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
-    (linkHtml ? '<br>' + linkHtml : '') +
-    '</p>';
+    '**\\' + TMV3_FINAL_LINK_HEADING + '**' +
+    (links.length
+      ? '\n\n' +
+        links.map(function(link) {
+          return '[' +
+            tmv3_calendarMarkdownLabel_(link.label) +
+            '](' +
+            String(link.url || '') +
+            ')';
+        }).join('\n\n')
+      : '');
 
   const description =
     (authored
-      ? '<p>' +
-        tmv3_calendarHtmlText_(authored) +
-        '</p>'
+      ? authored.replace(/\s+$/, '') + '\n\n'
       : '') +
-    managed;
+    managed +
+    '\n\n';
 
   return {
     description:description,
-    status:'RESTORED_CLICKABLE_HYPERLINK_BLOCK',
+    status:'RESTORED_PROVEN_GOOGLE_CALENDAR_LINK_PATTERN',
     changed:description !== before
   };
 }
