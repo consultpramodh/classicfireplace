@@ -1736,6 +1736,25 @@ function tmv3_titleNormalizationRegression() {
   );
 
   check(
+    'SERVICE_TASK_CREATION_OWNED_BY_STRIVEN_WORKFLOW',
+    TMV3_HARD_RULES.Service.taskCreationOwner === 'STRIVEN_WORKFLOW' &&
+      TMV3_HARD_RULES.Service.taskMappingCreatePolicy === 'DO_NOT_CREATE_OR_RECREATE',
+    JSON.stringify(TMV3_HARD_RULES.Service)
+  );
+
+  const serviceNoTaskDecision = tmv3_step6NoOpenTaskDecision_({
+    vertical:'Service',
+    start:'2026-10-07T10:00:00',
+    step5:{ historyTasks:[] }
+  });
+  check(
+    'SERVICE_NO_TASK_NEVER_AUTHORIZES_CREATE',
+    serviceNoTaskDecision.disposition === 'BLOCKED' &&
+      serviceNoTaskDecision.code === 'SERVICE_TASK_CREATION_OWNED_BY_STRIVEN',
+    JSON.stringify(serviceNoTaskDecision)
+  );
+
+  check(
     'PREINSPECTION_HARD_RULE_ASSERTION_PASSES',
     tmv3_assertHardRules_().status === 'PASS',
     JSON.stringify(tmv3_assertHardRules_())
