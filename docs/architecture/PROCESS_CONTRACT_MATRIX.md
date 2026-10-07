@@ -331,7 +331,7 @@ Until this branch is implemented/proven, it remains a known lifecycle gap.
 - Maintain one idempotent managed PreInspection Task link in the Calendar description.
 - Calendar description standard after title normalization is: exact previous Calendar title first (no heading), then human-authored notes with presentation-only headers such as `Notes:` / `Sales Order:` removed but their content preserved, then exactly one managed `-----Striven Links-----` block. Do not remove legitimate inline values such as `SO#585603`, and do not keep duplicate legacy Task-link blocks.
 - Calendar read-back verifies managed links while preserving authored notes.
-- PreInspection business Calendar writes target CF Preinspects; Stephen remains a guest/mirror, not a second business authority.
+- PreInspection business authority remains CF Preinspects; Stephen is mirror-only. After reconciliation, every required physical copy must match the authoritative business-visible event state for title, Description, location, start/end, required attendee/guest state, and managed links. Only unavoidable Google system metadata may differ.
 
 ## Technician completion and downstream handoff
 
