@@ -1460,13 +1460,14 @@ function tmv3_titleNormalizationRegression() {
     'C#62400 - John Smith - (416) 555-1212',
     '62400 - John Smith - (416) 555-1212',
     'Existing authored note',
-    { preserveOldTitle:false }
+    { preserveOldTitle:true }
   );
   check(
-    'PREINSPECTION_TITLE_NORMALIZATION_DOES_NOT_POLLUTE_DESCRIPTION',
+    'PREINSPECTION_TITLE_NORMALIZATION_PRESERVES_PRIOR_TITLE',
     preTitlePlan.titleChange === true &&
-      preTitlePlan.descriptionChange === false &&
-      preTitlePlan.after === 'Existing authored note',
+      preTitlePlan.descriptionChange === true &&
+      preTitlePlan.after ===
+        'C#62400 - John Smith - (416) 555-1212\n\nExisting authored note',
     JSON.stringify(preTitlePlan)
   );
 
@@ -1480,8 +1481,9 @@ function tmv3_titleNormalizationRegression() {
     }
   );
   check(
-    'PREINSPECTION_DESCRIPTION_STRIPS_OLD_TITLE_AND_LEGACY_TASK_BLOCK',
-    preNotesCleaned === 'Existing authored note',
+    'PREINSPECTION_DESCRIPTION_PRESERVES_OLD_TITLE_AND_STRIPS_LEGACY_TASK_BLOCK',
+    preNotesCleaned ===
+      'C#62400 - John Smith - (416) 555-1212\n\nExisting authored note',
     preNotesCleaned
   );
 
@@ -1587,11 +1589,9 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN_TO_MONIC_PATTERN',
     preDescription.indexOf(
+      '62400 - John Smith - (416) 555-1212\n\n' +
       'Line one wrapped continuation\n\nSecond paragraph\n\n'
     ) === 0 &&
-      preDescription.indexOf(
-        '62400 - John Smith - (416) 555-1212'
-      ) === -1 &&
       preDescription.indexOf(
         '-----Striven Links-----  \n'
       ) !== -1 &&
@@ -1630,10 +1630,11 @@ function tmv3_titleNormalizationRegression() {
     preLinkPlan
   );
   check(
-    'PREINSPECTION_SALES_ORDER_AND_NOTES_HEADING_BOUNDARY_PRESERVED',
+    'PREINSPECTION_SALES_ORDER_HEADING_REMOVED_CONTENT_PRESERVED',
     headingBreakLegacy.indexOf(
-      '**Sales Order:** SO#585434\n\nKeep these notes'
-    ) === 0,
+      'SO#585434\n\nKeep these notes'
+    ) === 0 &&
+      headingBreakLegacy.indexOf('Sales Order:') === -1,
     headingBreakLegacy
   );
 
@@ -1711,6 +1712,12 @@ function tmv3_titleNormalizationRegression() {
       prePolicy.attachSalesOrder === false &&
       prePolicy.description === '' &&
       prePolicy.calendarNotes === 'CALENDAR_ONLY' &&
+      prePolicy.previousCalendarTitlePolicy ===
+        'PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER' &&
+      prePolicy.descriptionHeaderPolicy ===
+        'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT' &&
+      prePolicy.calendarCopyParityPolicy ===
+        'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED' &&
       prePolicy.field854 === 'DO_NOT_MANAGE' &&
       prePolicy.infoCustomFieldsAtCreate === 'NONE' &&
       prePolicy.requiredPoolId === 8 &&
@@ -3756,6 +3763,28 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
       secondaryDecision.code ===
         'PREINSPECTION_SECONDARY_MIRROR_ONLY',
     JSON.stringify(secondaryDecision)
+  );
+
+  const parityExpected = {
+    title:'62400 - John Smith - (416) 555-1212',
+    description:'Old title\n\nNotes\n\n-----Striven Links-----',
+    location:'123 Main St, Toronto',
+    start:1000,
+    end:2000,
+    allDay:false,
+    requiredStephenPresent:true
+  };
+  check(
+    'PREINSPECTION_FULL_BUSINESS_STATE_PARITY_COMPARATOR',
+    tmv3_preInspectionCalendarParityEqual_(
+      parityExpected,
+      Object.assign({}, parityExpected)
+    ) === true &&
+      tmv3_preInspectionCalendarParityEqual_(
+        parityExpected,
+        Object.assign({}, parityExpected, { location:'DIFFERENT' })
+      ) === false,
+    JSON.stringify(parityExpected)
   );
 
   const result = {
