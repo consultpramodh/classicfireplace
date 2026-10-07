@@ -16,6 +16,7 @@
 - PreInspection CREATE sends no `InfoCustomFields`.
 - Service Task ownership is explicit: Striven's Work Order workflow creates/recreates Service Tasks; Task Mapping discovers and reconciles them and must not create a substitute Service Task.
 - Safe PreInspection Customer Location create/reuse remains implemented but E2E canary verification is still pending.
+- Latest Calendar contract now requires **full cross-calendar business-visible parity** across every required PreInspection copy: title, Description, location, start/end, required attendee/guest state, and managed links; only unavoidable Google system metadata may differ.
 - Global mode remains `SHADOW_READ_ONLY`; broad production business writes remain disabled.
 
 ## 2026-10-07 — PreInspection Monic Calendar format restored and re-audited
