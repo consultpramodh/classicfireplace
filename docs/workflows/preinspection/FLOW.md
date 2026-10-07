@@ -11,6 +11,7 @@ The **CF Preinspects** calendar is the single authoritative PreInspection source
 - Both CF Preinspects and Stephen's Calendar must converge to the same business-visible event state after a verified reconciliation.
 - Every CF Preinspects event must include `stephen@classicfireplace.ca` as a required guest.
 - Canonical Calendar title on both copies: `<Customer Number> - <Customer Name> - <Phone>`.
+- Striven Links must be clickable Google Calendar hyperlinks. Preserve an already-correct clickable block exactly; raw `[label](URL)` text is not an acceptable rendered result.
 - Calendar description on both copies is identical for business-visible content: preserved prior title when applicable, cleaned authored notes, and exactly one managed `-----Striven Links-----` block.
 - Location, start time, end time, and required attendee/guest state must also match the authoritative CF Preinspects event on every required copy. Only unavoidable Google system metadata may differ.
 - Use the established Monic OLIVER Calendar source pattern for managed links: `[label](URL)`. Google Calendar must render the Sales Orders and Task labels as clickable links; do not emit literal HTML tags or `<br>` formatting.
