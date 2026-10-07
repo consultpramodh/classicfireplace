@@ -39,6 +39,7 @@ Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains th
 - Technician-completed assessment fields are not prefilled.
 - When a PreInspection Calendar title is normalized, preserve the exact previous title as the first line of Description with no extra heading. Remove presentation-only `Notes:` / `Sales Order:` labels while preserving the actual content and legitimate inline SO values.
 - Managed Calendar description preserves authored notes and contains exactly one Striven Links block.
+- Every required physical PreInspection Calendar copy must match the authoritative CF Preinspects event for business-visible title, Description, location, start/end, required guest/attendee state, and managed links. Only unavoidable Google system metadata may differ.
 
 ## Service ownership boundary
 
