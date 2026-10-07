@@ -101,11 +101,13 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - If Customer is verified but the job-site Location does not yet exist, resolve **CREATE_LOCATION first, then CREATE_TASK**. Do not create a Task against an unverified Location.
 - Every CREATE/RECREATE still requires the final fresh duplicate/relationship verification at the write gate before Striven mutation.
 - PreInspection Calendar description presentation is frozen:
-  - use Google Calendar-compatible Markdown/plain text; **do not write literal HTML tags** such as `<b>`, `<br>`, or `<a>` through `CalendarApp.setDescription()`;
+  - Striven links must render as actual clickable Google Calendar hyperlinks; raw Markdown-style `[label](URL)` text is not acceptable when displayed literally;
   - when normalizing a PreInspection Calendar title, **preserve the exact previous title as the first line of the Description without adding an `Original Title:` label**;
   - remove presentation-only `Notes:` and `Sales Order:` labels while preserving the actual content that follows them, including legitimate inline values such as `SO#585603`;
   - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
   - do **not** add `Notes:`, `Sales Order:`, or `Original Title:` headings;
+  - preserve an existing correct clickable Striven Links block exactly during unrelated Task/Pool/title/parity reconciliation;
+  - if a required link is missing, wrong, or non-clickable, repair only the link block as needed to restore clickable hyperlinks;
   - use exactly one managed `-----Striven Links-----` block at the bottom;
   - the block contains the Customer Sales Orders link and, only when a Task is deterministically known, one Task link;
   - no raw URLs, no extra heading around the preserved previous title, no generic `Customer` labels, no numeric-only Task labels, and no duplicate legacy link blocks.
