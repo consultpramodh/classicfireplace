@@ -2045,8 +2045,26 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
   const results = [];
   copies.forEach(function(copy) {
     const before = String(copy.event.getDescription() || '');
-    const desired = tmv3_managedCalendarDescription_(before, plan);
-    if (before !== desired) copy.event.setDescription(desired);
+
+    const linkUpdate =
+      eventRecord.vertical === 'PreInspection'
+        ? tmv3_preInspectionClickableManagedDescription_(
+            before,
+            plan
+          )
+        : {
+            description:tmv3_managedCalendarDescription_(
+              before,
+              plan
+            ),
+            status:'STANDARD_MANAGED_BLOCK',
+            changed:false
+          };
+
+    const desired = String(linkUpdate.description || '');
+    if (before !== desired) {
+      copy.event.setDescription(desired);
+    }
 
     const readBackFound = tmv3_findEventCopyRobust_(copy.calendarId, plan.eventId);
     if (!readBackFound || !readBackFound.event) {
@@ -2055,19 +2073,38 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
 
     const after = String(readBackFound.event.getDescription() || '');
     const missing = (plan.links || []).filter(function(link) {
+      if (eventRecord.vertical === 'PreInspection') {
+        return !tmv3_preInspectionClickableLinkPresent_(
+          after,
+          link
+        );
+      }
       return after.indexOf(link.url) === -1;
     });
+
     if (missing.length) {
       throw new Error(
         'Calendar link read-back failed on ' + copy.calendarName +
-        ': missing ' + missing.map(function(item) { return item.key; }).join(', ')
+        ': missing clickable ' +
+        missing.map(function(item) { return item.key; }).join(', ')
       );
     }
 
     results.push({
       calendarId: copy.calendarId,
       calendarName: copy.calendarName,
-      status: before === desired ? 'ALREADY_CORRECT' : 'WRITTEN_AND_VERIFIED'
+      status:
+        before === desired
+          ? (
+              eventRecord.vertical === 'PreInspection'
+                ? 'CLICKABLE_LINK_BLOCK_PRESERVED'
+                : 'ALREADY_CORRECT'
+            )
+          : (
+              eventRecord.vertical === 'PreInspection'
+                ? 'CLICKABLE_LINK_BLOCK_REPAIRED_AND_VERIFIED'
+                : 'WRITTEN_AND_VERIFIED'
+            )
     });
   });
 
