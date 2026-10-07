@@ -3,6 +3,16 @@
 **Last updated:** 2026-10-07 (America/Toronto)
 
 
+## 2026-10-07 — PreInspection full Calendar parity contract
+
+- Canonical source release: `3.11.69-preinspection-calendar-parity-r1`.
+- Hard-rule mirror: `2026-10-07-r7`.
+- Previous PreInspection Calendar title must be preserved as the first Description line with no added heading.
+- Presentation-only `Notes:` and `Sales Order:` labels are removed while their underlying content remains.
+- Required PreInspection Calendar copies must converge to the authoritative CF Preinspects business-visible state for title, Description, location, start/end, and required Stephen participation; only unavoidable Google system metadata may differ.
+- Field 854 remains completely unmanaged.
+- General mode remains `SHADOW_READ_ONLY`.
+
 ## 2026-10-07 — Canonical decision sync / Field 854 correction
 
 - Canonical release: `3.11.68-canonical-decision-sync-r1`.
@@ -201,8 +211,8 @@ This policy is locked into `PROJECT_OPERATING_RULES.md`, `TMV3_HARD_RULES`, hard
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.68-canonical-decision-sync-r1`
-- Hard-rule version: `2026-10-07-r6`
+- V3 version: `3.11.69-preinspection-calendar-parity-r1`
+- Hard-rule version: `2026-10-07-r7`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
