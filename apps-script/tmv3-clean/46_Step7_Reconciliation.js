@@ -503,6 +503,19 @@ function tmv3_step7Plans_(records, runtime) {
       return;
     }
 
+    if (disposition === 'BLOCKED') {
+      plans.push(
+        tmv3_step7NoTaskPlan_(
+          record,
+          disposition,
+          'BLOCKED_EXTERNAL_NO_AUTOMATIC_MUTATION',
+          decision.reason || 'Step 6 is blocked by an external prerequisite.',
+          sourceTaskIds
+        )
+      );
+      return;
+    }
+
     if (!sourceTasks.length) {
       plans.push(
         tmv3_step7NoTaskPlan_(
