@@ -277,7 +277,8 @@ function buildTemporaryRunner(pre, token) {
           f.name === '00_Config' &&
           (
             RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
-            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
+            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
+            RUN_MODE === 'CANARY_PREINSPECTION_TASK_LINK_ONLY'
           )
         ) {
           const scopedEventId = String(RELEASE_MANIFEST.eventId || '');
@@ -1096,6 +1097,154 @@ function doPost(e) {
         status:'STEP7_ASSIGNMENT_CANARY_COMPLETE',
         assignment:assignmentResult,
         readbackPlan:assignAfter
+      });
+    }
+
+    if (body.action === 'preInspectionTaskLinkOnly') {
+      var repairEventId = String(body.eventId || '');
+      var repairTaskId = Number(body.taskId || 0);
+      var repairCustomerId = Number(body.customerId || 0);
+      var repairLocationId = Number(body.locationId || 0);
+      var repairAllowedDate = String(body.allowedDate || '');
+
+      if (!repairEventId || !repairTaskId || !repairCustomerId || !repairLocationId) {
+        throw new Error('PreInspection Task-link repair requires eventId, taskId, customerId and locationId.');
+      }
+
+      var repairTask = tmv3_getTaskById_(repairTaskId);
+      if (Number(repairTask['Task Type ID'] || 0) !== 105) {
+        throw new Error('Task-link repair blocked: Task is not Type 105.');
+      }
+      if (!tmv3_taskIsOpen_(repairTask['Status'])) {
+        throw new Error('Task-link repair blocked: Task is not OPEN.');
+      }
+      if (Number(repairTask['Customer ID'] || 0) !== repairCustomerId) {
+        throw new Error('Task-link repair blocked: Customer mismatch.');
+      }
+      if (Number(repairTask['Location ID'] || 0) !== repairLocationId) {
+        throw new Error('Task-link repair blocked: Location mismatch.');
+      }
+
+      var taskName = tmv3_clean_(repairTask['Name']);
+      if (!taskName) {
+        throw new Error('Task-link repair blocked: Task Name is blank.');
+      }
+
+      var cfg = TMV3.VERTICALS.PreInspection || {};
+      var calendarIds = [
+        tmv3_clean_(cfg.primaryCalendarId),
+        tmv3_clean_(cfg.secondaryCalendarId)
+      ].filter(Boolean);
+
+      var taskUrl =
+        TMV3.TASK_URL_BASE +
+        encodeURIComponent(repairTaskId);
+      var taskLabel =
+        'Task #' + repairTaskId + ' – ' + taskName;
+
+      var results = [];
+
+      calendarIds.forEach(function(calendarId) {
+        var found = tmv3_findEventCopyRobust_(
+          calendarId,
+          repairEventId
+        );
+        if (!found || !found.event) {
+          throw new Error(
+            'Task-link repair blocked: required Calendar copy missing: ' +
+            calendarId
+          );
+        }
+
+        var event = found.event;
+        var eventDate = Utilities.formatDate(
+          event.getStartTime(),
+          TMV3_TIMEZONE,
+          'yyyy-MM-dd'
+        );
+        if (
+          repairAllowedDate &&
+          eventDate !== repairAllowedDate
+        ) {
+          throw new Error(
+            'Task-link repair blocked: event date mismatch on ' +
+            calendarId
+          );
+        }
+
+        var before = String(event.getDescription() || '');
+        var after = before;
+
+        if (before.indexOf(taskUrl) === -1) {
+          var anchorHtml =
+            '<a href="' +
+            taskUrl +
+            '">' +
+            tmv3_calendarHtmlEscape_(taskLabel) +
+            '</a>';
+
+          var headingIndex = before.indexOf('-----Striven Links-----');
+          if (headingIndex < 0) {
+            throw new Error(
+              'Task-link repair blocked: Striven Links heading missing on ' +
+              calendarId
+            );
+          }
+
+          var closeP = before.indexOf('</p>', headingIndex);
+          if (closeP < 0) {
+            throw new Error(
+              'Task-link repair blocked: rich Striven Links block is not in the expected HTML form on ' +
+              calendarId
+            );
+          }
+
+          after =
+            before.slice(0, closeP) +
+            '<br>' +
+            anchorHtml +
+            before.slice(closeP);
+
+          event.setDescription(after);
+        }
+
+        var readback = tmv3_findEventCopyRobust_(
+          calendarId,
+          repairEventId
+        );
+        var finalDescription = String(
+          readback && readback.event
+            ? readback.event.getDescription() || ''
+            : ''
+        );
+
+        if (finalDescription.indexOf(taskUrl) === -1) {
+          throw new Error(
+            'Task-link repair read-back failed on ' +
+            calendarId
+          );
+        }
+
+        results.push({
+          calendarId:calendarId,
+          status:
+            before.indexOf(taskUrl) !== -1
+              ? 'ALREADY_PRESENT'
+              : 'TASK_LINK_WRITTEN_AND_VERIFIED',
+          taskId:repairTaskId,
+          taskName:taskName,
+          taskUrl:taskUrl
+        });
+      });
+
+      return TMPV3_shadowResponse_({
+        ok:true,
+        status:'PREINSPECTION_TASK_LINK_ONLY_COMPLETE',
+        eventId:repairEventId,
+        taskId:repairTaskId,
+        taskName:taskName,
+        taskUrl:taskUrl,
+        copies:results
       });
     }
 
@@ -2175,6 +2324,7 @@ async function main() {
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
       RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
+      RUN_MODE === 'CANARY_PREINSPECTION_TASK_LINK_ONLY' ||
         RUN_MODE === 'CANARY_STEP7' ||
         RUN_MODE === 'CANARY_TITLE' ||
         RUN_MODE === 'CANARY_REFRESH'
@@ -2415,6 +2565,8 @@ async function main() {
                       ? 'step7EventWriteFresh'
                     : RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
                       ? 'step7EventLinksOnly'
+                    : RUN_MODE === 'CANARY_PREINSPECTION_TASK_LINK_ONLY'
+                      ? 'preInspectionTaskLinkOnly'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
                     : RUN_MODE === 'SHEET_PUBLISH'
