@@ -5,13 +5,16 @@
 
 ## 2026-10-07 — PreInspection full Calendar parity contract
 
-- Canonical source release: `3.11.69-preinspection-calendar-parity-r1`.
+- Canonical source release: `3.11.69-preinspection-calendar-parity-r2`.
 - Hard-rule mirror: `2026-10-07-r7`.
 - Previous PreInspection Calendar title must be preserved as the first Description line with no added heading.
 - Presentation-only `Notes:` and `Sales Order:` labels are removed while their underlying content remains.
 - Required PreInspection Calendar copies must converge to the authoritative CF Preinspects business-visible state for title, Description, location, start/end, and required Stephen participation; only unavoidable Google system metadata may differ.
 - Field 854 remains completely unmanaged.
 - General mode remains `SHADOW_READ_ONLY`.
+
+- Guarded deployment run `37679724316`: **SUCCESS** — PRE source verified, bound Apps Script updated, remote re-clone/file/hash parity passed.
+- Live hardening regression run `37679868267`: **SUCCESS** — prior-title preservation, presentation-header removal, Service ownership, required-copy targeting, and full business-state parity comparator all passed.
 
 ## 2026-10-07 — Canonical decision sync / Field 854 correction
 
@@ -211,7 +214,7 @@ This policy is locked into `PROJECT_OPERATING_RULES.md`, `TMV3_HARD_RULES`, hard
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.69-preinspection-calendar-parity-r1`
+- V3 version: `3.11.69-preinspection-calendar-parity-r2`
 - Hard-rule version: `2026-10-07-r7`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
@@ -219,7 +222,7 @@ This policy is locked into `PROJECT_OPERATING_RULES.md`, `TMV3_HARD_RULES`, hard
 
 The four verticals remain Install, Delivery, Service, and PreInspection.
 
-## 2026-10-01 FINAL PreInspection Calendar description standard
+## 2026-10-01 HISTORICAL PreInspection Calendar description standard — SUPERSEDED BY CURRENT_DECISION_REGISTER.md
 
 The visible Calendar description format is frozen. Internal code release numbers may change; this presentation must not change unless the business rule is explicitly changed.
 
@@ -227,7 +230,7 @@ The visible Calendar description format is frozen. Internal code release numbers
 - Accidental hard line-wraps are joined into readable paragraphs.
 - Existing Sales Order text, when present, remains above Notes.
 - Notes heading: `**Notes:**`.
-- Do not preserve/prepend an old Calendar title inside the description.
+- SUPERSEDED 2026-10-07: preserve the exact previous Calendar title as the first Description line with no added heading.
 - Exactly one managed links block appears at the bottom:
   - heading: `**-----Striven Links-----**`
   - blank line after the heading and between links
