@@ -557,7 +557,7 @@ function tmv3_assertHardRules_() {
   requireRule(pre.descriptionHeaderPolicy === 'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT', 'PreInspection Notes:/Sales Order: presentation headers must be removed while preserving content.');
   requireRule(pre.calendarCopyParityPolicy === 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED', 'PreInspection required Calendar copies must converge to full business-visible parity.');
   requireRule(pre.calendarCopyParityFields === 'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION', 'PreInspection parity fields must include title, description, location, start/end and required participation.');
-  requireRule(pre.calendarLinksPreservationPolicy === 'PRESERVE_EXISTING_BLOCK_PATCH_MISSING_ONLY', 'PreInspection Striven Links block must be preserved when already correct and only missing links may be patched.');
+  requireRule(pre.calendarLinksPreservationPolicy === 'PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY', 'PreInspection Striven Links block must preserve existing clickable hyperlinks and repair only missing or non-clickable links.');
   requireRule(pre.field854Policy === 'DO_NOT_MANAGE', 'PreInspection Field 854 must not be managed by V3.');
   requireRule(pre.infoCustomFieldsAtCreate === 'NONE', 'PreInspection CREATE must not prefill InfoCustomFields.');
   requireRule(pre.technicianFieldsPrefill === false, 'PreInspection technician-completed fields must not be prefilled.');
@@ -573,7 +573,7 @@ function tmv3_assertHardRules_() {
   requireRule(rules.descriptionHeaderPolicy === 'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT', 'Hard-rule mirror says Notes:/Sales Order: labels are removed while content is preserved.');
   requireRule(rules.calendarCopyParityPolicy === 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED', 'Hard-rule mirror says required PreInspection Calendar copies must reach full business-visible parity.');
   requireRule(rules.calendarCopyParityFields === 'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION', 'Hard-rule mirror parity field set is incomplete.');
-  requireRule(rules.calendarLinksPreservationPolicy === 'PRESERVE_EXISTING_BLOCK_PATCH_MISSING_ONLY', 'Hard-rule mirror says existing PreInspection Striven Links formatting must be preserved and only missing links patched.');
+  requireRule(rules.calendarLinksPreservationPolicy === 'PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY', 'Hard-rule mirror says existing clickable PreInspection Striven Links formatting must be preserved; missing or non-clickable links may be repaired.');
   requireRule(rules.field854Policy === 'DO_NOT_MANAGE', 'Hard-rule mirror says Field 854 is removed from automation.');
   requireRule(rules.infoCustomFieldsAtCreate === 'NONE', 'Hard-rule mirror says no PreInspection custom-field prefill.');
   requireRule(rules.technicianFieldsPolicy === 'DO_NOT_PREFILL', 'Hard-rule mirror says technician fields are not prefilled.');
