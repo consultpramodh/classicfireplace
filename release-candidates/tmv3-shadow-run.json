@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_70_MATT_CLICKABLE_LINK_REPAIR",
+  "release": "TMV3_3_11_71_MATT_RICHLINK_API_TEST",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -12,7 +12,7 @@
   "eventId": "4q9f4ls7hnfqsmvnejkjd7d83p@google.com",
   "taskId": 18985,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_70_MATT_LINK_REPAIR_20261007",
+  "requestTag": "TMV3_3_11_71_MATT_RICHLINK_API_TEST",
   "allowedDate": "2026-10-07",
   "testWriteApiSoftLimit": 1500,
   "customerId": 62729,
