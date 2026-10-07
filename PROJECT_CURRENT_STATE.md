@@ -3,28 +3,18 @@
 **Last updated:** 2026-10-07 (America/Toronto)
 
 
-## 2026-10-07 — PreInspection Field 854 post-create synchronization deployed
+## 2026-10-07 — Canonical decision sync / Field 854 correction
 
-- Live V3 source: `3.11.67-preinspection-field854-postcreate-r1`.
-- Source commit: `509bd364699cb4ceb76c4c320e7848e7cb45604d`.
-- Guarded bootstrap run `37666025447`: SUCCESS.
-- Deployment preserved the existing bound Apps Script project and completed PRE-source parity, syntax checks, push, remote re-clone, file inventory comparison, and hash parity verification.
-- PreInspection Task CREATE still enforces:
-  - Task Type 105;
-  - no Sales Order attachment;
-  - blank Task Description;
-  - no `InfoCustomFields` in the CREATE POST.
-- After the new Task ID is durably captured and the Task read-back passes Customer/Location/Type checks, V3 now synchronizes Calendar-authored notes to custom Field 854 (Install Notes).
-- Field 854 synchronization:
-  - preserves manual Install Notes outside the managed Google Calendar block;
-  - changes only Field 854 inside the full current `InfoCustomFields` collection;
-  - reads the Task back after PATCH;
-  - verifies non-854 custom-field values are unchanged;
-  - uses canonical v1 customFields as an independent fallback confirmation when required;
-  - records uncertain writes and forbids blind retry.
-- Existing PreInspection Tasks also receive the same guarded Field 854 synchronization during an authorized full selected-row write.
-- General V3 mode remains `SHADOW_READ_ONLY`; this release does not enable broad production writes.
-- Remaining verification: dedicated controlled E2E canary for Field 854 and a dedicated PreInspection Location-create canary.
+- Canonical release: `3.11.68-canonical-decision-sync-r1`.
+- Hard-rule mirror: `2026-10-07-r6`.
+- This release supersedes `3.11.67-preinspection-field854-postcreate-r1`.
+- **Field 854 is not managed by Task Mapping.** The 3.11.67 post-create Field 854 synchronization was policy drift and has been removed.
+- PreInspection Calendar notes remain on Calendar only.
+- PreInspection Task Description remains blank at CREATE and technician-owned afterward.
+- PreInspection CREATE sends no `InfoCustomFields`.
+- Service Task ownership is explicit: Striven's Work Order workflow creates/recreates Service Tasks; Task Mapping discovers and reconciles them and must not create a substitute Service Task.
+- Safe PreInspection Customer Location create/reuse remains implemented but E2E canary verification is still pending.
+- Global mode remains `SHADOW_READ_ONLY`; broad production business writes remain disabled.
 
 ## 2026-10-07 — PreInspection Monic Calendar format restored and re-audited
 
@@ -208,8 +198,8 @@ This policy is locked into `PROJECT_OPERATING_RULES.md`, `TMV3_HARD_RULES`, hard
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.67-preinspection-field854-postcreate-r1`
-- Hard-rule version: `2026-10-06-r5`
+- V3 version: `3.11.68-canonical-decision-sync-r1`
+- Hard-rule version: `2026-10-07-r6`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
