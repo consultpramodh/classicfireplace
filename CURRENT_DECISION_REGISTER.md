@@ -69,7 +69,7 @@
 - No OPEN does not automatically mean CREATE: apply history/duplicate gate.
 - No history => CREATE_TASK; same-day completed => FULFILLED_NO_RECREATE; cancelled/undated/future-conflicting history => REVIEW; only older completed history => RECREATE_TASK.
 - Before CREATE/RECREATE, fresh duplicate/relationship verification is mandatory.
-- Calendar description preserves human-authored notes and exactly one managed Striven Links block using the approved Monic plain/Markdown source pattern; no literal HTML source.
+- When a PreInspection Calendar title is normalized, preserve the exact previous title as the first line of the Calendar Description **without adding a heading such as `Original Title:`**. Remove presentation-only headers such as `Notes:` and `Sales Order:` while preserving the actual information that followed them; do not remove legitimate inline data such as `SO#585603`. Then preserve the remaining human-authored notes and exactly one managed Striven Links block using the approved Monic plain/Markdown source pattern; no literal HTML source.
 - Calendar copies/managed state are read back and verified.
 
 ## Operator / website
@@ -102,5 +102,6 @@
 - **Superseded:** Calendar notes → Field 854 automation.
 - **Superseded:** Field 854 as a PreInspection acceptance/completion gate.
 - **Superseded:** generic shared CREATE/RECREATE permission for Service Task Mapping.
+- **Superseded:** removing the previous PreInspection Calendar title from Description during title normalization.
 - **Superseded:** Stephen Calendar as an independent PreInspection business-source calendar.
 - **Superseded:** PreInspection Requested By = Customer Contact.
