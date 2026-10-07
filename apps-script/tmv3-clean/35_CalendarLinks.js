@@ -242,6 +242,48 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
 }
 
 
+
+function tmv3_preserveOrPatchPreInspectionCalendarLinks_(existingDescription, plan) {
+  const before = String(existingDescription || '');
+  const links = (plan && plan.links) || [];
+  const missing = links.filter(function(link) {
+    return before.indexOf(String(link.url || '')) === -1;
+  });
+
+  if (!missing.length) {
+    return {
+      description:before,
+      status:'PRESERVED_EXISTING_LINK_BLOCK',
+      missingKeys:[]
+    };
+  }
+
+  const lines = missing.map(function(link) {
+    return '[' +
+      tmv3_calendarMarkdownLabel_(link.label) +
+      '](' +
+      String(link.url || '') +
+      ')';
+  });
+
+  const trimmed = before.replace(/\s+$/, '');
+  const hasManagedBlock =
+    tmv3_managedCalendarBlockStart_(trimmed) >= 0;
+
+  const addition =
+    (hasManagedBlock ? '  \n' : (trimmed ? '\n\n' : '')) +
+    (hasManagedBlock ? '' : TMV3_FINAL_LINK_HEADING + '  \n') +
+    lines.join('  \n');
+
+  return {
+    description:trimmed + addition,
+    status:hasManagedBlock
+      ? 'PATCHED_MISSING_LINKS_ONLY'
+      : 'APPENDED_NEW_LINK_BLOCK',
+    missingKeys:missing.map(function(link) { return link.key; })
+  };
+}
+
 function tmv3_preInspectionTitleVariants_(plan) {
   plan = plan || {};
   const number = tmv3_clean_(plan.customerNumber);
