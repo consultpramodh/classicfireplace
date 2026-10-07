@@ -103,11 +103,12 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - PreInspection Calendar description presentation is frozen:
   - use Google Calendar-compatible Markdown/plain text; **do not write literal HTML tags** such as `<b>`, `<br>`, or `<a>` through `CalendarApp.setDescription()`;
   - when normalizing a PreInspection Calendar title, **preserve the exact previous title as the first line of the Description without adding an `Original Title:` label**;
+  - remove presentation-only `Notes:` and `Sales Order:` labels while preserving the actual content that follows them, including legitimate inline values such as `SO#585603`;
   - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
-  - do **not** add a `Notes:` heading; preserve the human-authored notes directly;
+  - do **not** add `Notes:`, `Sales Order:`, or `Original Title:` headings;
   - use exactly one managed `-----Striven Links-----` block at the bottom;
   - the block contains the Customer Sales Orders link and, only when a Task is deterministically known, one Task link;
-  - no raw URLs, old-title echo, generic `Customer` labels, numeric-only Task labels, or duplicate legacy link blocks.
+  - no raw URLs, no extra heading around the preserved previous title, no generic `Customer` labels, no numeric-only Task labels, and no duplicate legacy link blocks.
 
 ### Mandatory reflection gate
 
