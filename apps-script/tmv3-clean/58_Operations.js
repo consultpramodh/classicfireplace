@@ -1433,16 +1433,59 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
     );
   }
 
-  copies.forEach(function(copy) {
-    copy.plan = tmv3_titleDescriptionPlan_(
-      copy.beforeTitle,
+  let authoritativePreInspectionPlan = null;
+  if (eventRecord.vertical === 'PreInspection') {
+    const cfg = TMV3.VERTICALS.PreInspection || {};
+    const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+    const authoritativeCopy = copies.filter(function(copy) {
+      return tmv3_clean_(copy.calendarId) === primaryId;
+    })[0];
+
+    if (!authoritativeCopy) {
+      throw new Error(
+        'Authoritative CF Preinspects copy is required before title normalization.'
+      );
+    }
+
+    authoritativePreInspectionPlan = tmv3_titleDescriptionPlan_(
+      authoritativeCopy.beforeTitle,
       desired,
-      copy.beforeDescription,
-      {
-        preserveOldTitle:
-          eventRecord.vertical !== 'PreInspection'
-      }
+      authoritativeCopy.beforeDescription,
+      { preserveOldTitle:true }
     );
+
+    if (authoritativePreInspectionPlan.status === 'BLOCKED') {
+      throw new Error(
+        'Authoritative Calendar title preflight blocked: ' +
+        authoritativePreInspectionPlan.reason
+      );
+    }
+  }
+
+  copies.forEach(function(copy) {
+    if (eventRecord.vertical === 'PreInspection') {
+      copy.plan = {
+        status:'READY',
+        reason:'',
+        currentTitle:copy.beforeTitle,
+        desiredTitle:desired,
+        before:copy.beforeDescription,
+        after:authoritativePreInspectionPlan.after,
+        titleChange:tmv3_clean_(copy.beforeTitle) !== desired,
+        descriptionChange:
+          copy.beforeDescription !== authoritativePreInspectionPlan.after,
+        alreadyPreserved:
+          copy.beforeDescription === authoritativePreInspectionPlan.after
+      };
+    } else {
+      copy.plan = tmv3_titleDescriptionPlan_(
+        copy.beforeTitle,
+        desired,
+        copy.beforeDescription,
+        { preserveOldTitle:true }
+      );
+    }
+
     if (copy.plan.status === 'BLOCKED') {
       throw new Error(
         'Calendar title preflight blocked on ' +
@@ -1525,13 +1568,22 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
     });
   });
 
+  const parity =
+    eventRecord.vertical === 'PreInspection'
+      ? tmv3_reconcilePreInspectionCalendarParity_(
+          eventRecord,
+          scope
+        )
+      : null;
+
   return {
     status:'CALENDAR_TITLE_VERIFIED',
     vertical:eventRecord.vertical,
     eventId:contract.eventId,
     desiredCalendarTitle:desired,
     requiredCalendarIds:ids,
-    copies:results
+    copies:results,
+    parity:parity
   };
 }
 
@@ -1739,6 +1791,187 @@ function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
   };
 }
 
+
+function tmv3_preInspectionCalendarBusinessSnapshot_(event) {
+  if (!event) throw new Error('PreInspection Calendar snapshot requires an event.');
+
+  const participants = {};
+  try {
+    (event.getCreators ? event.getCreators() : []).forEach(function(email) {
+      const clean = tmv3_normEmail_(email);
+      if (clean) participants[clean] = true;
+    });
+  } catch (ignored) {}
+  try {
+    (event.getGuestList ? event.getGuestList(true) : []).forEach(function(guest) {
+      const clean = tmv3_normEmail_(
+        guest && guest.getEmail ? guest.getEmail() : ''
+      );
+      if (clean) participants[clean] = true;
+    });
+  } catch (ignored) {}
+
+  const stephen = tmv3_normEmail_(
+    (TMV3.VERTICALS.PreInspection || {}).secondaryOwnerEmail ||
+    'stephen@classicfireplace.ca'
+  );
+
+  return {
+    title:String(event.getTitle ? event.getTitle() || '' : ''),
+    description:String(event.getDescription ? event.getDescription() || '' : ''),
+    location:String(event.getLocation ? event.getLocation() || '' : ''),
+    start:event.getStartTime ? event.getStartTime().getTime() : null,
+    end:event.getEndTime ? event.getEndTime().getTime() : null,
+    allDay:event.isAllDayEvent ? event.isAllDayEvent() === true : false,
+    requiredStephenPresent:!!participants[stephen]
+  };
+}
+
+function tmv3_preInspectionCalendarParityEqual_(expected, actual) {
+  expected = expected || {};
+  actual = actual || {};
+  return (
+    expected.title === actual.title &&
+    expected.description === actual.description &&
+    expected.location === actual.location &&
+    expected.start === actual.start &&
+    expected.end === actual.end &&
+    expected.allDay === actual.allDay &&
+    expected.requiredStephenPresent === actual.requiredStephenPresent
+  );
+}
+
+function tmv3_reconcilePreInspectionCalendarParity_(eventRecord, scope) {
+  if (!eventRecord || eventRecord.vertical !== 'PreInspection') {
+    return { status:'NOT_NEEDED', copies:[] };
+  }
+
+  tmv3_assertOperationWrite_(scope);
+
+  const cfg = TMV3.VERTICALS.PreInspection || {};
+  const primaryId = tmv3_clean_(cfg.primaryCalendarId);
+  const ids = tmv3_requiredCalendarCopiesForEvent_(eventRecord);
+
+  if (!primaryId || !ids.length) {
+    throw new Error('PreInspection Calendar parity configuration is incomplete.');
+  }
+
+  const primaryFound = tmv3_findEventCopyRobust_(
+    primaryId,
+    eventRecord.eventId
+  );
+  if (!primaryFound || !primaryFound.event) {
+    throw new Error(
+      'Authoritative CF Preinspects copy is missing; parity cannot be reconciled.'
+    );
+  }
+
+  const authority = tmv3_preInspectionCalendarBusinessSnapshot_(
+    primaryFound.event
+  );
+  if (authority.allDay) {
+    throw new Error(
+      'PreInspection parity refuses to normalize an all-day authoritative event.'
+    );
+  }
+
+  const results = [];
+
+  ids.forEach(function(calendarId) {
+    const found = tmv3_findEventCopyRobust_(
+      calendarId,
+      eventRecord.eventId
+    );
+    if (!found || !found.event) {
+      throw new Error(
+        'Required PreInspection Calendar copy is missing: ' + calendarId
+      );
+    }
+
+    const event = found.event;
+    let before = tmv3_preInspectionCalendarBusinessSnapshot_(event);
+    let writePerformed = false;
+
+    if (before.title !== authority.title) {
+      event.setTitle(authority.title);
+      writePerformed = true;
+    }
+    if (before.description !== authority.description) {
+      event.setDescription(authority.description);
+      writePerformed = true;
+    }
+    if (before.location !== authority.location) {
+      event.setLocation(authority.location);
+      writePerformed = true;
+    }
+    if (
+      before.start !== authority.start ||
+      before.end !== authority.end ||
+      before.allDay !== authority.allDay
+    ) {
+      if (before.allDay || authority.allDay) {
+        throw new Error(
+          'PreInspection parity will not convert between all-day and timed events.'
+        );
+      }
+      event.setTime(
+        new Date(authority.start),
+        new Date(authority.end)
+      );
+      writePerformed = true;
+    }
+
+    if (
+      authority.requiredStephenPresent &&
+      !before.requiredStephenPresent
+    ) {
+      event.addGuest(
+        tmv3_normEmail_(
+          cfg.secondaryOwnerEmail ||
+          'stephen@classicfireplace.ca'
+        )
+      );
+      writePerformed = true;
+    }
+
+    const readbackFound = tmv3_findEventCopyRobust_(
+      calendarId,
+      eventRecord.eventId
+    );
+    if (!readbackFound || !readbackFound.event) {
+      throw new Error(
+        'Required PreInspection Calendar copy disappeared during parity read-back.'
+      );
+    }
+
+    const after = tmv3_preInspectionCalendarBusinessSnapshot_(
+      readbackFound.event
+    );
+
+    if (!tmv3_preInspectionCalendarParityEqual_(authority, after)) {
+      throw new Error(
+        'PreInspection cross-calendar parity read-back failed on ' +
+        calendarId +
+        '. Expected=' + JSON.stringify(authority) +
+        ' Actual=' + JSON.stringify(after)
+      );
+    }
+
+    results.push({
+      calendarId:calendarId,
+      status:writePerformed ? 'WRITTEN_AND_VERIFIED' : 'ALREADY_MATCHED',
+      businessState:after
+    });
+  });
+
+  return {
+    status:'FULL_BUSINESS_VISIBLE_PARITY_VERIFIED',
+    authoritativeCalendarId:primaryId,
+    eventId:eventRecord.eventId,
+    copies:results
+  };
+}
+
 function tmv3_operationWriteCalendarLinks_(bundle, scope) {
   tmv3_assertOperationWrite_(scope);
 
@@ -1838,6 +2071,14 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     });
   });
 
+  const parity =
+    eventRecord.vertical === 'PreInspection'
+      ? tmv3_reconcilePreInspectionCalendarParity_(
+          eventRecord,
+          scope
+        )
+      : null;
+
   return {
     status: 'CALENDAR_LINKS_VERIFIED',
     vertical: eventRecord.vertical,
@@ -1848,7 +2089,8 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     attention: missingCalendarCopies.length
       ? 'Some actual Calendar copies were not present; existing copies were updated and verified.'
       : '',
-    mirror: mirror
+    mirror: mirror,
+    parity: parity
   };
 }
 
