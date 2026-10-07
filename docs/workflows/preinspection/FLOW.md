@@ -8,10 +8,11 @@ The **CF Preinspects** calendar is the single authoritative PreInspection source
 
 - Stephen's Calendar is mirror-only for intake and does not create an independent Task Mapping record.
 - CF Preinspects remains the sole authoritative intake source.
-- Both CF Preinspects and Stephen's Calendar must converge to the same canonical presentation state after a verified write.
+- Both CF Preinspects and Stephen's Calendar must converge to the same business-visible event state after a verified reconciliation.
 - Every CF Preinspects event must include `stephen@classicfireplace.ca` as a required guest.
 - Canonical Calendar title on both copies: `<Customer Number> - <Customer Name> - <Phone>`.
-- Calendar description on both copies contains the same human-authored notes plus exactly one managed `-----Striven Links-----` block.
+- Calendar description on both copies is identical for business-visible content: preserved prior title when applicable, cleaned authored notes, and exactly one managed `-----Striven Links-----` block.
+- Location, start time, end time, and required attendee/guest state must also match the authoritative CF Preinspects event on every required copy. Only unavoidable Google system metadata may differ.
 - Use the established Monic OLIVER Calendar source pattern for managed links: `[label](URL)`. Google Calendar must render the Sales Orders and Task labels as clickable links; do not emit literal HTML tags or `<br>` formatting.
 - When the Calendar title is standardized, preserve the exact previous title as the first line of the Description without adding an `Original Title:` heading.
 
@@ -117,7 +118,7 @@ After Task read-back succeeds:
 - include one verified Task link as a clickable hyperlink when a deterministic Task exists;
 - normalize the canonical Calendar title on both copies;
 - ensure Stephen remains a required guest;
-- read both Calendar copies back and verify the same managed presentation state.
+- read every required Calendar copy back and verify full business-visible parity: title, Description, location, start/end, required attendee/guest state, and managed links.
 
 ## I. Technician completion and Install handoff
 
