@@ -64,13 +64,13 @@ Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains th
 - Live hardening regression: `37679868267` — **SUCCESS**.
 - Regression proves prior-title preservation, Notes:/Sales Order: header removal with content preservation, required-copy targeting, full business-state parity comparison, Field 854 no-management, and Service Task creation ownership.
 
-- Source/deployment commit: `0fd22df18119caaac0525f8f6186349b67e34e14`.
+- Source/deployment commit: `20727ce1c1e9a332ae2f36b02c03e264d5c6ca66`.
 - Guarded bootstrap run: `37672082690` — **SUCCESS**.
 - Existing bound Apps Script project updated successfully.
 - Remote re-clone/file/hash parity verification completed successfully.
 
 ## Next exact verification work
 
-1. Run the hard-rule/runtime regression and confirm Field 854 remains unmanaged and Service no-task cannot authorize CREATE/RECREATE.
-2. Keep `SHADOW_READ_ONLY`.
-3. When intentionally approved, run a controlled PreInspection Location-create canary. Do not use Field 854 as a completion gate.
+1. Keep `SHADOW_READ_ONLY`.
+2. Continue controlled live PreInspection reconciliation/canaries against today's real events.
+3. Run the controlled PreInspection Location-create canary when a genuinely missing Customer-owned Location case is intentionally selected. Field 854 is never a completion gate.
