@@ -3,6 +3,41 @@
 **Last updated:** 2026-10-06 (America/Toronto)
 
 
+## 2026-10-07 — PreInspection Monic Calendar format restored and re-audited
+
+- Live V3 source: `3.11.66-preinspection-monic-format-r1`
+- Source commit: `09e3e3b06c3dd73e8c56c28b2ac46acf2893f16f`
+- Guarded bootstrap run `37630009433`: PASS.
+- Live hardening regression run `37630176947`: PASS.
+- Monic OLIVER is the golden Calendar presentation pattern:
+  - preserve authored notes;
+  - blank line before managed block;
+  - exactly one `-----Striven Links-----` block;
+  - source link syntax `[label](URL)`;
+  - full Sales Orders label;
+  - full canonical Task label;
+  - no literal HTML / `<br>` source formatting;
+  - CF Preinspects and Stephen copies converge to the same presentation.
+- Oct 5 fresh audit:
+  - Shawn KYLE 62731 / Task 18984: both copies aligned.
+  - Monic OLIVER 62606 / Task 18759: both copies aligned.
+  - Emily RICHARDSON 62683 / Task 18819: both copies aligned.
+  - Craig Haid and Paul Bruce 62020 / Task 18949: both copies aligned.
+  - David Wong 62205 / Task 17999: both copies aligned.
+  - Archer Design & Build 61171: Customer link only; Task remains REVIEW due multiple OPEN PreInspection Tasks.
+  - Anitta & Selva Reginold 62744: Customer link only; Task remains unresolved pending safe Location-create contract.
+- Oct 7 deterministic cleanup:
+  - Helen Huggett 62670 / Task 18836: duplicate legacy block removed; both copies aligned.
+  - Janet Refle 45906 / Task 18925: duplicate legacy block removed; both copies aligned.
+  - Matt Ellison 62729 / Task 18985: duplicate legacy block removed; both copies aligned.
+  - Kathryn & Glenn Duncan 62748 / Task 18986: duplicate legacy block removed; both copies aligned.
+- Oct 7 unresolved / review:
+  - Barbara Woloszczuk: primary event exists but no verified managed Customer/Task link state yet.
+  - Wes & Laura and Aurora Bloom have non-authoritative / incomplete CF Preinspects copies on direct lookup and require identity/event-copy reconciliation.
+  - Connie Pains exists on Stephen only; no CF Preinspects event was found.
+- Shadow runner remains read-only; previous runner failures were authentication/deployment-path failures, not current source deployment failures.
+
+
 ## 2026-10-06 FOUR-VERTICAL TASK LIFECYCLE — VERIFIED
 
 - Live V3 source: `3.11.62-four-vertical-lifecycle-r1`
