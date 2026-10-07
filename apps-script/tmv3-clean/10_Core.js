@@ -553,6 +553,10 @@ function tmv3_assertHardRules_() {
   requireRule(Number(pre.taskTypeId || 0) === 105, 'PreInspection Task Type must remain 105.');
   requireRule(pre.descriptionMustBeBlankAtCreate === true, 'PreInspection Task Description must be blank at CREATE.');
   requireRule(pre.calendarNotesPolicy === 'CALENDAR_ONLY', 'PreInspection Calendar notes must remain Calendar-only.');
+  requireRule(pre.previousCalendarTitlePolicy === 'PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER', 'PreInspection previous Calendar title must be preserved as the first Description line with no added heading.');
+  requireRule(pre.descriptionHeaderPolicy === 'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT', 'PreInspection Notes:/Sales Order: presentation headers must be removed while preserving content.');
+  requireRule(pre.calendarCopyParityPolicy === 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED', 'PreInspection required Calendar copies must converge to full business-visible parity.');
+  requireRule(pre.calendarCopyParityFields === 'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION', 'PreInspection parity fields must include title, description, location, start/end and required participation.');
   requireRule(pre.field854Policy === 'DO_NOT_MANAGE', 'PreInspection Field 854 must not be managed by V3.');
   requireRule(pre.infoCustomFieldsAtCreate === 'NONE', 'PreInspection CREATE must not prefill InfoCustomFields.');
   requireRule(pre.technicianFieldsPrefill === false, 'PreInspection technician-completed fields must not be prefilled.');
@@ -564,6 +568,10 @@ function tmv3_assertHardRules_() {
   requireRule(Number(rules.taskTypeId || 0) === 105, 'Hard-rule mirror says PreInspection Task Type must be 105.');
   requireRule(rules.descriptionPolicy === 'BLANK_AT_CREATE', 'Hard-rule mirror says Description must be blank.');
   requireRule(rules.calendarNotesPolicy === 'CALENDAR_ONLY', 'Hard-rule mirror says Calendar notes stay on Calendar.');
+  requireRule(rules.previousCalendarTitlePolicy === 'PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER', 'Hard-rule mirror says prior Calendar title is preserved as first Description line without a heading.');
+  requireRule(rules.descriptionHeaderPolicy === 'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT', 'Hard-rule mirror says Notes:/Sales Order: labels are removed while content is preserved.');
+  requireRule(rules.calendarCopyParityPolicy === 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED', 'Hard-rule mirror says required PreInspection Calendar copies must reach full business-visible parity.');
+  requireRule(rules.calendarCopyParityFields === 'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION', 'Hard-rule mirror parity field set is incomplete.');
   requireRule(rules.field854Policy === 'DO_NOT_MANAGE', 'Hard-rule mirror says Field 854 is removed from automation.');
   requireRule(rules.infoCustomFieldsAtCreate === 'NONE', 'Hard-rule mirror says no PreInspection custom-field prefill.');
   requireRule(rules.technicianFieldsPolicy === 'DO_NOT_PREFILL', 'Hard-rule mirror says technician fields are not prefilled.');
