@@ -1,6 +1,6 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-10-06 (America/Toronto)
+**Last updated:** 2026-10-07 (America/Toronto)
 
 
 ## 2026-10-07 — PreInspection Monic Calendar format restored and re-audited
@@ -185,8 +185,8 @@ This policy is locked into `PROJECT_OPERATING_RULES.md`, `TMV3_HARD_RULES`, hard
 - V3 source: `apps-script/tmv3-clean/`
 - Bound V3 Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- V3 version: `3.11.46-calendar-heading-wrap-r1`
-- Hard-rule version: `2026-10-01-r3`
+- V3 version: `3.11.66-preinspection-monic-format-r1`
+- Hard-rule version: `2026-10-06-r5`
 - Execution stage: `7`
 - Global mode: `SHADOW_READ_ONLY`
 - Automation writes: **disabled**
