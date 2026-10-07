@@ -10,8 +10,8 @@
 
 - System: **Task Mapping V3**
 - Source: `apps-script/tmv3-clean/`
-- V3 version: `3.11.68-canonical-decision-sync-r1`
-- Hard-rule version: `2026-10-07-r6`
+- V3 version: `3.11.69-preinspection-calendar-parity-r1`
+- Hard-rule version: `2026-10-07-r7`
 - Execution stage: `7`
 - Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
 - Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
@@ -39,7 +39,7 @@ Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains th
 - Technician-completed assessment fields are not prefilled.
 - When a PreInspection Calendar title is normalized, preserve the exact previous title as the first line of Description with no extra heading. Remove presentation-only `Notes:` / `Sales Order:` labels while preserving the actual content and legitimate inline SO values.
 - Managed Calendar description preserves authored notes and contains exactly one Striven Links block.
-- Every required physical PreInspection Calendar copy must match the authoritative CF Preinspects event for business-visible title, Description, location, start/end, required guest/attendee state, and managed links. Only unavoidable Google system metadata may differ.
+- Every required physical PreInspection Calendar copy must match the authoritative CF Preinspects event for **full business-visible parity**: title, Description, location, start/end, required Stephen participation, and managed links. Only unavoidable Google system metadata may differ.
 
 ## Service ownership boundary
 
