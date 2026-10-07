@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_68_TODAY_PREINSPECTION_HELEN_CANARY",
+  "release": "TMV3_3_11_68_TODAY_PREINSPECTION_JANET_CANARY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -9,12 +9,12 @@
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "71q5rcqdkda2ror38v2t70peg5@google.com",
-  "taskId": 18836,
+  "eventId": "741pa5mf96nvvks9pg4atbnuhl@google.com",
+  "taskId": 18925,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_68_HELEN_CANARY_2026_10_07",
+  "requestTag": "TMV3_3_11_68_JANET_CANARY_2026_10_07",
   "allowedDate": "2026-10-07",
   "testWriteApiSoftLimit": 1500,
-  "customerId": 62670,
-  "locationId": 58304
+  "customerId": 45906,
+  "locationId": 40762
 }
