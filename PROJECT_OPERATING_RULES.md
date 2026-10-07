@@ -73,6 +73,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 
 - **CF Preinspects is the single authoritative PreInspection Calendar source.**
 - **Stephen's Calendar is mirror-only.** It must not introduce an independent PreInspection appointment into Task Mapping.
+- **Required PreInspection Calendar copies must converge to the same business-visible event information.** Title, Description, location, start/end, and required attendee/guest state must match the authoritative CF Preinspects event after reconciliation. Only unavoidable Google system metadata (organizer ownership, physical event/calendar IDs, event URLs, Meet links, response-status mechanics, and similar per-calendar metadata) may differ.
 - Every CF Preinspects event in the operating horizon must include **stephen@classicfireplace.ca** as a required guest. Guest enforcement is Calendar-only, idempotent, and must not remove unrelated attendees.
 - **Sales Order is not required to create the Task.**
 - **Never attach a Sales Order to the PreInspection Task at CREATE.**
