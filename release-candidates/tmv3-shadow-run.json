@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_70_HELEN_LINKS_ONLY",
+  "release": "TMV3_3_11_70_HELEN_LINKS_ONLY_R2",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -12,7 +12,7 @@
   "eventId": "71q5rcqdkda2ror38v2t70peg5@google.com",
   "taskId": 18836,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_70_HELEN_LINKS_ONLY_20261007",
+  "requestTag": "TMV3_3_11_70_HELEN_LINKS_ONLY_R2_20261007",
   "allowedDate": "2026-10-07",
   "testWriteApiSoftLimit": 1500,
   "customerId": 62670,
