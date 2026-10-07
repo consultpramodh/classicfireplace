@@ -5,6 +5,8 @@
 
 ## 2026-10-07 — PreInspection full Calendar parity contract
 
+- Striven Links presentation: **clickable hyperlinks required**. Existing correct clickable blocks are preserved; raw Markdown-style link text is invalid and repaired.
+
 - Canonical source release: `3.11.69-preinspection-calendar-parity-r2`.
 - Hard-rule mirror: `2026-10-07-r7`.
 - Previous PreInspection Calendar title must be preserved as the first Description line with no added heading.
