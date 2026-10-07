@@ -329,7 +329,7 @@ Until this branch is implemented/proven, it remains a known lifecycle gap.
 
 - Material Striven writes require read-back verification.
 - Maintain one idempotent managed PreInspection Task link in the Calendar description.
-- Calendar description standard is authored notes followed by exactly one managed `-----Striven Links-----` block; do not preserve old titles or duplicate legacy Task-link blocks.
+- Calendar description standard after title normalization is: exact previous Calendar title first (no heading), then human-authored notes with presentation-only headers such as `Notes:` / `Sales Order:` removed but their content preserved, then exactly one managed `-----Striven Links-----` block. Do not remove legitimate inline values such as `SO#585603`, and do not keep duplicate legacy Task-link blocks.
 - Calendar read-back verifies managed links while preserving authored notes.
 - PreInspection business Calendar writes target CF Preinspects; Stephen remains a guest/mirror, not a second business authority.
 
