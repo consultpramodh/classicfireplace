@@ -243,44 +243,65 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
 
 
 
-function tmv3_preserveOrPatchPreInspectionCalendarLinks_(existingDescription, plan) {
+function tmv3_preInspectionClickableLinkPresent_(description, link) {
+  const text = String(description || '');
+  const url = tmv3_regexEscape_(String(link && link.url || ''));
+  if (!url) return false;
+
+  return new RegExp(
+    '<a\\b[^>]*href=["\\\']' + url + '["\\\'][^>]*>',
+    'i'
+  ).test(text);
+}
+
+function tmv3_preInspectionHtmlLink_(link) {
+  return '<a href="' +
+    tmv3_calendarHtmlEscape_(String(link.url || '')) +
+    '">' +
+    tmv3_calendarHtmlEscape_(String(link.label || '')) +
+    '</a>';
+}
+
+function tmv3_preInspectionClickableManagedDescription_(existingDescription, plan) {
   const before = String(existingDescription || '');
   const links = (plan && plan.links) || [];
-  const missing = links.filter(function(link) {
-    return before.indexOf(String(link.url || '')) === -1;
+
+  const allClickable = links.every(function(link) {
+    return tmv3_preInspectionClickableLinkPresent_(before, link);
   });
 
-  if (!missing.length) {
+  if (allClickable) {
     return {
       description:before,
-      status:'PRESERVED_EXISTING_LINK_BLOCK',
-      missingKeys:[]
+      status:'PRESERVED_EXISTING_CLICKABLE_LINK_BLOCK',
+      changed:false
     };
   }
 
-  const lines = missing.map(function(link) {
-    return '[' +
-      tmv3_calendarMarkdownLabel_(link.label) +
-      '](' +
-      String(link.url || '') +
-      ')';
-  });
+  // Existing raw Markdown-style links are not valid Calendar hyperlinks.
+  // Rebuild only the managed Striven Links block as actual HTML anchors,
+  // while preserving authored content above it.
+  const authored = tmv3_preInspectionCalendarNotesText_(before, plan);
+  const linkHtml = links.map(tmv3_preInspectionHtmlLink_).join('<br>');
 
-  const trimmed = before.replace(/\s+$/, '');
-  const hasManagedBlock =
-    tmv3_managedCalendarBlockStart_(trimmed) >= 0;
+  const managed =
+    '<p>' +
+    tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
+    (linkHtml ? '<br>' + linkHtml : '') +
+    '</p>';
 
-  const addition =
-    (hasManagedBlock ? '  \n' : (trimmed ? '\n\n' : '')) +
-    (hasManagedBlock ? '' : TMV3_FINAL_LINK_HEADING + '  \n') +
-    lines.join('  \n');
+  const description =
+    (authored
+      ? '<p>' +
+        tmv3_calendarHtmlText_(authored) +
+        '</p>'
+      : '') +
+    managed;
 
   return {
-    description:trimmed + addition,
-    status:hasManagedBlock
-      ? 'PATCHED_MISSING_LINKS_ONLY'
-      : 'APPENDED_NEW_LINK_BLOCK',
-    missingKeys:missing.map(function(link) { return link.key; })
+    description:description,
+    status:'RESTORED_CLICKABLE_HYPERLINK_BLOCK',
+    changed:description !== before
   };
 }
 
