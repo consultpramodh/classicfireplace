@@ -1,11 +1,11 @@
-const TMV3_VERSION = '3.11.67-preinspection-field854-postcreate-r1';
+const TMV3_VERSION = '3.11.68-canonical-decision-sync-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-06-r5',
+  version:'2026-10-07-r6',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
@@ -45,6 +45,8 @@ const TMV3_HARD_RULES = Object.freeze({
     orderLabel:'Work Order',
     technicianEvidence:'TECHNICIAN_CALENDAR',
     defaultPoolId:4,
+    taskCreationOwner:'STRIVEN_WORKFLOW',
+    taskMappingCreatePolicy:'DO_NOT_CREATE_OR_RECREATE',
     removePoolOnlyAfterTechnicianEstablished:true,
     removeOnlyConflictingKnownServiceTechnicians:true
   }),
