@@ -37,6 +37,7 @@ Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains th
 - Calendar notes remain on Calendar only.
 - No InfoCustomFields at CREATE.
 - Technician-completed assessment fields are not prefilled.
+- When a PreInspection Calendar title is normalized, preserve the exact previous title as the first line of Description with no extra heading. Remove presentation-only `Notes:` / `Sales Order:` labels while preserving the actual content and legitimate inline SO values.
 - Managed Calendar description preserves authored notes and contains exactly one Striven Links block.
 
 ## Service ownership boundary
