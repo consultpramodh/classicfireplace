@@ -314,6 +314,7 @@ function tmv3_preInspectionCreatePolicy() {
     previousCalendarTitlePolicy: 'PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER',
     descriptionHeaderPolicy: 'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT',
     calendarCopyParityPolicy: 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED',
+    calendarLinksPreservationPolicy: 'PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY',
     field854: 'DO_NOT_MANAGE',
     infoCustomFieldsAtCreate: 'NONE',
     requiredPoolId: 8,
