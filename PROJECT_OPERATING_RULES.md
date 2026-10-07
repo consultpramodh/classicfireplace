@@ -58,6 +58,10 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 ### Service
 
 - The operational order is the **Work Order**.
+- **ServiceOps owns Request → Customer → Contact → Location → Sales Order → Service Work Order → certification.**
+- **Service Task creation/recreation is owned by the Striven Work Order workflow, not Task Mapping.**
+- Task Mapping discovers and reconciles the Striven-created Service Task after the Work Order reaches the workflow state that creates it.
+- If no valid Service Task exists, Task Mapping must wait/block/reconcile; it must **not create or recreate** a substitute Service Task.
 - Work Order and Task links return to Calendar.
 - Technician identity comes from the technician Calendar.
 - Remove `To Be Assigned` only after the intended technician is established.
@@ -198,8 +202,11 @@ Protect credentials, secrets, customer PII, and private data. This repository is
 At the beginning of meaningful work, read:
 
 1. `PROJECT_OPERATING_RULES.md`;
-2. `PROJECT_CURRENT_STATE.md`;
-3. `PROJECT_CHECKPOINT.md`.
+2. `CURRENT_DECISION_REGISTER.md`;
+3. `PROJECT_CURRENT_STATE.md`;
+4. `PROJECT_CHECKPOINT.md`.
+
+If implementation conflicts with a newer explicitly recorded user decision in `CURRENT_DECISION_REGISTER.md`, treat the implementation as drift to be corrected rather than silently overriding the business decision.
 
 Then identify the active objective, bottleneck, risk level, and fastest safe path before changing code.
 
