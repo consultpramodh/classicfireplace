@@ -45,19 +45,19 @@ If any required relationship is unproven or contradictory: `REVIEW_REQUIRED` or 
 
 ## Shared Task lifecycle decision gate
 
-This decision contract applies to **Install, Delivery, Service, and PreInspection** after vertical-specific identity and prerequisite resolution:
+This decision contract applies to **Install, Delivery, and PreInspection** after vertical-specific identity and prerequisite resolution. **Service is intentionally narrower:** Striven's Work Order workflow owns Service Task creation/recreation, while Task Mapping only discovers and reconciles the resulting Service Task(s).
 
 | Situation | Required decision |
 |---|---|
 | Exactly one valid same-vertical OPEN Task | `MATCH_EXISTING` |
 | Multiple valid OPEN Tasks | `REVIEW_REQUIRED` |
 | Service event with a proven unique FP#1 / FP#2 / ... Task set | `MATCH_EXISTING_MULTI` |
-| No OPEN Task and no applicable history | `CREATE_TASK` |
+| No OPEN Task and no applicable history | `CREATE_TASK` for Install/Delivery/PreInspection; **Service = BLOCKED / wait for Striven-created Task** |
 | Same-day completed/fulfilled Task | `FULFILLED_NO_RECREATE` |
 | Any applicable cancelled Task history | `REVIEW_REQUIRED` |
 | Historical Task with unproven appointment date | `REVIEW_REQUIRED` |
 | Historical Task dated after the Calendar event | `REVIEW_REQUIRED` |
-| Only older fulfilled/completed Task history | `RECREATE_TASK` |
+| Only older fulfilled/completed Task history | `RECREATE_TASK` for Install/Delivery/PreInspection; **Service = BLOCKED / wait for Striven-created Task** |
 | Wrong-vertical Task found | Diagnostic evidence only; never executable match |
 | Required Customer / Location / Sales Order / Work Order unresolved | `BLOCKED` or `REVIEW_REQUIRED` before Task write |
 | Calendar-linked Task cannot be verified and no safe same-vertical fallback exists | `REVIEW_REQUIRED` / fail closed |
@@ -191,6 +191,14 @@ Only use `VERIFIED_COMPLETE` when all applicable components are correct:
 ---
 
 # SERVICE CONTRACT
+
+## Ownership boundary
+
+- ServiceOps owns Request → Customer → Contact → Location → Sales Order → Service Work Order → certification.
+- The Striven Work Order workflow owns Service Task creation/recreation.
+- Task Mapping must never create or recreate a Service Task merely because no OPEN Service Task is currently found.
+- Missing Service Task after the Work Order should have produced one is an external/workflow blocker to reconcile, not permission to create a substitute Task.
+- Task Mapping resumes at discovery/reconciliation of the Striven-created Task and then owns mapping, schedule/technician reconciliation, and managed Calendar links.
 
 ## Primary identity/matching
 
