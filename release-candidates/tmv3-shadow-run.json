@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_3_11_69_PREINSPECTION_CALENDAR_PARITY_REGRESSION",
+  "release": "TMV3_3_11_69_PREINSPECTION_CALENDAR_PARITY_R2_REGRESSION",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_69_PREINSPECTION_CALENDAR_PARITY_REGRESSION",
+  "requestTag": "TMV3_3_11_69_PREINSPECTION_CALENDAR_PARITY_R2_REGRESSION",
   "allowedDate": "",
   "testWriteApiSoftLimit": 1500,
   "customerId": 0
