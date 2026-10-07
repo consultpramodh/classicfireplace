@@ -294,18 +294,20 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
     .replace(/ {2,}\n/g, '\n\n')
     .trim();
 
-  text = text
-    .replace(/\*\*\s*Sales Order:\s*\*\*/gi, '__TMV3_SO__')
-    .replace(/\*\*\s*Notes:\s*\*\*/gi, '\n\n__TMV3_NOTES_BREAK__');
-
   const marker = '__TMV3_PARAGRAPH_BREAK__';
 
   text = text
     .replace(/\n\s*\n+/g, marker)
     .replace(/[ \t]*\n[ \t]*/g, ' ')
     .replace(new RegExp(marker, 'g'), '\n\n')
-    .replace(/__TMV3_SO__/g, '**Sales Order:**')
-    .replace(/__TMV3_NOTES_BREAK__/g, '')
+    .replace(
+      /(^|\n\n)\s*(?:\*\*)?Sales Order:(?:\*\*)?\s*/ig,
+      function(match, prefix) { return prefix || ''; }
+    )
+    .replace(
+      /(^|\n\n)\s*(?:\*\*)?Notes:(?:\*\*)?\s*/ig,
+      function(match, prefix) { return prefix || ''; }
+    )
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
@@ -315,42 +317,22 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
 function tmv3_preInspectionCalendarNotesText_(description, plan) {
   let authored = tmv3_stripManagedLinkBlocks_(description || '');
 
-  // Old Calendar titles are formatting residue, not customer notes.
-  // Strip a preserved title only when the first line independently carries
-  // the same Customer Number and phone as the verified PreInspection plan.
-  authored = tmv3_decodeCalendarHtmlEntities_(String(authored || ''))
-    .replace(/<\s*br\s*\/?>/gi, '\n')
-    .replace(/\r\n?/g, '\n');
-
-  const lines = authored.split('\n');
-  const firstLine = tmv3_clean_(lines[0] || '');
-  const verifiedNumber = tmv3_clean_(plan && plan.customerNumber);
-  const verifiedPhone = tmv3_phone10_(plan && plan.phone);
-
-  if (
-    firstLine &&
-    verifiedNumber &&
-    verifiedPhone &&
-    firstLine.indexOf(verifiedNumber) !== -1 &&
-    tmv3_phone10_(firstLine) === verifiedPhone
-  ) {
-    lines.shift();
-    while (lines.length && !tmv3_clean_(lines[0])) {
-      lines.shift();
-    }
-    authored = lines.join('\n');
-  }
-
+  // The exact previous Calendar title is intentional business history.
+  // Preserve it as the first Description line when title normalization
+  // placed it there. Only presentation-only headings are removed.
   authored = tmv3_normalizePreInspectionAuthoredWraps_(authored);
 
   if (!authored) return '';
 
-  authored = authored.replace(
-    /(^|\n\n)\s*(?:\*\*)?Notes:(?:\*\*)?\s*/ig,
-    function(match, prefix) {
-      return prefix || '';
-    }
-  );
+  authored = authored
+    .replace(
+      /(^|\n\n)\s*(?:\*\*)?Sales Order:(?:\*\*)?\s*/ig,
+      function(match, prefix) { return prefix || ''; }
+    )
+    .replace(
+      /(^|\n\n)\s*(?:\*\*)?Notes:(?:\*\*)?\s*/ig,
+      function(match, prefix) { return prefix || ''; }
+    );
 
   return authored.replace(/\n{3,}/g, '\n\n').trim();
 }
