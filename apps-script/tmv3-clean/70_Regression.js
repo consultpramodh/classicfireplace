@@ -2923,7 +2923,7 @@ function tmv3_stage5CacheFirstRegression() {
 
 function tmv3_allVerticalTaskLifecyclePolicyRegression() {
   const cases = [];
-  const verticals = ['Install','Delivery','Service','PreInspection'];
+  const verticals = ['Install','Delivery','PreInspection'];
 
   function add(name, pass, actual, expected) {
     cases.push({
@@ -3000,6 +3000,36 @@ function tmv3_allVerticalTaskLifecyclePolicyRegression() {
       'Start':'2026-10-01T09:00:00-04:00',
       'Due':'2026-10-01T10:00:00-04:00'
     }], 'RECREATE_TASK', 'ONLY_OLDER_HISTORY_REMAINS');
+  });
+
+  [
+    { suffix:'NO_HISTORY_BLOCKS', history:[] },
+    { suffix:'SAME_DAY_COMPLETED_BLOCKS', history:[{
+      'Task ID':'2001',
+      'Status':'Done',
+      'Start':'2026-10-06T09:00:00-04:00',
+      'Due':'2026-10-06T10:00:00-04:00'
+    }] },
+    { suffix:'SAME_DAY_CANCELLED_BLOCKS', history:[{
+      'Task ID':'2002',
+      'Status':'Cancelled',
+      'Start':'2026-10-06T09:00:00-04:00',
+      'Due':'2026-10-06T10:00:00-04:00'
+    }] },
+    { suffix:'OLDER_HISTORY_BLOCKS', history:[{
+      'Task ID':'2006',
+      'Status':'Done',
+      'Start':'2026-10-01T09:00:00-04:00',
+      'Due':'2026-10-01T10:00:00-04:00'
+    }] }
+  ].forEach(function(test) {
+    expect(
+      'Service',
+      test.suffix,
+      test.history,
+      'BLOCKED',
+      'SERVICE_TASK_CREATION_OWNED_BY_STRIVEN'
+    );
   });
 
   const deliveryWrongVertical = {
