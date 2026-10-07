@@ -131,6 +131,16 @@ function tmv3_step6NoOpenTaskDecision_(record) {
   const history = (record.step5 && record.step5.historyTasks) || [];
   const eventDay = tmv3_step6LocalDay_(record.start);
 
+  if (record.vertical === 'Service') {
+    return tmv3_step6Decision_(
+      'BLOCKED',
+      'SERVICE_TASK_CREATION_OWNED_BY_STRIVEN',
+      'Service Task creation/recreation is owned by the Striven Work Order workflow. Task Mapping waits for or reconciles that Service Task instead of creating one.',
+      [],
+      history
+    );
+  }
+
   if (!history.length) {
     return tmv3_step6Decision_(
       'CREATE_TASK',
@@ -418,7 +428,8 @@ function tmv3_step6Verify_(records, step5Records) {
         'FULFILLED_NO_RECREATE',
         'CREATE_TASK',
         'RECREATE_TASK',
-        'REVIEW'
+        'REVIEW',
+        'BLOCKED'
       ]
     };
 
