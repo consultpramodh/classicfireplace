@@ -70,7 +70,7 @@
 - No history => CREATE_TASK; same-day completed => FULFILLED_NO_RECREATE; cancelled/undated/future-conflicting history => REVIEW; only older completed history => RECREATE_TASK.
 - Before CREATE/RECREATE, fresh duplicate/relationship verification is mandatory.
 - When a PreInspection Calendar title is normalized, preserve the exact previous title as the first line of the Calendar Description **without adding a heading such as `Original Title:`**. Remove presentation-only headers such as `Notes:` and `Sales Order:` while preserving the actual information that followed them; do not remove legitimate inline data such as `SO#585603`. Then preserve the remaining human-authored notes and exactly one managed Striven Links block using the approved Monic plain/Markdown source pattern; no literal HTML source.
-- Calendar copies/managed state are read back and verified.
+- **Cross-calendar parity is mandatory.** Every required physical copy of the same PreInspection appointment must carry the same business-visible event information after reconciliation: canonical title, Description (including preserved old title when applicable, cleaned authored notes, and one Striven Links block), location, start/end, and required attendee/guest state. Only unavoidable Google system metadata such as organizer ownership, event URLs, IDs, Meet links, response-status mechanics, and per-calendar metadata may differ. Read all required copies back and fail completion if business-visible parity is not proven.
 
 ## Operator / website
 
