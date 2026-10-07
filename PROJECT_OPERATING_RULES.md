@@ -101,7 +101,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 - Every CREATE/RECREATE still requires the final fresh duplicate/relationship verification at the write gate before Striven mutation.
 - PreInspection Calendar description presentation is frozen:
   - use Google Calendar-compatible Markdown/plain text; **do not write literal HTML tags** such as `<b>`, `<br>`, or `<a>` through `CalendarApp.setDescription()`;
-  - **do not prepend or preserve the old Calendar title in the description** when normalizing the title;
+  - when normalizing a PreInspection Calendar title, **preserve the exact previous title as the first line of the Description without adding an `Original Title:` label**;
   - preserve human-authored content, but normalize accidental hard line-wraps so notes read as natural paragraphs;
   - do **not** add a `Notes:` heading; preserve the human-authored notes directly;
   - use exactly one managed `-----Striven Links-----` block at the bottom;
