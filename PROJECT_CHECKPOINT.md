@@ -1,6 +1,6 @@
 # Task Mapping — Latest Checkpoint
 
-**Checkpoint date:** 2026-10-01 (America/Toronto)
+**Checkpoint date:** 2026-10-07 (America/Toronto)
 
 ## Canonical branch
 
@@ -10,76 +10,55 @@
 
 - System: **Task Mapping V3**
 - Source: `apps-script/tmv3-clean/`
-- V3 version: `3.11.46-calendar-heading-wrap-r1`
-- Hard-rule version: `2026-10-01-r3`
+- V3 version: `3.11.68-canonical-decision-sync-r1`
+- Hard-rule version: `2026-10-07-r6`
 - Execution stage: `7`
 - Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
+- Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
 - Mode: `SHADOW_READ_ONLY`
 - Automation business writes: **disabled**
 
-## Frozen PreInspection format
+## Canonical decision source
 
-Canonical Calendar title:
+Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains the latest explicit business decisions and supersedes older chat-derived rules when marked superseded.
 
-`<Customer Number> - <Customer Name> - <Phone>`
+## PreInspection frozen rules
 
-Example:
+- CF Preinspects is authoritative; Stephen's Calendar is mirror-only and Stephen remains a required guest.
+- Calendar title: `<Customer Number> - <Customer Name> - <Phone>`.
+- Task name: `<Customer Name> - <Street, City> - <Phone>`.
+- Task Type 105.
+- Pool 8.
+- Requested By = exact Calendar creator/organizer resolved to Striven Employee.
+- Sales Order is not required/attached merely for CREATE/RECREATE.
+- Customer-owned Location is mandatory; safe missing Location may be created before Task CREATE.
+- Task Description is exactly blank at CREATE and technician-owned afterward.
+- **Field 854 is not managed by Task Mapping.**
+- Calendar notes remain on Calendar only.
+- No InfoCustomFields at CREATE.
+- Technician-completed assessment fields are not prefilled.
+- Managed Calendar description preserves authored notes and contains exactly one Striven Links block.
 
-`62689 - Sahand KASHI - (416) 953-7693`
+## Service ownership boundary
 
-Rules:
+- ServiceOps ends at certified Service Work Order.
+- Striven's Work Order workflow owns Service Task creation/recreation.
+- Task Mapping only discovers/reconciles the Striven-created Service Task(s).
+- Missing Service Task is a blocker/wait-for-Striven condition, never permission for Task Mapping to create a substitute.
+- Multi-fireplace FP#n sibling tasks remain valid and are reconciled as an event-level set.
 
-- no `C#`, `Cust#`, or `Customer #` prefix in new canonical output;
-- legacy `C#` and `Cust#` remain readable only for backward compatibility;
-- Stephen-sourced customer PreInspection appointments require managed title/links verified on both Stephen + CF Preinspects;
-- Task Type = 105 — Pre Inspection;
-- Task Description exactly blank at CREATE;
-- no Sales Order attached at CREATE;
-- no InfoCustomFields at CREATE;
-- Pool 8 — Pre-Inspection Pool;
-- Requested By = Calendar organizer/creator;
-- Field 854 is not managed.
+## Safety / verification
 
-## Latest verified evidence
+- Never guess identity or ownership.
+- Never blindly retry uncertain CREATE.
+- Consequential writes require fresh ownership checks and authoritative read-back.
+- Step 7 is the sole mutation authority.
+- Calendar writes are limited to explicitly approved managed fields/actions.
+- No Step 8/9/10 Apps Script files.
 
-- source commit: `aea710a883fe0b0e0bb847856fd44a63a02fb706`
-- deployment run: `36921160480` — **SUCCESS**
-- live hardening regression: `36921281078` — **SUCCESS**
-- bootstrap checkpoint: `36921498527` — **SUCCESS**
-- canonical title regression: `62400 - John Smith - (416) 555-1212` — **PASS**
-- legacy `C#` parser — **PASS**
-- legacy `Cust#` parser — **PASS**
-- hard-rule assertion — **PASS**
-- Sahand title read-back on CF Preinspects and Stephen — **VERIFIED**
+## Next exact verification work
 
-## Current safety state
-
-- `SHADOW_READ_ONLY` remains active.
-- No broad V3 production cutover has occurred.
-- Internal release numbers may change for code/rollback purposes; the frozen visible format does not change unless the user explicitly changes the business rule.
-
-## Next exact action
-
-After the V3 daily Striven API budget resets, rerun the pending full Sep 30 PreInspection Step 7 read-only closure audit. Do not bypass the API budget guard.
-
-
-## Frozen PreInspection Calendar description
-
-```
-**Notes:** <human-authored notes>
-
-**-----Striven Links-----**
-
-[View Sales Orders – <Customer Name> (#<Customer Number>)](<customer sales-orders URL>)
-
-[Task #<Task ID> - Preinspect - <Customer Name> - <Phone>](<task URL>)
-```
-
-- Existing Sales Order section may appear above Notes.
-- Human-authored wording is preserved; only accidental hard wraps/automation-owned formatting are normalized.
-- No old title line inside the description.
-- No HTML tags.
-- No duplicate managed link sections.
-- Both CF Preinspects and Stephen copies must match for shared customer appointments.
-- 2026-10-01 live audit: **15/15 + 15/15 clean; 0 copy mismatches**.
-- Live regression: `36928670626` — **SUCCESS**.
+1. Confirm this release is deployed with PRE-source parity + remote re-clone/hash parity.
+2. Run hard-rule regression and confirm Field 854 remains unmanaged and Service no-task cannot authorize CREATE/RECREATE.
+3. Keep `SHADOW_READ_ONLY`.
+4. When intentionally approved, run a controlled PreInspection Location-create canary. Do not use Field 854 as a completion gate.
