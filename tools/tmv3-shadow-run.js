@@ -1096,6 +1096,72 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'step7EventLinksOnly') {
+      var linkVertical = String(body.vertical || '');
+      var linkEventId = String(body.eventId || '');
+      var linkAllowedDate = String(body.allowedDate || '');
+
+      if (linkVertical !== 'PreInspection') {
+        throw new Error('Link-only canary is limited to PreInspection.');
+      }
+
+      var linkEvent = tmv3_findFreshEventRecord_(
+        linkVertical,
+        linkEventId
+      );
+
+      if (linkAllowedDate) {
+        var linkLocalDate = Utilities.formatDate(
+          linkEvent.start,
+          TMV3_TIMEZONE,
+          'yyyy-MM-dd'
+        );
+        if (linkLocalDate !== linkAllowedDate) {
+          throw new Error(
+            'Link-only canary date scope blocked Event ' +
+            linkEventId + ': expected ' +
+            linkAllowedDate + ', got ' + linkLocalDate + '.'
+          );
+        }
+      }
+
+      var linkPlans = tmv3_step7FreshPlansForEvent_(
+        linkVertical,
+        linkEventId
+      );
+
+      if (!Array.isArray(linkPlans) || linkPlans.length !== 1) {
+        throw new Error(
+          'Link-only canary expected exactly one canonical Step 7 plan; found ' +
+          (linkPlans ? linkPlans.length : 0) + '.'
+        );
+      }
+
+      var linkContract =
+        tmv3_step7ValidateExecutionContract_(linkPlans[0]);
+
+      var linkResult = tmv3_executeFreshStep7Selection_(
+        {
+          previousPlan:linkContract.plan,
+          contract:linkContract
+        },
+        'MANUAL',
+        'LINKS'
+      );
+
+      return TMPV3_shadowResponse_({
+        ok:
+          linkResult &&
+          (
+            linkResult.status === 'VERIFIED_CONVERGENCE' ||
+            linkResult.status === 'CANARY_VERIFIED_NO_CHANGE'
+          ),
+        status:'STEP7_EVENT_LINKS_ONLY_COMPLETE',
+        plan:linkContract,
+        result:linkResult
+      });
+    }
+
     if (body.action === 'step7EventWriteFresh') {
       var freshVertical = String(body.vertical || '');
       var freshEventId = String(body.eventId || '');
@@ -2105,6 +2171,7 @@ async function main() {
         RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+      RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
         RUN_MODE === 'CANARY_STEP7' ||
         RUN_MODE === 'CANARY_TITLE' ||
         RUN_MODE === 'CANARY_REFRESH'
@@ -2288,6 +2355,7 @@ async function main() {
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+      RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
       RUN_MODE === 'CONFIGURED_AUTO_CANARY' ||
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
@@ -2342,6 +2410,8 @@ async function main() {
                       ? 'step7EventWrite'
                     : RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
                       ? 'step7EventWriteFresh'
+                    : RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
+                      ? 'step7EventLinksOnly'
                     : RUN_MODE.indexOf('CANARY_') === 0
                       ? 'step7Canary'
                     : RUN_MODE === 'SHEET_PUBLISH'
@@ -2386,7 +2456,8 @@ async function main() {
             RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
-            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
           )
             ? String(RELEASE_MANIFEST.vertical || '')
           : (RUN_MODE.indexOf('CANARY_') === 0 || RUN_MODE.indexOf('PREVIEW_') === 0) ? 'Install' :
@@ -2411,7 +2482,8 @@ async function main() {
             RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
-            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
           )
             ? String(RELEASE_MANIFEST.eventId || '')
             : (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON')
@@ -2432,7 +2504,8 @@ async function main() {
             RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
-            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
           )
             ? Number(RELEASE_MANIFEST.taskId || 0) :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
@@ -2442,6 +2515,7 @@ async function main() {
         allowedDate:
           (
             RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
             RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST'
           )
             ? String(RELEASE_MANIFEST.allowedDate || '')
@@ -2458,7 +2532,8 @@ async function main() {
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
             RUN_MODE === 'CANARY_EVENT_WRITE' ||
-            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
           )
             ? String(RELEASE_MANIFEST.expectedPlan || 'NO_CHANGE')
             : ''
