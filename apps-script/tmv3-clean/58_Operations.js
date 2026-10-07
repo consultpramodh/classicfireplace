@@ -1792,58 +1792,6 @@ function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
 }
 
 
-function tmv3_patchPreInspectionCalendarDescriptionHtml_(
-  calendarId,
-  eventId,
-  html
-) {
-  const url =
-    'https://www.googleapis.com/calendar/v3/calendars/' +
-    encodeURIComponent(String(calendarId || '')) +
-    '/events/' +
-    encodeURIComponent(String(eventId || ''));
-
-  const response = UrlFetchApp.fetch(url, {
-    method:'patch',
-    contentType:'application/json',
-    headers:{
-      Authorization:'Bearer ' + ScriptApp.getOAuthToken()
-    },
-    payload:JSON.stringify({
-      description:String(html || '')
-    }),
-    muteHttpExceptions:true
-  });
-
-  const code = Number(response.getResponseCode() || 0);
-  const body = String(response.getContentText() || '');
-  if (code < 200 || code >= 300) {
-    throw new Error(
-      'Google Calendar rich-description PATCH failed: HTTP ' +
-      code + ' ' + body
-    );
-  }
-
-  let parsed = {};
-  try { parsed = body ? JSON.parse(body) : {}; } catch (ignored) {}
-
-  const actual = String(parsed.description || '');
-  if (actual !== String(html || '')) {
-    throw new Error(
-      'Google Calendar rich-description PATCH read-back mismatch. Expected=' +
-      String(html || '') +
-      ' Actual=' + actual
-    );
-  }
-
-  return {
-    status:'RICH_DESCRIPTION_PATCHED_AND_VERIFIED',
-    calendarId:String(calendarId || ''),
-    eventId:String(eventId || ''),
-    description:actual
-  };
-}
-
 function tmv3_preInspectionCalendarBusinessSnapshot_(event) {
   if (!event) throw new Error('PreInspection Calendar snapshot requires an event.');
 
@@ -1949,11 +1897,7 @@ function tmv3_reconcilePreInspectionCalendarParity_(eventRecord, scope) {
       writePerformed = true;
     }
     if (before.description !== authority.description) {
-      tmv3_patchPreInspectionCalendarDescriptionHtml_(
-        calendarId,
-        eventRecord.eventId,
-        authority.description
-      );
+      event.setDescription(authority.description);
       writePerformed = true;
     }
     if (before.location !== authority.location) {
@@ -2119,15 +2063,7 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
 
     const desired = String(linkUpdate.description || '');
     if (before !== desired) {
-      if (eventRecord.vertical === 'PreInspection') {
-        tmv3_patchPreInspectionCalendarDescriptionHtml_(
-          copy.calendarId,
-          plan.eventId,
-          desired
-        );
-      } else {
-        copy.event.setDescription(desired);
-      }
+      copy.event.setDescription(desired);
     }
 
     const readBackFound = tmv3_findEventCopyRobust_(copy.calendarId, plan.eventId);
