@@ -6,6 +6,8 @@
 ## 2026-10-07 — Canonical decision sync / Field 854 correction
 
 - Canonical release: `3.11.68-canonical-decision-sync-r1`.
+- Source/deployment commit: `0fd22df18119caaac0525f8f6186349b67e34e14`.
+- Guarded bootstrap run `37672082690`: **SUCCESS** — existing bound Apps Script updated; PRE-source gate passed; remote re-clone/file/hash parity verification completed.
 - Hard-rule mirror: `2026-10-07-r6`.
 - This release supersedes `3.11.67-preinspection-field854-postcreate-r1`.
 - **Field 854 is not managed by Task Mapping.** The 3.11.67 post-create Field 854 synchronization was policy drift and has been removed.
