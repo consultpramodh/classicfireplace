@@ -1585,25 +1585,27 @@ function tmv3_titleNormalizationRegression() {
   );
 
   check(
-    'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN',
+    'PREINSPECTION_DESCRIPTION_FORMAT_IS_FROZEN_TO_MONIC_PATTERN',
     preDescription.indexOf(
-      'Line one wrapped continuation<br><br>Second paragraph<br><br>'
+      'Line one wrapped continuation\n\nSecond paragraph\n\n'
     ) === 0 &&
       preDescription.indexOf(
         '62400 - John Smith - (416) 555-1212'
       ) === -1 &&
       preDescription.indexOf(
-        '<b>-----Striven Links-----</b><br>'
+        '-----Striven Links-----  \n'
       ) !== -1 &&
       (preDescription.match(/Striven Links/g) || []).length === 1 &&
       preDescription.indexOf(
-        'View Sales Orders – John Smith (#62400)'
+        '[View Sales Orders – John Smith (#62400)]('
       ) !== -1 &&
       preDescription.indexOf(
-        'Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212'
+        '[Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212]('
       ) !== -1 &&
       preDescription.indexOf('old.example') === -1 &&
-      preDescription.indexOf('Pre-Inspection Task Link') === -1,
+      preDescription.indexOf('Pre-Inspection Task Link') === -1 &&
+      preDescription.indexOf('<br>') === -1 &&
+      preDescription.indexOf('<a href=') === -1,
     preDescription
   );
   const escapedMarkdownLegacy = tmv3_managedCalendarDescription_(
@@ -1630,7 +1632,7 @@ function tmv3_titleNormalizationRegression() {
   check(
     'PREINSPECTION_SALES_ORDER_AND_NOTES_HEADING_BOUNDARY_PRESERVED',
     headingBreakLegacy.indexOf(
-      '**Sales Order:** SO#585434<br><br>Keep these notes'
+      '**Sales Order:** SO#585434\n\nKeep these notes'
     ) === 0,
     headingBreakLegacy
   );
@@ -1643,12 +1645,12 @@ function tmv3_titleNormalizationRegression() {
   );
 
   check(
-    'PREINSPECTION_STRIVEN_LINKS_RENDER_AS_CLICKABLE_HTML_ANCHORS',
+    'PREINSPECTION_STRIVEN_LINKS_USE_MONIC_CLICKABLE_SOURCE_PATTERN',
     preDescription.indexOf(
-      '<a href="https://classicfireplace.striven.com/next/crm#/sales-orders?accountId=35659">View Sales Orders – John Smith (#62400)</a>'
+      '[View Sales Orders – John Smith (#62400)](https://classicfireplace.striven.com/next/crm#/sales-orders?accountId=35659)'
     ) !== -1 &&
       preDescription.indexOf(
-        '<a href="https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=18845">Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212</a>'
+        '[Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212](https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=18845)'
       ) !== -1,
     preDescription
   );

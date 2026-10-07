@@ -223,22 +223,20 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
     : tmv3_stripManagedLinkBlocks_(existingDescription);
 
   const linkLines = (plan.links || []).map(function(link) {
-    return '<a href="' +
-      tmv3_calendarHtmlEscape_(String(link.url || '')) +
-      '">' +
-      tmv3_calendarHtmlEscape_(link.label) +
-      '</a>';
+    return '[' +
+      tmv3_calendarMarkdownLabel_(link.label) +
+      '](' +
+      String(link.url || '') +
+      ')';
   });
 
   const managed =
-    '<b>' +
-    tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
-    '</b>' +
-    (linkLines.length ? '<br>' + linkLines.join('<br>') : '');
+    TMV3_FINAL_LINK_HEADING +
+    (linkLines.length ? '  \n' + linkLines.join('  \n') : '');
 
   return (
     authored
-      ? tmv3_calendarHtmlText_(authored.replace(/\s+$/, '')) + '<br><br>'
+      ? authored.replace(/\s+$/, '') + '\n\n'
       : ''
   ) + managed;
 }

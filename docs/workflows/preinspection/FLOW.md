@@ -12,7 +12,7 @@ The **CF Preinspects** calendar is the single authoritative PreInspection source
 - Every CF Preinspects event must include `stephen@classicfireplace.ca` as a required guest.
 - Canonical Calendar title on both copies: `<Customer Number> - <Customer Name> - <Phone>`.
 - Calendar description on both copies contains the same human-authored notes plus exactly one managed `-----Striven Links-----` block.
-- The Customer Sales Orders label and Task label in the managed block must be real clickable hyperlinks, not Markdown text.
+- Use the established Monic OLIVER Calendar source pattern for managed links: `[label](URL)`. Google Calendar must render the Sales Orders and Task labels as clickable links; do not emit literal HTML tags or `<br>` formatting.
 - Do not copy an old Calendar title into the description.
 
 From the CF Preinspects event, retain Customer Number, phone, address/location, optional Sales Order evidence, event date/time, and organizer/creator email.
