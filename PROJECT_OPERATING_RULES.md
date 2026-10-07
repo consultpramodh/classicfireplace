@@ -25,6 +25,8 @@ When sources conflict, use this order:
 
 Never invent missing production information.
 
+Business-rule authority is separate from current-state authority: the latest explicit user decision, as recorded in `CURRENT_DECISION_REGISTER.md` and mirrored in the hard-rule section below, defines the intended business contract. The source hierarchy above determines what is currently deployed/running. If live source conflicts with a newer explicit business decision, report and correct the implementation drift; do not silently treat the drift as the new policy.
+
 ## Task Mapping hard business rules
 
 These rules are **authoritative and non-negotiable unless the user explicitly changes one of them**. They must be reviewed before any Task Mapping code change. The Apps Script mirror is `TMV3_HARD_RULES`; runtime and regression guards must fail closed if implementation drifts from this section.
