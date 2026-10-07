@@ -56,9 +56,15 @@ Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains th
 - Calendar writes are limited to explicitly approved managed fields/actions.
 - No Step 8/9/10 Apps Script files.
 
+## Latest deployment evidence
+
+- Source/deployment commit: `0fd22df18119caaac0525f8f6186349b67e34e14`.
+- Guarded bootstrap run: `37672082690` — **SUCCESS**.
+- Existing bound Apps Script project updated successfully.
+- Remote re-clone/file/hash parity verification completed successfully.
+
 ## Next exact verification work
 
-1. Confirm this release is deployed with PRE-source parity + remote re-clone/hash parity.
-2. Run hard-rule regression and confirm Field 854 remains unmanaged and Service no-task cannot authorize CREATE/RECREATE.
-3. Keep `SHADOW_READ_ONLY`.
-4. When intentionally approved, run a controlled PreInspection Location-create canary. Do not use Field 854 as a completion gate.
+1. Run the hard-rule/runtime regression and confirm Field 854 remains unmanaged and Service no-task cannot authorize CREATE/RECREATE.
+2. Keep `SHADOW_READ_ONLY`.
+3. When intentionally approved, run a controlled PreInspection Location-create canary. Do not use Field 854 as a completion gate.
