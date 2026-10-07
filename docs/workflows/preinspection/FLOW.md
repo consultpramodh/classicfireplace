@@ -13,7 +13,7 @@ The **CF Preinspects** calendar is the single authoritative PreInspection source
 - Canonical Calendar title on both copies: `<Customer Number> - <Customer Name> - <Phone>`.
 - Calendar description on both copies contains the same human-authored notes plus exactly one managed `-----Striven Links-----` block.
 - Use the established Monic OLIVER Calendar source pattern for managed links: `[label](URL)`. Google Calendar must render the Sales Orders and Task labels as clickable links; do not emit literal HTML tags or `<br>` formatting.
-- Do not copy an old Calendar title into the description.
+- When the Calendar title is standardized, preserve the exact previous title as the first line of the Description without adding an `Original Title:` heading.
 
 From the CF Preinspects event, retain Customer Number, phone, address/location, optional Sales Order evidence, event date/time, and organizer/creator email.
 
@@ -110,6 +110,7 @@ Never blindly retry an uncertain Task CREATE. Reconcile first.
 
 After Task read-back succeeds:
 
+- remove presentation-only headers such as `Notes:` and `Sales Order:` while preserving their underlying content and legitimate inline data such as `SO#585603`;
 - preserve human-authored notes;
 - maintain exactly one `-----Striven Links-----` block on both configured PreInspection Calendar copies;
 - include the Customer Sales Orders link as a clickable hyperlink;
