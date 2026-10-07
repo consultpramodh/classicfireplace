@@ -10,7 +10,7 @@
 
 - System: **Task Mapping V3**
 - Source: `apps-script/tmv3-clean/`
-- V3 version: `3.11.69-preinspection-calendar-parity-r1`
+- V3 version: `3.11.69-preinspection-calendar-parity-r2`
 - Hard-rule version: `2026-10-07-r7`
 - Execution stage: `7`
 - Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
@@ -59,6 +59,10 @@ Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains th
 - No Step 8/9/10 Apps Script files.
 
 ## Latest deployment evidence
+
+- Guarded deployment run: `37679724316` — **SUCCESS** for `3.11.69-preinspection-calendar-parity-r2`.
+- Live hardening regression: `37679868267` — **SUCCESS**.
+- Regression proves prior-title preservation, Notes:/Sales Order: header removal with content preservation, required-copy targeting, full business-state parity comparison, Field 854 no-management, and Service Task creation ownership.
 
 - Source/deployment commit: `0fd22df18119caaac0525f8f6186349b67e34e14`.
 - Guarded bootstrap run: `37672082690` — **SUCCESS**.
