@@ -1,11 +1,11 @@
-const TMV3_VERSION = '3.11.68-canonical-decision-sync-r1';
+const TMV3_VERSION = '3.11.69-preinspection-calendar-parity-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-07-r6',
+  version:'2026-10-07-r7',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
@@ -56,6 +56,10 @@ const TMV3_HARD_RULES = Object.freeze({
     taskTypeId:105,
     descriptionPolicy:'BLANK_AT_CREATE',
     calendarNotesPolicy:'CALENDAR_ONLY',
+    previousCalendarTitlePolicy:'PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER',
+    descriptionHeaderPolicy:'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT',
+    calendarCopyParityPolicy:'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED',
+    calendarCopyParityFields:'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION',
     field854Policy:'DO_NOT_MANAGE',
     infoCustomFieldsAtCreate:'NONE',
     technicianFieldsPolicy:'DO_NOT_PREFILL',
@@ -243,6 +247,10 @@ const TMV3 = Object.freeze({
       requestedByFromOrganizer: true,
       descriptionMustBeBlankAtCreate: true,
       calendarNotesPolicy: 'CALENDAR_ONLY',
+      previousCalendarTitlePolicy: 'PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER',
+      descriptionHeaderPolicy: 'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT',
+      calendarCopyParityPolicy: 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED',
+      calendarCopyParityFields: 'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION',
       field854Policy: 'DO_NOT_MANAGE',
       infoCustomFieldsAtCreate: 'NONE',
       technicianFieldsPrefill: false,
