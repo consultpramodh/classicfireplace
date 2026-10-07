@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_SAFE_SHADOW_READ_ONLY",
+  "release": "TMV3_3_11_66_MONIC_FORMAT_REGRESSION",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "SAFE_SHADOW_READ_ONLY_AFTER_KYLE_404",
+  "requestTag": "TMV3_3_11_66_MONIC_FORMAT_REGRESSION",
   "allowedDate": "",
   "testWriteApiSoftLimit": 0,
   "customerId": 0
