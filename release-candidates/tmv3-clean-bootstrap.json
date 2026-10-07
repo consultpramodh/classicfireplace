@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_68_CANONICAL_DECISION_SYNC_R1",
+  "release": "TMV3_3_11_69_PREINSPECTION_CALENDAR_PARITY_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "509bd364699cb4ceb76c4c320e7848e7cb45604d"
+  "expectedLiveCommit": "a50b6bf8748509366c08a2926cf4b76eb2ecfc7"
 }
