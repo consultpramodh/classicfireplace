@@ -1,20 +1,20 @@
 {
-  "release": "TMV3_3_11_71_MATT_RICHLINK_API_TEST",
+  "release": "TMV3_3_11_70_HELEN_LINKS_ONLY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
-  "runMode": "CANARY_EVENT_WRITE_FRESH",
+  "runMode": "CANARY_EVENT_LINKS_ONLY",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "4q9f4ls7hnfqsmvnejkjd7d83p@google.com",
-  "taskId": 18985,
+  "eventId": "71q5rcqdkda2ror38v2t70peg5@google.com",
+  "taskId": 18836,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_71_MATT_RICHLINK_API_TEST",
+  "requestTag": "TMV3_3_11_70_HELEN_LINKS_ONLY_20261007",
   "allowedDate": "2026-10-07",
   "testWriteApiSoftLimit": 1500,
-  "customerId": 62729,
-  "locationId": 58353
+  "customerId": 62670,
+  "locationId": 58304
 }
