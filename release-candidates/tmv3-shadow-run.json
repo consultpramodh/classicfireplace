@@ -1,20 +1,20 @@
 {
-  "release": "TMV3_3_11_70_HELEN_LINKS_ONLY_R2",
+  "release": "TMV3_BARbara_CREATE_20261007",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
-  "runMode": "CANARY_EVENT_LINKS_ONLY",
+  "runMode": "CANARY_EVENT_WRITE_FRESH",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "71q5rcqdkda2ror38v2t70peg5@google.com",
-  "taskId": 18836,
+  "eventId": "699e4hu99jqn6t27fnv0in4o03@google.com",
+  "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_3_11_70_HELEN_LINKS_ONLY_R2_20261007",
+  "requestTag": "TMV3_BARBARA_CREATE_20261007",
   "allowedDate": "2026-10-07",
   "testWriteApiSoftLimit": 1500,
-  "customerId": 62670,
-  "locationId": 58304
+  "customerId": 57289,
+  "locationId": 53466
 }
