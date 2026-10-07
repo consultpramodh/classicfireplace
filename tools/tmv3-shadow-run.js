@@ -275,14 +275,17 @@ function buildTemporaryRunner(pre, token) {
 
         if (
           f.name === '00_Config' &&
-          RUN_MODE === 'CANARY_EVENT_WRITE_FRESH'
+          (
+            RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
+            RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
+          )
         ) {
           const scopedEventId = String(RELEASE_MANIFEST.eventId || '');
           const scopedVertical = String(RELEASE_MANIFEST.vertical || '');
           const scopedDate = String(RELEASE_MANIFEST.allowedDate || '');
 
           if (!scopedEventId || scopedVertical !== 'PreInspection' || !scopedDate) {
-            fail('Fresh-event canary requires exact PreInspection eventId + allowedDate.');
+            fail('Event-scoped canary requires exact PreInspection eventId + allowedDate.');
           }
 
           const eventMatches = source.match(/canaryEventId:\s*'[^']*',/g) || [];
@@ -295,7 +298,7 @@ function buildTemporaryRunner(pre, token) {
             dateMatches.length !== 1
           ) {
             fail(
-              'Fresh-event canary config patch expected exactly one event/vertical/date anchor.'
+              'Event-scoped canary config patch expected exactly one event/vertical/date anchor.'
             );
           }
 
@@ -318,7 +321,7 @@ function buildTemporaryRunner(pre, token) {
 
           if (manualWriteMatches.length !== 1) {
             fail(
-              'Fresh-event canary manual-write patch expected exactly one disabled policy anchor.'
+              'Event-scoped canary manual-write patch expected exactly one disabled policy anchor.'
             );
           }
 
