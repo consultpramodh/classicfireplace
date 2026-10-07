@@ -246,6 +246,8 @@ A later task row must never replace an earlier task's managed link for the same 
 
 # PREINSPECTION CONTRACT
 
+- Calendar Striven Links must render as clickable Google Calendar hyperlinks. Existing correct clickable blocks are preserved exactly; raw Markdown-style link text is treated as broken presentation and repaired.
+
 ## Task profile
 
 - Task Type ID 105.
