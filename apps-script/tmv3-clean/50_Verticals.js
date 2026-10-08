@@ -138,8 +138,14 @@ function tmv3_verifiedTitleContext_(record) {
   const location = step4.location || null;
 
   const verified =
-    step3.disposition === 'VERIFIED' &&
-    step4.disposition === 'VERIFIED';
+    step4.disposition === 'VERIFIED' &&
+    (
+      step3.disposition === 'VERIFIED' ||
+      (
+        record.vertical === 'PreInspection' &&
+        (TMV3.VERTICALS.PreInspection || {}).orderRequired !== true
+      )
+    );
 
   const customerName = tmv3_clean_(
     customer && customer['Name']
