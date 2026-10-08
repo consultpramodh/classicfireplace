@@ -95,16 +95,11 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
       let label = '';
 
       if (eventRecord.vertical === 'PreInspection') {
-        const desiredTaskName = tmv3_desiredTaskName_(eventRecord, {});
-        const taskName =
-          desiredTaskName &&
-          desiredTaskName.status === 'READY'
-            ? tmv3_clean_(desiredTaskName.value)
-            : tmv3_clean_(record.task);
+        const taskName = tmv3_clean_(record.task);
 
         if (!taskName) {
           throw new Error(
-            'PreInspection Calendar Task link requires a verified Task Name.'
+            'PreInspection Calendar Task link requires the actual verified Striven Task Name.'
           );
         }
 
