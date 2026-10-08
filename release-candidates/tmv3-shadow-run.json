@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_VINCE_FIX_20261009",
+  "release": "TMV3_VINCE_FIX_R2_20261009",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -12,7 +12,7 @@
   "eventId": "2leu9n986nmgr8s2otlgr08nbj@google.com",
   "taskId": 0,
   "expectedPlan": "",
-  "requestTag": "TMV3_VINCE_FIX_20261009",
+  "requestTag": "TMV3_VINCE_FIX_R2_20261009",
   "allowedDate": "2026-10-09",
   "testWriteApiSoftLimit": 1500,
   "customerId": 62384,
