@@ -2521,7 +2521,7 @@ function tmv3_stage4IdentityRecoveryRegression() {
 
   check(
     'STAGE4_STALE_EXPLICIT_CUSTOMER_NUMBER_RECOVERS_WITH_PHONE_AND_ADDRESS',
-    monaResolved.step4.disposition === 'IDENTITY_ONLY' &&
+    monaResolved.step4.disposition === 'VERIFIED' &&
       String(
         monaResolved.step4.customer &&
         monaResolved.step4.customer['Customer ID']
@@ -2532,6 +2532,15 @@ function tmv3_stage4IdentityRecoveryRegression() {
       ) === '57865' &&
       (monaResolved.step4.evidence || []).indexOf(
         'EXPLICIT_CUSTOMER_NUMBER_STALE'
+      ) !== -1,
+    JSON.stringify(monaResolved.step4)
+  );
+
+  check(
+    'STAGE4_PREINSPECTION_ORDER_OPTIONAL_ADVANCES_TO_STAGE5',
+    monaResolved.step4.disposition === 'VERIFIED' &&
+      (monaResolved.step4.evidence || []).indexOf(
+        'PREINSPECTION_ORDER_OPTIONAL_STAGE5_ALLOWED'
       ) !== -1,
     JSON.stringify(monaResolved.step4)
   );
