@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_SPRINGBOARD_RECONCILE_R2_20261008",
+  "release": "TMV3_SPRINGBOARD_RECONCILE_R3_20261008",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -12,7 +12,7 @@
   "eventId": "45fjgbllmcjd4srorsr3750nf1@google.com",
   "taskId": 17691,
   "expectedPlan": "",
-  "requestTag": "TMV3_SPRINGBOARD_RECONCILE_R2_20261008",
+  "requestTag": "TMV3_SPRINGBOARD_RECONCILE_R3_20261008",
   "allowedDate": "2026-10-08",
   "testWriteApiSoftLimit": 1500,
   "customerId": 57059,
