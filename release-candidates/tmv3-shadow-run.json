@@ -1,5 +1,5 @@
 {
-  "release": "TMV3_SPRINGBOARD_RECONCILE_R4_20261008",
+  "release": "TMV3_LOREA_RECONCILE_20261009",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -9,12 +9,12 @@
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "45fjgbllmcjd4srorsr3750nf1@google.com",
-  "taskId": 17691,
+  "eventId": "57b13ds2bkbj984ra6vj6bqe9g@google.com",
+  "taskId": 18987,
   "expectedPlan": "",
-  "requestTag": "TMV3_SPRINGBOARD_RECONCILE_R4_20261008",
-  "allowedDate": "2026-10-08",
+  "requestTag": "TMV3_LOREA_RECONCILE_20261009",
+  "allowedDate": "2026-10-09",
   "testWriteApiSoftLimit": 1500,
-  "customerId": 57059,
-  "locationId": 58306
+  "customerId": 62766,
+  "locationId": 58388
 }
