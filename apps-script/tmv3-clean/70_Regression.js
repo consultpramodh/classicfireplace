@@ -1374,6 +1374,36 @@ function tmv3_titleNormalizationRegression() {
   const preCalendar = tmv3_desiredCalendarTitle_(pre);
   const preTask = tmv3_desiredTaskName_(pre);
 
+  const preWithoutOrderAnchor = Object.assign({}, pre, {
+    step3:{
+      disposition:'BLOCKED',
+      code:'ANCHOR_ORDER_NOT_FOUND',
+      reason:'Sales Order corroboration unavailable.',
+      anchor:{}
+    },
+    step4:Object.assign({}, pre.step4, {
+      disposition:'VERIFIED'
+    })
+  });
+  const preWithoutOrderCalendar =
+    tmv3_desiredCalendarTitle_(preWithoutOrderAnchor);
+  const preWithoutOrderTask =
+    tmv3_desiredTaskName_(preWithoutOrderAnchor);
+
+  check(
+    'PREINSPECTION_CANONICAL_NAMES_DO_NOT_REQUIRE_SALES_ORDER_ANCHOR',
+    preWithoutOrderCalendar.status === 'READY' &&
+      preWithoutOrderTask.status === 'READY' &&
+      preWithoutOrderCalendar.value ===
+        '62400 - John Smith - (416) 555-1212' &&
+      preWithoutOrderTask.value ===
+        'John Smith - 123 Main St, Toronto - (416) 555-1212',
+    JSON.stringify({
+      calendar:preWithoutOrderCalendar,
+      task:preWithoutOrderTask
+    })
+  );
+
   // Regression for the Jane Bisset canary failure: CREATE execution receives
   // a raw Calendar event, but must reuse the already-verified Step 7
   // Customer/Location relationship when constructing the canonical Task Name.
