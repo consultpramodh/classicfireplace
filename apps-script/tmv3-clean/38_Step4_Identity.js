@@ -272,6 +272,31 @@ function tmv3_step4ResolveIdentityWithoutAnchor_(record, refs, step3) {
   const label = cfg.orderLabel ||
     (record.vertical === 'Service' ? 'Work Order' : 'Sales Order');
 
+  if (
+    record.vertical === 'PreInspection' &&
+    cfg.orderRequired !== true
+  ) {
+    return tmv3_step4Decision_(
+      'VERIFIED',
+      'PREINSPECTION_IDENTITY_VERIFIED_ORDER_OPTIONAL',
+      'PreInspection Customer and Customer-owned Location are verified. ' +
+        label +
+        ' corroboration is unresolved or unavailable, but it is not required before Task resolution.',
+      resolved.customer,
+      resolved.location,
+      resolved.contact,
+      resolved.contactStatus,
+      (resolved.evidence || []).concat([
+        'IDENTITY_VERIFIED_WITHOUT_BUSINESS_ANCHOR',
+        'PREINSPECTION_ORDER_OPTIONAL_STAGE5_ALLOWED'
+      ]),
+      (resolved.warnings || []).concat([
+        tmv3_clean_(step3 && step3.reason),
+        label + ' is corroborating evidence only for PreInspection; Stage 5 may continue.'
+      ]).filter(Boolean)
+    );
+  }
+
   return tmv3_step4Decision_(
     'IDENTITY_ONLY',
     'IDENTITY_VERIFIED_ANCHOR_PENDING',
