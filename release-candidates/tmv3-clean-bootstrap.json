@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "TMV3_3_11_75_PREINSPECTION_ORDER_OPTIONAL_TITLE_R1",
+  "release": "TMV3_3_11_76_PREINSPECTION_LINK_IDENTITY_HYDRATION_R1",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "f05bbd4e8dad975e202b3eb2262cca432e718b00"
+  "expectedLiveCommit": "0ce88bc7a33a71554127cba04d331bb851eeed4a"
 }
