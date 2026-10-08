@@ -238,62 +238,61 @@ function tmv3_managedCalendarDescription_(existingDescription, plan) {
 
 
 
-function tmv3_preInspectionCalendarLinkSourcePresent_(description, link) {
-  const before = String(description || '').replace(/\s+/g, '');
-  const source =
-    '[' +
-    tmv3_calendarMarkdownLabel_(link && link.label || '') +
-    '](' +
-    String(link && link.url || '') +
-    ')';
-  return before.indexOf(source.replace(/\s+/g, '')) !== -1;
+function tmv3_preInspectionClickableLinkPresent_(description, link) {
+  const text = String(description || '');
+  const url = tmv3_regexEscape_(String(link && link.url || ''));
+  if (!url) return false;
+
+  return new RegExp(
+    '<a\\b[^>]*href=["\\\']' + url + '["\\\'][^>]*>',
+    'i'
+  ).test(text);
+}
+
+function tmv3_preInspectionHtmlLink_(link) {
+  return '<a href="' +
+    tmv3_calendarHtmlEscape_(String(link.url || '')) +
+    '">' +
+    tmv3_calendarHtmlEscape_(String(link.label || '')) +
+    '</a>';
 }
 
 function tmv3_preInspectionClickableManagedDescription_(existingDescription, plan) {
   const before = String(existingDescription || '');
   const links = (plan && plan.links) || [];
 
-  const allWorkingLinksPresent = links.every(function(link) {
-    return tmv3_preInspectionCalendarLinkSourcePresent_(before, link);
+  const allClickable = links.every(function(link) {
+    return tmv3_preInspectionClickableLinkPresent_(before, link);
   });
 
-  const hasEscapedHtml =
-    /&lt;\/?(?:p|a|br)\b/i.test(before) ||
-    /<\/?(?:p|a|br)\b/i.test(before);
-
-  if (allWorkingLinksPresent && !hasEscapedHtml) {
+  if (allClickable) {
     return {
       description:before,
-      status:'PRESERVED_EXISTING_WORKING_LINK_BLOCK',
+      status:'PRESERVED_EXISTING_CLICKABLE_LINK_BLOCK',
       changed:false
     };
   }
 
   const authored = tmv3_preInspectionCalendarNotesText_(before, plan);
+  const linkHtml = links.map(tmv3_preInspectionHtmlLink_).join('<br>');
 
   const managed =
-    '**\\' + TMV3_FINAL_LINK_HEADING + '**' +
-    (links.length
-      ? '\n\n' +
-        links.map(function(link) {
-          return '[' +
-            tmv3_calendarMarkdownLabel_(link.label) +
-            '](' +
-            String(link.url || '') +
-            ')';
-        }).join('\n\n')
-      : '');
+    '<p>' +
+    tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
+    (linkHtml ? '<br>' + linkHtml : '') +
+    '</p>';
 
   const description =
     (authored
-      ? authored.replace(/\s+$/, '') + '\n\n'
+      ? '<p>' +
+        tmv3_calendarHtmlText_(authored) +
+        '</p>'
       : '') +
-    managed +
-    '\n\n';
+    managed;
 
   return {
     description:description,
-    status:'RESTORED_PROVEN_GOOGLE_CALENDAR_LINK_PATTERN',
+    status:'RESTORED_CLICKABLE_HYPERLINK_BLOCK',
     changed:description !== before
   };
 }
