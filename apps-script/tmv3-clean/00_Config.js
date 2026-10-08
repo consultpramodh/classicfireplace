@@ -1,11 +1,11 @@
-const TMV3_VERSION = '3.11.71-preinspection-calendar-api-richlinks-r1';
+const TMV3_VERSION = '3.11.72-preinspection-calendarapp-links-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'SHADOW_READ_ONLY';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-07-r8',
+  version:'2026-10-08-r9',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
@@ -61,6 +61,7 @@ const TMV3_HARD_RULES = Object.freeze({
     calendarCopyParityPolicy:'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED',
     calendarCopyParityFields:'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION',
     calendarLinksPreservationPolicy:'PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY',
+    calendarTaskLinkLabelPolicy:'TASK_ID_PLUS_ACTUAL_STRIVEN_TASK_NAME',
     field854Policy:'DO_NOT_MANAGE',
     infoCustomFieldsAtCreate:'NONE',
     technicianFieldsPolicy:'DO_NOT_PREFILL',
@@ -253,6 +254,7 @@ const TMV3 = Object.freeze({
       calendarCopyParityPolicy: 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED',
       calendarCopyParityFields: 'TITLE_DESCRIPTION_LOCATION_START_END_REQUIRED_PARTICIPATION',
       calendarLinksPreservationPolicy: 'PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY',
+      calendarTaskLinkLabelPolicy: 'TASK_ID_PLUS_ACTUAL_STRIVEN_TASK_NAME',
       field854Policy: 'DO_NOT_MANAGE',
       infoCustomFieldsAtCreate: 'NONE',
       technicianFieldsPrefill: false,
