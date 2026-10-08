@@ -6,8 +6,6 @@ on:
       - task_mapping
     paths:
       - 'release-candidates/tmv3-clean-bootstrap.json'
-      - 'apps-script/tmv3-clean/**'
-      - '.github/workflows/tmv3-clean-bootstrap.yml'
   workflow_dispatch:
 
 permissions:
@@ -25,7 +23,7 @@ jobs:
       - name: Checkout task_mapping
         uses: actions/checkout@v4
         with:
-          ref: task_mapping
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Setup Node
@@ -115,7 +113,8 @@ jobs:
 
             BASELINE_COMMIT="$EXPECTED_LIVE_COMMIT"
             if [ -z "$BASELINE_COMMIT" ]; then
-              BASELINE_COMMIT="HEAD^"
+              echo "EXPECTED_LIVE_COMMIT_REQUIRED: set the verified live source commit in the release manifest. No Apps Script write attempted."
+              exit 1
             fi
 
             if git rev-parse --verify "$BASELINE_COMMIT" >/dev/null 2>&1; then
