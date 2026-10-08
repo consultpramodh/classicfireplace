@@ -1,20 +1,20 @@
 {
-  "release": "TMV3_BARBARA_TASK_LINK_ONLY_19019",
+  "release": "TMV3_SPRINGBOARD_RECONCILE_20261008",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
-  "runMode": "CANARY_PREINSPECTION_TASK_LINK_ONLY",
+  "runMode": "CANARY_EVENT_WRITE_FRESH",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "PreInspection",
-  "eventId": "699e4hu99jqn6t27fnv0in4o03@google.com",
-  "taskId": 19019,
+  "eventId": "45fjgbllmcjd4srorsr3750nf1@google.com",
+  "taskId": 17691,
   "expectedPlan": "",
-  "requestTag": "TMV3_BARBARA_TASK_LINK_ONLY_19019",
-  "allowedDate": "2026-10-07",
+  "requestTag": "TMV3_SPRINGBOARD_RECONCILE_20261008",
+  "allowedDate": "2026-10-08",
   "testWriteApiSoftLimit": 1500,
-  "customerId": 57289,
-  "locationId": 53466
+  "customerId": 57059,
+  "locationId": 58306
 }
