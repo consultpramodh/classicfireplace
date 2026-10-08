@@ -315,6 +315,7 @@ function tmv3_preInspectionCreatePolicy() {
     descriptionHeaderPolicy: 'REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT',
     calendarCopyParityPolicy: 'FULL_BUSINESS_VISIBLE_PARITY_REQUIRED',
     calendarLinksPreservationPolicy: 'PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY',
+    calendarTaskLinkLabelPolicy: 'TASK_ID_PLUS_ACTUAL_STRIVEN_TASK_NAME',
     field854: 'DO_NOT_MANAGE',
     infoCustomFieldsAtCreate: 'NONE',
     requiredPoolId: 8,
