@@ -2005,7 +2005,42 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     });
   }
 
-  const plan = tmv3_buildCalendarLinkPlan_(eventRecord, records);
+  let linkEventRecord = eventRecord;
+
+  if (eventRecord.vertical === 'PreInspection') {
+    const customer = tmv3_customerFromRefs_(
+      bundle.refs,
+      bundle.resolved.customerId
+    );
+    const location = tmv3_locationFromRefs_(
+      bundle.refs,
+      bundle.resolved.customerId,
+      bundle.resolved.locationId
+    );
+
+    if (!customer || !location) {
+      throw new Error(
+        'PreInspection Calendar link write requires verified Customer and Customer-owned Location.'
+      );
+    }
+
+    linkEventRecord = Object.assign({}, eventRecord, {
+      customerNumber:
+        tmv3_clean_(eventRecord.customerNumber) ||
+        tmv3_clean_(customer['Customer Number']),
+      phone:
+        tmv3_clean_(eventRecord.phone) ||
+        tmv3_clean_(customer['Primary Phone']) ||
+        tmv3_clean_(location['Phone']),
+      step4:{
+        disposition:'VERIFIED',
+        customer:customer,
+        location:location
+      }
+    });
+  }
+
+  const plan = tmv3_buildCalendarLinkPlan_(linkEventRecord, records);
   const copies = [];
 
   (plan.calendarIds || []).forEach(function(calendarId) {
