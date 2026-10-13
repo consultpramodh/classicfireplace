@@ -999,11 +999,18 @@ function doPost(e) {
       var previewEventId = String(body.eventId || '');
       var previewTaskId = Number(body.taskId || 0);
       var previewExpectedPlan = String(body.expectedPlan || '');
-      var previewPlan = tmv3_step7FreshPlanForTask_(
-        previewVertical,
-        previewEventId,
-        previewTaskId
-      );
+      // A genuine CREATE candidate has no Task ID yet. Resolve the exact
+      // event's canonical Stage 7 plan instead of requiring a positive Task ID.
+      // Multiple candidate plans fail closed; the operator must not guess.
+      var previewPlans = previewTaskId > 0
+        ? [tmv3_step7FreshPlanForTask_(previewVertical, previewEventId, previewTaskId)]
+        : tmv3_step7FreshPlansForEvent_(previewVertical, previewEventId).filter(function(plan) {
+            return !Number(plan.taskId || 0);
+          });
+      if (previewPlans.length !== 1) {
+        throw new Error('Stage 7 no-Task preview requires exactly one fresh event plan; found ' + previewPlans.length + '.');
+      }
+      var previewPlan = previewPlans[0];
 
       if (
         previewExpectedPlan &&
