@@ -1,15 +1,13 @@
 {
-  "release": "CF_TASKS_V3_3_11_81_AUTHORITATIVE_RELATIONSHIP_READBACK",
+  "release": "CF_TASKS_V3_3_11_81_FULL_LIVE_HARDENING",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
-  "runMode": "TASK_FIRST_AUDIT",
-  "taskId": 19098,
-  "vertical": "Service",
+  "runMode": "LIVE_HARDENING_REGRESSION",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "CF_TASKS_V3_3_11_81_AUTHORITATIVE_RELATIONSHIP_READBACK",
+  "requestTag": "CF_TASKS_V3_3_11_81_FULL_LIVE_HARDENING",
   "testWriteApiSoftLimit": 1200
 }
