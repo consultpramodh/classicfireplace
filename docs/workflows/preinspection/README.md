@@ -16,7 +16,7 @@ PreInspection is one of the four primary Task Mapping workflows. **CF Preinspect
 - **Field 854 is not managed by Task Mapping.**
 - Task Description is exactly blank on CREATE and remains technician-owned.
 - Do not prefill technician-completed fields such as Difficulty of the Job, Job Risk, Finishing, Electrical Work, or Custom Metal Work.
-- Calendar description = authored notes + exactly one managed `-----Striven Links-----` block. Do not copy the previous Calendar title into the description.
+- Calendar description = the exact previous title as the first line **when a title is normalized** (without an `Original Title:` label), preserved human-authored notes with presentation-only labels removed, and exactly one managed clickable `-----Striven Links-----` block. Preserve existing correct clickable links unchanged.
 
 ## Customer and Location resolution contract
 
@@ -46,12 +46,12 @@ Before any CREATE/RECREATE write, Stage 7 must fresh-verify the Calendar event, 
 
 ## Calendar completion
 
-After a Task is verified, maintain one idempotent managed Striven link block on the authoritative CF Preinspects event:
+After a Task is verified, maintain exactly one idempotent managed **clickable** Striven Links block and verify full business-visible parity across both required PreInspection Calendar copies:
 
 - Customer Sales Orders link;
 - one Task link when a deterministic Task exists.
 
-Stephen remains a guest on the primary event. Do not create an independent Stephen-calendar business record.
+Stephen remains a required guest on the authoritative event; his Calendar is mirror-only, not an independent business-source appointment. Read both required copies back for title, Description, location, start/end, attendees and clickable links.
 
 ## Downstream completion/handoff
 
