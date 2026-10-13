@@ -28,7 +28,7 @@ function runCase(opts={}) {
       'Location ID':raw.location
     }),
     tmv3_step7RequestedByFromRaw_:raw=>({id:raw.contact,type:raw.type}),
-    tmv3_step7FreshOrderOwnership_:()=>{if(opts.orderUnverified)throw Error('Order identity');},
+    tmv3_taskFirstFreshOrderOwnershipById_:()=>{if(opts.orderUnverified)throw Error('Order identity');},
     tmv3_step7FreshLocationOwnership_:()=>{if(opts.locationUnverified)throw Error('Location identity');},
     tmv3_getContactById_:()=>({__ownershipVerified:!opts.contactUnverified}),
     tmv3_operationPatchTask_:(id,payload)=>{
