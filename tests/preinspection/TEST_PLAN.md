@@ -13,11 +13,11 @@ Minimum regression cases before production promotion when PreInspection or share
 7. Requested By uses exact Calendar organizer email -> exactly one Striven Employee -> `Type: employee`;
 8. organizer missing/zero/multiple employee matches produce REVIEW with no customer-contact fallback;
 9. Pool 8 assignment remains correct;
-10. Calendar notes populate only Custom Field 854;
+10. Calendar-authored notes remain on Calendar only; Field 854 is entirely unmanaged (no planning, CREATE, PATCH, verification, or completion gate);
 11. Task Description is blank on create and not overwritten with Calendar notes;
 12. technician-completed fields are not prefilled;
 13. dates/time reconcile to Calendar and read back correctly;
-14. managed PreInspection Calendar Task link is idempotent and verified;
+14. exactly one clickable managed Sales Orders/Task links block is idempotent and verified across CF Preinspects and Stephen mirror, with full title/Description/location/time/guest parity and preservation of the original title on normalization;
 15. DONE with no final SO produces deferred awaiting-final-SO behavior;
 16. DONE + unique final SO + unique same-customer Install target plans the downstream handoff safely;
 17. zero Install target defers; multiple/mismatch requires review;
