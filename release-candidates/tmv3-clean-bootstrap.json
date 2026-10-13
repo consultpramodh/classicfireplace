@@ -1,11 +1,13 @@
 {
   "schemaVersion": 1,
-  "release": "V3_3_11_79_VERIFIED_TASK_FIRST_SAFETY_CALENDAR_LABEL",
-  "title": "CF Task Mapping V3",
+  "release": "V3_3_11_80_BOUNDED_RELATIONSHIP_ONLY_HOURLY_ACTIVATION",
+  "title": "CF Tasks — V3 ACTIVE — Clean Rebuild",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
-  "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "567d916db15b5198c34cd86635958847a47e35fa"
+  "mode": "PRODUCTION_WRITE",
+  "writeScope": "TASK_RELATIONSHIP_REPAIR_ONLY",
+  "broadWritesEnabled": false,
+  "expectedLiveCommit": "b191cc9ade666bfcf852e8b73bc9c42a74a3a834"
 }
