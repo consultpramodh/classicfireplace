@@ -2422,7 +2422,7 @@ async function main() {
       (
         RUN_MODE.indexOf('CANARY_') !== 0 ||
         RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
-        RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
+      RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
