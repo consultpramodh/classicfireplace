@@ -1,13 +1,16 @@
 {
-  "release": "PREINSPECTION_LEGACY_INTENDED_CURRENT_BASELINE",
+  "release": "PREINSPECTION_OCT13_NANCY_SCHEDULE_READ_ONLY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
-  "runMode": "PREINSPECTION_COMPARISON_AUDIT",
+  "runMode": "TASK_SCHEDULE",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "PREINSPECTION_LEGACY_INTENDED_CURRENT_BASELINE",
-  "testWriteApiSoftLimit": 1200
+  "requestTag": "PREINSPECTION_2026_10_13_NANCY_READONLY",
+  "testWriteApiSoftLimit": 1200,
+  "vertical": "PreInspection",
+  "eventId": "4lci7ub1rvekrm76l8kkl7ps9b@google.com",
+  "taskId": 19074
 }
