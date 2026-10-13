@@ -887,25 +887,29 @@ function tmv3_calendarReconciliationFallback() {
     return { status:'OUTSIDE_BUSINESS_HOURS' };
   }
 
+  // Reuse the verified hourly trigger. The independent relationship lane
+  // remains throttled and cannot authorize Calendar, schedule or CREATE writes.
+  const taskFirst = tmv3_taskFirstProductionCycle_();
+
   if (tmv3_executionStage_() < 7) {
-    return tmv3_calendarStageRefresh_(
+    return {taskFirst:taskFirst,mapped:tmv3_calendarStageRefresh_(
       'CALENDAR_RECONCILIATION_FALLBACK'
-    );
+    )};
   }
 
   if (tmv3_executionStage_() === 7) {
-    return tmv3_stage7AutomaticCanaryCycle_(
+    return Object.assign({taskFirst:taskFirst},tmv3_stage7AutomaticCanaryCycle_(
       'CALENDAR_RECONCILIATION_FALLBACK'
-    );
+    ));
   }
 
-  return tmv3_runProductionAutomationCycle_(
+  return Object.assign({taskFirst:taskFirst},tmv3_runProductionAutomationCycle_(
     'CALENDAR_RECONCILIATION_FALLBACK',
     {
       maxSourceAgeMinutes:60,
       forceSourceRefresh:false
     }
-  );
+  ));
 }
 
 function tmv3_dailySourceRefresh() {

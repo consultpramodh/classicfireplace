@@ -834,6 +834,30 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskFirstProductionCycle') {
+      if (body.requestTag !== 'CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013' ||
+          TMV3.VERSION !== '3.11.80-bounded-task-first-hourly-activation-r1' ||
+          TMV3.MODE !== 'PRODUCTION_WRITE' ||
+          !tmv3_operationWritesEnabled_('taskfirstproduction') ||
+          tmv3_operationWritesEnabled_('manual') ||
+          tmv3_operationWritesEnabled_('auto') || tmv3_writesEnabled_()) {
+        throw new Error('TASK_FIRST_ACTIVATION_SCOPE_MISMATCH');
+      }
+      var first = tmv3_taskFirstProductionCycle_();
+      var second = tmv3_taskFirstProductionCycle_();
+      var accepted = ['PATCHED_AND_VERIFIED','PARTIAL_PATCH_VERIFIED',
+        'NO_CHANGE_VERIFIED','REVIEW_NO_SAFE_PATCH','REVIEW',
+        'REVIEW_TASK_STATUS_OR_CUSTOMER','REVIEW_EXISTING_ORDER_CONFLICT',
+        'REVIEW_ORDER_OWNERSHIP','NO_CACHED_CANDIDATES','THROTTLED'];
+      var pass = accepted.indexOf(first.status) !== -1 && second.status === 'THROTTLED';
+      return TMPV3_shadowResponse_({
+        ok:pass,status:pass ? 'BOUNDED_TASK_FIRST_CYCLE_VERIFIED' : 'BOUNDED_TASK_FIRST_CYCLE_ATTENTION',
+        result:{version:TMV3.VERSION,first:first,second:second,
+          broadWritesEnabled:tmv3_writesEnabled_(),triggers:tmv3_listTriggers()},
+        api:tmv3_runtimeMetrics_()
+      });
+    }
+
     if (body.action === 'triggerInventory') {
       return TMPV3_shadowResponse_({
         ok:true,
@@ -2666,6 +2690,7 @@ async function main() {
       RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
       RUN_MODE === 'CONFIGURED_AUTO_CANARY' ||
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
+      RUN_MODE === 'TASK_FIRST_PRODUCTION_CYCLE' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
       RUN_MODE === 'TASK_FIRST_CONTACT_GET' ||
@@ -2706,6 +2731,8 @@ async function main() {
                     ? 'configuredAutoCanary'
                     : RUN_MODE === 'PREINSPECTION_GUEST_SYNC'
                     ? 'preInspectionGuestSync'
+                    : RUN_MODE === 'TASK_FIRST_PRODUCTION_CYCLE'
+                    ? 'taskFirstProductionCycle'
                     : RUN_MODE === 'TRIGGER_INVENTORY'
                     ? 'triggerInventory'
                   : RUN_MODE === 'INSTALL_MANAGED_TRIGGERS'
@@ -2771,6 +2798,7 @@ async function main() {
       const step1 = await postJson(url, {
         token,
         action,
+        requestTag:String(RELEASE_MANIFEST.requestTag || ''),
         vertical:
           (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'TASK_FIRST_AUDIT') ? String(RELEASE_MANIFEST.vertical || '') :
           (

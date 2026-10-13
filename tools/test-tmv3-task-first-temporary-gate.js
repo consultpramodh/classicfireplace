@@ -2,7 +2,11 @@
 const fs=require('node:fs'), vm=require('node:vm'), assert=require('node:assert/strict');
 const path=require('node:path');
 const runner=fs.readFileSync(path.join(__dirname,'tmv3-shadow-run.js'),'utf8');
-const config=fs.readFileSync(path.join(__dirname,'../apps-script/tmv3-clean/00_Config.js'),'utf8');
+const currentConfig=fs.readFileSync(path.join(__dirname,'../apps-script/tmv3-clean/00_Config.js'),'utf8');
+// Legacy canary tests use an explicit inactive fixture. Active production
+// source must reject the temporary exact-canary transform.
+const config=currentConfig.replace("const TMV3_MODE = 'PRODUCTION_WRITE';","const TMV3_MODE = 'SHADOW_READ_ONLY';")
+ .replace('taskFirstProductionEnabled: true,','taskFirstProductionEnabled: false,');
 const start=runner.indexOf("        if (f.name === '00_Config' && (RUN_MODE === 'CANARY_TASK_FIRST_19083'");
 const end=runner.indexOf('        const shadowModeAnchor',start);
 assert.ok(start>=0 && end>start);
@@ -14,6 +18,7 @@ function transform(opts={}) {
  vm.runInNewContext(runner.slice(start,end),ctx);
  return ctx.source;
 }
+assert.throws(()=>transform({source:currentConfig}),/anchors changed/);
 const patched=transform();
 assert.match(patched,/taskFirstCanaryEnabled: true,/);
 for(const flag of ['manualWritesEnabled','automationWritesEnabled','taskFirstProductionEnabled'])

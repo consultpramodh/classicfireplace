@@ -103,3 +103,49 @@ t=run({alreadyCorrect:true,liveOrder:'27648'});assert.equal(t.run().status,'NO_C
 t=run({delivery:true});assert.equal(t.run().status,'PATCHED_AND_VERIFIED');
 t=run({delivery:true,wrongOrderType:true});assert.equal(t.run().status,'REVIEW');assert.equal(t.getCalls(),0);
 console.log('V3 task-first production lane PASS: 20 scenarios including Contact-only repair, both verticals, audit labels and uncertain writes.');
+
+// Execute the real hourly fallback; do not merely inspect its text.
+const fallbackStart=automation.indexOf('function tmv3_calendarReconciliationFallback()');
+const fallbackEnd=automation.indexOf('function tmv3_dailySourceRefresh()',fallbackStart);
+function hourly(hour,stage) {
+  let cycles=0;
+  const ctx={Date,Object,Number,TMV3_TIMEZONE:'America/Toronto',
+    Utilities:{formatDate:()=>String(hour)},
+    tmv3_reconcilePreInspectionSharedGuest_AUTO_:()=>{},
+    tmv3_taskFirstProductionCycle_:()=>{cycles++;return {status:'THROTTLED'};},
+    tmv3_executionStage_:()=>stage,
+    tmv3_calendarStageRefresh_:()=>({status:'MAPPED'}),
+    tmv3_stage7AutomaticCanaryCycle_:()=>({status:'GATED'}),
+    tmv3_runProductionAutomationCycle_:()=>({status:'GATED'})};
+  vm.runInNewContext(automation.slice(fallbackStart,fallbackEnd),ctx);
+  return {result:ctx.tmv3_calendarReconciliationFallback(),cycles};
+}
+for(const stage of [6,7,8]) {
+  for(const hour of [8,14,18]) {
+    const h=hourly(hour,stage);assert.equal(h.cycles,1);
+    assert.equal(h.result.taskFirst.status,'THROTTLED');
+  }
+  for(const hour of [7,19]) assert.equal(hourly(hour,stage).cycles,0);
+}
+console.log('Hourly fallback PASS: 15 stage/hour combinations; existing trigger reaches bounded lane once.');
+
+const runner=fs.readFileSync(path.join(__dirname,'tmv3-shadow-run.js'),'utf8');
+const actionStart=runner.indexOf("    if (body.action === 'taskFirstProductionCycle') {");
+const actionEnd=runner.indexOf("    if (body.action === 'triggerInventory')",actionStart);
+function probe(opts={}) {
+  let calls=0;
+  const ctx={body:{action:'taskFirstProductionCycle',requestTag:opts.badTag?'bad':'CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013'},
+    TMV3:{VERSION:opts.badVersion?'old':'3.11.80-bounded-task-first-hourly-activation-r1',MODE:opts.mode||'PRODUCTION_WRITE'},
+    tmv3_operationWritesEnabled_:scope=>scope==='taskfirstproduction'?!opts.disabled:!!opts.broad,
+    tmv3_writesEnabled_:()=>!!opts.broad,
+    tmv3_taskFirstProductionCycle_:()=>({status:++calls===1?(opts.first||'PATCHED_AND_VERIFIED'):(opts.second||'THROTTLED')}),
+    tmv3_listTriggers:()=>[],tmv3_runtimeMetrics_:()=>({}),TMPV3_shadowResponse_:v=>v};
+  const result=vm.runInNewContext('(function(){'+runner.slice(actionStart,actionEnd)+'})()',ctx);
+  return {result,calls};
+}
+assert.equal(probe().result.ok,true);
+for(const opts of [{badTag:true},{badVersion:true},{mode:'SHADOW_READ_ONLY'},{disabled:true},{broad:true}])
+  assert.throws(()=>probe(opts),/SCOPE_MISMATCH/);
+assert.equal(probe({first:'ATTENTION'}).result.ok,false);
+assert.equal(probe({second:'PATCHED_AND_VERIFIED'}).result.ok,false);
+console.log('Authenticated activation probe PASS: exact release/scope and repeat throttle enforced.');

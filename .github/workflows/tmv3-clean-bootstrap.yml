@@ -31,6 +31,17 @@ jobs:
         with:
           node-version: 20
 
+      - name: Verify V3 before production push
+        run: |
+          node tools/test-tmv3-prepush-hardening.js
+          node tools/test-tmv3-task-first-production-lane.js
+          node tools/test-tmv3-task-first-canary-scope.js
+          node tools/test-tmv3-task-first-relationships.js
+          node tools/test-tmv3-shadow-evidence.js
+          node tools/test-tmv3-task-first-temporary-gate.js
+          node tools/test-tmv3-step6-safe-block-verification.js
+          node tools/test-tmv3-calendar-link-task-name.js
+
       - name: Configure clasp authorization
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
