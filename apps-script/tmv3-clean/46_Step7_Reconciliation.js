@@ -2150,7 +2150,7 @@ function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
     throw new Error('V3 task-first audit requires a positive Task ID and Service or Delivery.');
   }
 
-  const sourceRows = tmv3_sheetObjects_(TMV3.SHEETS.TASKS);
+  const sourceRows = tmv3_rows_(TMV3.SHEETS.TASKS);
   const candidate = sourceRows.filter(function(row) {
     return Number(row['Task ID']) === id;
   });
@@ -2182,7 +2182,7 @@ function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
   const rawName = tmv3_clean_(actual['Name'] || source['Name']);
   const orderNumberMatches = rawName.match(/\\bSO\\s*#\\s*(\\d+)\\b/i);
   const orderNumber = orderNumberMatches ? orderNumberMatches[1] : '';
-  const orders = tmv3_sheetObjects_(TMV3.SHEETS.ORDERS);
+  const orders = tmv3_rows_(TMV3.SHEETS.ORDERS);
   const orderCandidates = orderNumber ? orders.filter(function(order) {
     return tmv3_clean_(order['Order Number']) === orderNumber;
   }) : [];
