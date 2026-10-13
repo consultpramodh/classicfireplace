@@ -1,16 +1,15 @@
 {
-  "release": "CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013",
+  "release": "CF_TASKS_V3_19098_FRESH_RELATIONSHIP_READBACK",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
-  "writesEnabled": true,
-  "runMode": "TASK_FIRST_PRODUCTION_CYCLE",
+  "writesEnabled": false,
+  "runMode": "TASK_FIRST_AUDIT",
+  "taskId": 19098,
+  "vertical": "Service",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "expectedPlan": "",
-  "requestTag": "CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013",
-  "testWriteApiSoftLimit": 1200,
-  "writeScope": "TASK_RELATIONSHIP_REPAIR_ONLY",
-  "broadWritesEnabled": false
+  "requestTag": "CF_TASKS_V3_19098_FRESH_RELATIONSHIP_READBACK",
+  "testWriteApiSoftLimit": 1200
 }
