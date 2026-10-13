@@ -1765,6 +1765,29 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskFirstOrderProbe') {
+      var target = 27648;
+      var order = tmv3_fetchJson_(
+        TMV3.API_BASE + '/v1/sales-orders/' + target,
+        {method:'get'}
+      ) || {};
+      var pick = {};
+      Object.keys(order).forEach(function(k) {
+        if (/^(id|number|customer|account|contact|location|salesordernumber|ordernumber)$/i.test(k)) {
+          var v = order[k];
+          pick[k] = v && typeof v === 'object'
+            ? {id:tmv3_first_(v,['id','Id','customerId','CustomerId'])}
+            : v;
+        }
+      });
+      tmv3_audit_('Service','',String(19083),'V3_001_ORDER_OWNER_PROBE',
+        'PASS',JSON.stringify({orderId:target,ownerFields:pick,
+          topLevelKeys:Object.keys(order).sort(),writesPerformed:false}));
+      return TMPV3_shadowResponse_({ok:true,
+        status:'ORDER_OWNER_PROBED',orderId:target,ownerFields:pick,
+        writesPerformed:false,api:tmv3_runtimeMetrics_()});
+    }
+
     if (body.action === 'taskFirstNoChange') {
       var id = Number(body.taskId || 0);
       if (id !== 19081) throw new Error('TASK_FIRST_NO_CHANGE_CANARY_ID_MISMATCH');
@@ -2564,6 +2587,7 @@ async function main() {
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
+      RUN_MODE === 'TASK_FIRST_ORDER_GET' ||
       RUN_MODE === 'TASK_FIRST_NO_CHANGE' ||
       RUN_MODE === 'TASK_FIRST_AUDIT' ||
       RUN_MODE === 'TASK_SCHEMA' ||
@@ -2648,6 +2672,8 @@ async function main() {
                     ? 'preInspectionStage5DateTest'
                     : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
                     ? 'preInspectionSearchSchemaProbe'
+                    : RUN_MODE === 'TASK_FIRST_ORDER_GET'
+                    ? 'taskFirstOrderProbe'
                     : RUN_MODE === 'TASK_FIRST_NO_CHANGE'
                     ? 'taskFirstNoChange'
                     : RUN_MODE === 'TASK_FIRST_AUDIT'
