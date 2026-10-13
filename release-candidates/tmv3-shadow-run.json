@@ -1,14 +1,14 @@
 {
-  "release": "V3_3_11_79_FULL_LIVE_HARDENING_ACCEPTANCE",
+  "release": "CF_TASKS_V3_ACTIVE_TRIGGER_INVENTORY_20261013",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "LIVE_HARDENING_REGRESSION",
+  "runMode": "TRIGGER_INVENTORY",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "expectedPlan": "",
-  "requestTag": "V3_3_11_79_FULL_LIVE_HARDENING_ACCEPTANCE",
+  "requestTag": "CF_TASKS_V3_ACTIVE_TRIGGER_INVENTORY_20261013",
   "testWriteApiSoftLimit": 1200
 }
