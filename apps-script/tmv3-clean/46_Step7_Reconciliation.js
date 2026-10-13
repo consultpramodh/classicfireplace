@@ -2180,7 +2180,7 @@ function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
   const actual = fresh.task || {};
   const requested = fresh.requestedBy || {};
   const rawName = tmv3_clean_(actual['Name'] || source['Name']);
-  const orderNumberMatches = rawName.match(/\\bSO\\s*#\\s*(\\d+)\\b/i);
+  const orderNumberMatches = rawName.match(/\bSO\s*#\s*(\d+)\b/i);
   const orderNumber = orderNumberMatches ? orderNumberMatches[1] : '';
   const orders = tmv3_rows_(TMV3.SHEETS.ORDERS);
   const orderCandidates = orderNumber ? orders.filter(function(order) {
