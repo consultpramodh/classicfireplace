@@ -1,17 +1,18 @@
 {
-  "release": "PREINSPECTION_20261013_WEBAPP_STAGE5_DATE_FIXED_R2",
+  "release": "PREINSPECTION_OCT13_ESTHER_FRESH_STAGE7_PREVIEW",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
-  "runMode": "PREINSPECTION_STAGE5_DATE_TEST",
+  "runMode": "PREVIEW_STEP7",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "PREINSPECTION_OCT13_STAGE5_WEBAPP_READONLY_DATEFIX",
+  "requestTag": "PREINSPECTION_OCT13_ESTHER_CREATE_GUARD_READONLY",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
-  "eventId": "3qmndnd8flhuogrmq88su19l0i@google.com",
-  "taskId": 19067,
-  "allowedDate": "2026-10-13"
+  "eventId": "2eg4j9ii5pfbif2dtob4gr784c@google.com",
+  "taskId": 0,
+  "allowedDate": "2026-10-13",
+  "expectedPlan": ""
 }
