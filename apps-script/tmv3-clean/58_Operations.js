@@ -5696,9 +5696,9 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
     }
     try {
       if (field.label === 'ORDER') {
-        tmv3_step7FreshOrderOwnership_({
-          vertical:kind, expectedOrderId:field.id,expectedCustomerId:customerId
-        });
+        tmv3_taskFirstFreshOrderOwnershipById_(
+          field.id,customerId,tmv3_clean_(before['Name'])
+        );
       } else if (field.label === 'LOCATION') {
         tmv3_step7FreshLocationOwnership_({
           expectedLocationId:field.id,expectedCustomerId:customerId
@@ -5776,4 +5776,32 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
     throw new Error('Task-first PATCH read-back failed; do not blindly retry.');
   }
   return result;
+}
+
+
+/** One authoritative GET instead of downloading the entire Work Order report.
+ * The order ID, customer ownership and SO number must all agree.
+ */
+function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
+  const id = Number(orderId);
+  const cid = tmv3_clean_(customerId);
+  if (!Number.isSafeInteger(id) || id <= 0 || !/^[1-9]\d*$/.test(cid)) {
+    throw new Error('Invalid task-first Order ownership target.');
+  }
+  const order = tmv3_fetchJson_(
+    TMV3.API_BASE + '/v1/sales-orders/' + encodeURIComponent(id),
+    {method:'get'}
+  ) || {};
+  const fetchedId = tmv3_clean_(tmv3_first_(order,['id','Id']));
+  const customer = order.customer || order.Customer || {};
+  const fetchedCustomerId = tmv3_clean_(tmv3_first_(customer,['id','Id']));
+  const orderNumber = tmv3_clean_(tmv3_first_(order,
+    ['orderNumber','OrderNumber','number','Number']));
+  const nameMarker = tmv3_clean_(taskName)
+    .match(/\bSO\s*#\s*(\d+)\b/i);
+  if (fetchedId !== String(id) || fetchedCustomerId !== cid ||
+      !nameMarker || !orderNumber || nameMarker[1] !== orderNumber) {
+    throw new Error('Order ID, Customer ownership or Task SO number disagrees with fresh Striven Order.');
+  }
+  return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid};
 }
