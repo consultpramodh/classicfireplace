@@ -5610,3 +5610,125 @@ function tmv3_previewPreInspectionMissingDetailEmails() {
   Logger.log(JSON.stringify(result, null, 2));
   return result;
 }
+
+
+/**
+ * V3-001: Independently repair verified relationships on an existing
+ * unscheduled Service/Delivery Task. Never derives schedule or assignments.
+ *
+ * Explicit expected IDs are mandatory: a Task title is evidence to review,
+ * NOT authoritative identity. The existing operation write gates apply.
+ */
+function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
+  const id = Number(taskId);
+  const kind = tmv3_clean_(vertical);
+  expected = expected || {};
+  if (!Number.isSafeInteger(id) || id <= 0 ||
+      (kind !== 'Service' && kind !== 'Delivery')) {
+    throw new Error('Only positive existing Service/Delivery Task IDs are permitted.');
+  }
+
+  // Gate before any attempt to mutate; never enable writes from this entrypoint.
+  tmv3_assertOperationWrite_('manual');
+  const customerId = tmv3_clean_(expected.customerId);
+  const orderId = tmv3_clean_(expected.orderId);
+  const locationId = tmv3_clean_(expected.locationId);
+  const contactId = tmv3_clean_(expected.contactId);
+  if (!customerId || !orderId || !locationId || !contactId ||
+      ![customerId,orderId,locationId,contactId].every(function(v) {
+        return /^[1-9]\d*$/.test(v);
+      })) {
+    throw new Error('Verified Customer, Order, Location and Contact IDs are required.');
+  }
+
+  const source = tmv3_rows_(TMV3.SHEETS.TASKS).filter(function(row) {
+    return Number(row['Task ID']) === id;
+  });
+  if (source.length !== 1 ||
+      (kind === 'Service' && tmv3_norm_(source[0]['Task Type']).indexOf('service') < 0) ||
+      (kind === 'Delivery' && tmv3_norm_(source[0]['Task Type']).indexOf('deliver') < 0)) {
+    throw new Error('Source Tasks does not show exactly one correct-vertical Task.');
+  }
+
+  // Fresh Task read and strict customer/status protection.
+  const beforeRaw = tmv3_rawTaskById_(id);
+  const before = tmv3_normalizeV2TaskModel_(beforeRaw);
+  const beforeBy = tmv3_step7RequestedByFromRaw_(beforeRaw);
+  if (!tmv3_taskIsOpen_(before['Status'])) {
+    throw new Error('Task no longer OPEN. Do not repair historical Tasks.');
+  }
+  if (tmv3_clean_(before['Customer ID']) !== customerId) {
+    throw new Error('Task Customer mismatch/unresolved. No write permitted.');
+  }
+
+  const checks = [
+    {label:'Sales Order', actual:tmv3_clean_(before['Order ID']), expected:orderId},
+    {label:'Location', actual:tmv3_clean_(before['Location ID']), expected:locationId},
+    {label:'Requested By', actual:tmv3_clean_(beforeBy.id), expected:contactId}
+  ];
+  checks.forEach(function(c) {
+    if (c.actual && c.actual !== c.expected) {
+      throw new Error(c.label + ' has a conflicting nonempty ID; do not overwrite.');
+    }
+  });
+  if (beforeBy.id && tmv3_norm_(beforeBy.type) !== 'contact') {
+    throw new Error('Requested By type conflict; cannot replace employee.');
+  }
+
+  const pending = checks.filter(function(c) { return !c.actual; });
+  if (!pending.length) {
+    return {status:'NO_CHANGE_VERIFIED',taskId:id,vertical:kind,writes:0};
+  }
+
+  // Existing V3 ownership verifiers use authoritative Striven report sources,
+  // not copied legacy workbook IDs. They fail closed on missing/ambiguous data.
+  tmv3_step7FreshOrderOwnership_({
+    vertical:kind,expectedOrderId:orderId,expectedCustomerId:customerId
+  });
+  tmv3_step7FreshLocationOwnership_({
+    expectedLocationId:locationId,expectedCustomerId:customerId
+  });
+  const contact = tmv3_getContactById_(contactId, customerId);
+  if (!contact || contact.__ownershipVerified !== true) {
+    throw new Error('Requested By ownership not independently verified.');
+  }
+
+  const payload = {Id:id};
+  if (!before['Order ID']) payload.SalesOrder = {Id:Number(orderId)};
+  if (!before['Location ID']) payload.Location = {Id:Number(locationId)};
+  if (!beforeBy.id) payload.RequestedBy = {Id:Number(contactId),Type:'contact'};
+
+  // Re-check the Task immediately before mutation; abort on concurrent changes.
+  const currentRaw = tmv3_rawTaskById_(id);
+  const current = tmv3_normalizeV2TaskModel_(currentRaw);
+  const currentBy = tmv3_step7RequestedByFromRaw_(currentRaw);
+  if (!tmv3_taskIsOpen_(current['Status']) ||
+      tmv3_clean_(current['Customer ID']) !== customerId ||
+      tmv3_clean_(current['Order ID']) !== tmv3_clean_(before['Order ID']) ||
+      tmv3_clean_(current['Location ID']) !== tmv3_clean_(before['Location ID']) ||
+      tmv3_clean_(currentBy.id) !== tmv3_clean_(beforeBy.id) ||
+      tmv3_norm_(currentBy.type) !== tmv3_norm_(beforeBy.type)) {
+    throw new Error('Task changed during verification. Abort and replan.');
+  }
+
+  const result = tmv3_operationPatchTask_(id,payload,'manual');
+  // The operation fetches the fresh Task and updates the V3 cache.
+  const afterRaw = tmv3_rawTaskById_(id);
+  const after = tmv3_normalizeV2TaskModel_(afterRaw);
+  const afterBy = tmv3_step7RequestedByFromRaw_(afterRaw);
+  const verified =
+    tmv3_clean_(after['Customer ID']) === customerId &&
+    tmv3_clean_(after['Order ID']) === orderId &&
+    tmv3_clean_(after['Location ID']) === locationId &&
+    tmv3_clean_(afterBy.id) === contactId &&
+    tmv3_norm_(afterBy.type) === 'contact';
+  tmv3_audit_(kind,'',String(id),'TASK_FIRST_RELATIONSHIP_PATCH',
+    verified ? 'PASS' : 'REVIEW',
+    JSON.stringify({expected:{customerId:customerId,orderId:orderId,
+      locationId:locationId,contactId:contactId},verified:verified}));
+  if (!verified) {
+    throw new Error('Task relationship read-back mismatch; do not mark completed.');
+  }
+  return {status:'PATCHED_AND_VERIFIED',taskId:id,vertical:kind,
+    writes:1,payload:payload,operationStatus:result.status};
+}
