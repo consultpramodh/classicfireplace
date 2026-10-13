@@ -1765,6 +1765,21 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskFirstSingleCanary') {
+      var result = tmv3_repairExistingTaskRelationships(
+        19083,'Service',
+        {customerId:'62860',orderId:'27648',locationId:'',contactId:'56760'},
+        'TASK_FIRST_CANARY'
+      );
+      return TMPV3_shadowResponse_({
+        ok:result.status === 'PATCHED_AND_VERIFIED' ||
+          result.status === 'NO_CHANGE_VERIFIED',
+        status:result.status,taskId:19083,
+        result:result,api:tmv3_runtimeMetrics_(),
+        writesPerformed:result.writes === 1
+      });
+    }
+
     if (body.action === 'taskFirstContactProbe') {
       var owned = tmv3_getContactById_(56760,62860);
       var ok = !!(owned && owned.__ownershipVerified);
@@ -2406,7 +2421,9 @@ async function main() {
     if (
       (
         RUN_MODE.indexOf('CANARY_') !== 0 ||
-        RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
+        RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
+        RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
+      RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
       RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
@@ -2647,6 +2664,8 @@ async function main() {
                       ? 'titleCanary'
                     : RUN_MODE.indexOf('PREVIEW_') === 0
                       ? 'step7CanaryPreview'
+                    : RUN_MODE === 'CANARY_TASK_FIRST_19083'
+                      ? 'taskFirstSingleCanary'
                     : RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
                       ? 'step7AssignmentCanary'
                     : RUN_MODE === 'CANARY_EVENT_WRITE'
