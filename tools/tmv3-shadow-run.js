@@ -1765,6 +1765,19 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskFirstAudit') {
+      var taskId = Number(body.taskId || 0);
+      var vertical = String(body.vertical || '');
+      if (!taskId || (vertical !== 'Service' && vertical !== 'Delivery')) {
+        throw new Error('TASK_FIRST_AUDIT_INVALID_INPUT');
+      }
+      var audited = tmv3_taskFirstRelationshipAudit(taskId, vertical);
+      return TMPV3_shadowResponse_({
+        ok:true, status:'TASK_FIRST_AUDIT_COMPLETE', result:audited,
+        api:tmv3_runtimeMetrics_(), writesPerformed:false
+      });
+    }
+
     if (body.action === 'taskSchemaProbe') {
       var probeTaskId = Number(body.taskId || 17881);
       var rawTask = tmv3_fetchJson_(
@@ -2513,6 +2526,7 @@ async function main() {
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
+      RUN_MODE === 'TASK_FIRST_AUDIT' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA' ||
       RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST' ||
@@ -2595,6 +2609,8 @@ async function main() {
                     ? 'preInspectionStage5DateTest'
                     : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
                     ? 'preInspectionSearchSchemaProbe'
+                    : RUN_MODE === 'TASK_FIRST_AUDIT'
+                    ? 'taskFirstAudit'
                     : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
                     ? 'taskSchemaProbe'
                     : 'step1Calendar';
@@ -2603,7 +2619,7 @@ async function main() {
         token,
         action,
         vertical:
-          RUN_MODE === 'TASK_SCHEDULE' ? String(RELEASE_MANIFEST.vertical || '') :
+          (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'TASK_FIRST_AUDIT') ? String(RELEASE_MANIFEST.vertical || '') :
           (
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
@@ -2663,6 +2679,7 @@ async function main() {
             RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
           )
             ? Number(RELEASE_MANIFEST.taskId || 0) :
+          RUN_MODE === 'TASK_FIRST_AUDIT' ? PROBE_TASK_ID :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
