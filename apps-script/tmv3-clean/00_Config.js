@@ -93,6 +93,11 @@ const TMV3 = Object.freeze({
   MAX_PAGES: 50,
   OPERATIONS: Object.freeze({
     manualWritesEnabled: false,
+    // Independent relationship-only production lane. Other V3 writers remain gated.
+    taskFirstProductionEnabled: false,
+    taskFirstProductionMaxWritesPerRun: 1,
+    taskFirstProductionMaxCandidatesPerRun: 1,
+    taskFirstProductionIntervalMinutes: 60,
     taskFirstCanaryEnabled: false,
     taskFirstCanaryTaskId: 19083,
     taskFirstCanaryExpectedCustomerId: 62860,
