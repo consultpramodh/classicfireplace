@@ -1,5 +1,5 @@
 {
-  "release": "CF_TASKS_V3_19098_FRESH_RELATIONSHIP_READBACK",
+  "release": "CF_TASKS_V3_3_11_81_AUTHORITATIVE_RELATIONSHIP_READBACK",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
@@ -10,6 +10,6 @@
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "CF_TASKS_V3_19098_FRESH_RELATIONSHIP_READBACK",
+  "requestTag": "CF_TASKS_V3_3_11_81_AUTHORITATIVE_RELATIONSHIP_READBACK",
   "testWriteApiSoftLimit": 1200
 }
