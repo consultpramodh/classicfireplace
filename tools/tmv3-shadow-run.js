@@ -2889,6 +2889,7 @@ async function main() {
                         ? 'V3_TASK_SCHEMA_PROBED'
                         : 'V3_STEP1_CALENDAR_VERIFIED',
           step1:
+            RUN_MODE.indexOf('TASK_FIRST_') === 0 ||
             RUN_MODE === 'SOURCE_REFRESH' ||
             RUN_MODE === 'PREINSPECTION_STAGE5_DATE_TEST' ||
             RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA' ||
