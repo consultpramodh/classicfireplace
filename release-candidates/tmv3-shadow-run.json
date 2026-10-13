@@ -1,20 +1,16 @@
 {
-  "release": "V3_001_POST_RESTORE_TASK19083_FRESH_GET",
+  "release": "V3_001_NO_CHANGE_EVIDENCE_FIX_20261013",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEMA",
+  "runMode": "TASK_FIRST_NO_CHANGE",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "Service",
-  "eventId": "2leu9n986nmgr8s2otlgr08nbj@google.com",
-  "taskId": 19083,
+  "taskId": 19081,
   "expectedPlan": "",
-  "requestTag": "V3_001_POST_RESTORE_TASK19083_FRESH_GET",
-  "allowedDate": "2026-10-09",
-  "testWriteApiSoftLimit": 1500,
-  "customerId": 62384,
-  "locationId": 58063
+  "requestTag": "V3_001_NO_CHANGE_EVIDENCE_FIX_20261013",
+  "testWriteApiSoftLimit": 1200
 }
