@@ -288,7 +288,7 @@ function tmv3_previewTaskMutation_(eventRecord, resolved, refs) {
         taskTypeId: 105,
         salesOrderAttached: false,
         description: '',
-        field854: 'CALENDAR_NOTES_MANAGED',
+        field854: 'DO_NOT_MANAGE',
         technicianFields: 'DO_NOT_PREFILL'
       },
       event: {
