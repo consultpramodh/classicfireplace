@@ -1,16 +1,16 @@
 {
-  "release": "V3_P0_DELIVERY18661_REPEAT_ZERO_WRITE",
+  "release": "V3_P0_DONE_DELIVERY18494_FRESH_GET",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "CANARY_WRITE",
-  "writesEnabled": true,
-  "runMode": "CANARY_TASK_FIRST_18661",
+  "mode": "SHADOW_READ_ONLY",
+  "writesEnabled": false,
+  "runMode": "TASK_SCHEMA",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "vertical": "Delivery",
-  "taskId": 18661,
+  "taskId": 18494,
   "expectedPlan": "",
-  "requestTag": "V3_P0_DELIVERY18661_REPEAT_ZERO_WRITE",
+  "requestTag": "V3_P0_DONE_DELIVERY18494_FRESH_GET",
   "testWriteApiSoftLimit": 1200
 }
