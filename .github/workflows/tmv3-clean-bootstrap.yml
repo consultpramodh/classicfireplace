@@ -133,7 +133,7 @@ jobs:
             LIVE_MATCHED_COMMIT=""
             CANDIDATES="$TMP/v3-baseline-candidates.txt"
             {
-              printf '%s\\n' "$BASELINE_COMMIT"
+              printf '%s\n' "$BASELINE_COMMIT"
               git log --format=%H -n 160 -- "$SOURCE_DIR"
             } | awk 'NF && !seen[$0]++' > "$CANDIDATES"
 
