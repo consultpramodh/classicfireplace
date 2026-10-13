@@ -1,5 +1,5 @@
 {
-  "release": "V3_3_11_78_LIVE_HARDENING_ACCEPTANCE",
+  "release": "V3_3_11_79_FULL_LIVE_HARDENING_ACCEPTANCE",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -9,6 +9,6 @@
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "expectedPlan": "",
-  "requestTag": "V3_3_11_78_LIVE_HARDENING_ACCEPTANCE",
+  "requestTag": "V3_3_11_79_FULL_LIVE_HARDENING_ACCEPTANCE",
   "testWriteApiSoftLimit": 1200
 }
