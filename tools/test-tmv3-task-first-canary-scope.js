@@ -47,3 +47,34 @@ ctx.TMV3.OPERATIONS.taskFirstCanaryEnabled=true;
 ctx.TMV3.OPERATIONS.taskFirstCanaryTaskId=99999;
 assert.equal(ctx.tmv3_operationWritesEnabled_('taskfirstcanary19083'),false);
 console.log('V3-001 permission scope safety PASS: 9 assertions.');
+// The actual scope assertion must deny every non-relationship writer.
+ctx.TMV3.OPERATIONS.taskFirstCanaryTaskId=19083;
+for(const action of [undefined,'CREATE_TASK','CREATE_LOCATION','ASSIGNMENT','CALENDAR_LINKS','DATES'])
+ assert.throws(()=>ctx.tmv3_assertOperationWrite_('taskfirstcanary19083',action),/RELATIONSHIP_ONLY_SCOPE/);
+ctx.tmv3_assertOperationWrite_('taskfirstcanary19083','TASK_RELATIONSHIP_REPAIR');
+ctx.tmv3_assertOperationWrite_('taskfirstcanary19083','TASK_RELATIONSHIP_PATCH');
+const patchStart=operations.indexOf('function tmv3_operationPatchTask_(');
+const patchEnd=operations.indexOf('function tmv3_reconcileTaskAssignments_(',patchStart);
+let requests=0;
+Object.assign(ctx,{Number,Object,JSON,
+ tmv3_safeTaskPatchPayload_:p=>p,
+ tmv3_fetchJson_:()=>{requests++;return {};},
+ tmv3_getTaskById_:id=>({'Task ID':id}),tmv3_upsertTaskCacheRow_:()=>{}});
+vm.runInContext(operations.slice(patchStart,patchEnd),ctx);
+const scope='taskfirstcanary19083';
+for(const key of ['StartDateTime','DueDateTime','Description','Assignments','InfoCustomFields','Title'])
+ assert.throws(()=>ctx.tmv3_operationPatchTask_(19083,{Id:19083,[key]:'bad'},scope),/RELATIONSHIP_ONLY_SCOPE/);
+assert.throws(()=>ctx.tmv3_operationPatchTask_(1,{Id:1,SalesOrder:{Id:27648}},scope),/RELATIONSHIP_ONLY_SCOPE/);
+assert.throws(()=>ctx.tmv3_operationPatchTask_(19083,{Id:19083,SalesOrder:{Id:1}},scope),/approved tuple/);
+assert.throws(()=>ctx.tmv3_operationPatchTask_(19083,{Id:19083,RequestedBy:{Id:56760,Type:'employee'}},scope),/approved tuple/);
+assert.throws(()=>ctx.tmv3_operationAssignmentRequest_(19083,{id:18,type:'employee'},'post',scope),/RELATIONSHIP_ONLY_SCOPE/);
+assert.equal(requests,0);
+ctx.tmv3_operationPatchTask_(19083,{Id:19083,SalesOrder:{Id:27648}},scope);
+assert.equal(requests,1);
+ctx.TMV3.MODE='PRODUCTION_WRITE';
+Object.assign(ctx.TMV3.OPERATIONS,{taskFirstProductionEnabled:true,taskFirstProductionMaxWritesPerRun:1});
+assert.throws(()=>ctx.tmv3_assertOperationWrite_('taskfirstproduction'),/RELATIONSHIP_ONLY_SCOPE/);
+assert.throws(()=>ctx.tmv3_operationAssignmentRequest_(19083,{id:18},'post','taskfirstproduction'),/RELATIONSHIP_ONLY_SCOPE/);
+assert.throws(()=>ctx.tmv3_operationPatchTask_(19083,{Id:19083,StartDateTime:'bad'},'taskfirstproduction'),/RELATIONSHIP_ONLY_SCOPE/);
+assert.equal(ctx.tmv3_writesEnabled_(),false);
+console.log('Task-first action isolation PASS: date/assignment/create/calendar permissions denied; exact canary tuple enforced.');
