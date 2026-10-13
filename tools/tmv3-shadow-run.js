@@ -858,6 +858,48 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'preInspectionComparisonAudit') {
+      var cfg = TMV3.VERTICALS.PreInspection;
+      var cal = CalendarApp.getCalendarById(cfg.primaryCalendarId);
+      if (!cal) throw new Error('PREINSPECTION_PRIMARY_CALENDAR_UNAVAILABLE');
+      var start = new Date(); start.setHours(0,0,0,0);
+      var end = new Date(start); end.setDate(end.getDate()+14);
+      var events = cal.getEvents(start,end);
+      var records = events.map(function(event) {
+        return tmv3_calendarEvent_('PreInspection',cfg,
+          {calendarId:cfg.primaryCalendarId,role:'PRIMARY_SHARED',calendarName:'CF Preinspects'},
+          event,{stage:'STEP1',applyEligibility:false});
+      }).filter(Boolean);
+      var details = records.slice(0,20).map(function(record) {
+        var classification=tmv3_step2ClassifyCalendarRecord_(record);
+        var assessment=tmv3_preInspectionMissingDetailAssessment_(record);
+        return {eventId:record.eventId,start:tmv3_iso_(record.start),
+          disposition:classification.disposition,code:classification.code,
+          existingTaskId:record.existingTaskId || '',
+          customerNumberPresent:!!record.customerNumber,phonePresent:!!record.phone,
+          addressPresent:!!record.location,
+          missingCodes:assessment.missing.map(function(item){return item.code;})};
+      });
+      var fixture={vertical:'PreInspection',calendarId:cfg.primaryCalendarId,
+        title:'12345 - Test Customer - (416) 555-0101',
+        location:'123 Example Street, Toronto',guests:'stephen@classicfireplace.ca',
+        creator:'pramodh@classicfireplace.ca',rawDescription:'Customer appointment notes',
+        start:start,end:end};
+      var fixtureAssessment=tmv3_preInspectionMissingDetailAssessment_(fixture);
+      return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_COMPARISON_AUDIT_COMPLETE',
+        result:{version:TMV3.VERSION,mode:TMV3.MODE,executionStage:tmv3_executionStage_(),
+          primaryCalendarName:cal.getName(),eventsInNext14Days:events.length,
+          normalizedRecords:records.length,records:details,
+          policy:{manualWritesEnabled:TMV3.OPERATIONS.manualWritesEnabled,
+            automationWritesEnabled:TMV3.OPERATIONS.automationWritesEnabled,
+            preInspectionProductionEnabled:tmv3_operationWritesEnabled_('preinspectionproduction'),
+            guestSyncEnabled:TMV3.OPERATIONS.preInspectionGuestSyncEnabled,
+            emailDeliveryEnabled:TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled},
+          validNoSalesOrderFixtureMissingCodes:fixtureAssessment.missing.map(function(item){return item.code;}),
+          taskWritesPerformed:false,calendarWritesPerformed:false,emailSent:false},
+        api:tmv3_runtimeMetrics_()});
+    }
+
     if (body.action === 'triggerInventory') {
       return TMPV3_shadowResponse_({
         ok:true,
@@ -2131,6 +2173,25 @@ async function main() {
 
   const pre = await getContent();
   const preHash = canonicalHash(pre);
+  if (RUN_MODE === 'PREINSPECTION_COMPARISON_AUDIT') {
+    // Prove every deployed JavaScript file matches the current repository
+    // before the temporary read-only probe. Never print source or secrets.
+    const sourceDir=path.resolve(process.cwd(),'apps-script/tmv3-clean');
+    const names=fs.readdirSync(sourceDir).filter(name=>name.endsWith('.js')).sort();
+    const deployed=(pre.files || []).filter(file=>file.type==='SERVER_JS');
+    if (deployed.length!==names.length) fail('PREINSPECTION_LIVE_SOURCE_INVENTORY_DRIFT');
+    const checks=names.map(name=>{
+      const matches=deployed.filter(file=>file.name===name.slice(0,-3));
+      const expected=fs.readFileSync(path.join(sourceDir,name),'utf8');
+      if (matches.length!==1 || matches[0].source!==expected) {
+        fail('PREINSPECTION_LIVE_SOURCE_HASH_DRIFT:'+name);
+      }
+      return {name,sha256:crypto.createHash('sha256').update(expected).digest('hex')};
+    });
+    fs.writeFileSync(path.join(outDir,'preinspection-source-parity.json'),
+      JSON.stringify({status:'VERIFIED',scriptId:V3_SCRIPT_ID,javascriptFiles:checks},null,2));
+  }
+
   const token = crypto.randomBytes(32).toString('hex');
   const temp = buildTemporaryRunner(pre, token);
   const tempHash = canonicalHash(temp);
@@ -2691,6 +2752,7 @@ async function main() {
       RUN_MODE === 'CONFIGURED_AUTO_CANARY' ||
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'TASK_FIRST_PRODUCTION_CYCLE' ||
+      RUN_MODE === 'PREINSPECTION_COMPARISON_AUDIT' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
       RUN_MODE === 'TASK_FIRST_CONTACT_GET' ||
@@ -2733,6 +2795,8 @@ async function main() {
                     ? 'preInspectionGuestSync'
                     : RUN_MODE === 'TASK_FIRST_PRODUCTION_CYCLE'
                     ? 'taskFirstProductionCycle'
+                    : RUN_MODE === 'PREINSPECTION_COMPARISON_AUDIT'
+                    ? 'preInspectionComparisonAudit'
                     : RUN_MODE === 'TRIGGER_INVENTORY'
                     ? 'triggerInventory'
                   : RUN_MODE === 'INSTALL_MANAGED_TRIGGERS'
