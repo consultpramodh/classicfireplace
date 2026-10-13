@@ -135,7 +135,7 @@ const actionEnd=runner.indexOf("    if (body.action === 'triggerInventory')",act
 function probe(opts={}) {
   let calls=0;
   const ctx={body:{action:'taskFirstProductionCycle',requestTag:opts.badTag?'bad':'CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013'},
-    TMV3:{VERSION:opts.badVersion?'old':'3.11.80-bounded-task-first-hourly-activation-r1',MODE:opts.mode||'PRODUCTION_WRITE'},
+    TMV3:{VERSION:opts.badVersion?'old':'3.11.81-task-first-authoritative-audit-r1',MODE:opts.mode||'PRODUCTION_WRITE'},
     tmv3_operationWritesEnabled_:scope=>scope==='taskfirstproduction'?!opts.disabled:!!opts.broad,
     tmv3_writesEnabled_:()=>!!opts.broad,
     tmv3_taskFirstProductionCycle_:()=>({status:++calls===1?(opts.first||'PATCHED_AND_VERIFIED'):(opts.second||'THROTTLED')}),

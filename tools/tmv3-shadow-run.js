@@ -836,7 +836,7 @@ function doPost(e) {
 
     if (body.action === 'taskFirstProductionCycle') {
       if (body.requestTag !== 'CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013' ||
-          TMV3.VERSION !== '3.11.80-bounded-task-first-hourly-activation-r1' ||
+          TMV3.VERSION !== '3.11.81-task-first-authoritative-audit-r1' ||
           TMV3.MODE !== 'PRODUCTION_WRITE' ||
           !tmv3_operationWritesEnabled_('taskfirstproduction') ||
           tmv3_operationWritesEnabled_('manual') ||

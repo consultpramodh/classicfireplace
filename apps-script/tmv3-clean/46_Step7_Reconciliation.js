@@ -2190,14 +2190,22 @@ function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
   const currentOrderId = tmv3_clean_(actual['Order ID']);
   const proposedOrderId = orderCandidate
     ? tmv3_clean_(orderCandidate['Order ID']) : '';
-  const safeOrderCandidate = Boolean(
-    proposedOrderId &&
-    (!currentOrderId || currentOrderId === proposedOrderId) &&
-    tmv3_clean_(actual['Customer ID']) &&
-    tmv3_clean_(orderCandidate['Customer ID']) &&
-    tmv3_clean_(actual['Customer ID']) ===
-      tmv3_clean_(orderCandidate['Customer ID'])
-  );
+  // Cached Work Order reports may omit Customer ID. A report omission is
+  // unknown evidence, not proof that a successfully repaired link is wrong.
+  // One targeted authoritative GET proves ownership without a full refresh.
+  let safeOrderCandidate = false;
+  let ownershipError = '';
+  if (proposedOrderId && (!currentOrderId || currentOrderId === proposedOrderId) &&
+      /^[1-9]\d*$/.test(tmv3_clean_(actual['Customer ID']))) {
+    try {
+      const proof = tmv3_taskFirstFreshOrderOwnershipById_(
+        proposedOrderId,tmv3_clean_(actual['Customer ID']),rawName
+      );
+      safeOrderCandidate = proof && proof.verified === true;
+    } catch(err) {
+      ownershipError = String(err && err.message || err);
+    }
+  }
 
   return {
     status:'AUDIT_ONLY_NO_MUTATION',
@@ -2213,7 +2221,9 @@ function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
       number:orderNumber,
       id:proposedOrderId,
       count:orderCandidates.length,
-      customerOwnershipVerified:safeOrderCandidate
+      customerOwnershipVerified:safeOrderCandidate,
+      ownershipEvidence:safeOrderCandidate ? 'FRESH_STRIVEN_ORDER_GET' : 'UNPROVEN',
+      ownershipError:ownershipError
     },
     requiredNextAction:safeOrderCandidate
       ? 'FRESH_VERIFY_ORDER_LOCATION_AND_CONTACT_BEFORE_GUARDED_PATCH'

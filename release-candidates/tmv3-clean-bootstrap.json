@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "release": "V3_3_11_80_BOUNDED_RELATIONSHIP_ONLY_HOURLY_ACTIVATION",
-  "title": "CF Tasks — V3 ACTIVE — Clean Rebuild",
+  "release": "V3_3_11_81_AUTHORITATIVE_TASK_FIRST_AUDIT",
+  "title": "CF Tasks \u2014 V3 ACTIVE \u2014 Clean Rebuild",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
@@ -9,5 +9,5 @@
   "mode": "PRODUCTION_WRITE",
   "writeScope": "TASK_RELATIONSHIP_REPAIR_ONLY",
   "broadWritesEnabled": false,
-  "expectedLiveCommit": "b191cc9ade666bfcf852e8b73bc9c42a74a3a834"
+  "expectedLiveCommit": "ac8534870881906b1ba005783a26294eef5a2cfd"
 }
