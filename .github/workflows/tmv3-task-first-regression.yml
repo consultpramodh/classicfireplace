@@ -7,6 +7,7 @@ on:
     paths:
       - 'apps-script/tmv3-clean/**'
       - 'tools/test-tmv3-task-first-relationships.js'
+      - 'tools/test-tmv3-task-first-canary-scope.js'
       - '.github/workflows/tmv3-task-first-regression.yml'
   pull_request:
     paths:
@@ -28,4 +29,6 @@ jobs:
         run: |
           for file in apps-script/tmv3-clean/*.js; do node --check "$file"; done
       - name: Task-first relationship mock regression
-        run: node tools/test-tmv3-task-first-relationships.js
+        run: |
+          node tools/test-tmv3-task-first-relationships.js
+          node tools/test-tmv3-task-first-canary-scope.js
