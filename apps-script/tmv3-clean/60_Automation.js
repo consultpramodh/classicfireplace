@@ -980,13 +980,155 @@ function tmv3_scheduledShadow() {
   return tmv3_scheduledOperations();
 }
 
+
+/**
+ * V3-001/P0 relationship-only lane. Runs independently of all Calendar
+ * stages and cannot enable other V3 mutation scopes.
+ *
+ * API budget: one candidate/task per 60-minute slot, one fresh Task GET,
+ * one fresh Work Order GET, and only when applicable a verified Contact GET.
+ * The existing relationship writer independently repeats identity checks,
+ * performs a pre-mutation drift GET and requires field-level GET readback.
+ * No creates, no dates, no assignments, no Calendar writes.
+ */
+function tmv3_taskFirstProductionCycle_() {
+  const policy = tmv3_operationPolicy_();
+  if (!tmv3_operationWritesEnabled_('taskfirstproduction')) {
+    return {status:'TASK_FIRST_PRODUCTION_GATED',writes:0};
+  }
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return {status:'LOCK_BUSY',writes:0};
+
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const lastKey = 'TMV3_TASK_FIRST_PRODUCTION_LAST_ATTEMPT_MS';
+    const cursorKey = 'TMV3_TASK_FIRST_PRODUCTION_CURSOR';
+    const last = Number(props.getProperty(lastKey) || 0);
+    const now = Date.now();
+    const interval = Math.max(60,
+      Number(policy.taskFirstProductionIntervalMinutes || 60)) * 60000;
+    if (last && now - last < interval) {
+      return {status:'THROTTLED',writes:0};
+    }
+
+    // Read cached business anchors at zero Striven API cost.
+    const orderMap = {};
+    tmv3_rows_(TMV3.SHEETS.ORDERS).forEach(function(row) {
+      const number = tmv3_clean_(row['Order Number']);
+      const id = tmv3_clean_(row['Order ID']);
+      if (!number || !/^[1-9]\d*$/.test(id)) return;
+      if (!orderMap[number]) orderMap[number] = [];
+      orderMap[number].push(row);
+    });
+    const candidates = tmv3_rows_(TMV3.SHEETS.TASKS)
+      .filter(function(row) {
+        const type = tmv3_norm_(row['Task Type']);
+        const status = tmv3_norm_(row['Status']);
+        return status === 'open' &&
+          (type.indexOf('service') !== -1 || type.indexOf('delivery') !== -1) &&
+          !tmv3_clean_(row['Order ID']) &&
+          /\bSO\s*#\s*\d{4,9}\b/i.test(tmv3_clean_(row['Name']));
+      })
+      .sort(function(a,b) {
+        return Number(b['Task ID'] || 0)-Number(a['Task ID'] || 0);
+      });
+    if (!candidates.length) {
+      props.setProperty(lastKey,String(now));
+      return {status:'NO_CACHED_CANDIDATES',writes:0};
+    }
+    let cursor = Number(props.getProperty(cursorKey) || 0);
+    if (!Number.isSafeInteger(cursor) || cursor < 0) cursor = 0;
+    cursor = cursor % candidates.length;
+    const source = candidates[cursor];
+    props.setProperty(cursorKey,String((cursor + 1) % candidates.length));
+    // Throttle even after failure; repeated exceptions must not burn API calls.
+    props.setProperty(lastKey,String(now));
+
+    const taskId = Number(source['Task ID']);
+    const title = tmv3_clean_(source['Name']);
+    const marker = title.match(/\bSO\s*#\s*(\d{4,9})\b/i);
+    const vertical = tmv3_norm_(source['Task Type']).indexOf('delivery') !== -1
+      ? 'Delivery' : 'Service';
+    const match = marker ? (orderMap[marker[1]] || []) : [];
+    if (match.length !== 1) {
+      const reason = match.length ? 'AMBIGUOUS_WORK_ORDER' : 'WORK_ORDER_NOT_IN_CACHE';
+      tmv3_audit_(vertical,'',String(taskId),'TASK_FIRST_AUTO','REVIEW',reason);
+      return {status:'REVIEW',taskId:taskId,reason:reason,writes:0};
+    }
+
+    try {
+      const live = tmv3_rawTaskById_(taskId);
+      const normalized = tmv3_normalizeV2TaskModel_(live);
+      const liveCustomerId = tmv3_clean_(normalized['Customer ID']);
+      const liveOrderId = tmv3_clean_(normalized['Order ID']);
+      const requested = tmv3_step7RequestedByFromRaw_(live);
+      if (!tmv3_taskIsOpen_(normalized['Status']) ||
+          !/^[1-9]\d*$/.test(liveCustomerId)) {
+        return {status:'REVIEW_TASK_STATUS_OR_CUSTOMER',taskId:taskId,writes:0};
+      }
+
+      // A live relationship that appeared since cache refresh takes priority.
+      if (liveOrderId && liveOrderId !== tmv3_clean_(match[0]['Order ID'])) {
+        return {status:'REVIEW_EXISTING_ORDER_CONFLICT',taskId:taskId,writes:0};
+      }
+
+      // Work Order identity must be independently proven from Striven, never
+      // inferred solely from the task name or stale Source Orders cache.
+      const id = Number(match[0]['Order ID']);
+      const order = tmv3_fetchJson_(
+        TMV3.API_BASE + '/v1/sales-orders/' + encodeURIComponent(id),
+        {method:'get'}
+      ) || {};
+      const owner = tmv3_clean_(tmv3_first_(order.customer || {},['id','Id']));
+      const number = tmv3_clean_(tmv3_first_(order,['orderNumber','OrderNumber']));
+      if (tmv3_clean_(tmv3_first_(order,['id','Id'])) !== String(id) ||
+          owner !== liveCustomerId || number !== marker[1]) {
+        return {status:'REVIEW_ORDER_OWNERSHIP',taskId:taskId,writes:0};
+      }
+
+      const contactId = tmv3_clean_(tmv3_first_(order.contact || {},['id','Id']));
+      // If Work Order has no authoritative Requested By, do not guess.
+      if (!/^[1-9]\d*$/.test(contactId)) {
+        return {status:'REVIEW_NO_VERIFIED_WORK_ORDER_CONTACT',taskId:taskId,writes:0};
+      }
+      // Guard independently against existing mismatched Requested By.
+      if (tmv3_clean_(requested.id) &&
+          (tmv3_clean_(requested.id) !== contactId ||
+           tmv3_norm_(requested.type) !== 'contact')) {
+        return {status:'REVIEW_REQUESTED_BY_CONFLICT',taskId:taskId,writes:0};
+      }
+
+      // Keep an existing location; do not invent or update location fields.
+      const result = tmv3_repairExistingTaskRelationships(
+        taskId,vertical,
+        {customerId:liveCustomerId,orderId:String(id),
+          contactId:contactId,locationId:''},
+        'TASK_FIRST_PRODUCTION'
+      );
+      tmv3_audit_(vertical,'',String(taskId),'TASK_FIRST_AUTO',
+        result.writes ? 'PASS' : 'REVIEW',JSON.stringify(result));
+      return result;
+    } catch(err) {
+      const message = String(err && err.message || err);
+      tmv3_audit_(vertical,'',String(taskId),'TASK_FIRST_AUTO','ATTENTION',message);
+      return {status:'ATTENTION',taskId:taskId,error:message,writes:0};
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function tmv3_scheduledOperations() {
+  // Relationship-first is independent from the Stage-7 Calendar gate.
+  const taskFirst = tmv3_taskFirstProductionCycle_();
   tmv3_reconcilePreInspectionSharedGuest_AUTO_({
     reason:'SCHEDULED_OPERATIONS'
   });
 
   if (tmv3_executionStage_() < 7) {
     return {
+      taskFirst:taskFirst,
       stage:tmv3_executionStage_(),
       mapped:tmv3_calendarStageRefresh_(
         'SCHEDULED_CALENDAR_STAGE_REFRESH'
@@ -996,17 +1138,17 @@ function tmv3_scheduledOperations() {
   }
 
   if (tmv3_executionStage_() === 7) {
-    return tmv3_stage7AutomaticCanaryCycle_(
-      'SCHEDULED_CALENDAR_STAGE_REFRESH'
+    return Object.assign(
+      {taskFirst:taskFirst},
+      tmv3_stage7AutomaticCanaryCycle_('SCHEDULED_CALENDAR_STAGE_REFRESH')
     );
   }
 
-  return tmv3_runProductionAutomationCycle_(
-    'SCHEDULED_OPERATIONS',
-    {
-      maxSourceAgeMinutes:30,
-      forceSourceRefresh:false
-    }
+  return Object.assign(
+    {taskFirst:taskFirst},
+    tmv3_runProductionAutomationCycle_('SCHEDULED_OPERATIONS',{
+      maxSourceAgeMinutes:30,forceSourceRefresh:false
+    })
   );
 }
 
