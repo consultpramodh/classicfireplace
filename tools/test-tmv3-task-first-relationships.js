@@ -25,6 +25,7 @@ function runCase(opts={}) {
     tmv3_taskIsOpen_:status=>status==='Open',
     tmv3_rawTaskById_:()=>{taskReads++;return {...state};},
     tmv3_normalizeV2TaskModel_:raw=>({
+      'Task ID':opts.wrongTaskId?'9':'19081','Task Type':opts.wrongTaskType?'Install':'Service: Clean and Service',
       'Status':'Open','Customer ID':raw.customer,'Order ID':raw.order,
       'Location ID':raw.location
     }),
@@ -50,7 +51,7 @@ function runCase(opts={}) {
   let answer, error;
   try {
     answer=ctx.tmv3_repairExistingTaskRelationships(19081,'Service',
-      {customerId:'62851',orderId:'27635',locationId:'58463',contactId:'12345'});
+      opts.expected||{customerId:'62851',orderId:'27635',locationId:'58463',contactId:'12345'});
   } catch(e) {error=e.message;}
   return {answer,error,writes,taskReads,state,audit};
 }
@@ -88,4 +89,8 @@ r=runCase({badReadback:true});
 assert.equal(r.writes,1);
 assert.match(r.error,/read-back failed/);
 
-console.log('V3-001 regression PASS: 7 cases.');
+for(const opts of [{wrongTaskId:true},{wrongTaskType:true}]) {r=runCase(opts);assert.equal(r.writes,0);assert.match(r.error,/Task/);}
+r=runCase({expected:{customerId:'62851',orderId:'27635',locationId:'',contactId:''}});
+assert.equal(r.answer.status,'PARTIAL_PATCH_VERIFIED');assert.equal(r.writes,1);
+assert.ok(r.answer.review.includes('LOCATION_UNRESOLVED'));assert.ok(r.answer.review.includes('REQUESTED_BY_UNRESOLVED'));
+console.log('V3-001 regression PASS: 10 cases including fresh Task identity and independent safe-field repair.');
