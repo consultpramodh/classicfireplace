@@ -1,14 +1,16 @@
 {
-  "release": "CF_TASKS_V3_ACTIVE_TRIGGER_INVENTORY_20261013",
+  "release": "CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "SHADOW_READ_ONLY",
-  "writesEnabled": false,
-  "runMode": "TRIGGER_INVENTORY",
+  "mode": "PRODUCTION_WRITE",
+  "writesEnabled": true,
+  "runMode": "TASK_FIRST_PRODUCTION_CYCLE",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
   "expectedPlan": "",
-  "requestTag": "CF_TASKS_V3_ACTIVE_TRIGGER_INVENTORY_20261013",
-  "testWriteApiSoftLimit": 1200
+  "requestTag": "CF_TASKS_V3_BOUNDED_RELATIONSHIP_ACTIVATION_20261013",
+  "testWriteApiSoftLimit": 1200,
+  "writeScope": "TASK_RELATIONSHIP_REPAIR_ONLY",
+  "broadWritesEnabled": false
 }
