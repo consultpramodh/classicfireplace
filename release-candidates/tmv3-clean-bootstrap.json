@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "release": "V3_RESTORE_VERIFIED_3_11_77_AFTER_HARDENING_FAILURE",
+  "release": "V3_3_11_79_VERIFIED_TASK_FIRST_SAFETY_CALENDAR_LABEL",
   "title": "CF Task Mapping V3",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "SHADOW_READ_ONLY",
-  "expectedLiveCommit": "011252556a06a6d48385aa0a1298e57b425a535b"
+  "expectedLiveCommit": "567d916db15b5198c34cd86635958847a47e35fa"
 }
