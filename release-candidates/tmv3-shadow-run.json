@@ -1,5 +1,5 @@
 {
-  "release": "V3_001_CANDIDATE_19083_READ_ONLY",
+  "release": "V3_001_19083_FRESH_TASK_GET_AUDITED",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
@@ -12,7 +12,7 @@
   "eventId": "2leu9n986nmgr8s2otlgr08nbj@google.com",
   "taskId": 19083,
   "expectedPlan": "",
-  "requestTag": "V3_001_19083_GET_ONLY",
+  "requestTag": "V3_001_19083_FRESH_TASK_GET_AUDITED",
   "allowedDate": "2026-10-09",
   "testWriteApiSoftLimit": 1500,
   "customerId": 62384,
