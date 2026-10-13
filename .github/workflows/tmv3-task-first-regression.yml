@@ -1,0 +1,31 @@
+name: V3-001 Task-first Regression
+
+on:
+  push:
+    branches:
+      - fix/tmv3-task-first-relationships-20261013
+    paths:
+      - 'apps-script/tmv3-clean/**'
+      - 'tools/test-tmv3-task-first-relationships.js'
+      - '.github/workflows/tmv3-task-first-regression.yml'
+  pull_request:
+    paths:
+      - 'apps-script/tmv3-clean/**'
+      - 'tools/test-tmv3-task-first-relationships.js'
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check V3 Apps Script syntax
+        run: |
+          for file in apps-script/tmv3-clean/*.js; do node --check "$file"; done
+      - name: Task-first relationship mock regression
+        run: node tools/test-tmv3-task-first-relationships.js
