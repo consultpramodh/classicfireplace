@@ -1,7 +1,21 @@
 # Task Mapping — Current State
 
-**Last updated:** 2026-10-07 (America/Toronto)
+**Last updated:** 2026-10-13 (America/Toronto)
 
+
+## 2026-10-13 — CF Tasks V3 bounded relationship automation live
+
+Current source: **3.11.81-task-first-authoritative-audit-r1**, bound project `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`. This section supersedes older current-state/version/mode declarations below; older sections remain historical evidence.
+
+- Source parity verified for all 22 V3 files by guarded deployment `38445911149`; rollback source preserved.
+- Existing Service/Delivery task relationship automation is live independently of Calendar. One cached candidate per 60-minute slot; fresh ownership and PATCH read-back; no CREATE/date/assignment/Calendar permission.
+- Controlled Task 19098 repair: ORDER + REQUESTED_BY, one verified PATCH; immediate second execution throttled with zero writes. Measured 10 API calls, zero API failures/blocks.
+- Independent Task read-back and authoritative Order audit passed. Cached Order Customer-ID omission no longer creates a false ownership warning; audit uses one targeted Order GET.
+- Current live Apps Script hardening: **185/185 PASS**, Actions `38446196732`; source HEAD restored/hash verified.
+- Mode is `PRODUCTION_WRITE` for the dedicated relationship permission only; manual and general automation write flags remain false. General four-vertical production activation is still pending.
+- Existing hourly fallback trigger preserved and connected to the same worker; natural scheduled post-activation execution has not yet been independently observed.
+
+See `PROJECT_CHECKPOINT.md` and `executions/latest.json` for exact acceptance scope and next action.
 
 ## 2026-10-07 — PreInspection full Calendar parity contract
 

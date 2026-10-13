@@ -1,0 +1,64 @@
+{
+  "project": "CF Tasks \u2014 V3 ACTIVE \u2014 Clean Rebuild",
+  "version": "3.11.81-task-first-authoritative-audit-r1",
+  "sourceReleaseDate": "2026-10-13",
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
+  "branch": "task_mapping",
+  "sourceDirectory": "apps-script/tmv3-clean",
+  "sourceCommit": "9eaac3b5e200e9a659be6df9cd639d1f5111cdce",
+  "appsScriptStatus": "DEPLOYED_SOURCE_VERIFIED",
+  "sourceVerification": {
+    "fileCount": 22,
+    "preSourceExactMatch": "ac8534870881906b1ba005783a26294eef5a2cfd",
+    "postRecloneHashParity": "PASS",
+    "deploymentRun": 38445911149
+  },
+  "mode": "PRODUCTION_WRITE",
+  "writeScope": "EXISTING_SERVICE_DELIVERY_TASK_RELATIONSHIPS_ONLY",
+  "manualWritesEnabled": false,
+  "generalAutomationWritesEnabled": false,
+  "taskFirstProductionEnabled": true,
+  "maxCandidatesPer60Minutes": 1,
+  "runtimeFeatureVerified": true,
+  "runtimeVerificationScope": "Controlled relationship worker PATCH/read-back; immediate repeat throttled; independent fresh Task GET and authoritative Order audit. Natural scheduled post-activation execution and full four-vertical live acceptance remain pending.",
+  "liveCycle": {
+    "run": 38445176665,
+    "taskId": 19098,
+    "status": "PATCHED_AND_VERIFIED",
+    "writes": 1,
+    "patchedFields": [
+      "ORDER",
+      "REQUESTED_BY"
+    ],
+    "repeatStatus": "THROTTLED",
+    "repeatWrites": 0,
+    "strivenApiCalls": 10,
+    "strivenApiFailures": 0,
+    "strivenApiBudgetBlocks": 0
+  },
+  "independentReadback": {
+    "run": 38446041472,
+    "taskId": 19098,
+    "customerId": 56491,
+    "orderId": 27661,
+    "orderNumber": "585927",
+    "locationId": 52482,
+    "requestedById": 50483,
+    "requestedByType": "contact",
+    "orderCustomerOwnershipVerified": true,
+    "ownershipEvidence": "FRESH_STRIVEN_ORDER_GET",
+    "writes": 0
+  },
+  "finalLiveHardening": {
+    "run": 38446196732,
+    "status": "PASS",
+    "cases": 185,
+    "sourceHeadHashVerified": true
+  },
+  "scheduledExecutionObservedAfterActivation": false,
+  "fullFourVerticalProductionVerified": false,
+  "rollbackBeforeAudit": "ac8534870881906b1ba005783a26294eef5a2cfd",
+  "rollbackBeforeActivation": "b191cc9ade666bfcf852e8b73bc9c42a74a3a834",
+  "nextAction": "Observe scheduled worker outcome; read-only fresh four-vertical Step7 plan scan and exact remaining lifecycle canaries before any broad activation."
+}

@@ -16,7 +16,18 @@ Canonical tracker: issue #23
 | PreInspection workflow | LIVE / MONITORING |
 | Guarded GitHub / clasp deployment + read-back pipeline | LIVE / MONITORING |
 
-## V3 current state
+## 2026-10-13 active V3 update
+
+- Current release: 3.11.81; active target: CF Tasks — V3 ACTIVE — Clean Rebuild.
+- Bounded existing Service/Delivery relationship worker: **LIVE / VERIFIED BY CONTROLLED RUN**. Task 19098 PATCH/read-back passed; immediate repeat throttled; existing hourly trigger connected.
+- Cached-report omission causing false Order ownership audit warning: **DONE / VERIFIED** via targeted fresh Order GET.
+- Current 185-case live hardening: **PASS**. This is regression evidence, not complete real-record E2E acceptance for every vertical.
+- General schedule/assignment/Calendar/CREATE/RECREATE activation: **GATED / LIVE ACCEPTANCE PENDING**.
+- Observe a naturally scheduled post-activation worker run; then continue exact four-vertical canaries.
+
+The following older matrix is historical; this update and PROJECT_CHECKPOINT.md govern current status.
+
+## Historical V3 state
 
 | Feature | Status |
 |---|---|

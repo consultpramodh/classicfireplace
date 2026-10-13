@@ -1,76 +1,39 @@
-# Task Mapping — Latest Checkpoint
+# CF Tasks — V3 ACTIVE — Clean Rebuild
 
-**Checkpoint date:** 2026-10-07 (America/Toronto)
+Checkpoint: 2026-10-13 (America/Toronto).
 
-## Canonical branch
+## Active source
 
-`task_mapping` is the single canonical Task Mapping branch.
+- Repository: `consultpramodh/classicfireplace`; canonical branch: `task_mapping`.
+- Bound Apps Script: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`.
+- Workbook: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`.
+- Source directory: `apps-script/tmv3-clean/`; 22 live files source/hash verified.
+- Current engine: `3.11.81-task-first-authoritative-audit-r1`; execution stage: 7.
+- Mode: `PRODUCTION_WRITE`, strictly restricted to the existing Service/Delivery task relationship lane. Manual and general automation write flags remain false; CREATE, schedule, assignment and Calendar mutations are not enabled by this permission.
 
-## Active rewrite
+## Resolved and verified
 
-- System: **Task Mapping V3**
-- Source: `apps-script/tmv3-clean/`
-- V3 version: `3.11.69-preinspection-calendar-parity-r2`
-- Hard-rule version: `2026-10-07-r7`
-- Execution stage: `7`
-- Bound Script ID: `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`
-- Spreadsheet ID: `1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E`
-- Mode: `SHADOW_READ_ONLY`
-- Automation business writes: **disabled**
+1. Existing-task relationship worker enabled, independent of Calendar appointments. It considers one cached candidate per 60-minute interval, performs fresh Task/Order/Contact ownership verification, patches only missing safe relationships and requires read-back.
+2. Existing hourly `tmv3_calendarReconciliationFallback` now invokes the bounded lane during 08:00–18:59 Toronto time. Five existing daily `tmv3_scheduledOperations` triggers use the same throttle. No triggers were deleted, replaced or added.
+3. Live worker Task 19098: ORDER and REQUESTED_BY patched; `PATCHED_AND_VERIFIED`, writes=1. Immediate second call: `THROTTLED`, writes=0. This controlled execution cost 10 Striven API calls, with zero failures and zero budget blocks.
+4. Independent fresh Task read-back: Customer 56491, Order 27661 / number 585927, Location 52482, Requested By Contact 50483. Location and Customer were existing values, not patched by this cycle.
+5. False audit ownership warning fixed: missing Customer ID in cached Orders is no longer treated as proof of conflict. One targeted fresh Order GET proves ID, order number and Customer ownership; live read-back returned `customerOwnershipVerified=true` and `FRESH_STRIVEN_ORDER_GET`.
+6. All 185 hardening regression cases passed on live Apps Script 3.11.81. Targeted Node regressions also passed, including 20 worker cases, 15 hourly path combinations, action isolation, temporary canary safety and 8 audit ownership cases.
 
-## Canonical decision source
+## Evidence and rollback
 
-Read `CURRENT_DECISION_REGISTER.md` before changing Task Mapping. It contains the latest explicit business decisions and supersedes older chat-derived rules when marked superseded.
+- 3.11.80 guarded deployment: Actions `38445040253`; exact PRE source matched commit `b191cc9ade666bfcf852e8b73bc9c42a74a3a834`.
+- Controlled live worker / repeat throttle: Actions `38445176665`; artifact `11837543418`.
+- Separate read-back: Actions `38445417279`.
+- 3.11.81 source commit: `9eaac3b5e200e9a659be6df9cd639d1f5111cdce`.
+- 3.11.81 guarded deployment: Actions `38445911149`; exact PRE source matched `ac8534870881906b1ba005783a26294eef5a2cfd`; PRE source preserved; post-push re-clone/hash parity passed.
+- Authoritative audit runtime: Actions `38446041472`.
+- Final live hardening: Actions `38446196732`; artifact `11837404690`; all 185 PASS, source HEAD hash verified after runner restoration.
+- Immediate pre-audit rollback source: commit `ac8534870881906b1ba005783a26294eef5a2cfd` (3.11.80).
+- Full pre-activation rollback: commit `b191cc9ade666bfcf852e8b73bc9c42a74a3a834` (3.11.79, SHADOW_READ_ONLY, relationship lane disabled).
 
-## PreInspection frozen rules
+## Remaining / exact next action
 
-- CF Preinspects is authoritative; Stephen's Calendar is mirror-only and Stephen remains a required guest.
-- Calendar title: `<Customer Number> - <Customer Name> - <Phone>`.
-- Task name: `<Customer Name> - <Street, City> - <Phone>`.
-- Task Type 105.
-- Pool 8.
-- Requested By = exact Calendar creator/organizer resolved to Striven Employee.
-- Sales Order is not required/attached merely for CREATE/RECREATE.
-- Customer-owned Location is mandatory; safe missing Location may be created before Task CREATE.
-- Task Description is exactly blank at CREATE and technician-owned afterward.
-- **Field 854 is not managed by Task Mapping.**
-- Calendar notes remain on Calendar only.
-- No InfoCustomFields at CREATE.
-- Technician-completed assessment fields are not prefilled.
-- When a PreInspection Calendar title is normalized, preserve the exact previous title as the first line of Description with no extra heading. Remove presentation-only `Notes:` / `Sales Order:` labels while preserving the actual content and legitimate inline SO values.
-- Managed Calendar description preserves authored notes and contains exactly one Striven Links block with clickable Google Calendar hyperlinks. Existing correct clickable blocks are preserved exactly; raw `[label](URL)` text is invalid.
-- Every required physical PreInspection Calendar copy must match the authoritative CF Preinspects event for **full business-visible parity**: title, Description, location, start/end, required Stephen participation, and managed links. Only unavoidable Google system metadata may differ.
+The complete four-vertical system is not declared end-to-end production verified. The bounded lane preserves missing/conflicting Location as review and does not create Customers, Locations or Tasks. General schedule/assignment/Calendar/CREATE/RECREATE permissions remain gated. A naturally scheduled execution after activation has not yet been observed in this checkpoint; the controlled worker execution, trigger presence and hourly entrypoint regression are verified separately.
 
-## Service ownership boundary
-
-- ServiceOps ends at certified Service Work Order.
-- Striven's Work Order workflow owns Service Task creation/recreation.
-- Task Mapping only discovers/reconciles the Striven-created Service Task(s).
-- Missing Service Task is a blocker/wait-for-Striven condition, never permission for Task Mapping to create a substitute.
-- Multi-fireplace FP#n sibling tasks remain valid and are reconciled as an event-level set.
-
-## Safety / verification
-
-- Never guess identity or ownership.
-- Never blindly retry uncertain CREATE.
-- Consequential writes require fresh ownership checks and authoritative read-back.
-- Step 7 is the sole mutation authority.
-- Calendar writes are limited to explicitly approved managed fields/actions.
-- No Step 8/9/10 Apps Script files.
-
-## Latest deployment evidence
-
-- Guarded deployment run: `37679724316` — **SUCCESS** for `3.11.69-preinspection-calendar-parity-r2`.
-- Live hardening regression: `37679868267` — **SUCCESS**.
-- Regression proves prior-title preservation, Notes:/Sales Order: header removal with content preservation, required-copy targeting, full business-state parity comparison, Field 854 no-management, and Service Task creation ownership.
-
-- Source/deployment commit: `20727ce1c1e9a332ae2f36b02c03e264d5c6ca66`.
-- Guarded bootstrap run: `37672082690` — **SUCCESS**.
-- Existing bound Apps Script project updated successfully.
-- Remote re-clone/file/hash parity verification completed successfully.
-
-## Next exact verification work
-
-1. Keep `SHADOW_READ_ONLY`.
-2. Continue controlled live PreInspection reconciliation/canaries against today's real events.
-3. Run the controlled PreInspection Location-create canary when a genuinely missing Customer-owned Location case is intentionally selected. Field 854 is never a completion gate.
+Next: inspect current eligible four-vertical Step-7 plans without broad write activation; select fresh exact canaries for the remaining schedule/assignment/Calendar-link lifecycle checks. Preserve all business rules in `CURRENT_DECISION_REGISTER.md`; Service Task creation remains owned by Striven's Work Order workflow.

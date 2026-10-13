@@ -1,4 +1,4 @@
-# Classic Fireplace — Task Mapping
+# CF Tasks — V3 ACTIVE — Clean Rebuild
 
 `task_mapping` is the **single canonical GitHub branch** for the Classic Fireplace Task Mapping system: Install, Delivery, Service, and PreInspection.
 
@@ -45,23 +45,17 @@ Shared/common logic belongs in `docs/architecture/`. A refactor affecting shared
 - `tools/` — operator utilities used to capture, inspect, patch, or verify project state.
 - `.github/workflows/` — repository checks.
 
-## Current production release
+## Current active V3 release
 
-The latest recorded source release is **R3.4.22 — R30 Requested By Router Fix**.
+**3.11.81-task-first-authoritative-audit-r1**, source `apps-script/tmv3-clean/`, 22 live files source/hash verified. The bound project is `1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt`.
 
-The repaired PreInspection Requested By route has been runtime-verified on the three linked PreInspection tasks for 2026-09-11, and the final read-only audit recorded 3 PASS / 0 FAIL / 0 REVIEW for existing linked tasks.
+The existing Service/Delivery task relationship worker is live with one candidate per 60-minute interval and required ownership/read-back checks. General task creation, schedule, assignment and Calendar write permissions remain gated. This bounded activation is not a claim of complete four-vertical production readiness.
 
-See `executions/latest.json` for the authoritative release ledger.
+Read `PROJECT_CHECKPOINT.md` and `executions/latest.json` for current verification and rollback evidence. Older R3/R30/legacy project references are historical and must not be used as the active V3 deployment target.
 
-## Source-parity warning
+## Source publication
 
-This repository is public.
-
-Raw Apps Script source must not be archived here until it is screened for credentials, tokens, customer PII, private operational data, and unsafe hard-coded endpoints.
-
-The live Apps Script project is known to contain 36 files, and R3.4.22 was source-pushed and POST-read-back verified. However, the exact current 36-file POST source is still not archived under `apps-script/`. Therefore GitHub production-source parity remains pending.
-
-Do not reconstruct current production source from an older snapshot and label it current.
+This repository is public. Preserve credential/customer-data screening for every publication. Current active V3 source parity is verified; unrelated legacy source snapshots do not establish parity for the active project.
 
 ## Reorganization rule
 

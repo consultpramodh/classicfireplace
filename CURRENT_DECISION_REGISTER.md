@@ -1,7 +1,7 @@
 # Task Mapping — Current Decision Register
 
-**Effective:** 2026-10-07 (America/Toronto)  
-**Authority:** Latest explicit user decisions for Task Mapping business behavior.  
+**Effective:** 2026-10-13 (America/Toronto)
+**Authority:** Latest explicit user decisions for Task Mapping business behavior.
 **Rule:** If older chat, historical code, stale Sheet text, or old checkpoint conflicts with this register, the older item is superseded. Live implementation that conflicts with this register is implementation drift to be corrected.
 
 ## Global
@@ -96,7 +96,7 @@
 - Canonical branch: `task_mapping`.
 - Pull live → verify target → preserve PRE source → patch minimum files → syntax/regression → push same bound project → remote re-clone → file/hash parity → runtime verification → checkpoint.
 - GitHub synchronization/read-back is mandatory for verified changes.
-- General operating mode remains `SHADOW_READ_ONLY` until an explicit cutover decision.
+- Controlled 2026-10-13 activation uses `PRODUCTION_WRITE` solely for verified existing Service/Delivery Task relationship repair, one candidate per 60-minute interval. This implements the user-authorized fix; it does not enable general manual/automation writes, schedule/assignment/Calendar writes, or CREATE/RECREATE. General four-vertical cutover remains gated.
 
 ## Explicitly superseded rules
 
