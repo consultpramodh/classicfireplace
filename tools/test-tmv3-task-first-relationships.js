@@ -9,7 +9,8 @@ const file = path.join(__dirname, '..', 'apps-script', 'tmv3-clean', '58_Operati
 const source = fs.readFileSync(file,'utf8');
 const start = source.indexOf('function tmv3_repairExistingTaskRelationships(');
 assert.ok(start > -1,'V3 task-first repair function missing');
-const isolated = source.slice(start);
+const helperStart = source.indexOf('function tmv3_taskFirstFreshOrderOwnershipById_(', start);
+const isolated = source.slice(start, helperStart > start ? helperStart : undefined);
 
 function runCase(opts={}) {
   let state=Object.assign({customer:'62851',order:'',location:'',contact:'',type:''}, opts.state||{});
@@ -28,7 +29,7 @@ function runCase(opts={}) {
       'Location ID':raw.location
     }),
     tmv3_step7RequestedByFromRaw_:raw=>({id:raw.contact,type:raw.type}),
-    tmv3_step7FreshOrderOwnership_:()=>{if(opts.orderUnverified)throw Error('Order identity');},
+    tmv3_taskFirstFreshOrderOwnershipById_:()=>{if(opts.orderUnverified)throw Error('Order identity');},
     tmv3_step7FreshLocationOwnership_:()=>{if(opts.locationUnverified)throw Error('Location identity');},
     tmv3_getContactById_:()=>({__ownershipVerified:!opts.contactUnverified}),
     tmv3_operationPatchTask_:(id,payload)=>{

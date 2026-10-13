@@ -3,7 +3,9 @@
  ************************************************************/
 
 function tmv3_writesEnabled_() {
-  return TMV3.MODE === 'CANARY_WRITE' || TMV3.MODE === 'PRODUCTION_WRITE';
+  return (TMV3.MODE === 'CANARY_WRITE' || TMV3.MODE === 'PRODUCTION_WRITE') &&
+    (TMV3.OPERATIONS.manualWritesEnabled === true ||
+      TMV3.OPERATIONS.automationWritesEnabled === true);
 }
 
 function tmv3_assertBusinessWritesEnabled_() {

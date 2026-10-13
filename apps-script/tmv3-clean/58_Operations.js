@@ -24,6 +24,14 @@ function tmv3_operationWritesEnabled_(scope) {
   // elevate SHADOW_READ_ONLY into a write-capable mode.
   if (!externalWriteMode) return false;
 
+  if (mode === 'taskfirstcanary:19083') {
+    return TMV3.MODE === 'CANARY_WRITE' &&
+      policy.taskFirstCanaryEnabled === true &&
+      Number(policy.taskFirstCanaryTaskId) === 19083 &&
+      policy.manualWritesEnabled === false &&
+      policy.automationWritesEnabled === false;
+  }
+
   if (mode === 'manual') {
     return policy.manualWritesEnabled === true;
   }
@@ -5619,7 +5627,7 @@ function tmv3_previewPreInspectionMissingDetailEmails() {
  * Explicit expected IDs are mandatory: a Task title is evidence to review,
  * NOT authoritative identity. The existing operation write gates apply.
  */
-function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
+function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permission) {
   const id = Number(taskId);
   const kind = tmv3_clean_(vertical);
   expected = expected || {};
@@ -5627,12 +5635,22 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
       (kind !== 'Service' && kind !== 'Delivery')) {
     throw new Error('Only positive existing Service/Delivery Task IDs are permitted.');
   }
-  tmv3_assertOperationWrite_('manual'); // Global V3 SHADOW mode always denies.
+  const scope = permission === 'TASK_FIRST_CANARY' &&
+    id === Number(TMV3.OPERATIONS.taskFirstCanaryTaskId)
+      ? 'taskfirstcanary:19083' : 'manual';
+  tmv3_assertOperationWrite_(scope);
 
   const customerId = tmv3_clean_(expected.customerId);
   const orderId = tmv3_clean_(expected.orderId);
   const locationId = tmv3_clean_(expected.locationId);
   const contactId = tmv3_clean_(expected.contactId);
+  if (scope === 'taskfirstcanary:19083' && (
+    customerId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedCustomerId) ||
+    orderId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedOrderId) ||
+    contactId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedContactId) ||
+    locationId
+  )) throw new Error('Canary relationship IDs are not the approved exact tuple.');
+
   const validId = function(v) { return /^[1-9]\d*$/.test(v); };
   if (!validId(customerId) ||
       [orderId, locationId, contactId].some(function(v) {
@@ -5678,9 +5696,9 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
     }
     try {
       if (field.label === 'ORDER') {
-        tmv3_step7FreshOrderOwnership_({
-          vertical:kind, expectedOrderId:field.id,expectedCustomerId:customerId
-        });
+        tmv3_taskFirstFreshOrderOwnershipById_(
+          field.id,customerId,tmv3_clean_(before['Name'])
+        );
       } else if (field.label === 'LOCATION') {
         tmv3_step7FreshLocationOwnership_({
           expectedLocationId:field.id,expectedCustomerId:customerId
@@ -5730,7 +5748,7 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
     throw new Error('Task changed after ownership verification. No mutation.');
   }
 
-  tmv3_operationPatchTask_(id,payload,'manual');
+  tmv3_operationPatchTask_(id,payload,scope);
   const afterRaw = tmv3_rawTaskById_(id);
   const after = tmv3_normalizeV2TaskModel_(afterRaw);
   const afterBy = tmv3_step7RequestedByFromRaw_(afterRaw);
@@ -5758,4 +5776,32 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
     throw new Error('Task-first PATCH read-back failed; do not blindly retry.');
   }
   return result;
+}
+
+
+/** One authoritative GET instead of downloading the entire Work Order report.
+ * The order ID, customer ownership and SO number must all agree.
+ */
+function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
+  const id = Number(orderId);
+  const cid = tmv3_clean_(customerId);
+  if (!Number.isSafeInteger(id) || id <= 0 || !/^[1-9]\d*$/.test(cid)) {
+    throw new Error('Invalid task-first Order ownership target.');
+  }
+  const order = tmv3_fetchJson_(
+    TMV3.API_BASE + '/v1/sales-orders/' + encodeURIComponent(id),
+    {method:'get'}
+  ) || {};
+  const fetchedId = tmv3_clean_(tmv3_first_(order,['id','Id']));
+  const customer = order.customer || order.Customer || {};
+  const fetchedCustomerId = tmv3_clean_(tmv3_first_(customer,['id','Id']));
+  const orderNumber = tmv3_clean_(tmv3_first_(order,
+    ['orderNumber','OrderNumber','number','Number']));
+  const nameMarker = tmv3_clean_(taskName)
+    .match(/\bSO\s*#\s*(\d+)\b/i);
+  if (fetchedId !== String(id) || fetchedCustomerId !== cid ||
+      !nameMarker || !orderNumber || nameMarker[1] !== orderNumber) {
+    throw new Error('Order ID, Customer ownership or Task SO number disagrees with fresh Striven Order.');
+  }
+  return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid};
 }
