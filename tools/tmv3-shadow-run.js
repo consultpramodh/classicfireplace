@@ -1765,6 +1765,18 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskFirstContactProbe') {
+      var owned = tmv3_getContactById_(56760,62860);
+      var ok = !!(owned && owned.__ownershipVerified);
+      tmv3_audit_('Service','',String(19083),'V3_001_CONTACT_OWNER_PROBE',
+        ok ? 'PASS' : 'REVIEW',JSON.stringify({
+          contactId:56760,customerId:62860,ownershipVerified:ok,
+          writesPerformed:false}));
+      return TMPV3_shadowResponse_({ok:ok,
+        status:ok ? 'CONTACT_OWNER_VERIFIED' : 'CONTACT_OWNER_UNVERIFIED',
+        contactId:56760,customerId:62860,writesPerformed:false});
+    }
+
     if (body.action === 'taskFirstOrderProbe') {
       var target = 27648;
       var order = tmv3_fetchJson_(
@@ -2587,6 +2599,7 @@ async function main() {
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
+      RUN_MODE === 'TASK_FIRST_CONTACT_GET' ||
       RUN_MODE === 'TASK_FIRST_ORDER_GET' ||
       RUN_MODE === 'TASK_FIRST_NO_CHANGE' ||
       RUN_MODE === 'TASK_FIRST_AUDIT' ||
@@ -2672,6 +2685,8 @@ async function main() {
                     ? 'preInspectionStage5DateTest'
                     : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
                     ? 'preInspectionSearchSchemaProbe'
+                    : RUN_MODE === 'TASK_FIRST_CONTACT_GET'
+                    ? 'taskFirstContactProbe'
                     : RUN_MODE === 'TASK_FIRST_ORDER_GET'
                     ? 'taskFirstOrderProbe'
                     : RUN_MODE === 'TASK_FIRST_NO_CHANGE'
