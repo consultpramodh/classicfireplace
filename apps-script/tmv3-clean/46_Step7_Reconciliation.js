@@ -2130,3 +2130,95 @@ function tmv3_step7Verify_(step6Records, plans) {
     introducedKeys: introducedKeys.slice(0,20)
   };
 }
+
+
+/**
+ * V3-001: Calendar-independent, read-only relationship audit.
+ *
+ * A Striven Service/Delivery Task can be created before scheduling. Do not
+ * infer its Customer, Location or Requested By from a task title, and do not
+ * generate a date/assignment plan without Calendar evidence.
+ *
+ * This audit makes at most one fresh Task API request; related SO identity is
+ * only a candidate unless independently verified. It never writes to Striven.
+ */
+function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
+  const id = Number(taskId);
+  const kind = tmv3_clean_(vertical);
+  if (!Number.isSafeInteger(id) || id <= 0 ||
+      (kind !== 'Service' && kind !== 'Delivery')) {
+    throw new Error('V3 task-first audit requires a positive Task ID and Service or Delivery.');
+  }
+
+  const sourceRows = tmv3_sheetObjects_(TMV3.SHEETS.TASKS);
+  const candidate = sourceRows.filter(function(row) {
+    return Number(row['Task ID']) === id;
+  });
+  if (candidate.length !== 1) {
+    return {
+      status:'REVIEW_TASK_SOURCE_MISSING_OR_DUPLICATED', taskId:id,
+      vertical:kind, candidateCount:candidate.length, writes:0
+    };
+  }
+
+  const source = candidate[0];
+  const sourceType = tmv3_norm_(source['Task Type']);
+  if ((kind === 'Service' && sourceType.indexOf('service') < 0) ||
+      (kind === 'Delivery' && sourceType.indexOf('deliver') < 0)) {
+    return {status:'REVIEW_WRONG_TASK_VERTICAL',taskId:id,vertical:kind,writes:0};
+  }
+
+  const runtime = {taskById:{},contactByKey:{},organizerByEmail:{}};
+  const fresh = tmv3_step7FreshTask_(String(id), runtime);
+  if (!fresh.ok) {
+    return {
+      status:'READ_FAILED', taskId:id, vertical:kind,
+      reason:fresh.error, writes:0
+    };
+  }
+
+  const actual = fresh.task || {};
+  const requested = fresh.requestedBy || {};
+  const rawName = tmv3_clean_(actual['Name'] || source['Name']);
+  const orderNumberMatches = rawName.match(/\\bSO\\s*#\\s*(\\d+)\\b/i);
+  const orderNumber = orderNumberMatches ? orderNumberMatches[1] : '';
+  const orders = tmv3_sheetObjects_(TMV3.SHEETS.ORDERS);
+  const orderCandidates = orderNumber ? orders.filter(function(order) {
+    return tmv3_clean_(order['Order Number']) === orderNumber;
+  }) : [];
+  const orderCandidate = orderCandidates.length === 1 ? orderCandidates[0] : null;
+  const currentOrderId = tmv3_clean_(actual['Order ID']);
+  const proposedOrderId = orderCandidate
+    ? tmv3_clean_(orderCandidate['Order ID']) : '';
+  const safeOrderCandidate = Boolean(
+    proposedOrderId &&
+    (!currentOrderId || currentOrderId === proposedOrderId) &&
+    tmv3_clean_(actual['Customer ID']) &&
+    tmv3_clean_(orderCandidate['Customer ID']) &&
+    tmv3_clean_(actual['Customer ID']) ===
+      tmv3_clean_(orderCandidate['Customer ID'])
+  );
+
+  return {
+    status:'AUDIT_ONLY_NO_MUTATION',
+    vertical:kind,taskId:id,taskStatus:tmv3_clean_(actual['Status']),
+    actual:{
+      customerId:tmv3_clean_(actual['Customer ID']),
+      orderId:currentOrderId,
+      locationId:tmv3_clean_(actual['Location ID']),
+      requestedById:tmv3_clean_(requested.id),
+      requestedByType:tmv3_clean_(requested.type)
+    },
+    orderCandidate:{
+      number:orderNumber,
+      id:proposedOrderId,
+      count:orderCandidates.length,
+      customerOwnershipVerified:safeOrderCandidate
+    },
+    requiredNextAction:safeOrderCandidate
+      ? 'FRESH_VERIFY_ORDER_LOCATION_AND_CONTACT_BEFORE_GUARDED_PATCH'
+      : 'REVIEW_ORDER_CUSTOMER_OWNERSHIP_NO_AUTOMATIC_PATCH',
+    scheduling:'AWAIT_CALENDAR_EVENT',
+    writes:0
+  };
+}
