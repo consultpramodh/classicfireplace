@@ -1,16 +1,17 @@
 {
-  "release": "PREINSPECTION_OCT13_KATHARINE_SCHEDULE_READ_ONLY",
+  "release": "PREINSPECTION_20261013_FRESH_TASK_DUPLICATE_GATE",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEDULE",
+  "runMode": "DIRECT_PREINSPECTION_STAGE5_DATE_TEST",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "PREINSPECTION_2026_10_13_KATHARINE_READONLY",
+  "requestTag": "PREINSPECTION_OCT13_DIRECT_STAGE5_READONLY",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
   "eventId": "3qmndnd8flhuogrmq88su19l0i@google.com",
-  "taskId": 19067
+  "taskId": 19067,
+  "allowedDate": "2026-10-13"
 }
