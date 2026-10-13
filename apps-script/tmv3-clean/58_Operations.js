@@ -5682,7 +5682,11 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
   const beforeRaw = tmv3_rawTaskById_(id);
   const before = tmv3_normalizeV2TaskModel_(beforeRaw);
   const beforeBy = tmv3_step7RequestedByFromRaw_(beforeRaw);
-  if (!tmv3_taskIsOpen_(before['Status']) ||
+  const beforeType = tmv3_norm_(before['Task Type']);
+  if (tmv3_clean_(before['Task ID']) !== String(id) ||
+      (kind === 'Service' && beforeType.indexOf('service') < 0) ||
+      (kind === 'Delivery' && beforeType.indexOf('deliver') < 0) ||
+      !tmv3_taskIsOpen_(before['Status']) ||
       tmv3_clean_(before['Customer ID']) !== customerId) {
     throw new Error('Task is not OPEN or Task Customer is unverified/mismatched.');
   }
@@ -5695,7 +5699,10 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
   const review = [];
   const changes = [];
   fields.forEach(function(field) {
-    if (!field.id) return; // Not resolved: independent fields may proceed.
+    if (!field.id) {
+      if (!field.actual) review.push(field.label + '_UNRESOLVED');
+      return; // Independent verified fields may still proceed.
+    }
     if (field.actual && field.actual !== field.id) {
       review.push(field.label + '_CONFLICT');
       return;
@@ -5753,7 +5760,9 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
   const nowRaw = tmv3_rawTaskById_(id);
   const now = tmv3_normalizeV2TaskModel_(nowRaw);
   const nowBy = tmv3_step7RequestedByFromRaw_(nowRaw);
-  if (!tmv3_taskIsOpen_(now['Status']) ||
+  if (tmv3_clean_(now['Task ID']) !== String(id) ||
+      tmv3_clean_(now['Task Type']) !== tmv3_clean_(before['Task Type']) ||
+      !tmv3_taskIsOpen_(now['Status']) ||
       tmv3_clean_(now['Customer ID']) !== customerId ||
       tmv3_clean_(now['Order ID']) !== tmv3_clean_(before['Order ID']) ||
       tmv3_clean_(now['Location ID']) !== tmv3_clean_(before['Location ID']) ||
@@ -5775,7 +5784,8 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
     }
     return tmv3_clean_(afterBy.id) === field.id &&
       tmv3_norm_(afterBy.type) === 'contact';
-  }) && tmv3_clean_(after['Customer ID']) === customerId;
+  }) && tmv3_clean_(after['Customer ID']) === customerId &&
+    tmv3_clean_(after['Task ID']) === String(id);
   const result = {
     status:verified ? (review.length ? 'PARTIAL_PATCH_VERIFIED' : 'PATCHED_AND_VERIFIED')
       : 'READBACK_MISMATCH',
