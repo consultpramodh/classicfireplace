@@ -1,9 +1,9 @@
 {
-  "release": "V3_P0_DELIVERY_18661_FRESH_GET",
+  "release": "V3_P0_EXACT_DELIVERY18661_REPAIR_CANARY",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "SHADOW_READ_ONLY",
-  "writesEnabled": false,
-  "runMode": "TASK_SCHEMA",
+  "mode": "CANARY_WRITE",
+  "writesEnabled": true,
+  "runMode": "CANARY_TASK_FIRST_18661",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
@@ -11,6 +11,6 @@
   "vertical": "Delivery",
   "taskId": 18661,
   "expectedPlan": "",
-  "requestTag": "V3_P0_DELIVERY_18661_FRESH_GET",
+  "requestTag": "V3_P0_EXACT_DELIVERY18661_REPAIR_CANARY",
   "testWriteApiSoftLimit": 1200
 }
