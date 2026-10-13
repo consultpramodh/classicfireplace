@@ -126,6 +126,44 @@ jobs:
               exit 1
             fi
 
+            # Live V3 may have advanced through another verified deployment
+            # after the manifest baseline was recorded. Auto-discover ONLY an
+            # exact source-tree match among Git commits touching this V3 path;
+            # do not guess, skip checks, or force-push on unmatched live data.
+            LIVE_MATCHED_COMMIT=""
+            CANDIDATES="$TMP/v3-baseline-candidates.txt"
+            {
+              printf '%s\\n' "$BASELINE_COMMIT"
+              git log --format=%H -n 160 -- "$SOURCE_DIR"
+            } | awk 'NF && !seen[$0]++' > "$CANDIDATES"
+
+            while IFS= read -r candidate; do
+              if ! git cat-file -e "$candidate:$SOURCE_DIR" 2>/dev/null; then
+                continue
+              fi
+              CANDIDATE_ROOT="$TMP/candidate-$candidate"
+              mkdir -p "$CANDIDATE_ROOT"
+              if ! git archive "$candidate" "$SOURCE_DIR" | tar -x -C "$CANDIDATE_ROOT"; then
+                continue
+              fi
+              CANDIDATE_PRE="$CANDIDATE_ROOT/$SOURCE_DIR"
+              if diff -qr "$CANDIDATE_PRE" "$PRE/src" > "$TMP/v3-source-compare.txt" 2>&1; then
+                LIVE_MATCHED_COMMIT="$candidate"
+                EXPECTED_PRE="$CANDIDATE_PRE"
+                break
+              fi
+            done < "$CANDIDATES"
+
+            if [ -z "$LIVE_MATCHED_COMMIT" ]; then
+              echo "LIVE_SOURCE_DRIFT_UNRECONCILED: live V3 source did not exactly match any of the last 160 V3 Git source commits. No Apps Script write attempted."
+              echo "Preserved full live PRE_SOURCE in workflow artifact. Review source differences; do not override hash protection."
+              exit 1
+            fi
+            echo "PRE_SOURCE_EXACT_GIT_MATCH=$LIVE_MATCHED_COMMIT"
+            if [ "$LIVE_MATCHED_COMMIT" != "$BASELINE_COMMIT" ]; then
+              echo "STALE_MANIFEST_BASELINE: configured=$BASELINE_COMMIT; verified-live=$LIVE_MATCHED_COMMIT"
+            fi
+
             find "$EXPECTED_PRE" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/repo-pre-files.txt"
             find "$PRE/src" -maxdepth 1 -type f -printf '%f\n' | sort > "$TMP/live-pre-files.txt"
 
