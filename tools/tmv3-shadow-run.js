@@ -253,9 +253,10 @@ function buildTemporaryRunner(pre, token) {
       if (canaryWrite) {
         // Task-first canary borrows only its exact-task permission in temporary
         // source. Keep persistent SHADOW configuration and all broad flags off.
-        if (f.name === '00_Config' && RUN_MODE === 'CANARY_TASK_FIRST_19083') {
-          if (Number(RELEASE_MANIFEST.taskId) !== 19083 ||
-              RELEASE_MANIFEST.vertical !== 'Service') {
+        if (f.name === '00_Config' && (RUN_MODE === 'CANARY_TASK_FIRST_19083' || RUN_MODE === 'CANARY_TASK_FIRST_18661')) {
+          const delivery = RUN_MODE === 'CANARY_TASK_FIRST_18661';
+          if (Number(RELEASE_MANIFEST.taskId) !== (delivery ? 18661 : 19083) ||
+              RELEASE_MANIFEST.vertical !== (delivery ? 'Delivery' : 'Service')) {
             fail('Task-first canary requires exact Task 19083 / Service.');
           }
           const required = [
@@ -272,7 +273,21 @@ function buildTemporaryRunner(pre, token) {
             fail('Task-first canary exact tuple or disabled broad-policy anchors changed.');
           }
           source = source.replace(/taskFirstCanaryEnabled:\s*false,/, 'taskFirstCanaryEnabled: true,');
+          if (delivery) {
+            source = source.replace(/taskFirstCanaryTaskId:\s*19083,/, 'taskFirstCanaryTaskId: 18661,')
+              .replace(/taskFirstCanaryExpectedCustomerId:\s*62860,/, 'taskFirstCanaryExpectedCustomerId: 62550,')
+              .replace(/taskFirstCanaryExpectedOrderId:\s*27648,/, 'taskFirstCanaryExpectedOrderId: 26969,')
+              .replace(/taskFirstCanaryExpectedContactId:\s*56760,/, 'taskFirstCanaryExpectedContactId: 56449,');
+          }
         }
+        if (f.name === '58_Operations' && RUN_MODE === 'CANARY_TASK_FIRST_18661') {
+          const exactGate = 'Number(policy.taskFirstCanaryTaskId) === 19083';
+          if (source.split(exactGate).length !== 2) {
+            fail('Delivery canary requires exactly one existing exact-task gate.');
+          }
+          source = source.replace(exactGate, 'Number(policy.taskFirstCanaryTaskId) === 18661');
+        }
+
         const shadowModeAnchor =
           source.indexOf("const TMV3_MODE = 'SHADOW_READ_ONLY';") !== -1;
         const canaryModeAnchor =
@@ -364,7 +379,7 @@ function buildTemporaryRunner(pre, token) {
         // PreInspection history is proven by Customer + Location before a
         // replacement Task is created.
         if (
-          RUN_MODE !== 'CANARY_TASK_FIRST_19083' &&
+          RUN_MODE !== 'CANARY_TASK_FIRST_19083' && RUN_MODE !== 'CANARY_TASK_FIRST_18661' &&
           f.name === '58_Operations' &&
           source.indexOf('function tmv3_findRecreateSourceTask_(bundle)') !== -1
         ) {
@@ -1789,15 +1804,27 @@ function doPost(e) {
     }
 
     if (body.action === 'taskFirstSingleCanary') {
+      var delivery = Number(body.taskId) === 18661;
+      if (!delivery && Number(body.taskId) !== 19083) throw new Error('EXACT_TASK_CANARY_ID_REQUIRED');
+      var targetId = delivery ? 18661 : 19083;
+      var before = tmv3_rawTaskById_(targetId);
       var result = tmv3_repairExistingTaskRelationships(
-        19083,'Service',
-        {customerId:'62860',orderId:'27648',locationId:'',contactId:'56760'},
+        targetId, delivery ? 'Delivery' : 'Service',
+        delivery ? {customerId:'62550',orderId:'26969',locationId:'',contactId:'56449'}
+          : {customerId:'62860',orderId:'27648',locationId:'',contactId:'56760'},
         'TASK_FIRST_CANARY'
       );
+      var after = tmv3_rawTaskById_(targetId);
+      var preserved = ['startDateTime','dueDateTime','assignments','description',
+        'infoCustomFields','markDoneCustomFields','status','location'].every(function(key) {
+          return JSON.stringify(before[key]) === JSON.stringify(after[key]);
+        });
+      if (!preserved) throw new Error('TASK_FIRST_CANARY_UNRELATED_FIELDS_CHANGED_NO_RETRY');
+      result.unrelatedFieldsPreserved = true;
       return TMPV3_shadowResponse_({
         ok:result.status === 'PATCHED_AND_VERIFIED' ||
           result.status === 'NO_CHANGE_VERIFIED',
-        status:result.status,taskId:19083,
+        status:result.status,taskId:targetId,
         result:result,api:tmv3_runtimeMetrics_(),
         writesPerformed:result.writes === 1
       });
@@ -2445,6 +2472,7 @@ async function main() {
       (
         RUN_MODE.indexOf('CANARY_') !== 0 ||
         RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
+        RUN_MODE === 'CANARY_TASK_FIRST_18661' ||
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
@@ -2631,6 +2659,7 @@ async function main() {
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'CANARY_STEP7' ||
       RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
+        RUN_MODE === 'CANARY_TASK_FIRST_18661' ||
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
@@ -2687,7 +2716,7 @@ async function main() {
                       ? 'titleCanary'
                     : RUN_MODE.indexOf('PREVIEW_') === 0
                       ? 'step7CanaryPreview'
-                    : RUN_MODE === 'CANARY_TASK_FIRST_19083'
+                    : (RUN_MODE === 'CANARY_TASK_FIRST_19083' || RUN_MODE === 'CANARY_TASK_FIRST_18661')
                       ? 'taskFirstSingleCanary'
                     : RUN_MODE === 'CANARY_HEAD_ASSIGNMENT'
                       ? 'step7AssignmentCanary'
@@ -2791,6 +2820,7 @@ async function main() {
             ? Number(RELEASE_MANIFEST.customerId || 0)
             : 0,
         taskId:
+          (RUN_MODE === 'CANARY_TASK_FIRST_19083' || RUN_MODE === 'CANARY_TASK_FIRST_18661') ? PROBE_TASK_ID :
           (
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'CANARY_STEP7' ||
