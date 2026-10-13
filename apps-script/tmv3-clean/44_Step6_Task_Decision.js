@@ -446,7 +446,10 @@ function tmv3_step6Verify_(records, step5Records) {
             tmv3_step6TaskTouchesEventDay_(record, task)
           );
         }) &&
-      s6 !== 'FULFILLED_NO_RECREATE'
+      // REVIEW/BLOCKED are safe holds, including Striven-owned Service
+      // creation and conflicting history. Only a create decision violates
+      // same-day completion protection; transition checks reject other drift.
+      (s6 === 'CREATE_TASK' || s6 === 'RECREATE_TASK')
     ) {
       sameDayCompletedRecreateError++;
     }
