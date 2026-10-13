@@ -1,5 +1,5 @@
 {
-  "release": "V3_001_EXACT_TASK19083_TEMPORARY_PERMISSION_CANARY",
+  "release": "V3_001_TASK19083_REPEAT_ZERO_WRITE_ACCEPTANCE",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
@@ -11,6 +11,6 @@
   "vertical": "Service",
   "taskId": 19083,
   "expectedPlan": "",
-  "requestTag": "V3_001_EXACT_TASK19083_TEMPORARY_PERMISSION_CANARY",
+  "requestTag": "V3_001_TASK19083_REPEAT_ZERO_WRITE_ACCEPTANCE",
   "testWriteApiSoftLimit": 1200
 }
