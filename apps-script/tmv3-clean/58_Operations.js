@@ -5610,3 +5610,152 @@ function tmv3_previewPreInspectionMissingDetailEmails() {
   Logger.log(JSON.stringify(result, null, 2));
   return result;
 }
+
+
+/**
+ * V3-001: Independently repair verified relationships on an existing
+ * unscheduled Service/Delivery Task. Never derives schedule or assignments.
+ *
+ * Explicit expected IDs are mandatory: a Task title is evidence to review,
+ * NOT authoritative identity. The existing operation write gates apply.
+ */
+function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
+  const id = Number(taskId);
+  const kind = tmv3_clean_(vertical);
+  expected = expected || {};
+  if (!Number.isSafeInteger(id) || id <= 0 ||
+      (kind !== 'Service' && kind !== 'Delivery')) {
+    throw new Error('Only positive existing Service/Delivery Task IDs are permitted.');
+  }
+  tmv3_assertOperationWrite_('manual'); // Global V3 SHADOW mode always denies.
+
+  const customerId = tmv3_clean_(expected.customerId);
+  const orderId = tmv3_clean_(expected.orderId);
+  const locationId = tmv3_clean_(expected.locationId);
+  const contactId = tmv3_clean_(expected.contactId);
+  const validId = function(v) { return /^[1-9]\d*$/.test(v); };
+  if (!validId(customerId) ||
+      [orderId, locationId, contactId].some(function(v) {
+        return Boolean(v) && !validId(v);
+      }) || !(orderId || locationId || contactId)) {
+    throw new Error('Verified Customer ID and at least one valid relationship ID are required.');
+  }
+
+  const source = tmv3_rows_(TMV3.SHEETS.TASKS).filter(function(row) {
+    return Number(row['Task ID']) === id;
+  });
+  if (source.length !== 1 ||
+      (kind === 'Service' && tmv3_norm_(source[0]['Task Type']).indexOf('service') < 0) ||
+      (kind === 'Delivery' && tmv3_norm_(source[0]['Task Type']).indexOf('deliver') < 0)) {
+    throw new Error('Source Tasks does not show exactly one correct-vertical Task.');
+  }
+
+  const beforeRaw = tmv3_rawTaskById_(id);
+  const before = tmv3_normalizeV2TaskModel_(beforeRaw);
+  const beforeBy = tmv3_step7RequestedByFromRaw_(beforeRaw);
+  if (!tmv3_taskIsOpen_(before['Status']) ||
+      tmv3_clean_(before['Customer ID']) !== customerId) {
+    throw new Error('Task is not OPEN or Task Customer is unverified/mismatched.');
+  }
+
+  const fields = [
+    {label:'ORDER', id:orderId, actual:tmv3_clean_(before['Order ID'])},
+    {label:'LOCATION', id:locationId, actual:tmv3_clean_(before['Location ID'])},
+    {label:'REQUESTED_BY', id:contactId, actual:tmv3_clean_(beforeBy.id)}
+  ];
+  const review = [];
+  const changes = [];
+  fields.forEach(function(field) {
+    if (!field.id) return; // Not resolved: independent fields may proceed.
+    if (field.actual && field.actual !== field.id) {
+      review.push(field.label + '_CONFLICT');
+      return;
+    }
+    if (field.label === 'REQUESTED_BY' && field.actual &&
+        tmv3_norm_(beforeBy.type) !== 'contact') {
+      review.push('REQUESTED_BY_TYPE_CONFLICT');
+      return;
+    }
+    try {
+      if (field.label === 'ORDER') {
+        tmv3_step7FreshOrderOwnership_({
+          vertical:kind, expectedOrderId:field.id,expectedCustomerId:customerId
+        });
+      } else if (field.label === 'LOCATION') {
+        tmv3_step7FreshLocationOwnership_({
+          expectedLocationId:field.id,expectedCustomerId:customerId
+        });
+      } else {
+        const c = tmv3_getContactById_(field.id,customerId);
+        if (!c || c.__ownershipVerified !== true) {
+          throw new Error('Contact ownership unverified');
+        }
+      }
+      if (!field.actual) changes.push(field);
+    } catch (err) {
+      review.push(field.label + '_OWNERSHIP_NOT_VERIFIED');
+    }
+  });
+  if (!changes.length) {
+    const complete = !review.length &&
+      [orderId,locationId,contactId].every(Boolean);
+    const result = {
+      status:complete ? 'NO_CHANGE_VERIFIED' : 'REVIEW_NO_SAFE_PATCH',
+      taskId:id,vertical:kind,writes:0,review:review
+    };
+    tmv3_audit_(kind,'',String(id),'TASK_FIRST_RELATIONSHIP_VERIFY',
+      complete ? 'PASS' : 'REVIEW',JSON.stringify(result));
+    return result;
+  }
+
+  const payload = {Id:id};
+  changes.forEach(function(field) {
+    if (field.label === 'ORDER') payload.SalesOrder = {Id:Number(field.id)};
+    if (field.label === 'LOCATION') payload.Location = {Id:Number(field.id)};
+    if (field.label === 'REQUESTED_BY') {
+      payload.RequestedBy = {Id:Number(field.id),Type:'contact'};
+    }
+  });
+
+  // Guard against concurrent task changes; no blind overwrite or POST.
+  const nowRaw = tmv3_rawTaskById_(id);
+  const now = tmv3_normalizeV2TaskModel_(nowRaw);
+  const nowBy = tmv3_step7RequestedByFromRaw_(nowRaw);
+  if (!tmv3_taskIsOpen_(now['Status']) ||
+      tmv3_clean_(now['Customer ID']) !== customerId ||
+      tmv3_clean_(now['Order ID']) !== tmv3_clean_(before['Order ID']) ||
+      tmv3_clean_(now['Location ID']) !== tmv3_clean_(before['Location ID']) ||
+      tmv3_clean_(nowBy.id) !== tmv3_clean_(beforeBy.id) ||
+      tmv3_norm_(nowBy.type) !== tmv3_norm_(beforeBy.type)) {
+    throw new Error('Task changed after ownership verification. No mutation.');
+  }
+
+  tmv3_operationPatchTask_(id,payload,'manual');
+  const afterRaw = tmv3_rawTaskById_(id);
+  const after = tmv3_normalizeV2TaskModel_(afterRaw);
+  const afterBy = tmv3_step7RequestedByFromRaw_(afterRaw);
+  const verified = changes.every(function(field) {
+    if (field.label === 'ORDER') {
+      return tmv3_clean_(after['Order ID']) === field.id;
+    }
+    if (field.label === 'LOCATION') {
+      return tmv3_clean_(after['Location ID']) === field.id;
+    }
+    return tmv3_clean_(afterBy.id) === field.id &&
+      tmv3_norm_(afterBy.type) === 'contact';
+  }) && tmv3_clean_(after['Customer ID']) === customerId;
+  const result = {
+    status:verified ? (review.length ? 'PARTIAL_PATCH_VERIFIED' : 'PATCHED_AND_VERIFIED')
+      : 'READBACK_MISMATCH',
+    taskId:id,vertical:kind,writes:1,
+    patchedFields:changes.map(function(c) {return c.label;}),
+    review:review,readbackVerified:verified
+  };
+  tmv3_audit_(kind,'',String(id),'TASK_FIRST_RELATIONSHIP_PATCH',
+    verified ? (review.length ? 'REVIEW' : 'PASS') : 'REVIEW',
+    JSON.stringify(result));
+  if (!verified) {
+    throw new Error('Task-first PATCH read-back failed; do not blindly retry.');
+  }
+  return result;
+}
