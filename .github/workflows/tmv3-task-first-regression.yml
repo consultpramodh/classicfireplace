@@ -9,6 +9,7 @@ on:
       - 'tools/test-tmv3-task-first-relationships.js'
       - 'tools/tmv3-shadow-run.js'
       - 'tools/test-tmv3-shadow-evidence.js'
+      - 'tools/test-tmv3-task-first-temporary-gate.js'
       - 'tools/test-tmv3-task-first-canary-scope.js'
       - 'tools/test-tmv3-task-first-production-lane.js'
       - '.github/workflows/tmv3-task-first-regression.yml'
@@ -18,6 +19,7 @@ on:
       - 'tools/test-tmv3-task-first-relationships.js'
       - 'tools/tmv3-shadow-run.js'
       - 'tools/test-tmv3-shadow-evidence.js'
+      - 'tools/test-tmv3-task-first-temporary-gate.js'
 
 permissions:
   contents: read
@@ -39,3 +41,4 @@ jobs:
           node tools/test-tmv3-task-first-canary-scope.js
           node tools/test-tmv3-task-first-production-lane.js
           node tools/test-tmv3-shadow-evidence.js
+          node tools/test-tmv3-task-first-temporary-gate.js
