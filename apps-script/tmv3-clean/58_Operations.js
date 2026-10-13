@@ -52,7 +52,7 @@ function tmv3_operationWritesEnabled_(scope) {
   return false;
 }
 
-function tmv3_assertOperationWrite_(scope) {
+function tmv3_assertOperationWrite_(scope, action) {
   tmv3_assertHardRules_();
 
   if (!tmv3_operationWritesEnabled_(scope)) {
@@ -60,6 +60,11 @@ function tmv3_assertOperationWrite_(scope) {
       'TM V3 ' + String(scope || 'UNKNOWN') +
       ' external write is gated by configuration.'
     );
+  }
+  const normalizedScope = tmv3_norm_(scope);
+  if ((normalizedScope === 'taskfirstproduction' || normalizedScope === 'taskfirstcanary19083') &&
+      action !== 'TASK_RELATIONSHIP_REPAIR' && action !== 'TASK_RELATIONSHIP_PATCH') {
+    throw new Error('RELATIONSHIP_ONLY_SCOPE: Task-first permission cannot authorize this action.');
   }
 }
 
@@ -869,9 +874,25 @@ function tmv3_upsertTaskCacheRow_(task) {
 }
 
 function tmv3_operationPatchTask_(taskId, payload, scope) {
-  tmv3_assertOperationWrite_(scope);
+  tmv3_assertOperationWrite_(scope, 'TASK_RELATIONSHIP_PATCH');
   const id = Number(taskId || 0);
   if (!id) throw new Error('Task ID is required.');
+  const normalizedScope = tmv3_norm_(scope);
+  if (normalizedScope === 'taskfirstproduction' || normalizedScope === 'taskfirstcanary19083') {
+    const allowed = ['Id','SalesOrder','RequestedBy','Location'];
+    if (!Number.isSafeInteger(id) || id <= 0 || Number((payload || {}).Id) !== id ||
+        Object.keys(payload || {}).some(function(key) { return allowed.indexOf(key) < 0; }) ||
+        (normalizedScope === 'taskfirstcanary19083' && id !== Number(TMV3.OPERATIONS.taskFirstCanaryTaskId))) {
+      throw new Error('RELATIONSHIP_ONLY_SCOPE: Exact Task ID and relationship-only payload required.');
+    }
+    if (normalizedScope === 'taskfirstcanary19083' && (
+        Boolean(payload.Location) ||
+        (payload.SalesOrder && Number(payload.SalesOrder.Id) !== Number(TMV3.OPERATIONS.taskFirstCanaryExpectedOrderId)) ||
+        (payload.RequestedBy && (Number(payload.RequestedBy.Id) !== Number(TMV3.OPERATIONS.taskFirstCanaryExpectedContactId) ||
+          payload.RequestedBy.Type !== 'contact')))) {
+      throw new Error('RELATIONSHIP_ONLY_SCOPE: Canary payload differs from the exact approved tuple.');
+    }
+  }
 
   const safe = tmv3_safeTaskPatchPayload_(payload || {}, id);
   if (Object.keys(safe).length <= 1) {
@@ -5649,7 +5670,7 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
     : (permission === 'TASK_FIRST_CANARY' &&
       id === Number(TMV3.OPERATIONS.taskFirstCanaryTaskId)
       ? 'taskfirstcanary19083' : 'manual');
-  tmv3_assertOperationWrite_(scope);
+  tmv3_assertOperationWrite_(scope, 'TASK_RELATIONSHIP_REPAIR');
 
   const customerId = tmv3_clean_(expected.customerId);
   const orderId = tmv3_clean_(expected.orderId);
