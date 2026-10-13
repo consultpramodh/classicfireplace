@@ -5675,11 +5675,6 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
     throw new Error('Requested By type conflict; cannot replace employee.');
   }
 
-  const pending = checks.filter(function(c) { return !c.actual; });
-  if (!pending.length) {
-    return {status:'NO_CHANGE_VERIFIED',taskId:id,vertical:kind,writes:0};
-  }
-
   // Existing V3 ownership verifiers use authoritative Striven report sources,
   // not copied legacy workbook IDs. They fail closed on missing/ambiguous data.
   tmv3_step7FreshOrderOwnership_({
@@ -5691,6 +5686,13 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
   const contact = tmv3_getContactById_(contactId, customerId);
   if (!contact || contact.__ownershipVerified !== true) {
     throw new Error('Requested By ownership not independently verified.');
+  }
+
+  const pending = checks.filter(function(c) { return !c.actual; });
+  if (!pending.length) {
+    tmv3_audit_(kind,'',String(id),'TASK_FIRST_RELATIONSHIP_VERIFY',
+      'PASS','All four relationships independently verified; no write needed.');
+    return {status:'NO_CHANGE_VERIFIED',taskId:id,vertical:kind,writes:0};
   }
 
   const payload = {Id:id};
