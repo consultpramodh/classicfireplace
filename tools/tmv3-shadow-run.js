@@ -1765,6 +1765,30 @@ function doPost(e) {
       });
     }
 
+    if (body.action === 'taskFirstNoChange') {
+      var id = Number(body.taskId || 0);
+      if (id !== 19081) throw new Error('TASK_FIRST_NO_CHANGE_CANARY_ID_MISMATCH');
+      var raw = tmv3_rawTaskById_(id);
+      var task = tmv3_normalizeV2TaskModel_(raw);
+      var by = tmv3_step7RequestedByFromRaw_(raw);
+      var expected = {customer:'62851',order:'27635',location:'58463',contact:'56751'};
+      var checks = {
+        customer:tmv3_clean_(task['Customer ID']) === expected.customer,
+        order:tmv3_clean_(task['Order ID']) === expected.order,
+        location:tmv3_clean_(task['Location ID']) === expected.location,
+        requestedBy:tmv3_clean_(by.id) === expected.contact && tmv3_norm_(by.type) === 'contact',
+        status:tmv3_taskIsOpen_(task['Status']),
+        startBlank:!tmv3_clean_(task['Start']),
+        dueBlank:!tmv3_clean_(task['Due'])
+      };
+      var pass = Object.keys(checks).every(function(key) {return checks[key];});
+      return TMPV3_shadowResponse_({
+        ok:pass, status:pass ? 'NO_CHANGE_VERIFIED' : 'REVIEW_MISMATCH',
+        taskId:id, checks:checks, writesPerformed:false,
+        api:tmv3_runtimeMetrics_()
+      });
+    }
+
     if (body.action === 'taskFirstAudit') {
       var taskId = Number(body.taskId || 0);
       var vertical = String(body.vertical || '');
@@ -2526,6 +2550,7 @@ async function main() {
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
       RUN_MODE === 'INSTALL_MANAGED_TRIGGERS' ||
+      RUN_MODE === 'TASK_FIRST_NO_CHANGE' ||
       RUN_MODE === 'TASK_FIRST_AUDIT' ||
       RUN_MODE === 'TASK_SCHEMA' ||
       RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA' ||
@@ -2609,6 +2634,8 @@ async function main() {
                     ? 'preInspectionStage5DateTest'
                     : RUN_MODE === 'PREINSPECTION_SEARCH_SCHEMA'
                     ? 'preInspectionSearchSchemaProbe'
+                    : RUN_MODE === 'TASK_FIRST_NO_CHANGE'
+                    ? 'taskFirstNoChange'
                     : RUN_MODE === 'TASK_FIRST_AUDIT'
                     ? 'taskFirstAudit'
                     : (RUN_MODE === 'TASK_SCHEMA' || RUN_MODE === 'GOLDCON_TASK_SCHEMA')
@@ -2679,7 +2706,7 @@ async function main() {
             RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
           )
             ? Number(RELEASE_MANIFEST.taskId || 0) :
-          RUN_MODE === 'TASK_FIRST_AUDIT' ? PROBE_TASK_ID :
+          (RUN_MODE === 'TASK_FIRST_AUDIT' || RUN_MODE === 'TASK_FIRST_NO_CHANGE') ? PROBE_TASK_ID :
           RUN_MODE === 'TASK_SCHEMA' ? PROBE_TASK_ID :
           (RUN_MODE === 'CANARY_GOLDCON' || RUN_MODE === 'PREVIEW_GOLDCON') ? 18618 :
           (RUN_MODE === 'CANARY_ROCCO' || RUN_MODE === 'PREVIEW_ROCCO') ? 18678 :
