@@ -10,7 +10,9 @@ const stop=operations.indexOf('function tmv3_selectedContext_()',start);
 const begin=automation.indexOf('function tmv3_taskFirstProductionCycle_()');
 const end=automation.indexOf('function tmv3_scheduledOperations()',begin);
 assert.ok(start>=0&&stop>start&&begin>=0&&end>begin);
-const isolated=operations.slice(start,stop)+'\n'+automation.slice(begin,end);
+const anchors=fs.readFileSync(path.join(__dirname,'../apps-script/tmv3-clean/36_Step3_Business_Anchor.js'),'utf8');
+const anchorFns=anchors.slice(anchors.indexOf('function tmv3_step3AllowedOrderTypes_('),anchors.indexOf('function tmv3_step3BusinessAnchorRecords_('));
+const isolated=anchorFns+'\n'+operations.slice(start,stop)+'\n'+automation.slice(begin,end);
 function run(opts={}) {
   const storage={};
   let getCalls=0,patched=0,audits=[];
@@ -21,13 +23,13 @@ function run(opts={}) {
     taskFirstProductionMaxWritesPerRun:1
   };
   const candidate={
-    'Task ID':19083,'Task Type':'Service: Clean and Service',
+    'Task ID':opts.badCacheId?'bad':19083,'Task Type':opts.delivery?'Fireplace Delivery':'Service: Clean and Service',
     'Status':opts.cacheDone?'Done':'Open',
-    'Order ID':'',
+    'Order ID':opts.cacheOrder||'','Contact ID':opts.cacheContact||'',
     'Name':'Level 2 - SO#585914 - Don Dwyer'
   };
   const raw={customerId:opts.wrongCustomer?999:62860,orderId:opts.liveOrder||'',
-    locationId:58475,requestedById:'',status:'Open'};
+    locationId:58475,requestedById:opts.alreadyCorrect?'56760':'',status:'Open'};
   const ctx={
     TMV3:{MODE:opts.mode||'PRODUCTION_WRITE',OPERATIONS:config,
       SHEETS:{TASKS:'TASKS',ORDERS:'ORDERS'},API_BASE:'https://example.invalid'},
@@ -38,15 +40,18 @@ function run(opts={}) {
     PropertiesService:{getScriptProperties:()=>({
       getProperty:k=>storage[k]||null,setProperty:(k,v)=>{storage[k]=String(v);}
     })},
-    tmv3_rows_:name=>name==='TASKS'?[candidate]:[{'Order Number':'585914','Order ID':'27648'}],
+    tmv3_rows_:name=>name==='TASKS'?[candidate]:[{'Order Number':'585914','Order ID':'27648','Order Type':opts.wrongOrderType?'SALES_ORDER':opts.delivery?'SALES_ORDER|DELIVERY_APPROVED':'WORK_ORDER'}],
     tmv3_rawTaskById_:()=>{getCalls++;return {...raw};},
     tmv3_normalizeV2TaskModel_:r=>({
+      'Task ID':opts.wrongTaskId?9:19083,'Task Type':opts.wrongTaskType?'Install':opts.delivery?'Fireplace Delivery':'Service: Clean and Service',
       'Status':r.status,'Customer ID':r.customerId,'Order ID':r.orderId,
-      'Location ID':r.locationId
+      'Location ID':r.locationId,'Contact ID':r.requestedById
     }),
+    tmv3_upsertTaskCacheRow_:r=>{candidate['Order ID']=String(r['Order ID']||'');candidate['Contact ID']=String(r['Contact ID']||'');},
+    tmv3_unique_:v=>Array.from(new Set(v)),
     tmv3_taskIsOpen_:s=>s==='Open',
     tmv3_step7RequestedByFromRaw_:r=>({id:r.requestedById||'',type:''}),
-    tmv3_fetchJson_:()=>{getCalls++;return {
+    tmv3_fetchJson_:()=>{getCalls++;if(opts.orderReadError)throw Error('read failed');return {
       id:27648,customer:{id:opts.orderWrongOwner?7:62860},
       orderNumber:'585914',contact:opts.noContact?null:{id:56760}
     };},
@@ -56,10 +61,13 @@ function run(opts={}) {
       assert.equal(_id,19083);
       assert.equal(expected.customerId,'62860');
       assert.equal(expected.orderId,'27648');
-      assert.equal(expected.contactId,'56760');
+      assert.equal(expected.contactId,opts.noContact?'':'56760');
       assert.equal(expected.locationId,'');
+      assert.equal(_kind,opts.delivery?'Delivery':'Service');
+      if(opts.alreadyCorrect)return {status:'NO_CHANGE_VERIFIED',writes:0,taskId:19083};
       patched++;
-      return {status:'PATCHED_AND_VERIFIED',writes:1,taskId:19083};
+      if(opts.uncertainWrite)throw Error('PATCH/readback uncertain');
+      return {status:opts.noContact?'PARTIAL_PATCH_VERIFIED':'PATCHED_AND_VERIFIED',writes:1,taskId:19083};
     },
     tmv3_audit_:(...args)=>audits.push(args)
   };
@@ -80,7 +88,18 @@ assert.equal(t.writes(),1);
 t=run({enabled:false});assert.equal(t.run().status,'TASK_FIRST_PRODUCTION_GATED');assert.equal(t.getCalls(),0);
 t=run({mode:'SHADOW_READ_ONLY'});assert.equal(t.run().status,'TASK_FIRST_PRODUCTION_GATED');
 t=run({orderWrongOwner:true});assert.equal(t.run().status,'REVIEW_ORDER_OWNERSHIP');assert.equal(t.writes(),0);
-t=run({noContact:true});assert.equal(t.run().status,'REVIEW_NO_VERIFIED_WORK_ORDER_CONTACT');assert.equal(t.writes(),0);
+t=run({noContact:true});assert.equal(t.run().status,'PARTIAL_PATCH_VERIFIED');assert.equal(t.writes(),1);
 t=run({cacheDone:true});assert.equal(t.run().status,'NO_CACHED_CANDIDATES');assert.equal(t.getCalls(),0);
 t=run({liveOrder:'12345'});assert.equal(t.run().status,'REVIEW_EXISTING_ORDER_CONFLICT');assert.equal(t.writes(),0);
-console.log('V3 task-first production lane PASS: 8 safety and idempotency scenarios.');
+t=run({cacheOrder:'27648',liveOrder:'27648'});assert.equal(t.run().status,'PATCHED_AND_VERIFIED');assert.equal(t.writes(),1);
+t=run({cacheOrder:'27648',cacheContact:'56760'});assert.equal(t.run().status,'NO_CACHED_CANDIDATES');assert.equal(t.getCalls(),0);
+t=run({wrongOrderType:true});assert.equal(t.run().status,'REVIEW');assert.equal(t.getCalls(),0);
+t=run({badCacheId:true});assert.equal(t.run().status,'NO_CACHED_CANDIDATES');assert.equal(t.getCalls(),0);
+for(const opts of [{wrongTaskId:true},{wrongTaskType:true}]) {t=run(opts);assert.equal(t.run().status,'REVIEW_TASK_STATUS_OR_CUSTOMER');assert.equal(t.writes(),0);}
+t=run({uncertainWrite:true});let uncertain=t.run();assert.equal(uncertain.writes,null);assert.equal(uncertain.requiresReadback,true);assert.equal(uncertain.writeOutcome,'UNKNOWN_RECONCILE_BEFORE_RETRY');
+t=run({orderReadError:true});let notAttempted=t.run();assert.equal(notAttempted.writes,0);assert.equal(notAttempted.requiresReadback,false);
+t=run({noContact:true});t.run();assert.equal(t.audits().at(-1)[4],'REVIEW');
+t=run({alreadyCorrect:true,liveOrder:'27648'});assert.equal(t.run().status,'NO_CHANGE_VERIFIED');assert.equal(t.audits().at(-1)[4],'PASS');assert.equal(t.writes(),0);
+t=run({delivery:true});assert.equal(t.run().status,'PATCHED_AND_VERIFIED');
+t=run({delivery:true,wrongOrderType:true});assert.equal(t.run().status,'REVIEW');assert.equal(t.getCalls(),0);
+console.log('V3 task-first production lane PASS: 20 scenarios including Contact-only repair, both verticals, audit labels and uncertain writes.');
