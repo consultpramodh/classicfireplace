@@ -1027,7 +1027,8 @@ function tmv3_taskFirstProductionCycle_() {
         const status = tmv3_norm_(row['Status']);
         return status === 'open' &&
           (type.indexOf('service') !== -1 || type.indexOf('delivery') !== -1) &&
-          !tmv3_clean_(row['Order ID']) &&
+          Number.isSafeInteger(Number(row['Task ID'])) && Number(row['Task ID']) > 0 &&
+          (!tmv3_clean_(row['Order ID']) || !tmv3_clean_(row['Contact ID'])) &&
           /\bSO\s*#\s*\d{4,9}\b/i.test(tmv3_clean_(row['Name']));
       })
       .sort(function(a,b) {
@@ -1050,23 +1051,32 @@ function tmv3_taskFirstProductionCycle_() {
     const marker = title.match(/\bSO\s*#\s*(\d{4,9})\b/i);
     const vertical = tmv3_norm_(source['Task Type']).indexOf('delivery') !== -1
       ? 'Delivery' : 'Service';
-    const match = marker ? (orderMap[marker[1]] || []) : [];
+    const match = marker ? (orderMap[marker[1]] || []).filter(function(order) {
+      return tmv3_step3OrderMatchesVertical_(order, vertical);
+    }) : [];
     if (match.length !== 1) {
       const reason = match.length ? 'AMBIGUOUS_WORK_ORDER' : 'WORK_ORDER_NOT_IN_CACHE';
       tmv3_audit_(vertical,'',String(taskId),'TASK_FIRST_AUTO','REVIEW',reason);
       return {status:'REVIEW',taskId:taskId,reason:reason,writes:0};
     }
 
+    let repairStarted = false;
     try {
       const live = tmv3_rawTaskById_(taskId);
       const normalized = tmv3_normalizeV2TaskModel_(live);
       const liveCustomerId = tmv3_clean_(normalized['Customer ID']);
       const liveOrderId = tmv3_clean_(normalized['Order ID']);
-      const requested = tmv3_step7RequestedByFromRaw_(live);
-      if (!tmv3_taskIsOpen_(normalized['Status']) ||
+      const liveType = tmv3_norm_(normalized['Task Type']);
+      if (tmv3_clean_(normalized['Task ID']) !== String(taskId) ||
+          (vertical === 'Service' && liveType.indexOf('service') < 0) ||
+          (vertical === 'Delivery' && liveType.indexOf('deliver') < 0) ||
+          !tmv3_taskIsOpen_(normalized['Status']) ||
           !/^[1-9]\d*$/.test(liveCustomerId)) {
         return {status:'REVIEW_TASK_STATUS_OR_CUSTOMER',taskId:taskId,writes:0};
       }
+      // Persist the fresh GET locally so report omissions do not cause
+      // repeated per-task reads on already-correct relationships.
+      tmv3_upsertTaskCacheRow_(normalized);
 
       // A live relationship that appeared since cache refresh takes priority.
       if (liveOrderId && liveOrderId !== tmv3_clean_(match[0]['Order ID'])) {
@@ -1087,19 +1097,13 @@ function tmv3_taskFirstProductionCycle_() {
         return {status:'REVIEW_ORDER_OWNERSHIP',taskId:taskId,writes:0};
       }
 
-      const contactId = tmv3_clean_(tmv3_first_(order.contact || {},['id','Id']));
-      // If Work Order has no authoritative Requested By, do not guess.
-      if (!/^[1-9]\d*$/.test(contactId)) {
-        return {status:'REVIEW_NO_VERIFIED_WORK_ORDER_CONTACT',taskId:taskId,writes:0};
-      }
-      // Guard independently against existing mismatched Requested By.
-      if (tmv3_clean_(requested.id) &&
-          (tmv3_clean_(requested.id) !== contactId ||
-           tmv3_norm_(requested.type) !== 'contact')) {
-        return {status:'REVIEW_REQUESTED_BY_CONFLICT',taskId:taskId,writes:0};
-      }
+      const proposedContactId = tmv3_clean_(tmv3_first_(order.contact || {},['id','Id']));
+      const contactId = /^[1-9]\d*$/.test(proposedContactId) ? proposedContactId : '';
+      // Missing/conflicting Contact remains REVIEW in the guarded writer;
+      // it must not prevent an independently safe Order relationship repair.
 
       // Keep an existing location; do not invent or update location fields.
+      repairStarted = true;
       const result = tmv3_repairExistingTaskRelationships(
         taskId,vertical,
         {customerId:liveCustomerId,orderId:String(id),
@@ -1107,12 +1111,18 @@ function tmv3_taskFirstProductionCycle_() {
         'TASK_FIRST_PRODUCTION'
       );
       tmv3_audit_(vertical,'',String(taskId),'TASK_FIRST_AUTO',
-        result.writes ? 'PASS' : 'REVIEW',JSON.stringify(result));
+        (result.status === 'PATCHED_AND_VERIFIED' || result.status === 'NO_CHANGE_VERIFIED')
+          ? 'PASS' : 'REVIEW',JSON.stringify(result));
       return result;
     } catch(err) {
       const message = String(err && err.message || err);
       tmv3_audit_(vertical,'',String(taskId),'TASK_FIRST_AUTO','ATTENTION',message);
-      return {status:'ATTENTION',taskId:taskId,error:message,writes:0};
+      return {
+        status:'ATTENTION',taskId:taskId,error:message,
+        writes:repairStarted ? null : 0,
+        writeOutcome:repairStarted ? 'UNKNOWN_RECONCILE_BEFORE_RETRY' : 'NOT_ATTEMPTED',
+        requiresReadback:repairStarted
+      };
     }
   } finally {
     lock.releaseLock();
