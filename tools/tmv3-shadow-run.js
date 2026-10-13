@@ -2422,7 +2422,6 @@ async function main() {
       (
         RUN_MODE.indexOf('CANARY_') !== 0 ||
         RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
-      RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
@@ -2608,6 +2607,7 @@ async function main() {
       RUN_MODE === 'CANARY_GOLDCON' ||
       RUN_MODE === 'CANARY_ROCCO' ||
       RUN_MODE === 'CANARY_STEP7' ||
+      RUN_MODE === 'CANARY_TASK_FIRST_19083' ||
       RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
       RUN_MODE === 'CANARY_EVENT_WRITE' ||
       RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
