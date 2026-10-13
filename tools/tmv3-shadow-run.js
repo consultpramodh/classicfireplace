@@ -1782,6 +1782,10 @@ function doPost(e) {
         dueBlank:!tmv3_clean_(task['Due'])
       };
       var pass = Object.keys(checks).every(function(key) {return checks[key];});
+      tmv3_audit_('Service','',String(id),'V3_001_NO_CHANGE_ACCEPTANCE',
+        pass ? 'PASS' : 'REVIEW',
+        JSON.stringify({status:pass ? 'NO_CHANGE_VERIFIED' : 'REVIEW_MISMATCH',
+          checks:checks,writesPerformed:false}));
       return TMPV3_shadowResponse_({
         ok:pass, status:pass ? 'NO_CHANGE_VERIFIED' : 'REVIEW_MISMATCH',
         taskId:id, checks:checks, writesPerformed:false,
@@ -1814,6 +1818,16 @@ function doPost(e) {
           fieldValues[key] = rawTask[key];
         }
       });
+      if (probeTaskId === 19083) {
+        var norm = tmv3_normalizeV2TaskModel_(rawTask);
+        var req = tmv3_step7RequestedByFromRaw_(rawTask);
+        tmv3_audit_('Service','',String(probeTaskId),'V3_001_CANDIDATE_FRESH_GET',
+          'PASS',JSON.stringify({taskId:probeTaskId,
+            status:norm['Status'],customerId:norm['Customer ID'],
+            orderId:norm['Order ID'],locationId:norm['Location ID'],
+            requestedById:req.id,requestedByType:req.type,
+            writesPerformed:false}));
+      }
       return TMPV3_shadowResponse_({
         ok:true,
         status:'TASK_SCHEMA_PROBE_COMPLETE',
