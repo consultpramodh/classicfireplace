@@ -24,6 +24,15 @@ function tmv3_operationWritesEnabled_(scope) {
   // elevate SHADOW_READ_ONLY into a write-capable mode.
   if (!externalWriteMode) return false;
 
+  // The dedicated production permission cannot unlock legacy/manual/calendar writers.
+  if (mode === 'taskfirstproduction') {
+    return TMV3.MODE === 'PRODUCTION_WRITE' &&
+      policy.taskFirstProductionEnabled === true &&
+      policy.manualWritesEnabled === false &&
+      policy.automationWritesEnabled === false &&
+      Number(policy.taskFirstProductionMaxWritesPerRun) === 1;
+  }
+
   if (mode === 'taskfirstcanary19083') {
     return TMV3.MODE === 'CANARY_WRITE' &&
       policy.taskFirstCanaryEnabled === true &&
@@ -5635,9 +5644,11 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
       (kind !== 'Service' && kind !== 'Delivery')) {
     throw new Error('Only positive existing Service/Delivery Task IDs are permitted.');
   }
-  const scope = permission === 'TASK_FIRST_CANARY' &&
-    id === Number(TMV3.OPERATIONS.taskFirstCanaryTaskId)
-      ? 'taskfirstcanary19083' : 'manual';
+  const scope = permission === 'TASK_FIRST_PRODUCTION'
+    ? 'taskfirstproduction'
+    : (permission === 'TASK_FIRST_CANARY' &&
+      id === Number(TMV3.OPERATIONS.taskFirstCanaryTaskId)
+      ? 'taskfirstcanary19083' : 'manual');
   tmv3_assertOperationWrite_(scope);
 
   const customerId = tmv3_clean_(expected.customerId);
@@ -5716,7 +5727,10 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
   });
   if (!changes.length) {
     const complete = !review.length &&
-      [orderId,locationId,contactId].every(Boolean);
+      Boolean(orderId) && Boolean(contactId) &&
+      Boolean(tmv3_clean_(before['Location ID'])) &&
+      fields.filter(function(field) { return Boolean(field.id); })
+        .every(function(field) { return field.actual === field.id; });
     const result = {
       status:complete ? 'NO_CHANGE_VERIFIED' : 'REVIEW_NO_SAFE_PATCH',
       taskId:id,vertical:kind,writes:0,review:review
