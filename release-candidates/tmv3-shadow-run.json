@@ -1,16 +1,14 @@
 {
-  "release": "V3_P0_DONE_DELIVERY18494_FRESH_GET",
+  "release": "V3_3_11_77_CACHED_STAGE6_ACCEPTANCE",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "SHADOW_READ_ONLY",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEMA",
+  "runMode": "STEP6",
   "batchOffset": 0,
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "vertical": "Delivery",
-  "taskId": 18494,
   "expectedPlan": "",
-  "requestTag": "V3_P0_DONE_DELIVERY18494_FRESH_GET",
+  "requestTag": "V3_3_11_77_CACHED_STAGE6_ACCEPTANCE",
   "testWriteApiSoftLimit": 1200
 }
