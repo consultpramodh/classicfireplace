@@ -24,6 +24,14 @@ function tmv3_operationWritesEnabled_(scope) {
   // elevate SHADOW_READ_ONLY into a write-capable mode.
   if (!externalWriteMode) return false;
 
+  if (mode === 'taskfirstcanary:19083') {
+    return TMV3.MODE === 'CANARY_WRITE' &&
+      policy.taskFirstCanaryEnabled === true &&
+      Number(policy.taskFirstCanaryTaskId) === 19083 &&
+      policy.manualWritesEnabled === false &&
+      policy.automationWritesEnabled === false;
+  }
+
   if (mode === 'manual') {
     return policy.manualWritesEnabled === true;
   }
@@ -5619,7 +5627,7 @@ function tmv3_previewPreInspectionMissingDetailEmails() {
  * Explicit expected IDs are mandatory: a Task title is evidence to review,
  * NOT authoritative identity. The existing operation write gates apply.
  */
-function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
+function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permission) {
   const id = Number(taskId);
   const kind = tmv3_clean_(vertical);
   expected = expected || {};
@@ -5627,12 +5635,22 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
       (kind !== 'Service' && kind !== 'Delivery')) {
     throw new Error('Only positive existing Service/Delivery Task IDs are permitted.');
   }
-  tmv3_assertOperationWrite_('manual'); // Global V3 SHADOW mode always denies.
+  const scope = permission === 'TASK_FIRST_CANARY' &&
+    id === Number(TMV3.OPERATIONS.taskFirstCanaryTaskId)
+      ? 'taskfirstcanary:19083' : 'manual';
+  tmv3_assertOperationWrite_(scope);
 
   const customerId = tmv3_clean_(expected.customerId);
   const orderId = tmv3_clean_(expected.orderId);
   const locationId = tmv3_clean_(expected.locationId);
   const contactId = tmv3_clean_(expected.contactId);
+  if (scope === 'taskfirstcanary:19083' && (
+    customerId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedCustomerId) ||
+    orderId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedOrderId) ||
+    contactId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedContactId) ||
+    locationId
+  )) throw new Error('Canary relationship IDs are not the approved exact tuple.');
+
   const validId = function(v) { return /^[1-9]\d*$/.test(v); };
   if (!validId(customerId) ||
       [orderId, locationId, contactId].some(function(v) {
@@ -5730,7 +5748,7 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected) {
     throw new Error('Task changed after ownership verification. No mutation.');
   }
 
-  tmv3_operationPatchTask_(id,payload,'manual');
+  tmv3_operationPatchTask_(id,payload,scope);
   const afterRaw = tmv3_rawTaskById_(id);
   const after = tmv3_normalizeV2TaskModel_(afterRaw);
   const afterBy = tmv3_step7RequestedByFromRaw_(afterRaw);
