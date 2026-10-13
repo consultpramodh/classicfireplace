@@ -24,7 +24,7 @@ function tmv3_operationWritesEnabled_(scope) {
   // elevate SHADOW_READ_ONLY into a write-capable mode.
   if (!externalWriteMode) return false;
 
-  if (mode === 'taskfirstcanary:19083') {
+  if (mode === 'taskfirstcanary19083') {
     return TMV3.MODE === 'CANARY_WRITE' &&
       policy.taskFirstCanaryEnabled === true &&
       Number(policy.taskFirstCanaryTaskId) === 19083 &&
@@ -5637,14 +5637,14 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
   }
   const scope = permission === 'TASK_FIRST_CANARY' &&
     id === Number(TMV3.OPERATIONS.taskFirstCanaryTaskId)
-      ? 'taskfirstcanary:19083' : 'manual';
+      ? 'taskfirstcanary19083' : 'manual';
   tmv3_assertOperationWrite_(scope);
 
   const customerId = tmv3_clean_(expected.customerId);
   const orderId = tmv3_clean_(expected.orderId);
   const locationId = tmv3_clean_(expected.locationId);
   const contactId = tmv3_clean_(expected.contactId);
-  if (scope === 'taskfirstcanary:19083' && (
+  if (scope === 'taskfirstcanary19083' && (
     customerId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedCustomerId) ||
     orderId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedOrderId) ||
     contactId !== String(TMV3.OPERATIONS.taskFirstCanaryExpectedContactId) ||
