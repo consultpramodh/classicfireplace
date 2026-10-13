@@ -1527,7 +1527,7 @@ function tmv3_titleNormalizationRegression() {
       customerId:'35659',
       customer:'John Smith',
       taskId:'18845',
-      task:'18845'
+      task:'John Smith - 123 Main St, Toronto - (416) 555-1212'
     }]
   );
   check(
@@ -1539,6 +1539,17 @@ function tmv3_titleNormalizationRegression() {
         'Task #18845 – John Smith - 123 Main St, Toronto - (416) 555-1212',
     JSON.stringify(preLinkPlan.links)
   );
+  let numericTaskLabelRejected = false;
+  try {
+    tmv3_buildCalendarLinkPlan_(Object.assign({}, pre, {
+      title:'62400 - John Smith - (416) 555-1212',
+      customerNumber:'62400',calendarCustomerName:'John Smith'
+    }), [{customerId:'35659',customer:'John Smith',taskId:'18845',task:'18845'}]);
+  } catch (errNumericTaskLabel) {
+    numericTaskLabelRejected = String(errNumericTaskLabel.message || errNumericTaskLabel)
+      .indexOf('actual verified Striven Task Name') !== -1;
+  }
+  check('PREINSPECTION_NUMERIC_ONLY_TASK_LABEL_REJECTED',numericTaskLabelRejected);
 
   const preExecutionLinkBundle = {
     eventRecord:{
