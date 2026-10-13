@@ -1,5 +1,5 @@
 {
-  "release": "PREINSPECTION_20261013_WEBAPP_STAGE5_HISTORY_READ_ONLY",
+  "release": "PREINSPECTION_20261013_WEBAPP_STAGE5_DATE_FIXED_R2",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
@@ -8,7 +8,7 @@
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "PREINSPECTION_OCT13_STAGE5_WEBAPP_READONLY",
+  "requestTag": "PREINSPECTION_OCT13_STAGE5_WEBAPP_READONLY_DATEFIX",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
   "eventId": "3qmndnd8flhuogrmq88su19l0i@google.com",
