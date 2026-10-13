@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: task-mapping-v3-clean-bootstrap
@@ -48,6 +49,29 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-shadow-run.js
+
+      - name: Publish V3-001 acceptance outcome
+        if: always() && env.TMV3_SHADOW_RUN_MODE == 'TASK_FIRST_NO_CHANGE'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 - <<'PY' > /tmp/v3-001-result.md
+          import json, pathlib, os
+          path=pathlib.Path("autopatch-output-v3-shadow/evidence.json")
+          print("V3-001 Task 19081 no-change acceptance, run #"+os.environ.get("GITHUB_RUN_ID","?"))
+          if not path.exists():
+              print("RESULT: NO_EVIDENCE — workflow failed before verified result")
+          else:
+              result=json.loads(path.read_text())
+              step=result.get("step1") or {}
+              raw=step.get("result") if isinstance(step,dict) else {}
+              if not isinstance(raw,dict): raw={}
+              print("RESULT:", raw.get("status",step.get("status","UNKNOWN")) if isinstance(step,dict) else "UNKNOWN")
+              print("EXPECTED: NO_CHANGE_VERIFIED")
+              print("Full evidence retained in the workflow artifact; no task mutation authorized.")
+          PY
+          gh issue comment 114 --repo consultpramodh/classicfireplace --body-file /tmp/v3-001-result.md
 
       - name: Preserve shadow evidence
         if: always()
