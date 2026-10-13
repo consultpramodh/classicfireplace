@@ -2956,7 +2956,7 @@ async function main() {
             RUN_MODE === 'CANARY_EVENT_WRITE_FRESH' ||
             RUN_MODE === 'CANARY_EVENT_LINKS_ONLY'
           )
-            ? String(RELEASE_MANIFEST.expectedPlan || 'NO_CHANGE')
+            ? String(RELEASE_MANIFEST.expectedPlan || (RUN_MODE === 'PREVIEW_STEP7' ? '' : 'NO_CHANGE'))
             : ''
       });
 
