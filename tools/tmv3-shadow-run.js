@@ -1707,7 +1707,10 @@ function doPost(e) {
     }
 
     if (body.action === 'preInspectionStage5DateTest') {
-      var targetDate = '2026-10-05';
+      var targetDate = String(body.allowedDate || '').trim();
+      if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(targetDate)) {
+        throw new Error('PreInspection Stage-5 web-app test requires YYYY-MM-DD allowedDate.');
+      }
 
       var dayStart = new Date(targetDate + 'T00:00:00-04:00');
       var dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
