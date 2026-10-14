@@ -1,7 +1,7 @@
 // JavaScript: verify notification policy and bounded unattended transaction behavior.
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const values={},sent=[];let releases=0,acquires=0;
-const ctx={console,Logger:{log(){}},Utilities:{formatDate:(d,tz,p)=>p==='yyyy-MM-dd'?'2026-10-14':p==='MMM d, yyyy'?'Oct 16, 2026':'9:00 AM',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>[...crypto.createHash('sha256').update(s).digest()]},
+const ctx={console,Logger:{log(){}},Utilities:{base64EncodeWebSafe:s=>Buffer.from(s).toString('base64url'),formatDate:(d,tz,p)=>p==='yyyy-MM-dd'?'2026-10-14':p==='MMM d, yyyy'?'Oct 16, 2026':'9:00 AM',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>[...crypto.createHash('sha256').update(s).digest()]},
  PropertiesService:{getScriptProperties:()=>({getProperty:k=>values[k]||null,setProperty:(k,v)=>{values[k]=v},deleteProperty:k=>delete values[k]})},
  LockService:{getScriptLock:()=>({tryLock:()=>{acquires++;return true},releaseLock:()=>releases++})},
  MailApp:{getRemainingDailyQuota:()=>100,sendEmail:e=>sent.push(e)}};
@@ -9,7 +9,7 @@ vm.createContext(ctx);
 for(const f of fs.readdirSync('apps-script/tmv3-clean').filter(x=>x.endsWith('.js')).sort())vm.runInContext(f==='00_Config.js' ? fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8').replace(/preInspectionAutomationEnabled: (?:true|false)/,'preInspectionAutomationEnabled: false').replace(/preInspectionMissingDetailEmailsEnabled: (?:true|false)/,'preInspectionMissingDetailEmailsEnabled: false') : fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8'),ctx);
 const run=s=>vm.runInContext(s,ctx);let cases=0;
 const check=(v,msg)=>{assert.ok(v,msg);cases++};
-const record={vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'frank@google.com',title:'Frank Besenthal (647) 542-8251',calendarCustomerName:'Frank Besenthal',rawDescription:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',descriptionClean:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',location:'2348 Wildwood Crescent, Pickering, ON L1X 2N1, Canada',start:new Date('2026-10-16T13:00:00Z'),end:new Date('2026-10-16T14:00:00Z'),creator:'babz@classicfireplace.ca'};
+const record={calendarId:'example@group.calendar.google.com',vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'frank@google.com',title:'Frank Besenthal (647) 542-8251',calendarCustomerName:'Frank Besenthal',rawDescription:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',descriptionClean:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',location:'2348 Wildwood Crescent, Pickering, ON L1X 2N1, Canada',start:new Date('2026-10-16T13:00:00Z'),end:new Date('2026-10-16T14:00:00Z'),creator:'babz@classicfireplace.ca'};
 ctx.record=record;
 check(run('tmv3_preInspectionMissingDetailAssessment_(record).missing.map(x=>x.code).join(",")')==='CUSTOMER_NUMBER,SALES_ORDER','Frank only 2 missing');
 for(let mask=0;mask<8;mask++){
@@ -77,3 +77,9 @@ for (const body of ['Original notes', '<b>Original notes</b><br>Second line', ''
 ctx.variant={...record,identityDescriptionClean:'Notes without SO',rawDescription:ctx.legacy+'\nOriginal notes'};
 check(run('tmv3_preInspectionHasSalesOrderReference_(variant)'),'SO in preserved legacy title counts');
 console.log('PASS: '+cases+' PreInspection notification/intake/automation cases');
+
+ctx.linkEvent='6bnhkq9hrpfr6rub4ka545m8bi@google.com';
+ctx.linkCalendar='c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com';
+assert.equal(run('tmv3_calendarEventUrl_(linkEvent,linkCalendar)'), 'https://www.google.com/calendar/event?eid=NmJuaGtxOWhycGZyNnJ1YjRrYTU0NW04YmkgY18zMDg4YTM5ODlmM2ViODA5OTU3ZWQ1YzQwMTM3YTcxMTFhMGFjOTdmNjhjMjliNDBjMTQ0MDI4Y2IxNDMyMGRjQGc');
+assert.equal(run('tmv3_calendarEventUrl_(linkEvent, "")'), '');
+console.log('PASS: appointment URL matches actual Google Calendar URL; missing calendar fails closed');
