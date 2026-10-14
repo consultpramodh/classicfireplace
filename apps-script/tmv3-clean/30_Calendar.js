@@ -259,6 +259,8 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
     sourceCreators: creator ? [creator] : [],
     sourceGuests: guests ? [guests] : [],
     duplicateSourceCount: 1,
+    calendarCreatedAt: tmv3_safeCalendar_(
+      function() { return tmv3_iso_(event.getDateCreated()); }, ''),
     calendarUpdatedAt: tmv3_safeCalendar_(
       function() { return tmv3_iso_(event.getLastUpdated()); },
       ''
