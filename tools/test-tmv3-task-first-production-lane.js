@@ -112,6 +112,7 @@ function hourly(hour,stage) {
   const ctx={Date,Object,Number,TMV3_TIMEZONE:'America/Toronto',
     Utilities:{formatDate:()=>String(hour)},
     tmv3_reconcilePreInspectionSharedGuest_AUTO_:()=>{},
+    tmv3_preInspectionAutomationCycle_:()=>({status:'PREINSPECTION_GATED',writes:0}),
     tmv3_taskFirstProductionCycle_:()=>{cycles++;return {status:'THROTTLED'};},
     tmv3_executionStage_:()=>stage,
     tmv3_calendarStageRefresh_:()=>({status:'MAPPED'}),
@@ -149,3 +150,4 @@ for(const opts of [{badTag:true},{badVersion:true},{mode:'SHADOW_READ_ONLY'},{di
 assert.equal(probe({first:'ATTENTION'}).result.ok,false);
 assert.equal(probe({second:'PATCHED_AND_VERIFIED'}).result.ok,false);
 console.log('Authenticated activation probe PASS: exact release/scope and repeat throttle enforced.');
+
