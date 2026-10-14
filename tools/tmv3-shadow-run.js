@@ -1015,6 +1015,14 @@ function doPost(e) {
       return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_AUTOMATION_VERIFIED',
         result:tmv3_verifyPreInspectionAutomation(String(body.eventId || ''))});
     }
+    if (body.action === 'preInspectionAutomationRun') {
+      if (!String(body.eventId || '') || String(body.vertical || '') !== 'PreInspection') throw new Error('Exact PreInspection event scope required.');
+      var firstCycle=tmv3_preInspectionAutomationCycle_({force:true,eventId:String(body.eventId),reason:'PRODUCTION_ACCEPTANCE'});
+      var repeatCycle=tmv3_preInspectionAutomationCycle_({force:true,eventId:String(body.eventId),reason:'PRODUCTION_ACCEPTANCE_REPEAT'});
+      return TMPV3_shadowResponse_({ok:firstCycle.status==='COMPLETE' && repeatCycle.status==='COMPLETE',status:'PREINSPECTION_PRODUCTION_ACCEPTANCE_COMPLETE',
+        result:{first:firstCycle,repeat:repeatCycle,verification:tmv3_verifyPreInspectionAutomation(String(body.eventId))}});
+    }
+
     if (body.action === 'preInspectionAutomationCanary') {
       if (!String(body.eventId || '') || String(body.vertical || '') !== 'PreInspection') {
         throw new Error('PreInspection canary requires exact event scope.');
@@ -2821,6 +2829,7 @@ async function main() {
       RUN_MODE === 'CANARY_EVENT_LINKS_ONLY' ||
       RUN_MODE === 'CONFIGURED_AUTO_CANARY' ||
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
+      RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
       RUN_MODE === 'PREINSPECTION_TRIGGER_INSTALL' ||
@@ -2865,6 +2874,8 @@ async function main() {
                     ? 'step6Decision'
                     : RUN_MODE === 'CONFIGURED_AUTO_CANARY'
                     ? 'configuredAutoCanary'
+                    : RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN'
+                    ? 'preInspectionAutomationRun'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
@@ -2949,7 +2960,8 @@ async function main() {
           (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'TASK_FIRST_AUDIT') ? String(RELEASE_MANIFEST.vertical || '') :
           (
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
-            RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
+            RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
@@ -2978,7 +2990,8 @@ async function main() {
           (
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
-            RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
+            RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
@@ -3004,7 +3017,8 @@ async function main() {
           (
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
-            RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
+            RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'PREVIEW_STEP7' ||
@@ -3039,7 +3053,8 @@ async function main() {
             RUN_MODE === 'PREVIEW_TITLE' ||
             RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
-            RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
+            RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
             RUN_MODE === 'CANARY_HEAD_ASSIGNMENT' ||
@@ -3098,7 +3113,9 @@ async function main() {
                         ? 'V3_STEP6_TASK_DECISION_VERIFIED'
                         : RUN_MODE === 'CONFIGURED_AUTO_CANARY'
                           ? 'V3_CONFIGURED_AUTO_CANARY_VERIFIED'
-                        : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
+                        : RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN'
+                    ? 'preInspectionAutomationRun'
+                    : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
                     ? 'preInspectionAutomationCanary'
@@ -3185,7 +3202,9 @@ async function main() {
                       ? 'V3_STEP6_TASK_DECISION_VERIFIED'
                       : RUN_MODE === 'CONFIGURED_AUTO_CANARY'
                         ? 'V3_CONFIGURED_AUTO_CANARY_VERIFIED'
-                      : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
+                      : RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN'
+                    ? 'preInspectionAutomationRun'
+                    : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
                     ? 'preInspectionAutomationCanary'
