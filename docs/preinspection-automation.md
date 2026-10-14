@@ -1,6 +1,6 @@
 # PreInspection automation
 
-Release: 3.11.83-preinspection-bounded-production-r1.
+Release: 3.11.88-preinspection-business-day-notifications-r1.
 
 ## Intake and identity
 
@@ -16,26 +16,30 @@ Use the existing shared lifecycle gate: one open task is reused, multiple open t
 
 Calendar title: `Customer Number - Customer Name - Phone Number`.
 Task name: `Customer Name - Street, City - Phone`.
-Preserve the original title and sales-rep wording in the calendar description. Use one blank line before `-----Striven Links-----`, with clickable named Sales Orders and Task links. Task labels use the verified actual Striven task name. Verify both calendar copies.
+Preserve the original title and sales-rep wording in the calendar description. Use one blank line between the legacy title and original notes, and one blank line before `-----Striven Links-----`, with clickable named Sales Orders and Task links. Task labels use the verified actual Striven task name. Verify both calendar copies.
 
 ## Dynamic missing-details email
 
-Check Customer Number, Sales Order Number and Location from event contents. Recognize labelled SO references or a standalone six-digit SO number; ignore phones and managed URLs. Show only missing fields in the attention list and correction table. A complete location is appointment context only. Reassess after automated matching/reconciliation. Missing SO notifies but does not block task creation.
+Check Customer Number, Sales Order Number and Location from current event contents. Show only fields still missing in the attention list and correction table. Complete location is context only. A missing SO does not block task creation.
 
-To: actual event creator. CC: Jay and Thang. No owner fallback when creator is missing or ambiguous. Greeting uses the recipient's name. Original charcoal/red/green layout; missing text red. Automated-email notice is at the top, before the greeting.
+First notification is eligible two Monday–Friday business days after original event creation, at the same Toronto wall-clock time. If the appointment is in the same Monday–Sunday calendar week as creation, skip that grace period. Send at the next scheduled check; no weekend emails. Unknown creation timestamps are held. Ontario holidays are not excluded.
 
-Send once per event UID. Persist SENDING before dispatch; uncertain delivery is held rather than blindly retried. Calendar correction re-enters processing. Technical failures alert Pramodh separately, deduplicated by event/error/day.
+Follow-ups are eligible at the first business-day scheduled check at least 24 hours after the previous successful email, at most once per Toronto day. Label subject and heading FOLLOW-UP #1, #2, etc. Stop when details are corrected, the appointment is cancelled or its start time has passed. Re-evaluate current missing fields before dispatch.
+
+To actual event creator; CC Jay and Thang. No owner fallback for unknown/ambiguous creators. Keep the approved charcoal/red styling, red missing text and italic automated-email notice above the greeting. Identify title, date/time and address before the attention list; subject identifies customer, date/time and missing fields. Use the calendar-specific encoded Google Calendar event URL.
+
+Persist timestamp and successful-send count under the existing event notification key. Write SENDING before MailApp and SENT after success. Uncertain sends are held without retries. Legacy SENT markers have no timestamps: migration records the current time and count 1, deferring the next reminder at least 24 hours. Technical failures alert Pramodh separately.
 
 ## Triggers, recovery and limits
 
-Calendar-update triggers watch CF Preinspects and Stephen. A dedicated five-minute clock trigger provides fallback. The existing scheduled and hourly handlers also enter the lane. A script lock prevents concurrent transactions. Inspect at most three appointments and attempt one event mutation transaction per run. Rotate the cursor to prevent starvation. Skip unchanged verified events for one hour; calendar edits invalidate the fingerprint. Keep unresolved events in persistent recovery even after their appointment date passes.
+Daily PreInspection triggers run approximately at 8 AM, 1 PM and 5 PM America/Toronto. The five-minute trigger is removed. Calendar-update, generic scheduled and hourly paths cannot run the PreInspection lane. Manual kicks remain available. Each scheduled slot checks notification deadlines for all authoritative events independently of the task-write cursor. A script lock prevents concurrent transactions. Inspect at most three appointments and attempt one event mutation transaction per run. Rotate the cursor to prevent starvation. Skip unchanged verified events for one hour; calendar edits invalidate the fingerprint. Keep unresolved events in persistent recovery even after their appointment date passes.
 
 PreInspection writes and email delivery have independent production flags. General AUTO and MANUAL writers remain disabled. Other verticals cannot execute under the PreInspection scope. Manual kick: `tmv3_runPreInspectionAutomation`; read-only diagnostics: `tmv3_verifyPreInspectionAutomation`.
 
 ## Verification
 
-185 existing hardening cases and 45 new PreInspection cases pass, along with the deployment's relationship, permission, lifecycle, runner and calendar-layout checks. Live acceptance proves Stephen-to-CF enrollment, creator discovery, identity-conflict hold, approved template delivery to the test recipient and trigger installation. Deployment backs up live source, requires an exact Git baseline match, and re-clones for hash verification; uncertainty triggers rollback.
+185 existing hardening cases and 55 base PreInspection cases plus schedule, layout, appointment-link and 18 notification-timing cases pass, along with the deployment's relationship, permission, lifecycle, runner and calendar-layout checks. Live acceptance proves Stephen-to-CF enrollment, creator discovery, identity-conflict hold, approved template delivery to the test recipient and trigger installation. Deployment backs up live source, requires an exact Git baseline match, and re-clones for hash verification; uncertainty triggers rollback.
 
 This specification covers appointment intake, identity, task reconciliation, calendar writeback and notifications. Task completion note transfer and printing are separate workflows.
 
-Production acceptance: automatic processing completed one existing-task reconciliation and sent three missing-details notifications. The creator-directed notification's To/CC/body were read back from Gmail. Reprocessing its send-once guard returned `ALREADY_SENT` with `sent: 0`. Active configuration and dedicated calendar/clock triggers were verified from the live bound project. Unresolved identity remains held; an uncorroborated address owner is not permission to create a task.
+Production acceptance: automatic processing completed one existing-task reconciliation and sent three missing-details notifications. The creator-directed notification's To/CC/body were read back from Gmail. The original send-once acceptance returned `ALREADY_SENT` with `sent: 0`; this release replaces that policy with timestamped numbered follow-ups. Active configuration and dedicated calendar/clock triggers were verified from the live bound project. Unresolved identity remains held; an uncorroborated address owner is not permission to create a task.
