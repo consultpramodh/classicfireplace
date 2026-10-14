@@ -83,3 +83,18 @@ ctx.linkCalendar='c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb143
 assert.equal(run('tmv3_calendarEventUrl_(linkEvent,linkCalendar)'), 'https://www.google.com/calendar/event?eid=NmJuaGtxOWhycGZyNnJ1YjRrYTU0NW04YmkgY18zMDg4YTM5ODlmM2ViODA5OTU3ZWQ1YzQwMTM3YTcxMTFhMGFjOTdmNjhjMjliNDBjMTQ0MDI4Y2IxNDMyMGRjQGc');
 assert.equal(run('tmv3_calendarEventUrl_(linkEvent, "")'), '');
 console.log('PASS: appointment URL matches actual Google Calendar URL; missing calendar fails closed');
+// JavaScript: verify daily trigger replacement and off-schedule no-work gates.
+ctx.tmv3_operationWritesEnabled_=()=>true;
+assert.equal(run("tmv3_preInspectionAutomationCycle_({reason:'CALENDAR_EVENT_UPDATED'}).status"),'SCHEDULE_ONLY');
+assert.equal(run("tmv3_preInspectionAutomationCycle_({reason:'HOURLY_FALLBACK'}).status"),'SCHEDULE_ONLY');
+assert.equal(run("tmv3_reconcilePreInspectionSharedGuest_AUTO_({reason:'CALENDAR_EVENT_UPDATED'}).status"),'SCHEDULE_ONLY');
+let scheduled=[{handler:'tmv3_preInspectionScheduledCycle'},{handler:'otherVerticalHandler'}];const created=[];
+ctx.ScriptApp={getProjectTriggers:()=>scheduled.map(t=>({...t,getHandlerFunction:()=>t.handler})),deleteTrigger:t=>{scheduled=scheduled.filter(x=>x.handler!==t.handler)},newTrigger:handler=>{const t={handler};const b={timeBased:()=>b,atHour:h=>(t.hour=h,b),nearMinute:m=>(t.minute=m,b),everyDays:d=>(t.days=d,b),inTimezone:z=>(t.timezone=z,b),create:()=>{scheduled.push(t);created.push(t);return t}};return b}};
+ctx.tmv3_listTriggers=()=>scheduled;
+run('tmv3_installPreInspectionAutomationTrigger()');
+assert.deepEqual(created.map(x=>x.hour),[8,13,17]);
+assert.ok(created.every(x=>x.timezone==='America/Toronto' && x.minute===0 && x.days===1));
+assert.ok(scheduled.some(x=>x.handler==='otherVerticalHandler'));
+run('tmv3_installPreInspectionAutomationTrigger()');
+assert.equal(scheduled.length,4);
+console.log('PASS: three daily Toronto slots, old timer removed, rerun dedupe, unrelated triggers preserved, off-schedule routes blocked');
