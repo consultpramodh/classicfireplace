@@ -114,6 +114,8 @@ const TMV3 = Object.freeze({
     canaryApiExtraCalls: 50,
     installRemindersEnabled: true,
     preInspectionMissingDetailEmailsEnabled: false,
+    preInspectionFailureAlertsEnabled: false,
+    preInspectionFailureAlertEmail: 'pramodh@classicfireplace.ca',
     preInspectionAutomationEnabled: false,
     preInspectionAutomationCanaryEventId: '',
     preInspectionAutomationIntervalMinutes: 5,
