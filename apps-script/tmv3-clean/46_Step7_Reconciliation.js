@@ -127,6 +127,39 @@ function tmv3_step7ValidateExecutionContract_(contract) {
   return contract;
 }
 
+function tmv3_step7HydrateLinkedPreInspectionTasks_(records, refs, runtime) {
+  (records || []).forEach(function(record) {
+    const identity = record.step4 || {};
+    const customerId = tmv3_clean_(identity.customer && identity.customer['Customer ID']);
+    const linkedId = tmv3_clean_(record.existingTaskId);
+    if (record.vertical !== 'PreInspection' || identity.disposition !== 'VERIFIED' ||
+        !customerId || !linkedId || refs.taskById[linkedId]) return;
+    if (!/^[1-9]\d*$/.test(linkedId)) {
+      throw new Error('PREINSPECTION_LINKED_TASK_ID_INVALID_NO_CREATE');
+    }
+    // Exact linked ID only, one fresh GET shared with the later Step 7 checks.
+    // Failed/mismatched reads remain blocked; they never authorize CREATE.
+    const fresh = tmv3_step7FreshTask_(linkedId, runtime);
+    if (!fresh.ok || !fresh.task ||
+        tmv3_clean_(fresh.task['Task ID']) !== linkedId ||
+        Number(fresh.task['Task Type ID']) !== 105 ||
+        tmv3_clean_(fresh.task['Customer ID']) !== customerId) {
+      throw new Error('PREINSPECTION_LINKED_TASK_UNVERIFIED_NO_CREATE: ' + linkedId);
+    }
+    const task = fresh.task;
+    refs.taskById[linkedId] = task;
+    refs.tasks.push(task);
+    if (!refs.tasksByCustomer[customerId]) refs.tasksByCustomer[customerId] = [];
+    refs.tasksByCustomer[customerId].push(task);
+    const orderId = tmv3_clean_(task['Order ID']);
+    if (orderId) {
+      if (!refs.tasksByOrder[orderId]) refs.tasksByOrder[orderId] = [];
+      refs.tasksByOrder[orderId].push(task);
+    }
+    tmv3_upsertTaskCacheRow_(task);
+  });
+}
+
 function tmv3_step7FreshPlansForEvent_(vertical, eventId) {
   const wantedVertical = tmv3_clean_(vertical);
   const wantedEventId = tmv3_clean_(eventId);
@@ -139,9 +172,11 @@ function tmv3_step7FreshPlansForEvent_(vertical, eventId) {
   const step2 = tmv3_step2CalendarRecords_([freshEvent]);
   const step3 = tmv3_step3BusinessAnchorRecords_(step2, tmv3_step3AnchorIndex_());
   const step4 = tmv3_step4IdentityRecords_(step3, tmv3_step4IdentityIndex_());
-  const step5 = tmv3_step5TaskRecords_(step4, tmv3_step5TaskIndex_());
-  const step6 = tmv3_step6DecisionRecords_(step5);
   const runtime = { taskById:{}, contactByKey:{}, organizerByEmail:{} };
+  const taskRefs = tmv3_step5TaskIndex_();
+  tmv3_step7HydrateLinkedPreInspectionTasks_(step4, taskRefs, runtime);
+  const step5 = tmv3_step5TaskRecords_(step4, taskRefs);
+  const step6 = tmv3_step6DecisionRecords_(step5);
 
   return tmv3_step7Plans_(step6, runtime);
 }
