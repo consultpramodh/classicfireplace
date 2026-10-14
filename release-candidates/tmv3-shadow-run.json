@@ -1,18 +1,16 @@
 {
-  "release": "PREINSPECTION_OCT13_ESTHER_E2E_FRESH_PREVIEW_20261014",
+  "release": "ESTHER_OCT13_GUARDED_E2E_CREATE_20261014",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "mode": "PRODUCTION_WRITE",
-  "writesEnabled": false,
-  "runMode": "PREVIEW_STEP7",
-  "batchOffset": 0,
-  "batchLimit": 0,
+  "mode": "CANARY_WRITE",
+  "writesEnabled": true,
+  "runMode": "CANARY_EVENT_WRITE_FRESH",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "ESTHER_E2E_FRESH_PREVIEW_20261014",
+  "requestTag": "ESTHER_GUARDED_E2E_CREATE_20261014",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
   "eventId": "2eg4j9ii5pfbif2dtob4gr784c@google.com",
   "taskId": 0,
   "allowedDate": "2026-10-13",
-  "expectedPlan": ""
+  "expectedPlan": "CREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8"
 }
