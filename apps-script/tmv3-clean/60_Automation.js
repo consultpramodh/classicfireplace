@@ -635,6 +635,7 @@ function tmv3_preInspectionGuestSyncDecision_(
 function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
   options = options || {};
   const policy = tmv3_operationPolicy_();
+  if (policy.preInspectionAutomationScheduleHours && options.force !== true) return {status:'SCHEDULE_ONLY',writes:0};
   const cfg = TMV3.VERTICALS.PreInspection;
 
   if (policy.preInspectionGuestSyncEnabled !== true) {
@@ -1397,6 +1398,7 @@ function tmv3_preInspectionSendMissingDetails_(record) {
 function tmv3_preInspectionAutomationCycle_(options) {
   options = options || {};
   if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
+  if (TMV3.OPERATIONS.preInspectionAutomationScheduleHours && options.force !== true) return {status:'SCHEDULE_ONLY',writes:0};
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(options.force === true ? 30000 : 1000)) return {status:'LOCK_BUSY',writes:0};
   const props = PropertiesService.getScriptProperties();
@@ -1529,30 +1531,32 @@ function tmv3_verifyPreInspectionAutomation(eventId) {
 }
 
 function tmv3_preInspectionScheduledCycle() {
-  const result=tmv3_preInspectionAutomationCycle_({reason:'FIVE_MINUTE_FALLBACK'});
+  return {status:'RETIRED_FIVE_MINUTE_SCHEDULE',writes:0};
+}
+function tmv3_preInspectionCheck0800() { return tmv3_runPreInspectionDailySlot_('08:00'); }
+function tmv3_preInspectionCheck1300() { return tmv3_runPreInspectionDailySlot_('13:00'); }
+function tmv3_preInspectionCheck1700() { return tmv3_runPreInspectionDailySlot_('17:00'); }
+function tmv3_runPreInspectionDailySlot_(slot) {
+  const result=tmv3_preInspectionAutomationCycle_({force:true,reason:'DAILY_SLOT_'+slot});
   Logger.log(JSON.stringify(result));return result;
 }
-
 function tmv3_installPreInspectionAutomationTrigger() {
-  const cfg=TMV3.VERTICALS.PreInspection;
-  const ids=[cfg.primaryCalendarId].concat(cfg.secondaryCalendarIds || []);
-  tmv3_assertCalendarTriggerAuthorization_(ids);
-  let triggers=ScriptApp.getProjectTriggers();
-  if (!triggers.some(function(t){return t.getHandlerFunction()==='tmv3_preInspectionScheduledCycle';})) {
-    ScriptApp.newTrigger('tmv3_preInspectionScheduledCycle').timeBased().everyMinutes(5).create();
-  }
-  ids.forEach(function(id){
-    if (!triggers.some(function(t){return t.getHandlerFunction()==='tmv3_calendarEventUpdated' &&
-      tmv3_safeCalendar_(function(){return t.getTriggerSourceId();},'')===id;})) {
-      ScriptApp.newTrigger('tmv3_calendarEventUpdated').forUserCalendar(id).onEventUpdated().create();
-    }
+  const hours=TMV3.OPERATIONS.preInspectionAutomationScheduleHours || [8,13,17];
+  const timezone=TMV3.OPERATIONS.preInspectionAutomationScheduleTimezone || 'America/Toronto';
+  const handlers=['tmv3_preInspectionCheck0800','tmv3_preInspectionCheck1300','tmv3_preInspectionCheck1700'];
+  const retired=['tmv3_preInspectionScheduledCycle'].concat(handlers);
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if (retired.indexOf(t.getHandlerFunction())!==-1) ScriptApp.deleteTrigger(t);
+  });
+  handlers.forEach(function(handler,index){
+    ScriptApp.newTrigger(handler).timeBased().atHour(hours[index]).nearMinute(0).everyDays(1).inTimezone(timezone).create();
   });
   const result=tmv3_listTriggers();
-  if (!result.some(function(t){return t.handler==='tmv3_preInspectionScheduledCycle';}) ||
-      ids.some(function(id){return !result.some(function(t){return t.handler==='tmv3_calendarEventUpdated' && t.sourceId===id;});})) {
+  if (result.some(function(t){return t.handler==='tmv3_preInspectionScheduledCycle';}) ||
+      handlers.some(function(h){return result.filter(function(t){return t.handler===h;}).length!==1;})) {
     throw new Error('PREINSPECTION_TRIGGER_READBACK_FAILED');
   }
-  return {status:'PREINSPECTION_TRIGGERS_VERIFIED',triggers:result};
+  return {status:'PREINSPECTION_TRIGGERS_VERIFIED',hours:hours,timezone:timezone,triggers:result};
 }
 
 function tmv3_preInspectionFreshHistoryBeforeCreate_(record,plan) {
