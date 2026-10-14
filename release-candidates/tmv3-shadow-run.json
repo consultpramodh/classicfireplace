@@ -1,16 +1,16 @@
 {
-  "release": "PREINSPECTION_RECREATE_SOURCE_TASK_REVIEW_20261014",
+  "release": "PREINSPECTION_NEAN_NEW_TASK_END_TO_END_20261014",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
-  "runMode": "TASK_SCHEMA",
+  "runMode": "PREINSPECTION_AUTOMATION_RUN",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "PREINSPECTION_RECREATE_SOURCE_TASK_REVIEW_20261014",
+  "requestTag": "PREINSPECTION_NEAN_NEW_TASK_END_TO_END_20261014",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
   "eventId": "6bnhkq9hrpfr6rub4ka545m8bi@google.com",
-  "taskId": 18835,
+  "taskId": 0,
   "allowedDate": "2026-10-16",
   "probeTaskId": 18835
 }
