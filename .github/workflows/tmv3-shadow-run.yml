@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   issues: write
 
 concurrency:
@@ -49,6 +49,20 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-shadow-run.js
+
+      - name: Commit verified historical version backups
+        if: env.TMV3_SHADOW_RUN_MODE == 'VERSION_BACKUP'
+        shell: bash
+        run: |
+          git config user.name "Classic Fireplace Automation"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backups/task-mapping-v3/2026-10-14-versions
+          if ! git diff --cached --quiet; then
+            git commit -m "Back up all 200 bound Apps Script versions plus current HEAD"
+            git push origin HEAD:task_mapping
+          fi
+          git fetch origin task_mapping
+          git diff --exit-code HEAD origin/task_mapping -- backups/task-mapping-v3/2026-10-14-versions
 
       - name: Publish V3-001 acceptance outcome
         if: always() && env.TMV3_SHADOW_RUN_MODE == 'TASK_FIRST_NO_CHANGE'
