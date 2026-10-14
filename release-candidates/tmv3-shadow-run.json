@@ -1,15 +1,15 @@
 {
-  "release": "PREINSPECTION_DESCRIPTION_SPACING_REPAIR_20261014",
+  "release": "PREINSPECTION_BUSINESS_DAY_NOTIFICATIONS_VERIFY_20261014",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
-  "runMode": "PREINSPECTION_LEGACY_TITLE_REPAIR",
+  "runMode": "PREINSPECTION_AUTOMATION_VERIFY",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "PREINSPECTION_DESCRIPTION_SPACING_REPAIR_20261014",
+  "requestTag": "PREINSPECTION_BUSINESS_DAY_NOTIFICATIONS_VERIFY_20261014",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
-  "eventId": "",
+  "eventId": "13gq9komt6s65r9q3bnavee756@google.com",
   "taskId": 0,
   "allowedDate": "2026-10-16"
 }
