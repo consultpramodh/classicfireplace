@@ -1,16 +1,16 @@
 {
-  "release": "KATHARINE_SCREENSHOT_LAYOUT_CORRECTION_20261014",
+  "release": "NANCY_SCREENSHOT_LAYOUT_CORRECTION_20261014",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
   "runMode": "CANARY_EVENT_WRITE_FRESH",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "KATHARINE_SCREENSHOT_LAYOUT_CORRECTION_20261014",
+  "requestTag": "NANCY_SCREENSHOT_LAYOUT_CORRECTION_20261014",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
-  "eventId": "3qmndnd8flhuogrmq88su19l0i@google.com",
-  "taskId": 19067,
+  "eventId": "4lci7ub1rvekrm76l8kkl7ps9b@google.com",
+  "taskId": 19074,
   "allowedDate": "2026-10-13",
   "expectedPlan": "NO_CHANGE"
 }
