@@ -1496,11 +1496,18 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
       );
     }
 
+    const recordedLegacy = tmv3_titleMigrationStateForEvent_(
+      'PreInspection', contract.eventId, primaryId
+    ).preservedTitle;
     authoritativePreInspectionPlan = tmv3_titleDescriptionPlan_(
       authoritativeCopy.beforeTitle,
       desired,
       authoritativeCopy.beforeDescription,
-      { preserveOldTitle:true }
+      { preserveOldTitle:!recordedLegacy }
+    );
+    const savedLegacy = recordedLegacy || (authoritativeCopy.beforeTitle !== desired ? authoritativeCopy.beforeTitle : '');
+    authoritativePreInspectionPlan.after = tmv3_preInspectionEnsureLegacyTitle_(
+      authoritativePreInspectionPlan.after, savedLegacy
     );
 
     if (authoritativePreInspectionPlan.status === 'BLOCKED') {
@@ -2129,11 +2136,18 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
   const results = [];
   copies.forEach(function(copy) {
     const before = String(copy.event.getDescription() || '');
+    const savedLegacy = eventRecord.vertical === 'PreInspection'
+      ? tmv3_titleMigrationStateForEvent_('PreInspection', plan.eventId,
+          TMV3.VERTICALS.PreInspection.primaryCalendarId).preservedTitle
+      : '';
+    const preservedBefore = eventRecord.vertical === 'PreInspection'
+      ? tmv3_preInspectionEnsureLegacyTitle_(before, savedLegacy)
+      : before;
 
     const linkUpdate =
       eventRecord.vertical === 'PreInspection'
         ? tmv3_preInspectionClickableManagedDescription_(
-            before,
+            preservedBefore,
             plan
           )
         : {
@@ -2145,7 +2159,9 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
             changed:false
           };
 
-    const desired = String(linkUpdate.description || '');
+    const desired = eventRecord.vertical === 'PreInspection'
+      ? tmv3_preInspectionEnsureLegacyTitle_(String(linkUpdate.description || ''), savedLegacy)
+      : String(linkUpdate.description || '');
     if (before !== desired) {
       copy.event.setDescription(desired);
     }
@@ -4468,8 +4484,7 @@ function tmv3_titleNormalizationPreview_(contract) {
           desiredCalendar.value,
           rawDescription,
           {
-            preserveOldTitle:
-              previewRecord.vertical !== 'PreInspection'
+            preserveOldTitle:true
           }
         )
       : {
@@ -5357,7 +5372,7 @@ function tmv3_preInspectionHasSalesOrderReference_(eventRecord) {
 
   const haystack = [
     record.title || '',
-    record.identityDescriptionClean || tmv3_calendarReadableDescription_(
+    tmv3_calendarReadableDescription_(
       tmv3_identityEvidenceDescriptionRaw_(record.rawDescription || record.descriptionClean || '', '')
     )
   ].join(' ');
