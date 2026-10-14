@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const V3_SCRIPT_ID = '1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
 const outDir = path.resolve(process.cwd(), 'autopatch-output-v3-shadow');
@@ -2184,6 +2185,41 @@ async function main() {
     }
   }
   accessToken = await getGoogleAccessToken();
+
+  if (RUN_MODE === 'VERSION_BACKUP') {
+    const inventory=await getVersions();
+    if (inventory.nextPageToken) fail('Version inventory requires pagination; no cleanup authorized.');
+    const versions=inventory.versions || [];
+    const deployments=await getDeployments();
+    const used=new Set((deployments.deployments || []).map(d=>Number(d.deploymentConfig && d.deploymentConfig.versionNumber || 0)));
+    const backupDir=path.resolve(process.cwd(),'backups/task-mapping-v3/2026-10-14-versions');
+    fs.mkdirSync(backupDir,{recursive:true});
+    const entries=[];
+    const save=(label,content,versionNumber)=>{
+      const raw=Buffer.from(JSON.stringify(content));
+      // Never publish hard-coded credentials from historical source.
+      const secrets=(content.files || []).some(f=>/Bearer\s+[A-Za-z0-9_.-]{24,}|(?:api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*['"][A-Za-z0-9_./+-]{20,}['"]/i.test(f.source || ''));
+      if(secrets) fail('Historical source '+label+' contains a possible hard-coded credential; publication stopped. No deletion authorized.');
+      const zipped=zlib.gzipSync(raw,{level:9});
+      const file=label+'.json.gz.b64';
+      fs.writeFileSync(path.join(backupDir,file),zipped.toString('base64')+'\n');
+      const restored=zlib.gunzipSync(Buffer.from(fs.readFileSync(path.join(backupDir,file),'utf8').trim(),'base64'));
+      if(!raw.equals(restored)) fail('Backup round-trip mismatch '+label);
+      entries.push({versionNumber:versionNumber,file:file,sourceSha256:crypto.createHash('sha256').update(raw).digest('hex'),canonicalHash:canonicalHash(content),fileCount:(content.files || []).length,referencedByDeployment:used.has(versionNumber)});
+    };
+    save('head-current',await getContent(),null);
+    for(const version of versions.slice().sort((a,b)=>a.versionNumber-b.versionNumber)) {
+      const content=await api('/projects/'+encodeURIComponent(V3_SCRIPT_ID)+'/content?versionNumber='+Number(version.versionNumber));
+      save('version-'+String(version.versionNumber).padStart(3,'0'),content,Number(version.versionNumber));
+      if(entries.length%25===0) console.log('Verified backup count: '+(entries.length-1));
+    }
+    if(entries.length!==versions.length+1) fail('Version backup count mismatch.');
+    const index={status:'ALL_VERSION_BACKUPS_ROUNDTRIP_VERIFIED',scriptId:V3_SCRIPT_ID,versionCount:versions.length,headIncluded:true,capturedAt:new Date().toISOString(),deployments:deployments.deployments || [],entries:entries,deletionPerformed:false};
+    fs.writeFileSync(path.join(backupDir,'index.json'),JSON.stringify(index,null,2)+'\n');
+    fs.writeFileSync(path.join(outDir,'version-backup-summary.json'),JSON.stringify({status:index.status,versionCount:index.versionCount,headIncluded:true,backupPath:'backups/task-mapping-v3/2026-10-14-versions',deletionPerformed:false},null,2));
+    console.log('ALL_VERSION_BACKUPS_ROUNDTRIP_VERIFIED: '+versions.length+' versions plus HEAD');
+    return;
+  }
 
   if (RUN_MODE === 'VERSION_INVENTORY') {
     const inventory = await getVersions();
