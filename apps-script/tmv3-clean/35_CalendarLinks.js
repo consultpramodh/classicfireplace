@@ -257,42 +257,41 @@ function tmv3_preInspectionHtmlLink_(link) {
     '</a>';
 }
 
+function tmv3_preInspectionAuthoredMarkup_(description) {
+  let text = tmv3_stripV3ManagedBlock_(String(description || ''));
+  text = text.replace(
+    /<!--\s*PREINSPECT_STRIVEN_TASK_LINK_START\s*-->[\s\S]*?<!--\s*PREINSPECT_STRIVEN_TASK_LINK_END\s*-->/gi,
+    ''
+  );
+  const start = tmv3_managedCalendarBlockStart_(text);
+  if (start >= 0) text = text.slice(0, start);
+  // Remove only the empty wrapper/separator belonging to the managed footer.
+  text = text.replace(/(?:<p[^>]*>\s*|<br\s*\/?>\s*|\s)+$/gi, '');
+  if (!/<[a-z][^>]*>/i.test(text)) {
+    // Calendar APIs return the actual authored newlines; do not reinterpret
+    // them as Markdown paragraph breaks or insert hard wraps into sentences.
+    return tmv3_calendarHtmlText_(text);
+  }
+  // A cut inside an HTML paragraph leaves its opening tag. Close it without
+  // rebuilding the authored markup (bold, lists, links and line breaks).
+  const opens = (text.match(/<p(?:\s[^>]*)?>/gi) || []).length;
+  const closes = (text.match(/<\/p>/gi) || []).length;
+  if (opens > closes) text += '</p>'.repeat(opens - closes);
+  return text;
+}
+
 function tmv3_preInspectionClickableManagedDescription_(existingDescription, plan) {
   const before = String(existingDescription || '');
   const links = (plan && plan.links) || [];
-
-  const allClickable = links.every(function(link) {
-    return tmv3_preInspectionClickableLinkPresent_(before, link);
-  });
-
-  if (allClickable) {
-    return {
-      description:before,
-      status:'PRESERVED_EXISTING_CLICKABLE_LINK_BLOCK',
-      changed:false
-    };
-  }
-
-  const authored = tmv3_preInspectionCalendarNotesText_(before, plan);
-  const linkHtml = links.map(tmv3_preInspectionHtmlLink_).join('<br>');
-
-  const managed =
-    '<p>' +
-    tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
-    (linkHtml ? '<br>' + linkHtml : '') +
-    '</p>';
-
-  const description =
-    (authored
-      ? '<p>' +
-        tmv3_calendarHtmlText_(authored) +
-        '</p>'
-      : '') +
-    managed;
-
+  const authored = tmv3_preInspectionAuthoredMarkup_(before);
+  const managed = tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
+    (links.length ? '<br>' + links.map(tmv3_preInspectionHtmlLink_).join('<br>') : '');
+  const description = authored + (authored ? '<br>' : '') + managed;
   return {
     description:description,
-    status:'RESTORED_CLICKABLE_HYPERLINK_BLOCK',
+    status:description === before
+      ? 'PRESERVED_EXISTING_CLICKABLE_LINK_BLOCK'
+      : 'RESTORED_CLICKABLE_HYPERLINK_BLOCK',
     changed:description !== before
   };
 }
@@ -346,7 +345,7 @@ function tmv3_normalizePreInspectionAuthoredWraps_(value) {
     .replace(/<\s*\/b\s*>/gi, '**')
     .replace(/<[^>]+>/g, '')
     .replace(/\r\n?/g, '\n')
-    .replace(/ {2,}\n/g, '\n\n')
+    .replace(/ {2,}\n/g, '\n')
     .trim();
 
   const marker = '__TMV3_PARAGRAPH_BREAK__';
