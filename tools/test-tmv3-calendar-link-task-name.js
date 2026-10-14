@@ -32,3 +32,24 @@ assert(!repaired.description.includes('duplicate'));
 assert.equal((repaired.description.match(/-----Striven Links-----/g)||[]).length,1);
 console.log('PASS: original HTML/plain layout, inline styling/lists, clickable links, duplicate removal, idempotence; no inserted paragraph gaps.');
 
+
+{
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+const ctx={tmv3_clean_:v=>String(v??'').trim()};vm.createContext(ctx);vm.runInContext(fs.readFileSync('apps-script/tmv3-clean/46_Step7_Reconciliation.js','utf8'),ctx);
+const task={'Task ID':19067,'Task Type ID':105,'Customer ID':62838,'Order ID':''};
+const record={vertical:'PreInspection',existingTaskId:'19067',step4:{disposition:'VERIFIED',customer:{'Customer ID':62838}}};
+function refs(){return {tasks:[],taskById:{},tasksByCustomer:{},tasksByOrder:{}};}
+let reads=0,cacheWrites=0;ctx.tmv3_step7FreshTask_=()=>{reads++;return {ok:true,task};};ctx.tmv3_upsertTaskCacheRow_=()=>cacheWrites++;
+let index=refs();ctx.tmv3_step7HydrateLinkedPreInspectionTasks_([record,record],index,{taskById:{}});
+assert.equal(reads,1);assert.equal(cacheWrites,1);assert.equal(index.taskById['19067'],task);
+for(const fresh of [{ok:false},{ok:true,task:{...task,'Customer ID':999}},{ok:true,task:{...task,'Task Type ID':77}},{ok:true,task:{...task,'Task ID':19068}}]){
+ ctx.tmv3_step7FreshTask_=()=>fresh;assert.throws(()=>ctx.tmv3_step7HydrateLinkedPreInspectionTasks_([record],refs(),{}),/UNVERIFIED_NO_CREATE/);
+}
+reads=0;ctx.tmv3_step7FreshTask_=()=>{reads++;throw Error('should not read');};
+for(const ignored of [{...record,vertical:'Install'},{...record,existingTaskId:''},{...record,step4:{disposition:'REVIEW'}}])ctx.tmv3_step7HydrateLinkedPreInspectionTasks_([ignored],refs(),{});
+assert.equal(reads,0);
+assert.throws(()=>ctx.tmv3_step7HydrateLinkedPreInspectionTasks_([{...record,existingTaskId:'bad'}],refs(),{}),/ID_INVALID_NO_CREATE/);
+console.log('PASS: bounded linked-task hydration, same-ID dedupe, cache reuse, customer/type/ID/read failure blocks, noneligible zero-read cases.');
+
+
+}
