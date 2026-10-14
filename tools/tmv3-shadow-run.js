@@ -310,15 +310,15 @@ function buildTemporaryRunner(pre, token) {
         ) {
           if (RELEASE_MANIFEST.vertical !== 'PreInspection' ||
               !RELEASE_MANIFEST.eventId ||
-              !/^\\d{4}-\\d{2}-\\d{2}$/.test(String(RELEASE_MANIFEST.allowedDate || '')) ||
-              (source.match(/manualWritesEnabled:\\s*false,/g) || []).length !== 1 ||
-              (source.match(/automationWritesEnabled:\\s*false,/g) || []).length !== 1) {
+              !/^\d{4}-\d{2}-\d{2}$/.test(String(RELEASE_MANIFEST.allowedDate || '')) ||
+              (source.match(/manualWritesEnabled:\s*false,/g) || []).length !== 1 ||
+              (source.match(/automationWritesEnabled:\s*false,/g) || []).length !== 1) {
             fail('Production event canary requires exact scope and disabled broad writers.');
           }
           source = source.replace(
             "const TMV3_MODE = 'PRODUCTION_WRITE';",
             "const TMV3_MODE = 'CANARY_WRITE';"
-          ).replace(/taskFirstProductionEnabled:\\s*true,/, 'taskFirstProductionEnabled: false,');
+          ).replace(/taskFirstProductionEnabled:\s*true,/, 'taskFirstProductionEnabled: false,');
           canaryModePatchCount++;
         } else if (canaryModeAnchor) {
           // Live V3 may already be in guarded CANARY_WRITE mode. Treat that
