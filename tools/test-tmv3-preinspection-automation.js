@@ -1,0 +1,68 @@
+// JavaScript: verify notification policy and bounded unattended transaction behavior.
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const values={},sent=[];let releases=0,acquires=0;
+const ctx={console,Logger:{log(){}},Utilities:{formatDate:(d,tz,p)=>p==='yyyy-MM-dd'?'2026-10-14':p==='MMM d, yyyy'?'Oct 16, 2026':'9:00 AM',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>[...crypto.createHash('sha256').update(s).digest()]},
+ PropertiesService:{getScriptProperties:()=>({getProperty:k=>values[k]||null,setProperty:(k,v)=>{values[k]=v},deleteProperty:k=>delete values[k]})},
+ LockService:{getScriptLock:()=>({tryLock:()=>{acquires++;return true},releaseLock:()=>releases++})},
+ MailApp:{getRemainingDailyQuota:()=>100,sendEmail:e=>sent.push(e)}};
+vm.createContext(ctx);
+for(const f of fs.readdirSync('apps-script/tmv3-clean').filter(x=>x.endsWith('.js')).sort())vm.runInContext(fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8'),ctx);
+const run=s=>vm.runInContext(s,ctx);let cases=0;
+const check=(v,msg)=>{assert.ok(v,msg);cases++};
+const record={vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'frank@google.com',title:'Frank Besenthal (647) 542-8251',calendarCustomerName:'Frank Besenthal',rawDescription:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',descriptionClean:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',location:'2348 Wildwood Crescent, Pickering, ON L1X 2N1, Canada',start:new Date('2026-10-16T13:00:00Z'),end:new Date('2026-10-16T14:00:00Z'),creator:'babz@classicfireplace.ca'};
+ctx.record=record;
+check(run('tmv3_preInspectionMissingDetailAssessment_(record).missing.map(x=>x.code).join(",")')==='CUSTOMER_NUMBER,SALES_ORDER','Frank only 2 missing');
+for(let mask=0;mask<8;mask++){
+ ctx.variant={...record,title:mask&1?'62778 - Frank Besenthal - (647) 542-8251':record.title,rawDescription:mask&2?'SO#585732':record.rawDescription,descriptionClean:mask&2?'SO#585732':record.rawDescription,location:mask&4?record.location:''};
+ const codes=run('tmv3_preInspectionMissingDetailAssessment_(variant).missing.map(x=>x.code)');
+ check(codes.length===3-((mask&1?1:0)+(mask&2?1:0)+(mask&4?1:0)),'all presence combinations');
+}
+for(const text of ['SO585732','SO#585732','Sales Order Number: 585732','585732']){ctx.variant={...record,descriptionClean:text,rawDescription:text};check(run('tmv3_preInspectionHasSalesOrderReference_(variant)'),'SO variants '+text);}
+for(const text of ['(647) 542-8251','Task #19120','https://site/TaskID=585732','Customer #585732']){ctx.variant={...record,title:'Frank',descriptionClean:text,rawDescription:text};check(!run('tmv3_preInspectionHasSalesOrderReference_(variant)'),'no false SO '+text);}
+ctx.variant={...record,descriptionClean:'Customer Number: 62778',rawDescription:'Customer Number: 62778'};
+check(!run('tmv3_preInspectionMissingDetailAssessment_(variant).missing.some(x=>x.code==="CUSTOMER_NUMBER")'),'Customer anywhere');
+const preview=run('tmv3_preInspectionMissingDetailEmailPreview_(record)');
+check(preview.recipient==='babz@classicfireplace.ca','actual creator');
+check(preview.htmlBody.includes('Hi <strong>Babz</strong>'),'recipient greeting');
+check(preview.htmlBody.indexOf('This is an automated')<preview.htmlBody.indexOf('Hi <strong>'),'automated notice at top');
+check(preview.htmlBody.includes('#B42318'),'red missing text');
+check(preview.htmlBody.includes('#202020')&&preview.htmlBody.includes('#b42b2f')&&!preview.htmlBody.includes('#FFF4D6'),'original colour scheme');
+check(!run('tmv3_preInspectionComparisonRowsHtml_(record,tmv3_preInspectionMissingDetailAssessment_(record))').includes('Location'),'complete location omitted from correction table');
+ctx.variant={...record,creator:'',sourceCreators:[]};check(run('tmv3_preInspectionCreatorEmail_(variant)')==='','no owner fallback');
+ctx.variant={...record,sourceCreators:['terry@classicfireplace.ca']};check(run('tmv3_preInspectionCreatorEmail_(variant)')==='','ambiguous creator no send');
+check(run('tmv3_preInspectionExplicitCandidate_(record)'),'explicit PI candidate');
+ctx.variant={...record,rawDescription:'',descriptionClean:''};check(!run('tmv3_preInspectionExplicitCandidate_(variant)'),'name-only not classified PI');
+ctx.variant={...record,isAllDay:true};check(!run('tmv3_preInspectionExplicitCandidate_(variant)'),'all-day excluded');
+check(!run('tmv3_operationWritesEnabled_("PREINSPECTIONAUTO")'),'lane gated initially');
+check(run('tmv3_preInspectionAutomationCycle_({}).status')==='PREINSPECTION_GATED','disabled cycle no writes');
+check(sent.length===0,'no sends before enable');
+run('TMV3.OPERATIONS = TMV3.OPERATIONS'); // frozen configuration: build a fresh enabled context below.
+// Rebuild enabled configuration using source replacement, preserving broad gates.
+const cfg=fs.readFileSync('apps-script/tmv3-clean/00_Config.js','utf8').replace('preInspectionAutomationEnabled: false','preInspectionAutomationEnabled: true').replace('preInspectionMissingDetailEmailsEnabled: false','preInspectionMissingDetailEmailsEnabled: true');
+const enabled={...ctx};vm.createContext(enabled);vm.runInContext(cfg,enabled);
+for(const f of fs.readdirSync('apps-script/tmv3-clean').filter(x=>x.endsWith('.js')&&x!=='00_Config.js').sort())vm.runInContext(fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8'),enabled);
+const erun=s=>vm.runInContext(s,enabled);enabled.record=record;enabled.tmv3_audit_=()=>{};
+check(erun('tmv3_operationWritesEnabled_("PREINSPECTIONAUTO")'),'PI independent permission');
+check(!erun('tmv3_operationWritesEnabled_("AUTO")')&&!erun('tmv3_operationWritesEnabled_("MANUAL")'),'other lanes gated');
+check(erun('tmv3_preInspectionSendMissingDetails_(record).status')==='SENT','creator email send');
+check(sent[0].to==='babz@classicfireplace.ca'&&sent[0].cc==='jay@classicfireplace.ca,thang@classicfireplace.ca','recipient routing');
+check(erun('tmv3_preInspectionSendMissingDetails_(record).status')==='ALREADY_SENT'&&sent.length===1,'one email per event');
+enabled.variant={...record,eventId:'uncertain@google.com'};
+enabled.MailApp={getRemainingDailyQuota:()=>100,sendEmail:()=>{throw Error('timeout')}};
+assert.throws(()=>erun('tmv3_preInspectionSendMissingDetails_(variant)'));cases++;
+check(erun('tmv3_preInspectionSendMissingDetails_(variant).status')==='UNCERTAIN_SEND_NO_RETRY','timeout does not resend');
+check(erun('tmv3_preInspectionCreatorEmail_({creator:""})')==='','unknown creator held');
+assert.throws(()=>erun('tmv3_executeFreshStep7Selection_({contract:{vertical:"Service"}},"PREINSPECTIONAUTO","ALL")'),/PREINSPECTION_ONLY_SCOPE/);cases++;
+// Full-cycle orchestration with real policy, mocked authoritative interfaces.
+enabled.MailApp=ctx.MailApp;enabled.tmv3_refreshOperationalSourcesIfNeeded_=()=>({status:'CACHE_FRESH'});
+enabled.tmv3_preInspectionIntakeRecords_=()=>[record];enabled.tmv3_preInspectionPromoteCandidate_=r=>({status:'PRIMARY',record:r});
+let plan={vertical:'PreInspection',eventId:record.eventId,taskId:19120,plan:'PATCH_EXISTING',actions:['PATCH_DATES'],blocker:''};
+enabled.tmv3_step7FreshPlansForEvent_=()=>[plan];enabled.tmv3_findFreshEventRecord_=()=>record;
+let mutations=0;enabled.tmv3_executeFreshStep7Selection_=()=>{mutations++;plan={...plan,plan:'NO_CHANGE',actions:[]};return {status:'VERIFIED_CONVERGENCE'}};
+const first=erun('tmv3_preInspectionAutomationCycle_({force:true})');
+check(mutations===1&&first.processed===1,'cycle executes one transaction');
+const second=erun('tmv3_preInspectionAutomationCycle_({force:true})');
+check(mutations===1&&second.writes===0,'converged repeat no mutation');
+check(acquires===releases,'locks always released');
+check(JSON.parse(values.TMV3_PI_PENDING_EVENTS).length===0,'verified event clears recovery queue');
+console.log('PASS: '+cases+' PreInspection notification/intake/automation cases');
