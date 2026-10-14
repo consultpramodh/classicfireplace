@@ -55,7 +55,7 @@ check(erun('tmv3_preInspectionCreatorEmail_({creator:""})')==='','unknown creato
 assert.throws(()=>erun('tmv3_executeFreshStep7Selection_({contract:{vertical:"Service"}},"PREINSPECTIONAUTO","ALL")'),/PREINSPECTION_ONLY_SCOPE/);cases++;
 // Full-cycle orchestration with real policy, mocked authoritative interfaces.
 enabled.MailApp=ctx.MailApp;enabled.tmv3_refreshOperationalSourcesIfNeeded_=()=>({status:'CACHE_FRESH'});
-enabled.tmv3_preInspectionIntakeRecords_=()=>[record];enabled.tmv3_preInspectionPromoteCandidate_=r=>({status:'PRIMARY',record:r});
+enabled.tmv3_restorePreInspectionLegacyTitle_=()=>({writes:0});enabled.tmv3_preInspectionIntakeRecords_=()=>[record];enabled.tmv3_preInspectionPromoteCandidate_=r=>({status:'PRIMARY',record:r});
 let plan={vertical:'PreInspection',eventId:record.eventId,taskId:19120,plan:'PATCH_EXISTING',actions:['PATCH_DATES'],blocker:''};
 enabled.tmv3_step7FreshPlansForEvent_=()=>[plan];enabled.tmv3_findFreshEventRecord_=()=>record;
 let mutations=0;enabled.tmv3_executeFreshStep7Selection_=()=>{mutations++;plan={...plan,plan:'NO_CHANGE',actions:[]};return {status:'VERIFIED_CONVERGENCE'}};
@@ -65,4 +65,15 @@ const second=erun('tmv3_preInspectionAutomationCycle_({force:true})');
 check(mutations===1&&second.writes===0,'converged repeat no mutation');
 check(acquires===releases,'locks always released');
 check(JSON.parse(values.TMV3_PI_PENDING_EVENTS).length===0,'verified event clears recovery queue');
+// Legacy title survives plain text, HTML, footer rebuild and repeated passes.
+ctx.legacy='Text Risa on way Risa Rosenfield 416 262-4040 SO#584502 G3.5';
+for (const body of ['Original notes', '<b>Original notes</b><br>Second line', '']) {
+ ctx.body=body;
+ const preserved=run('tmv3_preInspectionEnsureLegacyTitle_(body,legacy)');ctx.preserved=preserved;
+ check(run('tmv3_calendarReadableDescription_(preserved).split(/\\r?\\n/)[0].trim()')===ctx.legacy,'legacy first line');
+ check(run('tmv3_preInspectionEnsureLegacyTitle_(preserved,legacy)')===preserved,'legacy idempotence');
+ check(preserved.includes(body),'original body retained exactly');
+}
+ctx.variant={...record,identityDescriptionClean:'Notes without SO',rawDescription:ctx.legacy+'\nOriginal notes'};
+check(run('tmv3_preInspectionHasSalesOrderReference_(variant)'),'SO in preserved legacy title counts');
 console.log('PASS: '+cases+' PreInspection notification/intake/automation cases');
