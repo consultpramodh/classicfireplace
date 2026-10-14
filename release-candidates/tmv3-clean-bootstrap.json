@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "release": "V3_PREINSPECTION_FAILURE_ALERTS_GATED_R4_20261014",
+  "release": "V3_PREINSPECTION_BOUNDED_PRODUCTION_20261014",
   "title": "CF Tasks — V3 ACTIVE — Clean Rebuild",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "sourceDirectory": "apps-script/tmv3-clean",
   "claspVersion": "3.3.0",
   "mode": "PRODUCTION_WRITE",
-  "writeScope": "TASK_RELATIONSHIP_REPAIR_ONLY",
+  "writeScope": "PREINSPECTION_BOUNDED_AND_TASK_RELATIONSHIP_REPAIR",
   "broadWritesEnabled": false,
-  "expectedLiveCommit": "b936f6d969f46db22a5d6e84608be93aa7bf79ac"
+  "expectedLiveCommit": "bbe7a8b52c5fc59e8df1ddd271b6c80a1017c337"
 }
