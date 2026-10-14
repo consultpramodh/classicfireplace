@@ -2611,13 +2611,29 @@ function tmv3_findRecreateSourceTask_(bundle) {
       );
     }
 
-    candidates = tmv3_searchPreInspectionTasks_(customer).filter(function(task) {
+    const history = tmv3_searchPreInspectionTasks_(customer);
+    if (history.some(function(task){return tmv3_taskIsOpen_(task['Status']);})) {
+      throw new Error('RECREATE blocked: live PreInspection history contains an open Task.');
+    }
+    candidates = history.filter(function(task) {
       return (
         tmv3_step6IsFulfilledStatus_(task['Status']) &&
         String(task['Customer ID'] || '') === String(resolved.customerId || '') &&
         String(task['Location ID'] || '') === String(resolved.locationId || '')
       );
     });
+    // A single fulfilled customer-owned task at another location is history,
+    // not a structural template for the new verified job site. The caller's
+    // fresh Step 6/7 lifecycle and durable duplicate guards still authorize
+    // recreation; seed the new Type 105 task from template 11138 instead.
+    if (!candidates.length && history.length===1 &&
+        tmv3_step6IsFulfilledStatus_(history[0]['Status']) &&
+        String(history[0]['Customer ID'] || '')===String(resolved.customerId || '') &&
+        tmv3_clean_(history[0]['Location ID']) &&
+        String(history[0]['Location ID'])!==String(resolved.locationId || '') &&
+        Number(history[0]['Task Type ID'])===105) {
+      return tmv3_findCreateTemplateTask_(bundle);
+    }
   }
 
   if (candidates.length !== 1) {
