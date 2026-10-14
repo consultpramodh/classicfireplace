@@ -250,7 +250,7 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
     existingTaskUrl: links.taskUrl,
     existingOrderId: links.orderId,
     existingOrderUrl: links.orderUrl,
-    eventUrl: tmv3_calendarEventUrl_(eventId),
+    eventUrl: tmv3_calendarEventUrl_(eventId, calCfg.calendarId),
     fingerprint: fingerprint,
     logicalKey: tmv3_calendarLogicalKey_(eventId, start, title, location),
     sourceCalendarIds: [calCfg.calendarId],
@@ -351,11 +351,12 @@ function tmv3_calendarLogicalKey_(eventId, start, title, location) {
   ].join('|'));
 }
 
-function tmv3_calendarEventUrl_(eventId) {
-  const id = tmv3_clean_(eventId);
-  return id
-    ? 'https://calendar.google.com/calendar/u/0/r/eventedit/' + encodeURIComponent(id)
-    : '';
+function tmv3_calendarEventUrl_(eventId, calendarId) {
+  const id = tmv3_clean_(eventId).replace(/@google\.com$/i, '');
+  const calendar = tmv3_clean_(calendarId).replace(/@group\.calendar\.google\.com$/i, '@g');
+  if (!id || !calendar) return '';
+  const eid = Utilities.base64EncodeWebSafe(id + ' ' + calendar).replace(/=+$/, '');
+  return 'https://www.google.com/calendar/event?eid=' + eid;
 }
 
 
@@ -874,3 +875,4 @@ function tmv3_safeCalendar_(fn, fallback) {
     return fallback;
   }
 }
+
