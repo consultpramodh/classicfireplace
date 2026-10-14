@@ -1,7 +1,9 @@
 // JavaScript: verify notification policy and bounded unattended transaction behavior.
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const values={},sent=[];let releases=0,acquires=0;
-const ctx={console,Logger:{log(){}},Utilities:{base64EncodeWebSafe:s=>Buffer.from(s).toString('base64url'),formatDate:(d,tz,p)=>p==='yyyy-MM-dd'?'2026-10-14':p==='MMM d, yyyy'?'Oct 16, 2026':'9:00 AM',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>[...crypto.createHash('sha256').update(s).digest()]},
+class FixedDate extends Date {constructor(...args){super(...(args.length?args:['2026-10-14T19:00:00Z']));}static now(){return Date.parse('2026-10-14T19:00:00Z');}}
+const localStamp=d=>{const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Toronto',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(d);const m=Object.fromEntries(parts.map(p=>[p.type,p.value]));return `${m.year}-${m.month}-${m.day} ${m.hour}:${m.minute}:${m.second}`;};
+const ctx={Date:FixedDate,console,Logger:{log(){}},Utilities:{base64EncodeWebSafe:s=>Buffer.from(s).toString('base64url'),formatDate:(d,tz,p)=>p==='yyyy-MM-dd HH:mm:ss'?localStamp(d):p==='yyyy-MM-dd'?'2026-10-14':p==='MMM d, yyyy'?'Oct 16, 2026':'9:00 AM',DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},computeDigest:(_,s)=>[...crypto.createHash('sha256').update(s).digest()]},
  PropertiesService:{getScriptProperties:()=>({getProperty:k=>values[k]||null,setProperty:(k,v)=>{values[k]=v},deleteProperty:k=>delete values[k]})},
  LockService:{getScriptLock:()=>({tryLock:()=>{acquires++;return true},releaseLock:()=>releases++})},
  MailApp:{getRemainingDailyQuota:()=>100,sendEmail:e=>sent.push(e)}};
@@ -9,7 +11,7 @@ vm.createContext(ctx);
 for(const f of fs.readdirSync('apps-script/tmv3-clean').filter(x=>x.endsWith('.js')).sort())vm.runInContext(f==='00_Config.js' ? fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8').replace(/preInspectionAutomationEnabled: (?:true|false)/,'preInspectionAutomationEnabled: false').replace(/preInspectionMissingDetailEmailsEnabled: (?:true|false)/,'preInspectionMissingDetailEmailsEnabled: false') : fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8'),ctx);
 const run=s=>vm.runInContext(s,ctx);let cases=0;
 const check=(v,msg)=>{assert.ok(v,msg);cases++};
-const record={calendarId:'example@group.calendar.google.com',vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'frank@google.com',title:'Frank Besenthal (647) 542-8251',calendarCustomerName:'Frank Besenthal',rawDescription:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',descriptionClean:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',location:'2348 Wildwood Crescent, Pickering, ON L1X 2N1, Canada',start:new Date('2026-10-16T13:00:00Z'),end:new Date('2026-10-16T14:00:00Z'),creator:'babz@classicfireplace.ca'};
+const record={calendarCreatedAt:'2026-10-12T14:00:00Z',calendarId:'example@group.calendar.google.com',vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'frank@google.com',title:'Frank Besenthal (647) 542-8251',calendarCustomerName:'Frank Besenthal',rawDescription:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',descriptionClean:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',location:'2348 Wildwood Crescent, Pickering, ON L1X 2N1, Canada',start:new Date('2026-10-16T13:00:00Z'),end:new Date('2026-10-16T14:00:00Z'),creator:'babz@classicfireplace.ca'};
 ctx.record=record;
 check(run('tmv3_preInspectionMissingDetailAssessment_(record).missing.map(x=>x.code).join(",")')==='CUSTOMER_NUMBER,SALES_ORDER','Frank only 2 missing');
 for(let mask=0;mask<8;mask++){
@@ -106,3 +108,27 @@ assert.ok(identified.subject.includes('Oct 16, 2026') && identified.subject.incl
 assert.ok(identified.htmlBody.indexOf('Appointment requiring attention')<identified.htmlBody.indexOf('❌'));
 assert.ok(identified.htmlBody.includes(record.location));
 console.log('PASS: section spacing and appointment identity before missing-details list');
+// JavaScript: independent date-boundary cases for approved notification policy.
+const decide=(created,start,now,state=null)=>{ctx.timingRecord={calendarCreatedAt:created,start};ctx.timingNow=now;ctx.timingState=state;return run('tmv3_preInspectionNotificationDecision_(timingRecord,timingState,timingNow)');};
+assert.equal(decide('2026-10-16T19:00:00Z','2026-10-23T19:00:00Z','2026-10-20T17:00:00Z').status,'GRACE_PERIOD');
+assert.equal(decide('2026-10-16T19:00:00Z','2026-10-23T19:00:00Z','2026-10-20T21:00:00Z').status,'FIRST_DUE');
+assert.equal(decide('2026-10-14T19:00:00Z','2026-10-16T19:00:00Z','2026-10-14T21:00:00Z').status,'SAME_WEEK_DUE');
+assert.equal(decide('2026-10-14T19:00:00Z','2026-10-19T19:00:00Z','2026-10-15T21:00:00Z').status,'GRACE_PERIOD');
+assert.equal(decide('2026-10-14T19:00:00Z','2026-10-19T19:00:00Z','2026-10-16T21:00:00Z').send,true);
+assert.equal(decide('2026-10-14T19:00:00Z','2026-10-19T19:00:00Z','2026-10-17T17:00:00Z').status,'WEEKEND_DEFERRED');
+assert.equal(decide('', '2026-10-19T19:00:00Z','2026-10-14T21:00:00Z').status,'EVENT_CREATION_TIME_UNKNOWN');
+assert.equal(decide('2026-10-14T19:00:00Z','2026-10-16T19:00:00Z','2026-10-16T19:00:00Z').status,'APPOINTMENT_ENDED');
+const sentState={status:'SENT',sentCount:1,lastSentAt:'2026-10-14T21:00:00Z'};
+assert.equal(decide('', '2026-10-23T19:00:00Z','2026-10-15T17:00:00Z',sentState).status,'ALREADY_SENT');
+assert.equal(decide('', '2026-10-23T19:00:00Z','2026-10-15T21:00:00Z',sentState).followupNumber,1);
+assert.equal(decide('', '2026-10-23T19:00:00Z','2026-10-16T21:00:00Z',{...sentState,sentCount:2}).followupNumber,2);
+assert.equal(decide('', '2026-10-23T19:00:00Z','2026-10-15T21:00:00Z',{status:'SENDING'}).send,false);
+assert.equal(decide('2026-10-30T19:00:00Z','2026-11-06T19:00:00Z','2026-11-03T18:00:00Z').status,'GRACE_PERIOD');
+assert.equal(decide('2026-10-30T19:00:00Z','2026-11-06T19:00:00Z','2026-11-03T22:00:00Z').status,'FIRST_DUE');
+ctx.followRecord={...record,notificationFollowupNumber:2};const follow=run('tmv3_preInspectionMissingDetailEmailPreview_(followRecord)');
+assert.ok(follow.subject.startsWith('FOLLOW-UP #2 | MISSING DETAILS:'));
+assert.ok(follow.htmlBody.includes('FOLLOW-UP #2 — Pre-Inspection Update Required'));
+values['TMV3_PI_NOTIFICATION_'+erun('tmv3_hash_(record.eventId)')]='SENT';
+assert.equal(erun('tmv3_preInspectionSendMissingDetails_(record).status'),'ALREADY_SENT');
+assert.equal(JSON.parse(values['TMV3_PI_NOTIFICATION_'+erun('tmv3_hash_(record.eventId)')]).sentCount,1);
+console.log('PASS: 18 timing/follow-up/migration cases including Fri–Tue, same week, weekends, 24h, DST, unknown creation and uncertain send');
