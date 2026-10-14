@@ -5539,7 +5539,7 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     '</table></td></tr>' +
     '<tr><td style="padding:0 24px 22px;">' +
       '<div style="font-size:14px;margin-bottom:14px;"><a href="' +
-      tmv3_preInspectionHtmlEscape_(eventRecord.eventUrl || tmv3_calendarEventUrl_(eventRecord.eventId)) +
+      tmv3_preInspectionHtmlEscape_(tmv3_calendarEventUrl_(eventRecord.eventId, eventRecord.calendarId || eventRecord.organizerCalendarId) || eventRecord.eventUrl) +
       '">Open calendar appointment</a></div>' +
       '<div style="font-size:14px;margin-bottom:14px;">Please update the missing details in the calendar event.</div>' +
       '<div style="font-size:14px;">Thank you.</div></td></tr>' +
