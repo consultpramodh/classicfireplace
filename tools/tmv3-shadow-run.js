@@ -2209,6 +2209,7 @@ async function main() {
     };
     save('head-current',await getContent(),null);
     for(const version of versions.slice().sort((a,b)=>a.versionNumber-b.versionNumber)) {
+      await new Promise(resolve=>setTimeout(resolve,1500)); // Stay below Apps Script API per-minute read quota.
       const content=await api('/projects/'+encodeURIComponent(V3_SCRIPT_ID)+'/content?versionNumber='+Number(version.versionNumber));
       save('version-'+String(version.versionNumber).padStart(3,'0'),content,Number(version.versionNumber));
       if(entries.length%25===0) console.log('Verified backup count: '+(entries.length-1));
