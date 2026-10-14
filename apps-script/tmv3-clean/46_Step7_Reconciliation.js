@@ -2104,7 +2104,13 @@ function tmv3_step7Verify_(step6Records, plans) {
     covered[plan.logicalKey] =
       (covered[plan.logicalKey] || 0) + 1;
 
-    if (plan.writeGate !== 'SHADOW_ONLY__NO_WRITES') {
+    const expectedGate = TMV3.MODE === 'SHADOW_READ_ONLY'
+      ? 'SHADOW_ONLY__NO_WRITES'
+      : plan.vertical === 'PreInspection' && TMV3.MODE === 'PRODUCTION_WRITE' &&
+        TMV3.OPERATIONS.preInspectionAutomationEnabled === true
+        ? (plan.blocker ? 'PREINSPECTION_AUTO_HELD' : 'PREINSPECTION_AUTO_ENABLED')
+        : 'EXECUTION_CONFIG_GATED';
+    if (plan.writeGate !== expectedGate) {
       invalidWriteGate++;
     }
 
