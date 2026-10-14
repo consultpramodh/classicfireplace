@@ -1428,6 +1428,8 @@ function tmv3_preInspectionAutomationCycle_(options) {
       const one = {eventId:record.eventId};
       result.processed++;
       try {
+        const preservation=tmv3_restorePreInspectionLegacyTitle_(record);
+        if (preservation.writes) record=tmv3_preInspectionRecoveryRecord_(record.eventId);
         const doneKey='TMV3_PI_DONE_'+tmv3_hash_(record.eventId);
         const done=JSON.parse(props.getProperty(doneKey) || 'null');
         if (!options.eventId && done && done.fingerprint===record.fingerprint && now-Number(done.at || 0)<3600000) {
@@ -1607,4 +1609,50 @@ function tmv3_preInspectionFailureAlert_(eventId,error) {
     tmv3_audit_('PreInspection',eventId,'','PREINSPECTION_FAILURE_ALERT','ATTENTION',String(err));
     return {status:'ALERT_UNCERTAIN_NO_RETRY'};
   }
+}
+
+// Google Apps Script: restore only the recorded legacy-title prefix. No Task writes.
+function tmv3_restorePreInspectionLegacyTitle_(record) {
+  tmv3_assertOperationWrite_('PREINSPECTIONAUTO','PRESERVE_LEGACY_TITLE');
+  if (!record || record.vertical!=='PreInspection') throw new Error('PreInspection event required.');
+  const cfg=TMV3.VERTICALS.PreInspection;
+  const state=tmv3_titleMigrationStateForEvent_('PreInspection',record.eventId,cfg.primaryCalendarId);
+  const legacy=state.preservedTitle;
+  if (!legacy) return {status:'NO_RECORDED_LEGACY_TITLE',eventId:record.eventId,writes:0};
+  const copies=tmv3_requiredCalendarCopiesForEvent_(record).map(function(id){
+    const found=tmv3_findEventCopyRobust_(id,record.eventId);
+    if (!found || !found.event) throw new Error('LEGACY_TITLE_REPAIR_MISSING_COPY: '+id);
+    return {calendarId:id,event:found.event};
+  });
+  let writes=0;
+  copies.forEach(function(copy){
+    const before=String(copy.event.getDescription() || '');
+    const desired=tmv3_preInspectionEnsureLegacyTitle_(before,legacy);
+    if (desired!==before) {copy.event.setDescription(desired);writes++;}
+    const found=tmv3_findEventCopyRobust_(copy.calendarId,record.eventId);
+    if (!found || !found.event || String(found.event.getDescription() || '')!==desired) {
+      throw new Error('LEGACY_TITLE_REPAIR_READBACK_FAILED: '+copy.calendarId);
+    }
+  });
+  return {status:'LEGACY_TITLE_VERIFIED',eventId:record.eventId,legacyTitle:legacy,writes:writes};
+}
+
+function tmv3_restoreRecordedPreInspectionLegacyTitles() {
+  const lock=LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return {status:'LOCK_BUSY',writes:0};
+  try {
+    const states=tmv3_titleMigrationStateIndex_();
+    const result={status:'COMPLETE',writes:0,results:[]};
+    Object.keys(states).filter(function(key){return key.indexOf('PreInspection|')===0;}).forEach(function(key){
+      const id=key.slice('PreInspection|'.length);
+      const row=states[key];
+      if (!tmv3_clean_(row['Title Migration Map'])) return;
+      try {
+        const record=tmv3_preInspectionRecoveryRecord_(id);
+        const one=tmv3_restorePreInspectionLegacyTitle_(record);
+        result.results.push(one);result.writes+=one.writes;
+      } catch(err) {result.status='ATTENTION';result.results.push({eventId:id,error:String(err)});}
+    });
+    Logger.log(JSON.stringify(result));return result;
+  } finally {lock.releaseLock();}
 }
