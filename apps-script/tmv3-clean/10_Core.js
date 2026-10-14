@@ -408,7 +408,9 @@ function tmv3_recordTitleMigrationState_(
       } catch (ignored) {}
     }
 
-    map[cleanCalendarId] = oldTitle;
+    // The first sales-rep title is permanent history. Later normalization or
+    // description-only parity repairs must not replace it with the new title.
+    if (!tmv3_clean_(map[cleanCalendarId])) map[cleanCalendarId] = oldTitle;
 
     sh.getRange(rowNumber,mapIx+1).setValue(JSON.stringify(map));
     sh.getRange(rowNumber,canonicalIx+1).setValue(newTitle);
@@ -632,3 +634,4 @@ function tmv3_assertShadow_() {
 
   return true;
 }
+
