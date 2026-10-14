@@ -5519,6 +5519,7 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     '<tr><td style="padding:20px 24px 12px;">' +
       '<div style="font-size:12px;color:#666;font-style:italic;margin-bottom:16px;">This is an automated email notification from Classic Fireplace &amp; BBQ Store.</div>' +
       '<div style="font-size:14px;line-height:21px;">Hi <strong>' + tmv3_preInspectionHtmlEscape_(firstName) + '</strong>,</div>' +
+      '<div style="margin-top:12px;padding:12px;background:#f6f5f3;border:1px solid #e2e0dc;"><strong>Appointment requiring attention</strong><br>' + tmv3_preInspectionHtmlEscape_(eventRecord.title || '(Untitled event)') + '<br><strong>' + tmv3_preInspectionHtmlEscape_(when) + '</strong><br>' + tmv3_preInspectionHtmlEscape_(eventRecord.location || 'Location missing') + '</div>' +
       '<div style="font-size:14px;line-height:21px;margin-top:8px;">This appointment is missing the following details. Please update the items highlighted below.</div>' +
       '<div style="margin-top:12px;background:#fff5f5;border-left:4px solid #b42b2f;padding:11px 13px;font-size:13px;line-height:22px;color:#8f2024;">' +
         missingItemsHtml +
@@ -5550,7 +5551,7 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     eventId: eventRecord.eventId || '',
     recipient: creatorEmail,
     cc: tmv3_preInspectionNotificationCc_(),
-    subject: 'MISSING DETAILS: Update Pre-Inspection Event (' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ')',
+    subject: 'MISSING DETAILS: ' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ' | ' + when + ' | ' + assessment.missing.map(function(item){return item.field;}).join(', '),
     missing: assessment.missing,
     htmlBody: html,
     emailDeliveryEnabled: TMV3.MODE === 'PRODUCTION_WRITE' &&
