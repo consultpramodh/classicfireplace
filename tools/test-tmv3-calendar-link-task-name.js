@@ -18,7 +18,7 @@ const authored='<b>Original title</b><br>First sentence. Have sent quote.<br><i>
 const cases=[
  {before:authored+'<br><br>-----Striven Links-----<br>raw old footer',prefix:authored},
  {before:'Original title\nFirst sentence. Have sent quote.\n-----Striven Links-----\nold',prefix:'Original title<br>First sentence. Have sent quote.'},
- {before:'<p>Title</p><ul><li>Keep list</li></ul><p>-----Striven Links-----<br>old</p>',prefix:'<p>Title</p><ul><li>Keep list</li></ul>'}
+ {before:'<p>Title</p><ul><li>Keep list</li></ul><p>-----Striven Links-----<br>old</p>',prefix:'Title<br><ul><li>Keep list</li></ul>'}
 ];
 for(const fixture of cases){
  const out=ctx.tmv3_preInspectionClickableManagedDescription_(fixture.before,descPlan);
@@ -67,4 +67,14 @@ console.log('PASS: bounded linked-task hydration, same-ID dedupe, cache reuse, c
  assert.equal(JSON.stringify(raw),before);
  assert.equal(ctx2.tmv3_normalizeV2TaskModel_({...raw,title:'Plain task name'}).Name,'Plain task name');
  console.log('PASS: Striven encoded name display comparison; IDs, schedule and raw payload preserved.');
+}
+
+{
+ const plan2={links:[{label:'Task',url:'https://example.invalid/task'}]};
+ const title='Nancy &amp; Steve Donahue';
+ const out=ctx.tmv3_preInspectionClickableManagedDescription_('<h1>'+title+'</h1>\\n<p>They have a\\ncurrent unit. Have\\nsent quote.</p><p>-----Striven Links-----old</p>'.replace(/\\\\n/g,'\\n'),plan2).description;
+ assert(!/<h[1-6]|<p>|[\\r\\n]/i.test(out));
+ assert(out.includes('They have a current unit. Have sent quote.'));
+ assert(out.includes(title));
+ console.log('PASS: screenshot regression — heading size and forced sentence wraps removed.');
 }
