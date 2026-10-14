@@ -1656,10 +1656,10 @@ function tmv3_titleNormalizationRegression() {
     );
 
   check(
-    'PREINSPECTION_EXISTING_CLICKABLE_LINK_BLOCK_PRESERVED_EXACTLY',
-    preservedClickable.description === alreadyClickable &&
-      preservedClickable.status ===
-        'PRESERVED_EXISTING_CLICKABLE_LINK_BLOCK',
+    'PREINSPECTION_AUTHORED_LAYOUT_PRESERVED_WITH_COMPACT_LINK_BLOCK',
+    preservedClickable.description.indexOf('<p>Existing note</p><br>-----Striven Links-----<br>') === 0 &&
+      preservedClickable.description.indexOf('<p>-----Striven Links-----') === -1 &&
+      tmv3_preInspectionClickableManagedDescription_(preservedClickable.description, preLinkPlan).changed === false,
     JSON.stringify(preservedClickable)
   );
 
@@ -1690,8 +1690,8 @@ function tmv3_titleNormalizationRegression() {
     ).description;
 
   check(
-    'PREINSPECTION_SALES_ORDER_HEADING_REMOVED_CONTENT_PRESERVED',
-    headingBreakLegacy.indexOf('Sales Order:') === -1 &&
+    'PREINSPECTION_SALES_REP_HEADING_AND_CONTENT_PRESERVED',
+    headingBreakLegacy.indexOf('**Sales Order:** SO#585434') === 0 &&
       headingBreakLegacy.indexOf('SO#585434') !== -1 &&
       headingBreakLegacy.indexOf('Keep these notes') !== -1,
     headingBreakLegacy
