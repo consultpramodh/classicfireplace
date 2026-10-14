@@ -1,16 +1,16 @@
 {
-  "release": "NANCY_STEVE_OCT13_GUARDED_E2E_R2_20261014",
+  "release": "ESTHER_OCT13_LAYOUT_ACCEPTANCE_20261014",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "CANARY_WRITE",
   "writesEnabled": true,
   "runMode": "CANARY_EVENT_WRITE_FRESH",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "NANCY_STEVE_OCT13_GUARDED_E2E_R2_20261014",
+  "requestTag": "ESTHER_OCT13_LAYOUT_ACCEPTANCE_20261014",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
-  "eventId": "4lci7ub1rvekrm76l8kkl7ps9b@google.com",
-  "taskId": 19074,
+  "eventId": "2eg4j9ii5pfbif2dtob4gr784c@google.com",
+  "taskId": 19120,
   "allowedDate": "2026-10-13",
   "expectedPlan": "NO_CHANGE"
 }
