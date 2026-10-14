@@ -24,6 +24,13 @@ function tmv3_operationWritesEnabled_(scope) {
   // elevate SHADOW_READ_ONLY into a write-capable mode.
   if (!externalWriteMode) return false;
 
+  if (mode === 'preinspectionauto') {
+    return TMV3.MODE === 'PRODUCTION_WRITE' &&
+      policy.preInspectionAutomationEnabled === true &&
+      policy.automationWritesEnabled === false &&
+      policy.manualWritesEnabled === false;
+  }
+
   // The dedicated production permission cannot unlock legacy/manual/calendar writers.
   if (mode === 'taskfirstproduction') {
     return TMV3.MODE === 'PRODUCTION_WRITE' &&
@@ -666,6 +673,10 @@ function tmv3_step7ActionsForMode_(contract, mode) {
 }
 
 function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
+  if (tmv3_norm_(scope) === 'preinspectionauto' &&
+      (!selection || !selection.contract || selection.contract.vertical !== 'PreInspection')) {
+    throw new Error('PREINSPECTION_ONLY_SCOPE: other verticals cannot execute.');
+  }
   const changed = tmv3_step7PlanChangedResult_(selection);
   if (changed) {
     tmv3_audit_(
@@ -3514,6 +3525,11 @@ function tmv3_persistCreatedTaskIdState_(bundle, taskId) {
 }
 
 function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
+  // The dedicated lane holds this same script lock across the entire event
+  // transaction. Reacquiring/releasing it here would invalidate that guard.
+  if (tmv3_norm_(scope) === 'preinspectionauto') {
+    return tmv3_createOrRecreateFromBundleUnlocked_(bundle, scope, contract);
+  }
   const lock = LockService.getScriptLock();
 
   if (!lock.tryLock(30000)) {
@@ -5322,8 +5338,8 @@ function tmv3_runCalendarLinksForReady_AUTO() {
  * - Missing-data checks only. Formatting differences alone never notify.
  * - At least one Sales Order reference anywhere in the event is sufficient.
  * - Recipient is the Calendar event creator, not the Calendar owner.
- * - EMAIL DELIVERY IS INTENTIONALLY DISABLED. These functions only build
- *   preview data / HTML for verification.
+ * - Delivery is separately gated; send at most once per logical Event ID.
+ * - Missing SO is a notification issue, never a task-creation blocker.
  ************************************************************/
 
 function tmv3_preInspectionGuestEmails_(eventRecord) {
@@ -5341,16 +5357,20 @@ function tmv3_preInspectionHasSalesOrderReference_(eventRecord) {
 
   const haystack = [
     record.title || '',
-    record.descriptionClean || '',
-    record.rawDescription || '',
-    record.location || ''
+    record.identityDescriptionClean || tmv3_calendarReadableDescription_(
+      tmv3_identityEvidenceDescriptionRaw_(record.rawDescription || record.descriptionClean || '', '')
+    )
   ].join(' ');
 
   // Accept labelled SO / Sales Order / Order references, including compact
   // slash notation such as SO#5853/67/80/85. We only care that the event
   // carries at least one Sales Order reference; no specific formatting is
   // required.
-  return /\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*\d{4,8}(?:\s*\/\s*\d{2,8})*/i.test(
+  const clean = tmv3_stripPhonesForOrderParsing_(haystack)
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/(?:Customer|Cust|Task)\s*(?:#|Number|No\.?)?\s*[:\-]?\s*\d+/gi, ' ')
+    .replace(/^\s*#?\d{4,8}\s*[-–—]/, ' ');
+  return /\b\d{6}\b/.test(clean) || /\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*\d{4,8}(?:\s*\/\s*\d{2,8})*/i.test(
     String(haystack || '')
   );
 }
@@ -5366,7 +5386,8 @@ function tmv3_preInspectionCreatorEmail_(eventRecord) {
     return /@classicfireplace\.ca$/i.test(email);
   });
 
-  return (company[0] || sources[0] || '');
+  const unique = tmv3_unique_(company);
+  return unique.length === 1 ? unique[0] : ''; // Missing/ambiguous creator: no send.
 }
 
 function tmv3_preInspectionCreatorFirstName_(email) {
@@ -5384,86 +5405,20 @@ function tmv3_preInspectionCreatorFirstName_(email) {
 
 function tmv3_preInspectionMissingDetailAssessment_(eventRecord) {
   const record = eventRecord || {};
-  const cfg = TMV3.VERTICALS.PreInspection;
-  const title = tmv3_clean_(record.title);
-
-  const titleCustomerNumber =
-    tmv3_extractCustomerNumberForVertical_('PreInspection', title);
-  const titlePhone = tmv3_extractPhone_(title);
-  const titleCustomerName =
-    tmv3_preInspectionCalendarCustomerName_(title, titleCustomerNumber);
-
-  const guests = tmv3_preInspectionGuestEmails_(record);
-  const requiredStephen = tmv3_norm_(
-    cfg.secondaryOwnerEmail || 'stephen@classicfireplace.ca'
-  );
-  const requiredPreInspects = tmv3_norm_(cfg.primaryCalendarId || '');
-
+  const text = [record.title || '', record.identityDescriptionClean ||
+    record.descriptionClean || record.rawDescription || ''].join(' ');
+  const customerNumber = tmv3_extractCustomerNumberForVertical_('PreInspection', text);
   const missing = [];
-
-  if (!titleCustomerNumber) {
-    missing.push({
-      code:'CUSTOMER_NUMBER',
-      field:'Title',
-      message:'Customer # is missing from the title'
-    });
-  }
-
-  if (!titleCustomerName) {
-    missing.push({
-      code:'CUSTOMER_NAME',
-      field:'Title',
-      message:'Customer Name is missing from the title'
-    });
-  }
-
-  if (!titlePhone) {
-    missing.push({
-      code:'PHONE',
-      field:'Title',
-      message:'Phone number is missing from the title'
-    });
-  }
-
-  if (!tmv3_clean_(record.location)) {
-    missing.push({
-      code:'LOCATION',
-      field:'Location',
-      message:'Job-site address is missing from the event'
-    });
-  }
-
+  if (!customerNumber) missing.push({code:'CUSTOMER_NUMBER',field:'Title',
+    message:'Customer Number missing'});
   if (!tmv3_preInspectionHasSalesOrderReference_(record)) {
-    missing.push({
-      code:'SALES_ORDER',
-      field:'Description',
-      message:'At least one Sales Order # is missing from the event'
-    });
+    missing.push({code:'SALES_ORDER',field:'Sales Order Number',message:'Sales Order Number missing'});
   }
-
-  if (requiredStephen && guests.indexOf(requiredStephen) === -1) {
-    missing.push({
-      code:'STEPHEN_GUEST',
-      field:'Guests',
-      message:'Stephen Foley is missing as a guest — please add him to the event'
-    });
-  }
-
-  if (requiredPreInspects && guests.indexOf(requiredPreInspects) === -1) {
-    missing.push({
-      code:'CF_PREINSPECTS_GUEST',
-      field:'Guests',
-      message:'CF Preinspects is missing as a guest — please add it to the event'
-    });
-  }
-
-  return {
-    eventId: record.eventId || '',
-    title: title,
-    creatorEmail: tmv3_preInspectionCreatorEmail_(record),
-    missing: missing,
-    shouldNotify: missing.length > 0
-  };
+  if (!tmv3_clean_(record.location)) missing.push({code:'LOCATION',field:'Location',
+    message:'Location missing — please add the full job-site address'});
+  return {eventId:record.eventId || '', title:tmv3_clean_(record.title),
+    creatorEmail:tmv3_preInspectionCreatorEmail_(record), missing:missing,
+    shouldNotify:missing.length > 0};
 }
 
 function tmv3_preInspectionHtmlEscape_(value) {
@@ -5499,60 +5454,19 @@ function tmv3_preInspectionMissingFields_(assessment) {
 }
 
 function tmv3_preInspectionComparisonRowsHtml_(eventRecord, assessment) {
-  const fields = tmv3_preInspectionMissingFields_(assessment);
-  const rows = [];
-
-  if (fields.Title) {
-    rows.push(
-      '<tr>' +
-        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">Title</td>' +
-        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">' +
-          tmv3_preInspectionHtmlEscape_(eventRecord.title || '—') +
-        '</td>' +
-        '<td valign="top" style="padding:12px;color:#2f6b36;border-bottom:1px solid #dddddd;">Customer # - Customer Name - Phone Number</td>' +
-      '</tr>'
-    );
-  }
-
-  if (fields.Description) {
-    rows.push(
-      '<tr>' +
-        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">Description</td>' +
-        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">' +
-          tmv3_preInspectionHtmlEscape_(
-            eventRecord.descriptionClean || eventRecord.rawDescription || 'No description'
-          ) +
-        '</td>' +
-        '<td valign="top" style="padding:12px;color:#2f6b36;border-bottom:1px solid #dddddd;"><strong>Sales Order #:</strong> SO#<br><strong>Notes:</strong> Notes about the Pre-Inspection</td>' +
-      '</tr>'
-    );
-  }
-
-  if (fields.Location) {
-    rows.push(
-      '<tr>' +
-        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">Location</td>' +
-        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;border-bottom:1px solid #dddddd;">' +
-          tmv3_preInspectionHtmlEscape_(eventRecord.location || 'No location entered') +
-        '</td>' +
-        '<td valign="top" style="padding:12px;color:#2f6b36;border-bottom:1px solid #dddddd;">Full job-site address</td>' +
-      '</tr>'
-    );
-  }
-
-  if (fields.Guests) {
-    rows.push(
-      '<tr>' +
-        '<td valign="top" style="background:#f7f7f7;padding:12px;font-weight:700;border-right:1px solid #dddddd;">Guests</td>' +
-        '<td valign="top" style="padding:12px;color:#a1262b;border-right:1px solid #dddddd;">' +
-          tmv3_preInspectionDisplayGuests_(eventRecord) +
-        '</td>' +
-        '<td valign="top" style="padding:12px;color:#2f6b36;">Stephen Foley<br>CF Preinspects</td>' +
-      '</tr>'
-    );
-  }
-
-  return rows.join('');
+  const escape = tmv3_preInspectionHtmlEscape_;
+  return (assessment.missing || []).map(function(item) {
+    const current = item.code === 'CUSTOMER_NUMBER'
+      ? escape(eventRecord.title || '') + '<br><strong style="color:#B42318;">Customer Number missing</strong>'
+      : '<strong style="color:#B42318;">' + escape(item.message) + '</strong>';
+    const standard = item.code === 'CUSTOMER_NUMBER'
+      ? 'Customer Number - Customer Name - Phone Number'
+      : item.code === 'SALES_ORDER' ? 'Sales Order #' : 'Full Job-Site Address';
+    return '<tr><td valign="top" style="padding:12px;border:1px solid #dddddd;font-weight:700;">' +
+      escape(item.field) + '</td><td valign="top" style="padding:12px;border:1px solid #dddddd;">' +
+      current + '</td><td valign="top" style="padding:12px;border:1px solid #dddddd;color:#256b35;font-weight:700;">' +
+      standard + '</td></tr>';
+  }).join('');
 }
 
 function tmv3_preInspectionNotificationCc_() {
@@ -5569,7 +5483,7 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
   const creatorEmail = assessment.creatorEmail;
   const firstName = tmv3_preInspectionCreatorFirstName_(creatorEmail);
   const missingItemsHtml = assessment.missing.map(function(item) {
-    return '<div>❌ ' + tmv3_preInspectionHtmlEscape_(item.message) + '</div>';
+    return '<div style="color:#B42318;font-weight:700;">❌ ' + tmv3_preInspectionHtmlEscape_(item.message) + '</div>';
   }).join('');
 
   const when =
@@ -5582,14 +5496,15 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
   const html =
     '<!doctype html><html lang="en"><body style="margin:0;padding:0;background:#f4f3f1;font-family:Arial,Helvetica,sans-serif;color:#222;">' +
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" style="padding:20px 12px;">' +
-    '<table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background:#ffffff;">' +
+    '<table role="presentation" width="760" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:760px;background:#ffffff;">' +
     '<tr><td style="background:#202020;border-top:4px solid #b42b2f;padding:18px 24px;">' +
       '<div style="font-size:18px;font-weight:700;color:#ffffff;">Pre-Inspection Update Required</div>' +
       '<div style="font-size:12px;color:#aaaaaa;margin-top:3px;">Classic Fireplace &amp; BBQ Store</div>' +
     '</td></tr>' +
     '<tr><td style="padding:20px 24px 12px;">' +
+      '<div style="font-size:12px;color:#666;font-style:italic;margin-bottom:16px;">This is an automated email notification from Classic Fireplace &amp; BBQ Store.</div>' +
       '<div style="font-size:14px;line-height:21px;">Hi <strong>' + tmv3_preInspectionHtmlEscape_(firstName) + '</strong>,</div>' +
-      '<div style="font-size:14px;line-height:21px;margin-top:8px;">This appointment is missing required Pre-Inspection details. Please update the items below.</div>' +
+      '<div style="font-size:14px;line-height:21px;margin-top:8px;">This appointment is missing the following details. Please update the items highlighted below.</div>' +
       '<div style="margin-top:12px;background:#fff5f5;border-left:4px solid #b42b2f;padding:11px 13px;font-size:13px;line-height:22px;color:#8f2024;">' +
         missingItemsHtml +
       '</div>' +
@@ -5607,7 +5522,12 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
       '</tr>' +
       tmv3_preInspectionComparisonRowsHtml_(eventRecord, assessment) +
     '</table></td></tr>' +
-    '<tr><td style="padding:0 24px 22px;"><div style="font-size:14px;">Thank you.</div></td></tr>' +
+    '<tr><td style="padding:0 24px 22px;">' +
+      '<div style="font-size:14px;margin-bottom:14px;"><a href="' +
+      tmv3_preInspectionHtmlEscape_(eventRecord.eventUrl || tmv3_calendarEventUrl_(eventRecord.eventId)) +
+      '">Open calendar appointment</a></div>' +
+      '<div style="font-size:14px;margin-bottom:14px;">Please update the missing details in the calendar event.</div>' +
+      '<div style="font-size:14px;">Thank you.</div></td></tr>' +
     '<tr><td style="background:#202020;padding:12px 24px;text-align:center;"><div style="font-size:12px;font-weight:700;color:#ffffff;">Classic Fireplace &amp; BBQ Store</div></td></tr>' +
     '</table></td></tr></table></body></html>';
 
@@ -5615,11 +5535,11 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     eventId: eventRecord.eventId || '',
     recipient: creatorEmail,
     cc: tmv3_preInspectionNotificationCc_(),
-    subject: 'Pre-Inspection Update Required',
+    subject: 'MISSING DETAILS: Update Pre-Inspection Event (' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ')',
     missing: assessment.missing,
     htmlBody: html,
     emailDeliveryEnabled: false,
-    approvalRequiredBeforeSend: true
+    approvalRequiredBeforeSend: false
   };
 }
 
@@ -5850,3 +5770,4 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
   }
   return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid};
 }
+
