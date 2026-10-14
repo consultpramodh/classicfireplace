@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.81-task-first-authoritative-audit-r1';
+const TMV3_VERSION = '3.11.82-preinspection-intake-notification-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -114,6 +114,10 @@ const TMV3 = Object.freeze({
     canaryApiExtraCalls: 50,
     installRemindersEnabled: true,
     preInspectionMissingDetailEmailsEnabled: false,
+    preInspectionAutomationEnabled: false,
+    preInspectionAutomationCanaryEventId: '',
+    preInspectionAutomationIntervalMinutes: 5,
+    preInspectionAutomationMaxEventsPerRun: 3,
     preInspectionGuestSyncEnabled: true,
     preInspectionGuestSyncIntervalMinutes: 5,
     preInspectionGuestSyncMaxWrites: 50,
@@ -287,3 +291,4 @@ const TMV3_OPERATOR_HEADERS = Object.freeze([
 ]);
 
 // TMV3 parity R1 verification trigger — 2026-09-23
+
