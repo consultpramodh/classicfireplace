@@ -1398,7 +1398,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
   options = options || {};
   if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return {status:'LOCK_BUSY',writes:0};
+  if (!lock.tryLock(options.force === true ? 30000 : 1000)) return {status:'LOCK_BUSY',writes:0};
   const props = PropertiesService.getScriptProperties();
   const result = {status:'COMPLETE',processed:0,writes:0,notifications:0,results:[]};
   try {
@@ -1415,7 +1415,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
     let pending = JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
     pending.forEach(function(id) {
       if (records.some(function(r) {return r.eventId===id;})) return;
-      try {records.push(tmv3_findFreshEventRecord_('PreInspection',id));}
+      try {records.push(tmv3_preInspectionRecoveryRecord_(id));}
       catch(err) {tmv3_audit_('PreInspection',id,'','PREINSPECTION_RECOVERY','ATTENTION',String(err));}
     });
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
@@ -1428,6 +1428,11 @@ function tmv3_preInspectionAutomationCycle_(options) {
       const one = {eventId:record.eventId};
       result.processed++;
       try {
+        const doneKey='TMV3_PI_DONE_'+tmv3_hash_(record.eventId);
+        const done=JSON.parse(props.getProperty(doneKey) || 'null');
+        if (!options.eventId && done && done.fingerprint===record.fingerprint && now-Number(done.at || 0)<3600000) {
+          one.status='VERIFIED_UNCHANGED_CACHE';result.results.push(one);continue;
+        }
         const intake = tmv3_preInspectionPromoteCandidate_(record);
         one.intake = intake.status;
         record = intake.record;
@@ -1459,7 +1464,10 @@ function tmv3_preInspectionAutomationCycle_(options) {
           const after = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
           one.afterPlans=after.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};});
           const complete = after.length===1 && !after[0].blocker && !after[0].actions.length;
-          if (complete) pending=pending.filter(function(id){return id!==record.eventId;});
+          if (complete) {
+            pending=pending.filter(function(id){return id!==record.eventId;});
+            props.setProperty(doneKey,JSON.stringify({fingerprint:fresh.fingerprint,at:Date.now()}));
+          }
           else if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
         }
         result.notifications += Number(one.notification && one.notification.sent || 0);
@@ -1477,6 +1485,10 @@ function tmv3_preInspectionAutomationCycle_(options) {
       events:result.results.map(function(x){return {eventId:x.eventId,status:x.status || x.plan || x.intake,
         taskId:x.taskId,error:String(x.error || '').slice(0,500)};})}));
     return result;
+  } catch(err) {
+    result.status='ATTENTION';result.error=String(err && err.message || err);
+    tmv3_audit_('PreInspection','','','PREINSPECTION_CYCLE','ATTENTION',result.error);
+    return result;
   } finally {lock.releaseLock();}
 }
 
@@ -1487,6 +1499,7 @@ function tmv3_runPreInspectionAutomation() {
 
 function tmv3_verifyPreInspectionAutomation(eventId) {
   const records=tmv3_preInspectionIntakeRecords_().filter(function(r){return !eventId || r.eventId===eventId;});
+  if (eventId && !records.length) records.push(tmv3_preInspectionRecoveryRecord_(eventId));
   return {status:'READ_ONLY_VERIFICATION',version:TMV3.VERSION,
     automationEnabled:TMV3.OPERATIONS.preInspectionAutomationEnabled,
     emailEnabled:TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled,
@@ -1540,4 +1553,19 @@ function tmv3_preInspectionFreshHistoryBeforeCreate_(record,plan) {
   });
   // Recompute the same lifecycle gate on fresh complete Customer task history.
   return tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
+}
+
+function tmv3_preInspectionRecoveryRecord_(eventId) {
+  const cfg=TMV3.VERTICALS.PreInspection;
+  const sources=tmv3_verticalCalendars_('PreInspection',cfg).concat(
+    (cfg.secondaryCalendarIds || []).map(function(id){return {calendarId:id,calendarName:'Stephen',role:'SECONDARY_STEPHEN'};})
+  );
+  for(let i=0;i<sources.length;i++) {
+    const found=tmv3_findCalendarEventById_(sources[i].calendarId,eventId);
+    if (!found || !found.event) continue;
+    const record=tmv3_calendarEvent_('PreInspection',cfg,sources[i],found.event,{applyEligibility:false});
+    if (record && !tmv3_step2PreInspectionNonCustomer_(record) &&
+        (sources[i].role==='PRIMARY_SHARED' || tmv3_preInspectionExplicitCandidate_(record))) return record;
+  }
+  throw new Error('RECOVERY_EVENT_MISSING_OR_NO_LONGER_PREINSPECTION');
 }
