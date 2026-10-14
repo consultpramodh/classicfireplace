@@ -5551,7 +5551,7 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     eventId: eventRecord.eventId || '',
     recipient: creatorEmail,
     cc: tmv3_preInspectionNotificationCc_(),
-    subject: 'MISSING DETAILS: ' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ' | ' + when + ' | ' + assessment.missing.map(function(item){return item.field;}).join(', '),
+    subject: 'MISSING DETAILS: ' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ' | ' + when + ' | ' + assessment.missing.map(function(item){return item.code === 'CUSTOMER_NUMBER' ? 'Customer Number' : item.field;}).join(', '),
     missing: assessment.missing,
     htmlBody: html,
     emailDeliveryEnabled: TMV3.MODE === 'PRODUCTION_WRITE' &&
