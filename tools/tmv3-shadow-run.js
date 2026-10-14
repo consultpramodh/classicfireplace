@@ -1015,6 +1015,11 @@ function doPost(e) {
       return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_AUTOMATION_VERIFIED',
         result:Object.assign(tmv3_verifyPreInspectionAutomation(String(body.eventId || '')), {state:{lastCycle:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_CYCLE'),lastResult:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_RESULT'),pending:PropertiesService.getScriptProperties().getProperty('TMV3_PI_PENDING_EVENTS')},apiBudget:tmv3_strivenApiBudgetStatus_()})});
     }
+    if (body.action === 'preInspectionLegacyTitleRepair') {
+      var legacyRepair=tmv3_restoreRecordedPreInspectionLegacyTitles();
+      return TMPV3_shadowResponse_({ok:legacyRepair.status==='COMPLETE',status:'PREINSPECTION_LEGACY_TITLE_REPAIR_COMPLETE',result:legacyRepair});
+    }
+
     if (body.action === 'preInspectionNotificationDedupCheck') {
       var dedupRecord=tmv3_preInspectionRecoveryRecord_(String(body.eventId || ''));
       var dedupKey='TMV3_PI_NOTIFICATION_'+tmv3_hash_(dedupRecord.eventId);
@@ -2840,6 +2845,7 @@ async function main() {
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
       RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
+      RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
       RUN_MODE === 'PREINSPECTION_TRIGGER_INSTALL' ||
@@ -2888,6 +2894,8 @@ async function main() {
                     ? 'preInspectionAutomationRun'
                     : RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK'
                     ? 'preInspectionNotificationDedupCheck'
+                    : RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR'
+                    ? 'preInspectionLegacyTitleRepair'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
@@ -2974,6 +2982,7 @@ async function main() {
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
       RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
+      RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3005,6 +3014,7 @@ async function main() {
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
       RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
+      RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3033,6 +3043,7 @@ async function main() {
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
       RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
+      RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3070,6 +3081,7 @@ async function main() {
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
       RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
+      RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3133,6 +3145,8 @@ async function main() {
                     ? 'preInspectionAutomationRun'
                     : RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK'
                     ? 'preInspectionNotificationDedupCheck'
+                    : RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR'
+                    ? 'preInspectionLegacyTitleRepair'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
@@ -3224,6 +3238,8 @@ async function main() {
                     ? 'preInspectionAutomationRun'
                     : RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK'
                     ? 'preInspectionNotificationDedupCheck'
+                    : RUN_MODE === 'PREINSPECTION_LEGACY_TITLE_REPAIR'
+                    ? 'preInspectionLegacyTitleRepair'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
