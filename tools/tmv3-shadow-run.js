@@ -1015,6 +1015,15 @@ function doPost(e) {
       return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_AUTOMATION_VERIFIED',
         result:Object.assign(tmv3_verifyPreInspectionAutomation(String(body.eventId || '')), {state:{lastCycle:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_CYCLE'),lastResult:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_RESULT'),pending:PropertiesService.getScriptProperties().getProperty('TMV3_PI_PENDING_EVENTS')},apiBudget:tmv3_strivenApiBudgetStatus_()})});
     }
+    if (body.action === 'preInspectionNotificationDedupCheck') {
+      var dedupRecord=tmv3_preInspectionRecoveryRecord_(String(body.eventId || ''));
+      var dedupKey='TMV3_PI_NOTIFICATION_'+tmv3_hash_(dedupRecord.eventId);
+      if (PropertiesService.getScriptProperties().getProperty(dedupKey)!=='SENT') throw new Error('Existing SENT marker required for read-only dedup acceptance.');
+      var dedupResult=tmv3_preInspectionSendMissingDetails_(dedupRecord);
+      return TMPV3_shadowResponse_({ok:dedupResult.sent===0,status:'PREINSPECTION_DEDUP_VERIFIED',
+        result:{dedup:dedupResult,verification:tmv3_verifyPreInspectionAutomation(String(body.eventId))}});
+    }
+
     if (body.action === 'preInspectionAutomationRun') {
       if (!String(body.eventId || '') || String(body.vertical || '') !== 'PreInspection') throw new Error('Exact PreInspection event scope required.');
       var firstCycle=tmv3_preInspectionAutomationCycle_({force:true,eventId:String(body.eventId),reason:'PRODUCTION_ACCEPTANCE'});
@@ -2830,6 +2839,7 @@ async function main() {
       RUN_MODE === 'CONFIGURED_AUTO_CANARY' ||
       RUN_MODE === 'PREINSPECTION_GUEST_SYNC' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
       RUN_MODE === 'PREINSPECTION_TRIGGER_INSTALL' ||
@@ -2876,6 +2886,8 @@ async function main() {
                     ? 'configuredAutoCanary'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN'
                     ? 'preInspectionAutomationRun'
+                    : RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK'
+                    ? 'preInspectionNotificationDedupCheck'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
@@ -2961,6 +2973,7 @@ async function main() {
           (
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -2991,6 +3004,7 @@ async function main() {
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3018,6 +3032,7 @@ async function main() {
             RUN_MODE === 'TASK_SCHEDULE' ||
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3054,6 +3069,7 @@ async function main() {
             RUN_MODE === 'CANARY_TITLE' ||
             RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN' ||
+      RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3115,6 +3131,8 @@ async function main() {
                           ? 'V3_CONFIGURED_AUTO_CANARY_VERIFIED'
                         : RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN'
                     ? 'preInspectionAutomationRun'
+                    : RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK'
+                    ? 'preInspectionNotificationDedupCheck'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
@@ -3204,6 +3222,8 @@ async function main() {
                         ? 'V3_CONFIGURED_AUTO_CANARY_VERIFIED'
                       : RUN_MODE === 'PREINSPECTION_AUTOMATION_RUN'
                     ? 'preInspectionAutomationRun'
+                    : RUN_MODE === 'PREINSPECTION_NOTIFICATION_DEDUP_CHECK'
+                    ? 'preInspectionNotificationDedupCheck'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY'
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
