@@ -72,8 +72,8 @@ console.log('PASS: bounded linked-task hydration, same-ID dedupe, cache reuse, c
 {
  const plan2={links:[{label:'Task',url:'https://example.invalid/task'}]};
  const title='Nancy &amp; Steve Donahue';
- const out=ctx.tmv3_preInspectionClickableManagedDescription_('<h1>'+title+'</h1>\\n<p>They have a\\ncurrent unit. Have\\nsent quote.</p><p>-----Striven Links-----old</p>'.replace(/\\\\n/g,'\\n'),plan2).description;
- assert(!/<h[1-6]|<p>|[\\r\\n]/i.test(out));
+ const out=ctx.tmv3_preInspectionClickableManagedDescription_('<h1>'+title+'</h1>\n<p>They have a\ncurrent unit. Have\nsent quote.</p><p>-----Striven Links-----old</p>',plan2).description;
+ assert(!/<h[1-6]|<p>|[\r\n]/i.test(out));
  assert(out.includes('They have a current unit. Have sent quote.'));
  assert(out.includes(title));
  console.log('PASS: screenshot regression — heading size and forced sentence wraps removed.');
