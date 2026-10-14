@@ -1768,7 +1768,12 @@ function tmv3_normalizeV2TaskModel_(raw) {
 
   const start = tmv3_first_(raw, ['startDateTime','StartDateTime','startDate','StartDate']);
   const due = tmv3_first_(raw, ['dueDateTime','DueDateTime','dueDate','DueDate']);
-  const name = tmv3_first_(raw, ['title','Title','name','Name']);
+  // Striven returns HTML entities in task names (for example &amp;).
+  // Decode once at the read boundary so verified display text compares with
+  // the submitted canonical name without repeated PATCH attempts.
+  const name = tmv3_decodeCalendarHtmlEntities_(
+    tmv3_first_(raw, ['title','Title','name','Name']) || ''
+  );
 
   const row = {
     'Task ID': taskId,
