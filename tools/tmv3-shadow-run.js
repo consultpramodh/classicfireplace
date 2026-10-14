@@ -1013,7 +1013,7 @@ function doPost(e) {
 
     if (body.action === 'preInspectionAutomationVerify') {
       return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_AUTOMATION_VERIFIED',
-        result:tmv3_verifyPreInspectionAutomation(String(body.eventId || ''))});
+        result:Object.assign(tmv3_verifyPreInspectionAutomation(String(body.eventId || '')), {state:{lastCycle:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_CYCLE'),lastResult:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_RESULT'),pending:PropertiesService.getScriptProperties().getProperty('TMV3_PI_PENDING_EVENTS')},apiBudget:tmv3_strivenApiBudgetStatus_()})});
     }
     if (body.action === 'preInspectionAutomationRun') {
       if (!String(body.eventId || '') || String(body.vertical || '') !== 'PreInspection') throw new Error('Exact PreInspection event scope required.');
