@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.88-preinspection-business-day-notifications-r1';
+const TMV3_VERSION = '3.11.89-preinspection-new-location-template-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
