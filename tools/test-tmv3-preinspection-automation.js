@@ -6,7 +6,7 @@ const ctx={console,Logger:{log(){}},Utilities:{formatDate:(d,tz,p)=>p==='yyyy-MM
  LockService:{getScriptLock:()=>({tryLock:()=>{acquires++;return true},releaseLock:()=>releases++})},
  MailApp:{getRemainingDailyQuota:()=>100,sendEmail:e=>sent.push(e)}};
 vm.createContext(ctx);
-for(const f of fs.readdirSync('apps-script/tmv3-clean').filter(x=>x.endsWith('.js')).sort())vm.runInContext(fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8'),ctx);
+for(const f of fs.readdirSync('apps-script/tmv3-clean').filter(x=>x.endsWith('.js')).sort())vm.runInContext(f==='00_Config.js' ? fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8').replace(/preInspectionAutomationEnabled: (?:true|false)/,'preInspectionAutomationEnabled: false').replace(/preInspectionMissingDetailEmailsEnabled: (?:true|false)/,'preInspectionMissingDetailEmailsEnabled: false') : fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8'),ctx);
 const run=s=>vm.runInContext(s,ctx);let cases=0;
 const check=(v,msg)=>{assert.ok(v,msg);cases++};
 const record={vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'frank@google.com',title:'Frank Besenthal (647) 542-8251',calendarCustomerName:'Frank Besenthal',rawDescription:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',descriptionClean:'PRE-INSPECTION Re and re. Remove electric fireplace and install H3. Birch logs',location:'2348 Wildwood Crescent, Pickering, ON L1X 2N1, Canada',start:new Date('2026-10-16T13:00:00Z'),end:new Date('2026-10-16T14:00:00Z'),creator:'babz@classicfireplace.ca'};
@@ -38,7 +38,7 @@ check(run('tmv3_preInspectionAutomationCycle_({}).status')==='PREINSPECTION_GATE
 check(sent.length===0,'no sends before enable');
 run('TMV3.OPERATIONS = TMV3.OPERATIONS'); // frozen configuration: build a fresh enabled context below.
 // Rebuild enabled configuration using source replacement, preserving broad gates.
-const cfg=fs.readFileSync('apps-script/tmv3-clean/00_Config.js','utf8').replace('preInspectionAutomationEnabled: false','preInspectionAutomationEnabled: true').replace('preInspectionMissingDetailEmailsEnabled: false','preInspectionMissingDetailEmailsEnabled: true');
+const cfg=fs.readFileSync('apps-script/tmv3-clean/00_Config.js','utf8').replace(/preInspectionAutomationEnabled: (?:true|false)/,'preInspectionAutomationEnabled: true').replace(/preInspectionMissingDetailEmailsEnabled: (?:true|false)/,'preInspectionMissingDetailEmailsEnabled: true');
 const enabled={...ctx};vm.createContext(enabled);vm.runInContext(cfg,enabled);
 for(const f of fs.readdirSync('apps-script/tmv3-clean').filter(x=>x.endsWith('.js')&&x!=='00_Config.js').sort())vm.runInContext(fs.readFileSync('apps-script/tmv3-clean/'+f,'utf8'),enabled);
 const erun=s=>vm.runInContext(s,enabled);enabled.record=record;enabled.tmv3_audit_=()=>{};
