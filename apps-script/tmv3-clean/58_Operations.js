@@ -5508,12 +5508,14 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     ' – ' +
     Utilities.formatDate(eventRecord.end, TMV3_TIMEZONE, 'h:mm a');
 
+  const followupNumber=Math.max(0,Number(eventRecord.notificationFollowupNumber || 0));
+  const followupLabel=followupNumber ? 'FOLLOW-UP #'+followupNumber : '';
   const html =
     '<!doctype html><html lang="en"><body style="margin:0;padding:0;background:#f4f3f1;font-family:Arial,Helvetica,sans-serif;color:#222;">' +
     '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" style="padding:20px 12px;">' +
     '<table role="presentation" width="760" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:760px;background:#ffffff;">' +
     '<tr><td style="background:#202020;border-top:4px solid #b42b2f;padding:18px 24px;">' +
-      '<div style="font-size:18px;font-weight:700;color:#ffffff;">Pre-Inspection Update Required</div>' +
+      '<div style="font-size:18px;font-weight:700;color:#ffffff;">' + (followupLabel ? followupLabel + ' — ' : '') + 'Pre-Inspection Update Required</div>' +
       '<div style="font-size:12px;color:#aaaaaa;margin-top:3px;">Classic Fireplace &amp; BBQ Store</div>' +
     '</td></tr>' +
     '<tr><td style="padding:20px 24px 12px;">' +
@@ -5551,7 +5553,7 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     eventId: eventRecord.eventId || '',
     recipient: creatorEmail,
     cc: tmv3_preInspectionNotificationCc_(),
-    subject: 'MISSING DETAILS: ' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ' | ' + when + ' | ' + assessment.missing.map(function(item){return item.code === 'CUSTOMER_NUMBER' ? 'Customer Number' : item.field;}).join(', '),
+    subject: (followupLabel ? followupLabel + ' | ' : '') + 'MISSING DETAILS: ' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ' | ' + when + ' | ' + assessment.missing.map(function(item){return item.code === 'CUSTOMER_NUMBER' ? 'Customer Number' : item.field;}).join(', '),
     missing: assessment.missing,
     htmlBody: html,
     emailDeliveryEnabled: TMV3.MODE === 'PRODUCTION_WRITE' &&
