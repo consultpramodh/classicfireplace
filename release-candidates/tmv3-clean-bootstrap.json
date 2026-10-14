@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "V3_PREINSPECTION_DESCRIPTION_AND_EMAIL_IDENTITY_20261014_R2",
+  "release": "V3_PREINSPECTION_BUSINESS_DAY_NOTIFICATIONS_20261014",
   "title": "CF Tasks — V3 ACTIVE — Clean Rebuild",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
@@ -9,5 +9,5 @@
   "mode": "PRODUCTION_WRITE",
   "writeScope": "PREINSPECTION_BOUNDED_AND_TASK_RELATIONSHIP_REPAIR",
   "broadWritesEnabled": false,
-  "expectedLiveCommit": "e962537ab6665bf90038e723d6248a6e6acfedd4"
+  "expectedLiveCommit": "8a1c4011966aa72266a5799ab06bb6ae4937ee2d"
 }
