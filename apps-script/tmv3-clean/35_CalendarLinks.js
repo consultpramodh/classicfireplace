@@ -257,6 +257,25 @@ function tmv3_preInspectionHtmlLink_(link) {
     '</a>';
 }
 
+function tmv3_preInspectionEnsureLegacyTitle_(description, legacyTitle) {
+  const raw = String(description || '');
+  const legacy = tmv3_clean_(legacyTitle);
+  if (!legacy) return raw;
+  const readable = tmv3_calendarReadableDescription_(raw).trim();
+  if (readable === legacy || readable.indexOf(legacy + '\n') === 0) return raw;
+  // If an exporter flattened the title into the first sentence, restore only
+  // its separator; leave every authored character and inline style intact.
+  if (readable.indexOf(legacy) === 0) {
+    const escaped = tmv3_calendarHtmlEscape_(legacy);
+    const token = raw.indexOf(escaped) >= 0 ? escaped : legacy;
+    const ix = raw.indexOf(token);
+    if (ix >= 0) return raw.slice(0,ix) + token + '<br>' + raw.slice(ix+token.length).replace(/^\s+/, '');
+  }
+  return /<[a-z][^>]*>/i.test(raw)
+    ? tmv3_calendarHtmlEscape_(legacy) + '<br>' + raw
+    : legacy + (raw ? '\n' + raw : '');
+}
+
 function tmv3_preInspectionAuthoredMarkup_(description) {
   let text = tmv3_stripV3ManagedBlock_(String(description || ''));
   text = text.replace(
@@ -599,3 +618,4 @@ function tmv3_writeCalendarLinksForEvent_(eventRecord, resolvedRecords) {
     links: plan.links
   };
 }
+
