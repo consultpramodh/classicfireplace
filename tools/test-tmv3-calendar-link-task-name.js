@@ -12,6 +12,7 @@ assert.equal(plan(name).links[1].label,'Task #456 – '+name);
 for(const task of ['', '456', 'Task #456'])assert.throws(()=>plan(task),/actual verified Striven Task Name/);
 console.log('Calendar Task name guard PASS: actual names preserved; absent/numeric-only labels rejected.');
 
+const links=[{label:'Orders',url:'https://example.invalid/orders'},{label:'Task #1 – Fixture',url:'https://example.invalid/task/1'}];
 const descPlan={links};
 const authored='<b>Original title</b><br>First sentence. Have sent quote.<br><i>Keep italic notes.</i>';
 const cases=[
