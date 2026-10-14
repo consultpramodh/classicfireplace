@@ -1,16 +1,15 @@
 {
-  "release": "SCREENSHOT_LAYOUT_POST_REPAIR_READ_ONLY_20261014",
+  "release": "PREINSPECTION_FRANK_AUTOMATION_VERIFY_20261014",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
-  "runMode": "PREVIEW_STEP7",
+  "runMode": "PREINSPECTION_AUTOMATION_VERIFY",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "SCREENSHOT_LAYOUT_POST_REPAIR_READ_ONLY_20261014",
+  "requestTag": "PREINSPECTION_FRANK_AUTOMATION_VERIFY_20261014",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
-  "eventId": "4lci7ub1rvekrm76l8kkl7ps9b@google.com",
-  "taskId": 19074,
-  "allowedDate": "2026-10-13",
-  "expectedPlan": "NO_CHANGE"
+  "eventId": "13gq9komt6s65r9q3bnavee756@google.com",
+  "taskId": 0,
+  "allowedDate": "2026-10-16"
 }
