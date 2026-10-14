@@ -270,6 +270,7 @@ function tmv3_preInspectionAuthoredMarkup_(description) {
   if (!/<[a-z][^>]*>/i.test(text)) {
     text = text.replace(/^\s*#{1,6}\s+/gm, '');
     text = text.replace(/\r\n?/g, '\n')
+      .replace(/\n/, '<br>')
       .replace(/\n\s*\n+/g, '<br>')
       .replace(/[ \t]*\n[ \t]*/g, ' ');
     return text.split('<br>').map(tmv3_calendarHtmlEscape_).join('<br>');
