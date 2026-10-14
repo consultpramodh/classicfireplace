@@ -1657,7 +1657,7 @@ function tmv3_titleNormalizationRegression() {
 
   check(
     'PREINSPECTION_AUTHORED_LAYOUT_PRESERVED_WITH_COMPACT_LINK_BLOCK',
-    preservedClickable.description.indexOf('<p>Existing note</p><br>-----Striven Links-----<br>') === 0 &&
+    preservedClickable.description.indexOf('Existing note<br>-----Striven Links-----<br>') === 0 &&
       preservedClickable.description.indexOf('<p>-----Striven Links-----') === -1 &&
       tmv3_preInspectionClickableManagedDescription_(preservedClickable.description, preLinkPlan).changed === false,
     JSON.stringify(preservedClickable)
