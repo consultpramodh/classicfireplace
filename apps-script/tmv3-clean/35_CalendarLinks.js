@@ -293,7 +293,7 @@ function tmv3_preInspectionClickableManagedDescription_(existingDescription, pla
   const authored = tmv3_preInspectionAuthoredMarkup_(before);
   const managed = tmv3_calendarHtmlEscape_(TMV3_FINAL_LINK_HEADING) +
     (links.length ? '<br>' + links.map(tmv3_preInspectionHtmlLink_).join('<br>') : '');
-  const description = authored + (authored ? '<br>' : '') + managed;
+  const description = authored + (authored ? '<br><br>' : '') + managed;
   return {
     description:description,
     status:description === before
