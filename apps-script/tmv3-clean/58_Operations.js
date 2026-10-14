@@ -5538,7 +5538,8 @@ function tmv3_preInspectionMissingDetailEmailPreview_(eventRecord) {
     subject: 'MISSING DETAILS: Update Pre-Inspection Event (' + (eventRecord.calendarCustomerName || eventRecord.title || 'Appointment') + ')',
     missing: assessment.missing,
     htmlBody: html,
-    emailDeliveryEnabled: false,
+    emailDeliveryEnabled: TMV3.MODE === 'PRODUCTION_WRITE' &&
+      TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled === true,
     approvalRequiredBeforeSend: false
   };
 }
