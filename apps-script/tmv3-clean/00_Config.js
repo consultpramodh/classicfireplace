@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.82-preinspection-intake-notification-r1';
+const TMV3_VERSION = '3.11.83-preinspection-bounded-production-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -113,10 +113,10 @@ const TMV3 = Object.freeze({
     canaryExpectedAction: 'CREATE_TASK',
     canaryApiExtraCalls: 50,
     installRemindersEnabled: true,
-    preInspectionMissingDetailEmailsEnabled: false,
-    preInspectionFailureAlertsEnabled: false,
+    preInspectionMissingDetailEmailsEnabled: true,
+    preInspectionFailureAlertsEnabled: true,
     preInspectionFailureAlertEmail: 'pramodh@classicfireplace.ca',
-    preInspectionAutomationEnabled: false,
+    preInspectionAutomationEnabled: true,
     preInspectionAutomationCanaryEventId: '',
     preInspectionAutomationIntervalMinutes: 5,
     preInspectionAutomationMaxEventsPerRun: 3,
