@@ -1023,8 +1023,10 @@ function doPost(e) {
     if (body.action === 'preInspectionNotificationDedupCheck') {
       var dedupRecord=tmv3_preInspectionRecoveryRecord_(String(body.eventId || ''));
       var dedupKey='TMV3_PI_NOTIFICATION_'+tmv3_hash_(dedupRecord.eventId);
-      if (PropertiesService.getScriptProperties().getProperty(dedupKey)!=='SENT') throw new Error('Existing SENT marker required for read-only dedup acceptance.');
-      var dedupResult=tmv3_preInspectionSendMissingDetails_(dedupRecord);
+      var dedupRaw=PropertiesService.getScriptProperties().getProperty(dedupKey);
+      var dedupState=dedupRaw==='SENT' ? {status:'SENT',sentCount:1,lastSentAt:new Date().toISOString()} : JSON.parse(dedupRaw || 'null');
+      if (!dedupState || dedupState.status!=='SENT') throw new Error('Existing SENT state required for read-only dedup acceptance.');
+      var dedupResult={status:'READ_ONLY_NOTIFICATION_TIMING',sent:0,timing:tmv3_preInspectionNotificationDecision_(dedupRecord,dedupState)};
       return TMPV3_shadowResponse_({ok:dedupResult.sent===0,status:'PREINSPECTION_DEDUP_VERIFIED',
         result:{dedup:dedupResult,verification:tmv3_verifyPreInspectionAutomation(String(body.eventId))}});
     }
