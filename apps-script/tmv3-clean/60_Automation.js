@@ -41,6 +41,7 @@ function onOpen() {
       ui.createMenu('Reminders')
         .addItem('Send Missing SO Reminder Emails Now', 'tmv3_sendInstallMissingSoRemindersNow')
         .addItem('Preview Pre-Inspection Missing Detail Emails', 'tmv3_previewPreInspectionMissingDetailEmails')
+        .addItem('Run Pre-Inspection Automation Now', 'tmv3_runPreInspectionAutomation')
     )
     .addSubMenu(
       ui.createMenu('Automation')
@@ -871,6 +872,7 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
 }
 
 function tmv3_calendarReconciliationFallback() {
+  const preInspection = tmv3_preInspectionAutomationCycle_({reason:'HOURLY_FALLBACK'});
   tmv3_reconcilePreInspectionSharedGuest_AUTO_({
     reason:'CALENDAR_RECONCILIATION_FALLBACK'
   });
@@ -892,18 +894,18 @@ function tmv3_calendarReconciliationFallback() {
   const taskFirst = tmv3_taskFirstProductionCycle_();
 
   if (tmv3_executionStage_() < 7) {
-    return {taskFirst:taskFirst,mapped:tmv3_calendarStageRefresh_(
+    return {taskFirst:taskFirst,preInspection:preInspection,mapped:tmv3_calendarStageRefresh_(
       'CALENDAR_RECONCILIATION_FALLBACK'
     )};
   }
 
   if (tmv3_executionStage_() === 7) {
-    return Object.assign({taskFirst:taskFirst},tmv3_stage7AutomaticCanaryCycle_(
+    return Object.assign({taskFirst:taskFirst,preInspection:preInspection},tmv3_stage7AutomaticCanaryCycle_(
       'CALENDAR_RECONCILIATION_FALLBACK'
     ));
   }
 
-  return Object.assign({taskFirst:taskFirst},tmv3_runProductionAutomationCycle_(
+  return Object.assign({taskFirst:taskFirst,preInspection:preInspection},tmv3_runProductionAutomationCycle_(
     'CALENDAR_RECONCILIATION_FALLBACK',
     {
       maxSourceAgeMinutes:60,
@@ -1134,6 +1136,7 @@ function tmv3_taskFirstProductionCycle_() {
 }
 
 function tmv3_scheduledOperations() {
+  const preInspection = tmv3_preInspectionAutomationCycle_({reason:'SCHEDULED_OPERATIONS'});
   // Relationship-first is independent from the Stage-7 Calendar gate.
   const taskFirst = tmv3_taskFirstProductionCycle_();
   tmv3_reconcilePreInspectionSharedGuest_AUTO_({
@@ -1142,7 +1145,7 @@ function tmv3_scheduledOperations() {
 
   if (tmv3_executionStage_() < 7) {
     return {
-      taskFirst:taskFirst,
+      taskFirst:taskFirst,preInspection:preInspection,
       stage:tmv3_executionStage_(),
       mapped:tmv3_calendarStageRefresh_(
         'SCHEDULED_CALENDAR_STAGE_REFRESH'
@@ -1153,13 +1156,13 @@ function tmv3_scheduledOperations() {
 
   if (tmv3_executionStage_() === 7) {
     return Object.assign(
-      {taskFirst:taskFirst},
+      {taskFirst:taskFirst,preInspection:preInspection},
       tmv3_stage7AutomaticCanaryCycle_('SCHEDULED_CALENDAR_STAGE_REFRESH')
     );
   }
 
   return Object.assign(
-    {taskFirst:taskFirst},
+    {taskFirst:taskFirst,preInspection:preInspection},
     tmv3_runProductionAutomationCycle_('SCHEDULED_OPERATIONS',{
       maxSourceAgeMinutes:30,forceSourceRefresh:false
     })
@@ -1199,6 +1202,7 @@ function tmv3_installReminderCheck() {
 }
 
 function tmv3_calendarEventUpdated() {
+  const preInspection = tmv3_preInspectionAutomationCycle_({reason:'CALENDAR_EVENT_UPDATED'});
   const guestSync =
     tmv3_reconcilePreInspectionSharedGuest_AUTO_({
       reason:'CALENDAR_EVENT_UPDATED'
@@ -1264,6 +1268,7 @@ function tmv3_calendarEventUpdated() {
       first:first,
       rerun:rerun,
       guestSync:guestSync,
+      preInspection:preInspection,
       writes:
         (rerun && rerun.writes) ||
         (first && first.writes) ||
@@ -1289,4 +1294,250 @@ function tmv3_logTriggers() {
   const result = tmv3_listTriggers();
   Logger.log(JSON.stringify(result, null, 2));
   return result;
+}
+
+
+/** Google Apps Script: bounded PreInspection lane. Other verticals stay gated. */
+function tmv3_preInspectionExplicitCandidate_(record) {
+  return !!record && !tmv3_step2PreInspectionNonCustomer_(record) &&
+    /\bpre[\s-]*inspect(?:ion)?\b/i.test([record.title || '',
+      record.descriptionClean || record.rawDescription || ''].join(' '));
+}
+
+function tmv3_preInspectionIntakeRecords_() {
+  const cfg = TMV3.VERTICALS.PreInspection;
+  const calendars = tmv3_verticalCalendars_('PreInspection',cfg).concat(
+    (cfg.secondaryCalendarIds || []).map(function(id) {
+      return {calendarId:id,calendarName:'Stephen',role:'SECONDARY_STEPHEN'};
+    })
+  );
+  const start = new Date(); start.setHours(0,0,0,0);
+  const end = new Date(start); end.setDate(end.getDate() + Number(cfg.lookaheadDays || 365));
+  const records = [];
+  calendars.forEach(function(source) {
+    const cal = CalendarApp.getCalendarById(source.calendarId);
+    if (!cal) throw new Error('PreInspection source calendar unavailable: ' + source.calendarId);
+    cal.getEvents(start,end).forEach(function(event) {
+      const record = tmv3_calendarEvent_('PreInspection',cfg,source,event,
+        {applyEligibility:false});
+      if (!record || tmv3_step2PreInspectionNonCustomer_(record)) return;
+      if (source.role === 'SECONDARY_STEPHEN' && !tmv3_preInspectionExplicitCandidate_(record)) return;
+      records.push(record);
+    });
+  });
+  const seen = {};
+  return records.filter(function(record) {
+    // CF source is visited first. Guest mirrors keep the same iCal UID.
+    const key = record.eventId + '|' + tmv3_iso_(record.start);
+    if (seen[key]) return false;
+    seen[key] = true;
+    return true;
+  }).sort(function(a,b) { return new Date(a.start)-new Date(b.start); });
+}
+
+function tmv3_preInspectionPromoteCandidate_(record) {
+  if (record.calendarRole !== 'SECONDARY_STEPHEN') return {status:'PRIMARY',record:record};
+  if (!tmv3_preInspectionExplicitCandidate_(record)) throw new Error('NOT_EXPLICIT_PREINSPECTION');
+  if (!tmv3_preInspectionCreatorEmail_(record)) throw new Error('CREATOR_MISSING_OR_AMBIGUOUS_NO_INTAKE_WRITE');
+  tmv3_assertOperationWrite_('PREINSPECTIONAUTO','PREINSPECTION_INTAKE');
+  const cfg = TMV3.VERTICALS.PreInspection;
+  const primary = CalendarApp.getCalendarById(cfg.primaryCalendarId);
+  if (!primary) throw new Error('CF Preinspects unavailable.');
+  const existing = tmv3_findCalendarEventById_(cfg.primaryCalendarId,record.eventId);
+  if (existing && existing.event) return {status:'PRIMARY',record:
+    tmv3_calendarEvent_('PreInspection',cfg,tmv3_verticalCalendars_('PreInspection',cfg)[0],existing.event)};
+  const duplicates = primary.getEvents(new Date(record.start),new Date(record.end)).filter(function(event) {
+    return event.getId() !== record.eventId &&
+      event.getStartTime().getTime() === new Date(record.start).getTime() &&
+      event.getEndTime().getTime() === new Date(record.end).getTime() &&
+      tmv3_phone10_(tmv3_extractPhone_(event.getTitle())) === tmv3_phone10_(record.phone) &&
+      !!tmv3_phone10_(record.phone) && tmv3_norm_(event.getLocation()) === tmv3_norm_(record.location);
+  });
+  if (duplicates.length) throw new Error('POSSIBLE_DUPLICATE_CF_EVENT_NO_INTAKE_WRITE');
+  const source = tmv3_findCalendarEventById_(record.calendarId,record.eventId);
+  if (!source || !source.event) throw new Error('Stephen source event disappeared.');
+  const guests = source.event.getGuestList(true).map(function(g) {return tmv3_normEmail_(g.getEmail());});
+  [cfg.primaryCalendarId,cfg.secondaryOwnerEmail].forEach(function(email) {
+    if (guests.indexOf(tmv3_normEmail_(email)) < 0) source.event.addGuest(email);
+  });
+  const after = source.event.getGuestList(true).map(function(g) {return tmv3_normEmail_(g.getEmail());});
+  if (after.indexOf(tmv3_normEmail_(cfg.primaryCalendarId)) < 0 ||
+      after.indexOf(tmv3_normEmail_(cfg.secondaryOwnerEmail)) < 0) throw new Error('INTAKE_GUEST_READBACK_FAILED');
+  // Calendar propagation is asynchronous; no task writes until CF copy exists.
+  const promoted = tmv3_findCalendarEventById_(cfg.primaryCalendarId,record.eventId);
+  return promoted && promoted.event ? {status:'PRIMARY',record:
+    tmv3_calendarEvent_('PreInspection',cfg,tmv3_verticalCalendars_('PreInspection',cfg)[0],promoted.event)}
+    : {status:'WAITING_FOR_CF_COPY',record:record};
+}
+
+function tmv3_preInspectionSendMissingDetails_(record) {
+  const assessment = tmv3_preInspectionMissingDetailAssessment_(record);
+  if (!assessment.shouldNotify) return {status:'NO_MISSING_DETAILS',sent:0};
+  if (TMV3.MODE !== 'PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled !== true) {
+    return {status:'DELIVERY_GATED',sent:0,missing:assessment.missing};
+  }
+  const email = tmv3_preInspectionMissingDetailEmailPreview_(record);
+  if (!email.recipient) return {status:'CREATOR_MISSING_OR_AMBIGUOUS_NO_SEND',sent:0};
+  const props = PropertiesService.getScriptProperties();
+  const key = 'TMV3_PI_NOTIFICATION_' + tmv3_hash_(record.eventId);
+  const prior = props.getProperty(key);
+  if (prior) return {status:prior === 'SENT' ? 'ALREADY_SENT' : 'UNCERTAIN_SEND_NO_RETRY',sent:0};
+  if (MailApp.getRemainingDailyQuota() < 3) return {status:'EMAIL_QUOTA_DEFERRED',sent:0};
+  // Persist before dispatch: a timeout/crash must never cause a duplicate email.
+  props.setProperty(key,'SENDING');
+  MailApp.sendEmail({to:email.recipient,cc:email.cc.join(','),subject:email.subject,
+    body:'Please update the missing Pre-Inspection details: ' + assessment.missing.map(function(x){return x.message;}).join('; '),
+    htmlBody:email.htmlBody,name:'Classic Fireplace & BBQ Store'});
+  props.setProperty(key,'SENT');
+  tmv3_audit_('PreInspection',record.eventId,'','MISSING_DETAILS_EMAIL','SENT',
+    JSON.stringify({to:email.recipient,cc:email.cc,missing:assessment.missing}));
+  return {status:'SENT',sent:1,to:email.recipient,missing:assessment.missing};
+}
+
+function tmv3_preInspectionAutomationCycle_(options) {
+  options = options || {};
+  if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return {status:'LOCK_BUSY',writes:0};
+  const props = PropertiesService.getScriptProperties();
+  const result = {status:'COMPLETE',processed:0,writes:0,notifications:0,results:[]};
+  try {
+    const now = Date.now();
+    const last = Number(props.getProperty('TMV3_PI_LAST_CYCLE') || 0);
+    if (options.force !== true && now-last < Math.max(1,Number(TMV3.OPERATIONS.preInspectionAutomationIntervalMinutes || 5))*60000) {
+      return {status:'THROTTLED',writes:0};
+    }
+    props.setProperty('TMV3_PI_LAST_CYCLE',String(now));
+    // Reuse the cache-age gates and last-good source policy; refresh failure
+    // stops this cycle before task creation or misleading missing-data emails.
+    tmv3_refreshOperationalSourcesIfNeeded_(120,false);
+    const records = tmv3_preInspectionIntakeRecords_();
+    let pending = JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
+    pending.forEach(function(id) {
+      if (records.some(function(r) {return r.eventId===id;})) return;
+      try {records.push(tmv3_findFreshEventRecord_('PreInspection',id));}
+      catch(err) {tmv3_audit_('PreInspection',id,'','PREINSPECTION_RECOVERY','ATTENTION',String(err));}
+    });
+    const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
+    const selected = scopeEventId ? records.filter(function(r){return r.eventId===scopeEventId;}) : records;
+    let cursor = Number(props.getProperty('TMV3_PI_CURSOR') || 0);
+    const cap = Math.max(1,Math.min(3,Number(TMV3.OPERATIONS.preInspectionAutomationMaxEventsPerRun || 3)));
+    if (selected.length) cursor = cursor % selected.length;
+    for (let i=0;i<Math.min(cap,selected.length);i++) {
+      let record = selected[(cursor+i)%selected.length];
+      const one = {eventId:record.eventId};
+      result.processed++;
+      try {
+        const intake = tmv3_preInspectionPromoteCandidate_(record);
+        one.intake = intake.status;
+        record = intake.record;
+        if (intake.status !== 'PRIMARY') {
+          if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
+          // Wait until authoritative intake and matching have been attempted.
+          one.notification = {status:'WAITING_FOR_INTAKE',sent:0};
+        } else {
+          let plans = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
+          if (plans.length === 1 && !plans[0].blocker && (plans[0].actions || []).some(function(a) {
+            return a===TMV3_STEP7_ACTION.CREATE_TASK || a===TMV3_STEP7_ACTION.RECREATE_TASK;
+          })) {
+            plans = tmv3_preInspectionFreshHistoryBeforeCreate_(record,plans[0]);
+          }
+          if (plans.length !== 1) throw new Error('MULTIPLE_CANONICAL_PLANS_NO_WRITE');
+          const plan = plans[0];
+          one.plan=plan.plan;one.blocker=plan.blocker || '';one.taskId=plan.taskId || '';
+          if (!plan.blocker && plan.actions.length && result.writes<1) {
+            // One event transaction per run, using the existing fresh ownership,
+            // lifecycle, durable create guards and field-level readbacks.
+            result.writes++;
+            one.execution = tmv3_executeFreshStep7Selection_({previousPlan:plan.plan,contract:plan},'PREINSPECTIONAUTO','ALL');
+            if (!/VERIFIED|CONVERGED|NO_CHANGE/.test(String(one.execution.status || ''))) {
+              throw new Error('PREINSPECTION_RECONCILIATION_NOT_VERIFIED: '+one.execution.status);
+            }
+          }
+          const fresh = tmv3_findFreshEventRecord_('PreInspection',record.eventId);
+          one.notification = tmv3_preInspectionSendMissingDetails_(fresh);
+          const after = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
+          one.afterPlans=after.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};});
+          const complete = after.length===1 && !after[0].blocker && !after[0].actions.length;
+          if (complete) pending=pending.filter(function(id){return id!==record.eventId;});
+          else if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
+        }
+        result.notifications += Number(one.notification && one.notification.sent || 0);
+      } catch(err) {
+        one.status='ATTENTION';one.error=String(err && err.message || err);result.status='ATTENTION';
+        if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
+        tmv3_audit_('PreInspection',record.eventId,'','PREINSPECTIONAUTO','ATTENTION',one.error);
+      }
+      result.results.push(one);
+    }
+    if (!options.eventId && selected.length) props.setProperty('TMV3_PI_CURSOR',String((cursor+result.processed)%selected.length));
+    props.setProperty('TMV3_PI_PENDING_EVENTS',JSON.stringify(pending));
+    props.setProperty('TMV3_PI_LAST_RESULT',JSON.stringify({status:result.status,
+      processed:result.processed,writes:result.writes,notifications:result.notifications,
+      events:result.results.map(function(x){return {eventId:x.eventId,status:x.status || x.plan || x.intake,
+        taskId:x.taskId,error:String(x.error || '').slice(0,500)};})}));
+    return result;
+  } finally {lock.releaseLock();}
+}
+
+function tmv3_runPreInspectionAutomation() {
+  const result=tmv3_preInspectionAutomationCycle_({force:true,reason:'MANUAL_KICK'});
+  Logger.log(JSON.stringify(result));return result;
+}
+
+function tmv3_verifyPreInspectionAutomation(eventId) {
+  const records=tmv3_preInspectionIntakeRecords_().filter(function(r){return !eventId || r.eventId===eventId;});
+  return {status:'READ_ONLY_VERIFICATION',version:TMV3.VERSION,
+    automationEnabled:TMV3.OPERATIONS.preInspectionAutomationEnabled,
+    emailEnabled:TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled,
+    triggers:tmv3_listTriggers(),records:records.map(function(record){
+      return {eventId:record.eventId,title:record.title,source:record.calendarRole,
+        creator:tmv3_preInspectionCreatorEmail_(record),location:record.location,
+        notification:tmv3_preInspectionMissingDetailEmailPreview_(record),
+        plans:record.calendarRole==='PRIMARY_SHARED' ? tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId) : [],
+        intake:record.calendarRole==='SECONDARY_STEPHEN' ? 'PROMOTE_EXPLICIT_PREINSPECTION' : 'PRIMARY'};
+    })};
+}
+
+function tmv3_preInspectionScheduledCycle() {
+  const result=tmv3_preInspectionAutomationCycle_({reason:'FIVE_MINUTE_FALLBACK'});
+  Logger.log(JSON.stringify(result));return result;
+}
+
+function tmv3_installPreInspectionAutomationTrigger() {
+  const cfg=TMV3.VERTICALS.PreInspection;
+  const ids=[cfg.primaryCalendarId].concat(cfg.secondaryCalendarIds || []);
+  tmv3_assertCalendarTriggerAuthorization_(ids);
+  let triggers=ScriptApp.getProjectTriggers();
+  if (!triggers.some(function(t){return t.getHandlerFunction()==='tmv3_preInspectionScheduledCycle';})) {
+    ScriptApp.newTrigger('tmv3_preInspectionScheduledCycle').timeBased().everyMinutes(5).create();
+  }
+  ids.forEach(function(id){
+    if (!triggers.some(function(t){return t.getHandlerFunction()==='tmv3_calendarEventUpdated' &&
+      tmv3_safeCalendar_(function(){return t.getTriggerSourceId();},'')===id;})) {
+      ScriptApp.newTrigger('tmv3_calendarEventUpdated').forUserCalendar(id).onEventUpdated().create();
+    }
+  });
+  const result=tmv3_listTriggers();
+  if (!result.some(function(t){return t.handler==='tmv3_preInspectionScheduledCycle';}) ||
+      ids.some(function(id){return !result.some(function(t){return t.handler==='tmv3_calendarEventUpdated' && t.sourceId===id;});})) {
+    throw new Error('PREINSPECTION_TRIGGER_READBACK_FAILED');
+  }
+  return {status:'PREINSPECTION_TRIGGERS_VERIFIED',triggers:result};
+}
+
+function tmv3_preInspectionFreshHistoryBeforeCreate_(record,plan) {
+  const customer=tmv3_step4IdentityIndex_().customerById[String(plan.expectedCustomerId)];
+  if (!customer) throw new Error('CREATE_CUSTOMER_NOT_IN_VERIFIED_CACHE');
+  const ids=tmv3_searchPreInspectionTaskIdsForCustomer_(customer);
+  if (ids.length>10) throw new Error('CREATE_HISTORY_API_LIMIT_REVIEW_NO_CREATE');
+  ids.forEach(function(id){
+    const task=tmv3_getTaskById_(Number(id));
+    if (String(task['Task ID'])!==String(id) ||
+        String(task['Customer ID'])!==String(plan.expectedCustomerId) ||
+        Number(task['Task Type ID'])!==105) throw new Error('CREATE_HISTORY_OWNERSHIP_FAILED_NO_CREATE');
+    tmv3_upsertTaskCacheRow_(task);
+  });
+  // Recompute the same lifecycle gate on fresh complete Customer task history.
+  return tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
 }
