@@ -59,7 +59,7 @@ jobs:
           git add backups/task-mapping-v3/2026-10-14-versions
           if ! git diff --cached --quiet; then
             git commit -m "Back up all 200 bound Apps Script versions plus current HEAD"
-            git push origin HEAD:task_mapping
+            git pull --rebase origin task_mapping\n            git push origin HEAD:task_mapping
           fi
           git fetch origin task_mapping
           git diff --exit-code HEAD origin/task_mapping -- backups/task-mapping-v3/2026-10-14-versions
