@@ -22,7 +22,7 @@ const cases=[
 ];
 for(const fixture of cases){
  const out=ctx.tmv3_preInspectionClickableManagedDescription_(fixture.before,descPlan);
- assert.equal(out.description,fixture.prefix+'<br>-----Striven Links-----<br>'+links.map(ctx.tmv3_preInspectionHtmlLink_).join('<br>'));
+ assert.equal(out.description,fixture.prefix+'<br><br>-----Striven Links-----<br>'+links.map(ctx.tmv3_preInspectionHtmlLink_).join('<br>'));
  for(const link of links)assert(ctx.tmv3_preInspectionClickableLinkPresent_(out.description,link));
  assert.equal(ctx.tmv3_preInspectionClickableManagedDescription_(out.description,descPlan).changed,false);
 }
