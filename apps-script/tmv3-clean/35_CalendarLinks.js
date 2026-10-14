@@ -262,18 +262,23 @@ function tmv3_preInspectionEnsureLegacyTitle_(description, legacyTitle) {
   const legacy = tmv3_clean_(legacyTitle);
   if (!legacy) return raw;
   const readable = tmv3_calendarReadableDescription_(raw).trim();
-  if (readable === legacy || readable.indexOf(legacy + '\n') === 0) return raw;
-  // If an exporter flattened the title into the first sentence, restore only
-  // its separator; leave every authored character and inline style intact.
+  if (readable === legacy) return raw;
+  const html = /<[a-z][^>]*>/i.test(raw);
+  const separator = html ? '<br><br>' : '\n\n';
+  // Normalize only the separator after the preserved title. Authored notes
+  // and their inline markup remain intact.
   if (readable.indexOf(legacy) === 0) {
     const escaped = tmv3_calendarHtmlEscape_(legacy);
     const token = raw.indexOf(escaped) >= 0 ? escaped : legacy;
     const ix = raw.indexOf(token);
-    if (ix >= 0) return raw.slice(0,ix) + token + '<br>' + raw.slice(ix+token.length).replace(/^\s+/, '');
+    if (ix >= 0) {
+      const tail = raw.slice(ix+token.length).replace(/^(?:\s|<br\s*\/?>)+/gi, '');
+      return raw.slice(0,ix) + token + separator + tail;
+    }
   }
-  return /<[a-z][^>]*>/i.test(raw)
-    ? tmv3_calendarHtmlEscape_(legacy) + '<br>' + raw
-    : legacy + (raw ? '\n' + raw : '');
+  return html
+    ? tmv3_calendarHtmlEscape_(legacy) + '<br><br>' + raw
+    : legacy + (raw ? '\n\n' + raw : '');
 }
 
 function tmv3_preInspectionAuthoredMarkup_(description) {
