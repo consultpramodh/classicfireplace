@@ -1023,6 +1023,18 @@ function doPost(e) {
       return TMPV3_shadowResponse_({ok:cycle.status==='COMPLETE',status:'PREINSPECTION_AUTOMATION_CANARY_COMPLETE',
         result:cycle,verification:tmv3_verifyPreInspectionAutomation(String(body.eventId))});
     }
+    if (body.action === 'preInspectionNotificationTest') {
+      var notificationRecord = tmv3_preInspectionRecoveryRecord_(String(body.eventId || ''));
+      var originalCreator = tmv3_preInspectionCreatorEmail_(notificationRecord);
+      var testRecord = Object.assign({}, notificationRecord, {creator:'pramodh@classicfireplace.ca',sourceCreators:['pramodh@classicfireplace.ca']});
+      var testEmail = tmv3_preInspectionMissingDetailEmailPreview_(testRecord);
+      if (!testEmail) throw new Error('No missing details: no test notification generated.');
+      MailApp.sendEmail({to:'pramodh@classicfireplace.ca',subject:'[TEST] '+testEmail.subject,
+        body:'Test of the Pre-Inspection missing-details notification.',htmlBody:testEmail.htmlBody,name:'Classic Fireplace & BBQ Store'});
+      return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_NOTIFICATION_TEST_SENT',
+        result:{status:'TEST_SENT',to:'pramodh@classicfireplace.ca',originalCreator:originalCreator,missing:testEmail.missing}});
+    }
+
     if (body.action === 'preInspectionTriggerInstall') {
       return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_TRIGGER_INSTALL_COMPLETE',
         result:tmv3_installPreInspectionAutomationTrigger()});
@@ -2812,6 +2824,7 @@ async function main() {
       RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
       RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
       RUN_MODE === 'PREINSPECTION_TRIGGER_INSTALL' ||
+      RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
       RUN_MODE === 'TASK_FIRST_PRODUCTION_CYCLE' ||
       RUN_MODE === 'PREINSPECTION_COMPARISON_AUDIT' ||
       RUN_MODE === 'TRIGGER_INVENTORY' ||
@@ -2856,6 +2869,8 @@ async function main() {
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
                     ? 'preInspectionAutomationCanary'
+                    : RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST'
+                    ? 'preInspectionNotificationTest'
                     : RUN_MODE === 'PREINSPECTION_TRIGGER_INSTALL'
                     ? 'preInspectionTriggerInstall'
                     : RUN_MODE === 'PREINSPECTION_GUEST_SYNC'
@@ -2933,6 +2948,7 @@ async function main() {
         vertical:
           (RUN_MODE === 'TASK_SCHEDULE' || RUN_MODE === 'TASK_FIRST_AUDIT') ? String(RELEASE_MANIFEST.vertical || '') :
           (
+            RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -2961,6 +2977,7 @@ async function main() {
         ,eventId:
           (
             RUN_MODE === 'TASK_SCHEDULE' ||
+            RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -2986,6 +3003,7 @@ async function main() {
           (RUN_MODE === 'CANARY_TASK_FIRST_19083' || RUN_MODE === 'CANARY_TASK_FIRST_18661') ? PROBE_TASK_ID :
           (
             RUN_MODE === 'TASK_SCHEDULE' ||
+            RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3020,6 +3038,7 @@ async function main() {
             RUN_MODE === 'PREVIEW_STEP7' ||
             RUN_MODE === 'PREVIEW_TITLE' ||
             RUN_MODE === 'CANARY_TITLE' ||
+            RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_VERIFY' ||
             RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY' ||
             RUN_MODE === 'CANARY_STEP7' ||
@@ -3083,6 +3102,8 @@ async function main() {
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
                     ? 'preInspectionAutomationCanary'
+                    : RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST'
+                    ? 'preInspectionNotificationTest'
                     : RUN_MODE === 'PREINSPECTION_TRIGGER_INSTALL'
                     ? 'preInspectionTriggerInstall'
                     : RUN_MODE === 'PREINSPECTION_GUEST_SYNC'
@@ -3168,6 +3189,8 @@ async function main() {
                     ? 'preInspectionAutomationVerify'
                     : RUN_MODE === 'PREINSPECTION_AUTOMATION_CANARY'
                     ? 'preInspectionAutomationCanary'
+                    : RUN_MODE === 'PREINSPECTION_NOTIFICATION_TEST'
+                    ? 'preInspectionNotificationTest'
                     : RUN_MODE === 'PREINSPECTION_TRIGGER_INSTALL'
                     ? 'preInspectionTriggerInstall'
                     : RUN_MODE === 'PREINSPECTION_GUEST_SYNC'
