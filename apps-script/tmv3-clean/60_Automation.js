@@ -1461,6 +1461,10 @@ function tmv3_preInspectionAutomationCycle_(options) {
           }
           const fresh = tmv3_findFreshEventRecord_('PreInspection',record.eventId);
           one.notification = tmv3_preInspectionSendMissingDetails_(fresh);
+          if (/CREATOR_MISSING|UNCERTAIN_SEND/.test(one.notification.status || '')) {
+            result.status='ATTENTION';
+            tmv3_preInspectionFailureAlert_(record.eventId,one.notification.status);
+          }
           const after = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
           one.afterPlans=after.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};});
           const complete = after.length===1 && !after[0].blocker && !after[0].actions.length;
@@ -1475,6 +1479,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
         one.status='ATTENTION';one.error=String(err && err.message || err);result.status='ATTENTION';
         if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
         tmv3_audit_('PreInspection',record.eventId,'','PREINSPECTIONAUTO','ATTENTION',one.error);
+        tmv3_preInspectionFailureAlert_(record.eventId,one.error);
       }
       result.results.push(one);
     }
@@ -1488,6 +1493,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
   } catch(err) {
     result.status='ATTENTION';result.error=String(err && err.message || err);
     tmv3_audit_('PreInspection','','','PREINSPECTION_CYCLE','ATTENTION',result.error);
+    tmv3_preInspectionFailureAlert_('',result.error);
     return result;
   } finally {lock.releaseLock();}
 }
@@ -1504,8 +1510,16 @@ function tmv3_verifyPreInspectionAutomation(eventId) {
     automationEnabled:TMV3.OPERATIONS.preInspectionAutomationEnabled,
     emailEnabled:TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled,
     triggers:tmv3_listTriggers(),records:records.map(function(record){
+      let diagnostics=null;
+      if (record.calendarRole==='PRIMARY_SHARED') {
+        const s2=tmv3_step2CalendarRecords_([record]);
+        const s3=tmv3_step3BusinessAnchorRecords_(s2,tmv3_step3AnchorIndex_());
+        const s4=tmv3_step4IdentityRecords_(s3,tmv3_step4IdentityIndex_());
+        diagnostics=s4.map(function(r){return {step2:r.step2,step3:r.step3,step4:r.step4};});
+      }
       return {eventId:record.eventId,title:record.title,source:record.calendarRole,
         creator:tmv3_preInspectionCreatorEmail_(record),location:record.location,
+        diagnostics:diagnostics,
         notification:tmv3_preInspectionMissingDetailEmailPreview_(record),
         plans:record.calendarRole==='PRIMARY_SHARED' ? tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId) : [],
         intake:record.calendarRole==='SECONDARY_STEPHEN' ? 'PROMOTE_EXPLICIT_PREINSPECTION' : 'PRIMARY'};
@@ -1568,4 +1582,29 @@ function tmv3_preInspectionRecoveryRecord_(eventId) {
         (sources[i].role==='PRIMARY_SHARED' || tmv3_preInspectionExplicitCandidate_(record))) return record;
   }
   throw new Error('RECOVERY_EVENT_MISSING_OR_NO_LONGER_PREINSPECTION');
+}
+
+function tmv3_preInspectionFailureAlert_(eventId,error) {
+  if (TMV3.MODE!=='PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionFailureAlertsEnabled!==true) return {status:'ALERT_GATED'};
+  const day=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
+  const key='TMV3_PI_FAILURE_'+tmv3_hash_(day+'|'+eventId+'|'+error);
+  const props=PropertiesService.getScriptProperties();
+  if (props.getProperty(key)) return {status:'ALREADY_ALERTED'};
+  try {
+    if (MailApp.getRemainingDailyQuota()<1) return {status:'QUOTA_DEFERRED'};
+    props.setProperty(key,'SENDING');
+    const esc=tmv3_preInspectionHtmlEscape_;
+    MailApp.sendEmail({to:TMV3.OPERATIONS.preInspectionFailureAlertEmail,
+      subject:'Pre-Inspection Automation: action required',
+      body:'Pre-Inspection automation needs review. Event: '+(eventId || 'Source refresh')+'\n'+error,
+      htmlBody:'<p><em>This is an automated email notification from Classic Fireplace &amp; BBQ Store.</em></p>'+
+        '<p>Hi Pramodh,</p><p style="color:#B42318;font-weight:700;">Pre-Inspection automation requires review.</p>'+
+        '<p>Event: '+esc(eventId || 'Source refresh')+'</p><p>'+esc(error)+'</p>'+
+        '<p>The affected action remains queued. Verify any uncertain write before retrying.</p>',
+      name:'Classic Fireplace & BBQ Store'});
+    props.setProperty(key,'SENT');return {status:'SENT'};
+  } catch(err) {
+    tmv3_audit_('PreInspection',eventId,'','PREINSPECTION_FAILURE_ALERT','ATTENTION',String(err));
+    return {status:'ALERT_UNCERTAIN_NO_RETRY'};
+  }
 }
