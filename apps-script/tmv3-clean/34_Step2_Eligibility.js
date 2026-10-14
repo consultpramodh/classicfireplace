@@ -96,6 +96,10 @@ function tmv3_step2ClassifyService_(record) {
 }
 
 function tmv3_step2ClassifyPreInspection_(record) {
+  if (tmv3_step2PreInspectionNonCustomer_(record)) {
+    return tmv3_step2Decision_('SKIP', 'PREINSPECTION_NON_JOB',
+      'Non-customer appointment excluded from PreInspection automation.', false);
+  }
   const roles = record.sourceCalendarRoles || [
     record.calendarRole || ''
   ];
@@ -174,11 +178,9 @@ function tmv3_step2PreInspectionFormatWarnings_(record) {
   if (!tmv3_clean_(record.calendarCustomerName)) warnings.push('Title missing customer name.');
   if (!record.phone) warnings.push('Title missing phone.');
 
-  const descriptionSo = tmv3_extractLegacyPreInspectionOrderNumber_(
-    record.descriptionClean || ''
-  );
-
-  if (!descriptionSo) warnings.push('Description missing labelled SO #.');
+  if (!tmv3_preInspectionHasSalesOrderReference_(record)) {
+    warnings.push('Sales Order Number missing (notification only; task creation allowed).');
+  }
   if (!tmv3_clean_(record.location)) warnings.push('Calendar Location is blank.');
 
   return warnings;
@@ -397,3 +399,4 @@ function tmv3_step2Verify_(records, step1Snapshot) {
     actualRows: actualRows
   };
 }
+
