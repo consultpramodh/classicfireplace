@@ -53,3 +53,18 @@ console.log('PASS: bounded linked-task hydration, same-ID dedupe, cache reuse, c
 
 
 }
+
+{
+ const ctx2={};vm.createContext(ctx2);
+ const root=path.join(__dirname,'../apps-script/tmv3-clean');
+ for(const file of fs.readdirSync(root).filter(f=>f.endsWith('.js')).sort())vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx2);
+ ctx2.tmv3_hash_=()=> 'fixture';
+ const raw={id:19074,title:'Nancy &amp; Steve Donahue',type:{id:105,name:'Pre Inspection'},status:{name:'Open'},customer:{id:62845},location:{id:58459},startDateTime:'2026-10-13T14:00:00',dueDateTime:'2026-10-13T15:00:00',assignments:[]};
+ const before=JSON.stringify(raw),actual=ctx2.tmv3_normalizeV2TaskModel_(raw);
+ assert.equal(actual.Name,'Nancy & Steve Donahue');
+ assert.equal(actual['Customer ID'],62845);assert.equal(actual['Location ID'],58459);
+ assert.equal(actual.Start,raw.startDateTime);assert.equal(actual.Due,raw.dueDateTime);
+ assert.equal(JSON.stringify(raw),before);
+ assert.equal(ctx2.tmv3_normalizeV2TaskModel_({...raw,title:'Plain task name'}).Name,'Plain task name');
+ console.log('PASS: Striven encoded name display comparison; IDs, schedule and raw payload preserved.');
+}
