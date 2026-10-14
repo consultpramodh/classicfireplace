@@ -160,6 +160,7 @@ function tmv3_step7HydrateLinkedPreInspectionTasks_(records, refs, runtime) {
   });
 }
 
+
 function tmv3_step7FreshPlansForEvent_(vertical, eventId) {
   const wantedVertical = tmv3_clean_(vertical);
   const wantedEventId = tmv3_clean_(eventId);
@@ -1516,7 +1517,10 @@ function tmv3_step7PlanRow_(input) {
     writeGate:
       TMV3.MODE === 'SHADOW_READ_ONLY'
         ? 'SHADOW_ONLY__NO_WRITES'
-        : 'EXECUTION_CONFIG_GATED',
+        : record.vertical === 'PreInspection' && TMV3.MODE === 'PRODUCTION_WRITE' &&
+          TMV3.OPERATIONS.preInspectionAutomationEnabled === true
+          ? (input.blocker ? 'PREINSPECTION_AUTO_HELD' : 'PREINSPECTION_AUTO_ENABLED')
+          : 'EXECUTION_CONFIG_GATED',
     blocker:input.blocker || '',
     evidence:input.evidence || '',
     sourceTaskIds:sourceTaskIdList.join(','),
@@ -2267,3 +2271,4 @@ function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
     writes:0
   };
 }
+
