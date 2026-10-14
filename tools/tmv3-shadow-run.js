@@ -1016,8 +1016,8 @@ function doPost(e) {
         result:Object.assign(tmv3_verifyPreInspectionAutomation(String(body.eventId || '')), {state:{lastCycle:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_CYCLE'),lastResult:PropertiesService.getScriptProperties().getProperty('TMV3_PI_LAST_RESULT'),pending:PropertiesService.getScriptProperties().getProperty('TMV3_PI_PENDING_EVENTS')},apiBudget:tmv3_strivenApiBudgetStatus_()})});
     }
     if (body.action === 'preInspectionLegacyTitleRepair') {
-      var legacyRepair=tmv3_restoreRecordedPreInspectionLegacyTitles();
-      return TMPV3_shadowResponse_({ok:legacyRepair.status==='COMPLETE',status:'PREINSPECTION_LEGACY_TITLE_REPAIR_COMPLETE',result:legacyRepair});
+      var legacyRepair=body.eventId ? tmv3_restorePreInspectionLegacyTitle_(tmv3_preInspectionRecoveryRecord_(String(body.eventId))) : tmv3_restoreRecordedPreInspectionLegacyTitles();
+      return TMPV3_shadowResponse_({ok:legacyRepair.status==='COMPLETE' || legacyRepair.status==='LEGACY_TITLE_VERIFIED',status:'PREINSPECTION_LEGACY_TITLE_REPAIR_COMPLETE',result:legacyRepair});
     }
 
     if (body.action === 'preInspectionNotificationDedupCheck') {
