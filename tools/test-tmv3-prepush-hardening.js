@@ -14,3 +14,6 @@ const suites=Object.fromEntries(Object.entries(result).filter(([k,v])=>v&&typeof
 const total=Object.values(suites).reduce((n,v)=>n+v.cases,0);
 if(result.status!=='PASS'||Object.keys(suites).length!==13||total<185)throw Error('Full pre-push hardening acceptance incomplete');
 console.log(JSON.stringify({status:result.status,cases:total,suites}));
+
+
+require("node:child_process").execFileSync(process.execPath,[path.join(__dirname,"test-tmv3-preinspection-automation.js")],{stdio:"inherit"});
