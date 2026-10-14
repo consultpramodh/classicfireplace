@@ -1,5 +1,5 @@
 {
-  "release": "PREINSPECTION_OCT13_ESTHER_NO_TASK_STAGE7_PREVIEW_R2",
+  "release": "PREINSPECTION_OCT13_ESTHER_E2E_FRESH_PREVIEW_20261014",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "mode": "PRODUCTION_WRITE",
   "writesEnabled": false,
@@ -8,7 +8,7 @@
   "batchLimit": 0,
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "PREINSPECTION_OCT13_ESTHER_TASKLESS_STAGE7_PREVIEW_R2",
+  "requestTag": "ESTHER_E2E_FRESH_PREVIEW_20261014",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
   "eventId": "2eg4j9ii5pfbif2dtob4gr784c@google.com",
