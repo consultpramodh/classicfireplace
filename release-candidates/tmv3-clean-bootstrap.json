@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "V3_PREINSPECTION_PRODUCTION_STATUS_VERIFY_R2_20261014",
+  "release": "V3_PREINSPECTION_LEGACY_TITLE_GUARD_20261014",
   "title": "CF Tasks — V3 ACTIVE — Clean Rebuild",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
@@ -9,5 +9,5 @@
   "mode": "PRODUCTION_WRITE",
   "writeScope": "PREINSPECTION_BOUNDED_AND_TASK_RELATIONSHIP_REPAIR",
   "broadWritesEnabled": false,
-  "expectedLiveCommit": "d32c9c5cfd8bd051c26491c35a5e988b78b2bac7"
+  "expectedLiveCommit": "ec5dad78a1d5a9440c6a6f3775213b91a6160811"
 }
