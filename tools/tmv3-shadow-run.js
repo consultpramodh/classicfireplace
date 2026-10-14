@@ -1032,7 +1032,7 @@ function doPost(e) {
       MailApp.sendEmail({to:'pramodh@classicfireplace.ca',subject:'[TEST] '+testEmail.subject,
         body:'Test of the Pre-Inspection missing-details notification.',htmlBody:testEmail.htmlBody,name:'Classic Fireplace & BBQ Store'});
       return TMPV3_shadowResponse_({ok:true,status:'PREINSPECTION_NOTIFICATION_TEST_SENT',
-        result:{status:'TEST_SENT',to:'pramodh@classicfireplace.ca',originalCreator:originalCreator,missing:testEmail.missing}});
+        result:{status:'TEST_SENT',to:'pramodh@classicfireplace.ca',originalCreator:originalCreator,missing:testEmail.missing,verification:tmv3_verifyPreInspectionAutomation(String(body.eventId || '')),triggerInstall:tmv3_installPreInspectionAutomationTrigger()}});
     }
 
     if (body.action === 'preInspectionTriggerInstall') {
