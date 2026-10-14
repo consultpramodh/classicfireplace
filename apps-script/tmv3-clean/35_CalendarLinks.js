@@ -268,16 +268,22 @@ function tmv3_preInspectionAuthoredMarkup_(description) {
   // Remove only the empty wrapper/separator belonging to the managed footer.
   text = text.replace(/(?:<p[^>]*>\s*|<br\s*\/?>\s*|\s)+$/gi, '');
   if (!/<[a-z][^>]*>/i.test(text)) {
-    // Calendar APIs return the actual authored newlines; do not reinterpret
-    // them as Markdown paragraph breaks or insert hard wraps into sentences.
-    return tmv3_calendarHtmlText_(text);
+    text = text.replace(/^\s*#{1,6}\s+/gm, '');
+    text = text.replace(/\r\n?/g, '\n')
+      .replace(/\n\s*\n+/g, '<br>')
+      .replace(/[ \t]*\n[ \t]*/g, ' ');
+    return text.split('<br>').map(tmv3_calendarHtmlEscape_).join('<br>');
   }
-  // A cut inside an HTML paragraph leaves its opening tag. Close it without
-  // rebuilding the authored markup (bold, lists, links and line breaks).
-  const opens = (text.match(/<p(?:\s[^>]*)?>/gi) || []).length;
-  const closes = (text.match(/<\/p>/gi) || []).length;
-  if (opens > closes) text += '</p>'.repeat(opens - closes);
-  return text;
+  // Imported Markdown headings and paragraph wrappers must not turn the
+  // preserved sales-rep title into oversized text or artificial vertical gaps.
+  // Real inline formatting and lists stay intact. API/export line wrapping
+  // inside HTML text is whitespace, not an authored hard line break.
+  return text
+    .replace(/<\/(?:p|h[1-6])\s*>/gi, '<br>')
+    .replace(/<(?:p|h[1-6])(?:\s[^>]*)?>/gi, '')
+    .replace(/[\r\n]+[ \t]*/g, ' ')
+    .replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br>')
+    .replace(/^\s+|(?:<br\s*\/?>\s*|\s)+$/gi, '');
 }
 
 function tmv3_preInspectionClickableManagedDescription_(existingDescription, plan) {
