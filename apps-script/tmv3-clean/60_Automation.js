@@ -1371,28 +1371,77 @@ function tmv3_preInspectionPromoteCandidate_(record) {
     : {status:'WAITING_FOR_CF_COPY',record:record};
 }
 
-function tmv3_preInspectionSendMissingDetails_(record) {
-  const assessment = tmv3_preInspectionMissingDetailAssessment_(record);
-  if (!assessment.shouldNotify) return {status:'NO_MISSING_DETAILS',sent:0};
-  if (TMV3.MODE !== 'PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled !== true) {
-    return {status:'DELIVERY_GATED',sent:0,missing:assessment.missing};
+// Toronto wall-clock dates keep business-day deadlines stable across DST.
+function tmv3_preInspectionNotificationDateParts_(value) {
+  const date=new Date(value);
+  if (!isFinite(date.getTime())) return null;
+  const text=Utilities.formatDate(date,'America/Toronto','yyyy-MM-dd HH:mm:ss');
+  const day=text.slice(0,10);
+  const utc=new Date(day+'T12:00:00Z');
+  return {text:text,day:day,weekday:utc.getUTCDay(),utc:utc};
+}
+function tmv3_preInspectionNotificationWeek_(parts) {
+  const day=new Date(parts.utc.getTime());
+  day.setUTCDate(day.getUTCDate()-((day.getUTCDay()+6)%7));
+  return day.toISOString().slice(0,10);
+}
+function tmv3_preInspectionNotificationDecision_(record,state,nowValue) {
+  const now=new Date(nowValue || Date.now());
+  const start=new Date(record.start);
+  if (!isFinite(start.getTime())) return {status:'EVENT_START_UNKNOWN',send:false};
+  if (record.status==='cancelled' || now.getTime()>=start.getTime()) return {status:'APPOINTMENT_ENDED',send:false};
+  if (state && state.status!=='SENT') return {status:'UNCERTAIN_SEND_NO_RETRY',send:false};
+  const today=tmv3_preInspectionNotificationDateParts_(now);
+  if (today.weekday===0 || today.weekday===6) return {status:'WEEKEND_DEFERRED',send:false};
+  if (state) {
+    const last=new Date(state.lastSentAt);
+    if (!isFinite(last.getTime())) return {status:'SEND_TIME_UNKNOWN_NO_RETRY',send:false};
+    if (now.getTime()-last.getTime()<86400000 ||
+        today.day===tmv3_preInspectionNotificationDateParts_(last).day) return {status:'ALREADY_SENT',send:false};
+    return {status:'FOLLOW_UP_DUE',send:true,followupNumber:Number(state.sentCount || 1)};
   }
-  const email = tmv3_preInspectionMissingDetailEmailPreview_(record);
+  const created=tmv3_preInspectionNotificationDateParts_(record.calendarCreatedAt);
+  if (!created) return {status:'EVENT_CREATION_TIME_UNKNOWN',send:false};
+  const appointment=tmv3_preInspectionNotificationDateParts_(start);
+  if (tmv3_preInspectionNotificationWeek_(created)===tmv3_preInspectionNotificationWeek_(appointment)) {
+    return {status:'SAME_WEEK_DUE',send:true,followupNumber:0};
+  }
+  const due=new Date(created.utc.getTime());let remaining=2;
+  while (remaining) {due.setUTCDate(due.getUTCDate()+1);if(due.getUTCDay()!==0 && due.getUTCDay()!==6) remaining--;}
+  const eligibleAt=due.toISOString().slice(0,10)+created.text.slice(10);
+  return today.text>=eligibleAt ? {status:'FIRST_DUE',send:true,followupNumber:0} :
+    {status:'GRACE_PERIOD',send:false,eligibleAt:eligibleAt,timezone:'America/Toronto'};
+}
+function tmv3_preInspectionSendMissingDetails_(record) {
+  const assessment=tmv3_preInspectionMissingDetailAssessment_(record);
+  if (!assessment.shouldNotify) return {status:'NO_MISSING_DETAILS',sent:0};
+  if (TMV3.MODE!=='PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled!==true) return {status:'DELIVERY_GATED',sent:0};
+  const props=PropertiesService.getScriptProperties();
+  const key='TMV3_PI_NOTIFICATION_'+tmv3_hash_(record.eventId);
+  const prior=props.getProperty(key);let state=null;
+  // Old SENT markers lack timestamps. Start a conservative 24-hour waiting
+  // period at migration instead of resending all historic notifications.
+  if (prior==='SENT') {
+    state={status:'SENT',sentCount:1,lastSentAt:new Date().toISOString(),migrated:true};
+    props.setProperty(key,JSON.stringify(state));
+    return {status:'ALREADY_SENT',sent:0};
+  }
+  if (prior) {
+    try {state=JSON.parse(prior);} catch(err) {return {status:'UNCERTAIN_SEND_NO_RETRY',sent:0};}
+  }
+  const decision=tmv3_preInspectionNotificationDecision_(record,state);
+  if (!decision.send) return Object.assign({sent:0},decision);
+  const email=tmv3_preInspectionMissingDetailEmailPreview_(Object.assign({},record,{notificationFollowupNumber:decision.followupNumber}));
   if (!email.recipient) return {status:'CREATOR_MISSING_OR_AMBIGUOUS_NO_SEND',sent:0};
-  const props = PropertiesService.getScriptProperties();
-  const key = 'TMV3_PI_NOTIFICATION_' + tmv3_hash_(record.eventId);
-  const prior = props.getProperty(key);
-  if (prior) return {status:prior === 'SENT' ? 'ALREADY_SENT' : 'UNCERTAIN_SEND_NO_RETRY',sent:0};
-  if (MailApp.getRemainingDailyQuota() < 3) return {status:'EMAIL_QUOTA_DEFERRED',sent:0};
-  // Persist before dispatch: a timeout/crash must never cause a duplicate email.
-  props.setProperty(key,'SENDING');
+  if (MailApp.getRemainingDailyQuota()<3) return {status:'EMAIL_QUOTA_DEFERRED',sent:0};
+  const next={status:'SENDING',sentCount:Number(state && state.sentCount || 0)+1,lastSentAt:new Date().toISOString()};
+  props.setProperty(key,JSON.stringify(next));
   MailApp.sendEmail({to:email.recipient,cc:email.cc.join(','),subject:email.subject,
-    body:'Please update the missing Pre-Inspection details: ' + assessment.missing.map(function(x){return x.message;}).join('; '),
+    body:(decision.followupNumber ? 'FOLLOW-UP #'+decision.followupNumber+': ' : '')+'Please update the missing Pre-Inspection details: '+assessment.missing.map(function(x){return x.message;}).join('; '),
     htmlBody:email.htmlBody,name:'Classic Fireplace & BBQ Store'});
-  props.setProperty(key,'SENT');
-  tmv3_audit_('PreInspection',record.eventId,'','MISSING_DETAILS_EMAIL','SENT',
-    JSON.stringify({to:email.recipient,cc:email.cc,missing:assessment.missing}));
-  return {status:'SENT',sent:1,to:email.recipient,missing:assessment.missing};
+  next.status='SENT';props.setProperty(key,JSON.stringify(next));
+  tmv3_audit_('PreInspection',record.eventId,'','MISSING_DETAILS_EMAIL','SENT',JSON.stringify({to:email.recipient,followupNumber:decision.followupNumber,missing:assessment.missing}));
+  return {status:'SENT',sent:1,to:email.recipient,followupNumber:decision.followupNumber,missing:assessment.missing};
 }
 
 function tmv3_preInspectionAutomationCycle_(options) {
@@ -1422,6 +1471,12 @@ function tmv3_preInspectionAutomationCycle_(options) {
     });
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
     const selected = scopeEventId ? records.filter(function(r){return r.eventId===scopeEventId;}) : records;
+    // Check notification deadlines for every authoritative event each slot;
+    // the bounded task-write cursor must not delay due reminders.
+    selected.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){
+      try {const notice=tmv3_preInspectionSendMissingDetails_(r);result.notifications+=Number(notice.sent || 0);}
+      catch(err) {result.status='ATTENTION';tmv3_preInspectionFailureAlert_(r.eventId,String(err));}
+    });
     let cursor = Number(props.getProperty('TMV3_PI_CURSOR') || 0);
     const cap = Math.max(1,Math.min(3,Number(TMV3.OPERATIONS.preInspectionAutomationMaxEventsPerRun || 3)));
     if (selected.length) cursor = cursor % selected.length;
@@ -1523,6 +1578,7 @@ function tmv3_verifyPreInspectionAutomation(eventId) {
       }
       return {eventId:record.eventId,title:record.title,source:record.calendarRole,
         creator:tmv3_preInspectionCreatorEmail_(record),location:record.location,
+        calendarCreatedAt:record.calendarCreatedAt,firstNotificationTiming:tmv3_preInspectionNotificationDecision_(record,null),
         diagnostics:diagnostics,
         notification:tmv3_preInspectionMissingDetailEmailPreview_(record),
         plans:record.calendarRole==='PRIMARY_SHARED' ? tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId) : [],
