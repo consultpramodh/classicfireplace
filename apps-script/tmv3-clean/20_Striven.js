@@ -186,6 +186,15 @@ function tmv3_strivenApiBudgetStatus() {
   return status;
 }
 
+// Honor Striven's returned lifetime, with a five-minute expiry margin.
+// Unknown/short lifetimes are used for this request only, never cached.
+function tmv3_strivenTokenCacheSeconds_(expiresIn) {
+  if (expiresIn === null || expiresIn === undefined || expiresIn === '') return 0;
+  const seconds = Number(expiresIn);
+  if (!Number.isFinite(seconds) || seconds <= 300) return 0;
+  return Math.min(21600, Math.floor(seconds) - 300);
+}
+
 function tmv3_token_() {
   const cache = CacheService.getScriptCache();
   const cached = tmv3_clean_(cache.get('TMV3_STRIVEN_TOKEN'));
@@ -195,6 +204,9 @@ function tmv3_token_() {
   const clientSecret = tmv3_property_(TMV3.PROPERTIES.CLIENT_SECRET, true);
 
   tmv3_reserveStrivenApiCall_('TOKEN_REFRESH');
+
+  TMV3_RUNTIME_METRICS.strivenApiCalls =
+    Number(TMV3_RUNTIME_METRICS.strivenApiCalls || 0) + 1;
 
   const response = UrlFetchApp.fetch(TMV3.API_BASE + '/accesstoken', {
     method: 'post',
@@ -233,12 +245,8 @@ function tmv3_token_() {
     throw new Error('Striven authentication returned no access_token.');
   }
 
-  const ttl = Math.max(
-    60,
-    Math.min(Number(body.expires_in || 3600) - 300, 3300)
-  );
-
-  cache.put('TMV3_STRIVEN_TOKEN', token, ttl);
+  const ttl = tmv3_strivenTokenCacheSeconds_(body.expires_in);
+  if (ttl > 0) cache.put('TMV3_STRIVEN_TOKEN', token, ttl);
   return token;
 }
 
@@ -2079,3 +2087,4 @@ function tmv3_arrayFromApiResponse_(json) {
 
   return [];
 }
+
