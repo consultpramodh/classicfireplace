@@ -125,6 +125,15 @@ function tmv3_reserveStrivenApiCall_(label) {
   const effectiveSoftLimit =
     tmv3_strivenApiEffectiveSoftLimit_(status, cfg);
 
+  // Corrupt counters must never turn the comparison into NaN >= limit
+  // (false), which would silently disable the daily guard.
+  if (!Number.isSafeInteger(status.count) || status.count < 0 ||
+      !Number.isSafeInteger(effectiveSoftLimit) || effectiveSoftLimit <= 0) {
+    TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks =
+      Number(TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks || 0) + 1;
+    throw new Error('TMV3_STRIVEN_API_BUDGET_INVALID: reconcile the daily counter/configuration before further requests.');
+  }
+
   if (status.exhausted || status.count >= effectiveSoftLimit) {
     TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks =
       Number(TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks || 0) + 1;
@@ -2087,4 +2096,5 @@ function tmv3_arrayFromApiResponse_(json) {
 
   return [];
 }
+
 
