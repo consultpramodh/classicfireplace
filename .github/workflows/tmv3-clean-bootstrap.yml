@@ -33,6 +33,9 @@ jobs:
 
       - name: Verify V3 before production push
         run: |
+          node tools/test-tmv3-token-cache.js
+          node tools/test-tmv3-api-budget-integrity.js
+          node tools/test-tmv3-deployment-rollback.js
           node tools/test-tmv3-prepush-hardening.js
           node tools/test-tmv3-task-first-production-lane.js
           node tools/test-tmv3-task-first-canary-scope.js
@@ -87,17 +90,31 @@ jobs:
 
           mkdir -p "$WORK" "$VERIFY" "$OUT"
 
-          PUSHED=0
+          PUSH_ATTEMPTED=0
           HAD_PRE=0
 
           rollback() {
-            if [ "$PUSHED" = "1" ] && [ "$HAD_PRE" = "1" ] && [ -d "$PRE/src" ]; then
-              echo "Verification failed; restoring PRE V3 source."
-              (cd "$PRE" && npx -y "@google/clasp@$CLASP_VERSION" push --force) || true
+            if [ "$PUSH_ATTEMPTED" = "1" ] && [ "$HAD_PRE" = "1" ] && [ -d "$PRE/src" ]; then
+              echo "Push or verification failed; restoring PRE V3 source."
+              if ! (cd "$PRE" && npx -y "@google/clasp@$CLASP_VERSION" push --force); then
+                echo "ROLLBACK_FAILED: PRE source preserved; manual reconciliation required."
+                return 1
+              fi
+              ROLLBACK_VERIFY="$TMP/rollback-verify"
+              mkdir -p "$ROLLBACK_VERIFY"
+              if ! (cd "$ROLLBACK_VERIFY" && npx -y "@google/clasp@$CLASP_VERSION" clone "$SCRIPT_ID" --rootDir src); then
+                echo "ROLLBACK_READBACK_FAILED: do not resume deployment."
+                return 1
+              fi
+              if ! diff -qr "$PRE/src" "$ROLLBACK_VERIFY/src"; then
+                echo "ROLLBACK_SOURCE_MISMATCH: do not resume deployment."
+                return 1
+              fi
+              echo "ROLLBACK_SOURCE_VERIFIED: complete remote source matches preserved PRE."
             fi
           }
 
-          trap 'status=$?; if [ "$status" -ne 0 ]; then rollback; fi; exit "$status"' EXIT
+          trap 'status=$?; if [ "$status" -ne 0 ]; then rollback || echo "ROLLBACK_UNVERIFIED: do not resume deployment."; fi; exit "$status"' EXIT
 
           if [ -z "$SCRIPT_ID" ]; then
             echo "Creating a new bound Apps Script project for V3."
@@ -200,8 +217,9 @@ jobs:
           cp "$GITHUB_WORKSPACE/$SOURCE_DIR/"* "$WORK/src/"
 
           echo "Pushing only clean V3 source."
+          # A failed transport may already have changed remote files.
+          PUSH_ATTEMPTED=1
           (cd "$WORK" && npx -y "@google/clasp@$CLASP_VERSION" push --force)
-          PUSHED=1
 
           # Apps Script supports at most 200 versions and this project has
           # reached that cap. Routine source verification must not consume a
@@ -258,3 +276,4 @@ jobs:
           path: autopatch-output-v3/
           if-no-files-found: warn
           retention-days: 30
+
