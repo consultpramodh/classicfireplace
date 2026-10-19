@@ -1,0 +1,83 @@
+name: Guarded V3 PreInspection eligible-event hotfix
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/tmv3-preinspection-eligible-hotfix-trigger.txt
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: cf-v3-preinspection-eligible-hotfix-production
+  cancel-in-progress: false
+
+jobs:
+  exact-one-file-hotfix:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact hotfix commit
+        uses: actions/checkout@v4
+        with:
+          ref: 2dbb8a2b303becf7693071d384ef1973ef5a9ea6
+          fetch-depth: 0
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify both source versions parse
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/tmv3-preinspection-eligible-hotfix-20261019.js
+          node --check apps-script/tmv3-clean/90_Admin.js
+          node --check apps-script/tmv3-clean/60_Automation.js
+          node --check apps-script/tmv3-clean/46_Step7_Reconciliation.js
+          git diff --exit-code 95c312296fb605678ce4989864a70cd9de439ca8 HEAD -- apps-script/tmv3-clean/00_Config.js apps-script/tmv3-clean/60_Automation.js apps-script/tmv3-clean/46_Step7_Reconciliation.js
+      - name: Guarded production update and one canary
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASPRC_JSON:-}" ]; then
+            echo "AUTH_SECRET_UNAVAILABLE: no Google Apps Script write attempted"
+            exit 1
+          fi
+          node tools/tmv3-preinspection-eligible-hotfix-20261019.js
+      - name: Post deployment verification to PR 128
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          node - <<'NODE' > /tmp/v3-preinspection-hotfix-report.md
+          const fs=require('fs');
+          const f='tmv3-preinspection-hotfix-evidence/result.json';
+          const x=fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')):{};
+          const lines=[
+            '### Guarded V3 PreInspection hotfix — GitHub Actions result',
+            '- Run: https://github.com/consultpramodh/classicfireplace/actions/runs/'+process.env.GITHUB_RUN_ID,
+            '- Status: `'+String(x.status||'NO_EVIDENCE').slice(0,80)+'`',
+            '- Baseline source verified: `'+Boolean(x.preSourceVerified)+'`',
+            '- Production source readback verified: `'+Boolean(x.postSourceVerified)+'`',
+            '- Live already had patch: `'+Boolean(x.alreadyPatched)+'`',
+            '- Canary: `'+String(x.canary&&x.canary.status||'NOT_VERIFIED').slice(0,100)+'`',
+            '- Blocker: `'+String(x.error||x.runtimeExecutionLimitation||'none').replace(/[`\r\n]/g,' ').slice(0,220)+'`'
+          ];
+          process.stdout.write(lines.join('\n')+'\n');
+          NODE
+          gh issue comment 128 --repo consultpramodh/classicfireplace --body-file /tmp/v3-preinspection-hotfix-report.md
+      - name: Preserve non-secret readback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-preinspection-hotfix-${{ github.run_id }}
+          path: tmv3-preinspection-hotfix-evidence/result.json
+          if-no-files-found: warn
+          retention-days: 14
