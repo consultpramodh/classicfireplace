@@ -5806,8 +5806,10 @@ function tmv3_preInspectionCustomerLocationsFresh_(customerId) {
   const id=Number(customerId);
   if (!Number.isInteger(id) || id<=0) throw new Error('LOCATION_CUSTOMER_ID_INVALID');
   const response=tmv3_fetchJson_(TMV3.API_BASE+'/v1/customers/'+encodeURIComponent(id)+'/locations',{method:'get'});
-  const data=response && (response.Data || response.data);
+  const rawData=response && (response.Data!==undefined?response.Data:response.data);
   const count=response && (response.TotalCount!==undefined?response.TotalCount:response.totalCount);
+  // Live Striven represents an explicitly empty collection as count=0, data=null.
+  const data=count===0 && rawData===null ? [] : rawData;
   if (!response || !Array.isArray(data) ||
       !Number.isInteger(count) || count!==data.length) {
     throw new Error('LOCATION_RESPONSE_INCOMPLETE_NO_CREATE');
