@@ -7,7 +7,7 @@ function env(change={}){
  const responses=[change.search??{TotalCount:1,Data:[candidate]},change.order??order];
  const rows=[['Order ID','Order Number','Customer ID','Location ID','Contact ID','Status','Name','Order Type','URL','Fingerprint'],...(change.cache||[])];
  const c=vm.createContext({tmv3_first_:(o,aliases)=>{const key=Object.keys(o||{}).find(k=>k.toLowerCase()===aliases[0].toLowerCase());return key===undefined?'':o[key];},TMV3:{API_BASE:'https://api.striven.com',SHEETS:{ORDERS:'Source Orders'}},
- tmv3_step2CalendarRecords_:x=>x,tmv3_step3BusinessAnchorRecords_:x=>x,tmv3_step3AnchorIndex_:()=>({}),tmv3_step4IdentityIndex_:()=>({}),
+ tmv3_rows_:()=>change.locationCache||[],tmv3_upsertLocationCacheObject_:x=>{assert.equal(x['Location ID'],12);assert.equal(x['Customer ID'],77);},tmv3_step2CalendarRecords_:x=>x,tmv3_step3BusinessAnchorRecords_:x=>x,tmv3_step3AnchorIndex_:()=>({}),tmv3_step4IdentityIndex_:()=>({}),
  tmv3_step4IdentityRecords_:()=>[{step4:{code:change.code||'AMBIGUOUS_STRONG_LOCATION',customer:{'Customer ID':77}}}],
  tmv3_fetchJson_:()=>{calls++;return responses.shift();},
  tmv3_preInspectionCustomerLocationsFresh_:()=>change.locations||[{'Location ID':12,'Customer ID':77,'Address 1':'12 Main St'}],
@@ -33,4 +33,5 @@ e=env({code:'MATCHED'});assert.equal(e.run().status,'NOT_REQUIRED');assert.equal
 e=env();assert.equal(e.run({vertical:'Service',orderNumber:'585820'}).status,'NOT_REQUIRED');assert.equal(e.calls(),0);
 e=env();assert.equal(e.run({vertical:'PreInspection',orderNumber:'bad'}).status,'NOT_REQUIRED');assert.equal(e.calls(),0);
 e=env({search:{totalCount:1,data:[{id:501,number:'585820',customer:{id:77}}]},order:{id:501,orderNumber:'585820',customer:{id:77},shipToLocation:{id:12}}});assert.equal(e.run().status,'CACHE_REPAIRED');assert.equal(e.writes(),1);
-console.log('16 optional-order Location evidence scenarios passed');
+for(const cache of [[{'Location ID':12,'Customer ID':78}],[{'Location ID':12,'Customer ID':77},{'Location ID':12,'Customer ID':77}]]){e=env({locationCache:cache});assert.equal(e.run().status,'LOCATION_CACHE_CONFLICT');assert.equal(e.writes(),0);}
+console.log('18 optional-order Location evidence scenarios passed');
