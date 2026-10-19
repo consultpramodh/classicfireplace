@@ -1006,7 +1006,7 @@ function tmv3_issue2CreateSafetyRegression() {
       parsedAddress.Address.City === 'Toronto' &&
       parsedAddress.Address.State === 'ON' &&
       parsedAddress.Address.PostalCode === 'M4T 2K7' &&
-      parsedAddress.Address.Country === 'Canada',
+      parsedAddress.Name === 'Primary' && parsedAddress.Address.Country === 'CA',
     JSON.stringify(parsedAddress)
   );
 
