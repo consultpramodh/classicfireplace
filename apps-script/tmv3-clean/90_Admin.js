@@ -63,8 +63,9 @@ function tmv3_assertNoBusinessWrites() {
 
 
 // Google Apps Script: current-day operator controls; each run executes at most one event.
-function tmv3_preInspectionTodayRecords_() {
-  const today=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
+function tmv3_preInspectionTodayRecords_(targetDate) {
+  const today=targetDate || Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error('INVALID_PI_TARGET_DATE');
   return tmv3_preInspectionIntakeRecords_().filter(function(record){
     return record.calendarRole==='PRIMARY_SHARED' &&
       Utilities.formatDate(new Date(record.start),TMV3_TIMEZONE,'yyyy-MM-dd')===today;
@@ -76,10 +77,10 @@ function tmv3_preInspectionCompactPlan_(plan) {
     start:plan.startCheck,end:plan.endCheck,assignment:plan.assignmentCheck,
     calendarTitle:plan.calendarTitleCheck,taskName:plan.taskNameCheck};
 }
-function tmv3_preInspectionTodayPreview() {
+function tmv3_preInspectionTodayPreview(targetDate) {
   const before=tmv3_strivenApiBudgetStatus_();
   if (before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) throw new Error('INSUFFICIENT_READBACK_HEADROOM');
-  const records=tmv3_preInspectionTodayRecords_();
+  const records=tmv3_preInspectionTodayRecords_(targetDate);
   records.forEach(function(record){
     const plans=tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
     Logger.log(JSON.stringify({title:record.title,plans:plans.map(tmv3_preInspectionCompactPlan_)}));
@@ -123,14 +124,14 @@ function tmv3_preInspectionTodayEligibleQueue_(records, sheetRows) {
   return {eligible:eligible,excluded:excluded};
 }
 
-function tmv3_preInspectionTodayRunNext(excludeEventIds) {
+function tmv3_preInspectionTodayRunNext(excludeEventIds,targetDate) {
   const before=tmv3_strivenApiBudgetStatus_();
   if (before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) {
     const gated={status:'API_BUDGET_GATED',remaining:before.remaining,
       reason:'Minimum 100-call readback headroom is required before another event transaction.'};
     Logger.log(JSON.stringify(gated));return gated;
   }
-  const records=tmv3_preInspectionTodayRecords_();
+  const records=tmv3_preInspectionTodayRecords_(targetDate);
   const sheet=tmv3_sheet_(TMV3.SHEETS.PREINSPECTION);
   const last=sheet.getLastRow();
   const rows=last>1?sheet.getRange(2,6,last-1,10).getDisplayValues():[];
@@ -142,7 +143,7 @@ function tmv3_preInspectionTodayRunNext(excludeEventIds) {
     Logger.log(JSON.stringify(empty));return empty;
   }
   const props=PropertiesService.getScriptProperties();
-  const day=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
+  const day=targetDate || Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
   const key='TMV3_PI_ELIGIBLE_CURSOR_'+day;
   const cursor=Array.isArray(excludeEventIds)&&excludeEventIds.length
     ? 0 : Number(props.getProperty(key)||0);
@@ -258,10 +259,10 @@ function tmv3_preInspectionTodayLocationResponseShape() {
 }
 
 // Read-only Striven reconciliation of current-day cached task schedules.
-function tmv3_preInspectionTodayRefreshTaskCacheSchedules() {
+function tmv3_preInspectionTodayRefreshTaskCacheSchedules(targetDate) {
   const before=tmv3_strivenApiBudgetStatus_();
   if(before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) throw new Error('INSUFFICIENT_READBACK_HEADROOM');
-  const records=tmv3_preInspectionTodayRecords_(),rows=tmv3_sheet_(TMV3.SHEETS.PREINSPECTION).getDataRange().getDisplayValues().slice(1);
+  const records=tmv3_preInspectionTodayRecords_(targetDate),rows=tmv3_sheet_(TMV3.SHEETS.PREINSPECTION).getDataRange().getDisplayValues().slice(1);
   const results=[],cachedTasks=tmv3_rows_(TMV3.SHEETS.TASKS);
   records.forEach(function(record){
     const matches=rows.filter(function(row){return row[14]===record.eventId;});
@@ -283,3 +284,8 @@ function tmv3_preInspectionTodayRefreshTaskCacheSchedules() {
   tmv3_step6TaskDecisionRunCached('PREINSPECTION_CANONICAL_CACHE_READBACK');
   Logger.log(JSON.stringify({results:results,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count,strivenWrites:0}));
 }
+
+// Google Apps Script: date-scoped native controls; existing transaction guards remain mandatory.
+function tmv3_preInspectionOct21Preview() { return tmv3_preInspectionTodayPreview("2026-10-21"); }
+function tmv3_preInspectionOct21RunNext() { return tmv3_preInspectionTodayRunNext([],"2026-10-21"); }
+function tmv3_preInspectionOct21RefreshCache() { return tmv3_preInspectionTodayRefreshTaskCacheSchedules("2026-10-21"); }
