@@ -1462,7 +1462,6 @@ function tmv3_preInspectionAutomationCycle_(options) {
     // Reuse the cache-age gates and last-good source policy; refresh failure
     // stops this cycle before task creation or misleading missing-data emails.
     tmv3_refreshOperationalSourcesIfNeeded_(120,false);
-    result.classification=tmv3_preInspectionClassificationCycle_();
     const records = tmv3_preInspectionIntakeRecords_();
     let pending = JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
     pending.forEach(function(id) {
@@ -1513,7 +1512,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
           if (!plan.blocker && plan.actions.length && result.writes<1) {
             // One event transaction per run, using the existing fresh ownership,
             // lifecycle, durable create guards and field-level readbacks.
-            result.writes++;
+            if (plan.actions.some(function(action){return action!==TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS;})) result.writes++;
             one.execution = tmv3_executeFreshStep7Selection_({previousPlan:plan.plan,contract:plan},'PREINSPECTIONAUTO','ALL');
             if (!/VERIFIED|CONVERGED|NO_CHANGE/.test(String(one.execution.status || ''))) {
               throw new Error('PREINSPECTION_RECONCILIATION_NOT_VERIFIED: '+one.execution.status);
@@ -1527,7 +1526,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
           }
           const after = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
           one.afterPlans=after.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};});
-          const complete = after.length===1 && !after[0].blocker && !after[0].actions.length;
+          const complete = tmv3_preInspectionCompletionVerified_(after,one.execution);
           if (complete) {
             pending=pending.filter(function(id){return id!==record.eventId;});
             props.setProperty(doneKey,JSON.stringify({fingerprint:fresh.fingerprint,at:Date.now()}));
@@ -1718,154 +1717,17 @@ function tmv3_restoreRecordedPreInspectionLegacyTitles() {
   } finally {lock.releaseLock();}
 }
 
-// Google Apps Script: token-bound PreInspection classification confirmation.
-function tmv3_preInspectionPossibleCandidate_(record) {
-  if (!record || record.calendarRole!=='SECONDARY_STEPHEN' || record.isAllDay) return false;
-  if (tmv3_step2PreInspectionNonCustomer_(record) || tmv3_preInspectionExplicitCandidate_(record)) return false;
-  const text=[record.title,record.rawDescription,record.descriptionClean].join(' ');
-  if (/\b(installation|delivery|maintenance|warranty|service call|repair appointment)\b/i.test(text)) return false;
-  return /\b(fireplace|gas insert|gas stove|gas linear|gas line|valor|stuv\d*|dekko|wood burning)\b/i.test(text) &&
-    !!tmv3_preInspectionCreatorEmail_(record);
-}
-function tmv3_preInspectionClassificationKey_(eventId) {
-  return 'TMV3_PI_CLASSIFICATION_'+tmv3_hash_(eventId);
-}
-function tmv3_preInspectionClassificationCreate_(record,testMode) {
-  const props=PropertiesService.getScriptProperties();
-  const token=Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'');
-  const key=testMode ? 'TMV3_PI_CLASSIFICATION_TEST_'+tmv3_hash_(token) : tmv3_preInspectionClassificationKey_(record.eventId);
-  const state={eventId:record.eventId,calendarId:record.calendarId,recipient:testMode ? 'pramodh@classicfireplace.ca' : tmv3_preInspectionCreatorEmail_(record),
-    token:token,status:'PENDING',testMode:testMode===true,createdAt:new Date().toISOString(),
-    expiresAt:new Date(Date.now()+30*86400000).toISOString(),sentCount:0,lastSentAt:'',
-    title:record.title,location:record.location,start:tmv3_iso_(record.start),end:tmv3_iso_(record.end),
-    notes:tmv3_calendarReadableDescription_(record.rawDescription || record.descriptionClean || ''),
-    customerNumber:tmv3_clean_(record.customerNumber),orderNumber:tmv3_clean_(record.orderNumber)};
-  props.setProperty(key,JSON.stringify(state));
-  props.setProperty('TMV3_PI_RESPONSE_'+tmv3_hash_(token),key);
-  return state;
-}
-function tmv3_preInspectionClassificationLoad_(token) {
-  if (!/^[a-f0-9]{64}$/i.test(String(token || ''))) throw new Error('Invalid response link.');
-  const props=PropertiesService.getScriptProperties();
-  const key=props.getProperty('TMV3_PI_RESPONSE_'+tmv3_hash_(token));
-  const state=key && JSON.parse(props.getProperty(key) || 'null');
-  if (!state || state.token!==token) throw new Error('Response link not found.');
-  if (Date.now()>new Date(state.expiresAt).getTime()) throw new Error('This response link has expired.');
-  if (Date.now()>=new Date(state.start).getTime()) throw new Error('This appointment has already started.');
-  return {key:key,state:state};
-}
-function tmv3_preInspectionClassificationEmail_(state,url) {
-  const escape=tmv3_preInspectionHtmlEscape_;
-  if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url || '')) throw new Error('Published confirmation endpoint is not configured.');
-  const when=Utilities.formatDate(new Date(state.start),'America/Toronto','MMM d, yyyy h:mm a');
-  const label=state.sentCount>0 ? 'FOLLOW-UP #'+state.sentCount+' | ' : '';
-  const yes=url+'?action=classify&choice=YES&token='+encodeURIComponent(state.token);
-  const no=url+'?action=classify&choice=NO&token='+encodeURIComponent(state.token);
-  return {to:state.recipient,subject:(state.testMode?'[TEST] ':'')+label+'CONFIRM PREINSPECTION: '+state.title+' | '+when,
-    htmlBody:'<!doctype html><html><body style="background:#f4f3f1;font-family:Arial;color:#222"><table width="100%"><tr><td align="center"><table width="760" style="width:100%;max-width:760px;background:white"><tr><td style="background:#202020;color:white;padding:20px;border-top:4px solid #b42b2f"><h2>'+escape(label)+'Is this a Preinspection?</h2></td></tr><tr><td style="padding:24px"><p><i>This is an automated email notification from Classic Fireplace &amp; BBQ Store.</i></p><p>Hi '+escape(tmv3_preInspectionCreatorFirstName_(state.recipient))+',</p>'+
-      (state.testMode ? '<p><strong>TEST MODE: Your response will not change a calendar event or create a task.</strong></p>' : '')+
-      '<h3>'+escape(state.title)+'</h3><p><strong>'+escape(when)+'</strong><br>'+escape(state.location || 'Location missing')+'</p><div style="white-space:pre-wrap;background:#f6f5f3;padding:14px">'+escape(state.notes)+'</div><p>This appointment may be a Preinspection. Please confirm its purpose.</p><p><a style="display:inline-block;background:#28632f;color:white;padding:12px 24px;text-decoration:none" href="'+escape(yes)+'">YES — Preinspection</a> &nbsp; <a style="display:inline-block;background:#b42b2f;color:white;padding:12px 24px;text-decoration:none" href="'+escape(no)+'">NO — Other appointment</a></p><p>YES opens a form for the Customer Number and optional Sales Order Number. Nothing changes until you submit. NO also requires confirmation.</p></td></tr></table></td></tr></table></body></html>'};
-}
-function tmv3_preInspectionClassificationForm_(state,choice) {
-  const escape=tmv3_preInspectionHtmlEscape_;
-  choice=choice==='NO'?'NO':'YES';
-  const fields=choice==='YES' ? '<label>Customer Number (required)<input name="customerNumber" inputmode="numeric" pattern="[0-9]+" required value="'+escape(state.customerNumber || '')+'"></label><label>Sales Order Number (optional)<input name="orderNumber" inputmode="numeric" pattern="[0-9]*" value="'+escape(state.orderNumber || '')+'"></label>' : '<p>Confirm that this appointment is not a Preinspection.</p>';
-  return '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><style>body{font-family:Arial;background:#f4f3f1;color:#222;margin:0}main{max-width:650px;background:white;margin:30px auto;padding:24px;border-top:5px solid #b42b2f}label{display:block;margin:20px 0}input{display:block;padding:10px;width:90%;margin-top:6px}button{padding:12px 22px;background:#202020;color:white;border:0}#result{white-space:pre-wrap;margin-top:20px}</style></head><body><main><p><i>This is an automated email notification from Classic Fireplace &amp; BBQ Store.</i></p><h1>Confirm appointment purpose</h1>'+
-    (state.testMode?'<p><strong>TEST MODE — no live calendar or task changes.</strong></p>':'')+'<h2>'+escape(state.title)+'</h2><p>'+escape(state.start)+'<br>'+escape(state.location)+'</p><form id="response">'+fields+'<button type="submit">'+(choice==='YES'?'Confirm Preinspection':'Confirm NO')+'</button></form><div id="result" role="status"></div></main><script>const token='+JSON.stringify(state.token)+';const choice='+JSON.stringify(choice)+';document.getElementById("response").addEventListener("submit",function(e){e.preventDefault();const f=e.target;const button=f.querySelector("button");button.disabled=true;document.getElementById("result").textContent="Submitting…";google.script.run.withSuccessHandler(function(r){document.getElementById("result").textContent=r.message;f.hidden=true;}).withFailureHandler(function(e){document.getElementById("result").textContent=e.message;button.disabled=false;}).tmv3_submitPreInspectionClassification({token:token,choice:choice,customerNumber:f.elements.customerNumber?f.elements.customerNumber.value:"",orderNumber:f.elements.orderNumber?f.elements.orderNumber.value:""});});</script></body></html>';
-}
-function doGet(e) {
-  try {
-    const p=e && e.parameter || {};
-    if (p.action!=='classify') return HtmlService.createHtmlOutput('Classic Fireplace appointment confirmation. Use the link in your notification email.');
-    const response=tmv3_preInspectionClassificationLoad_(p.token);
-    if (['PENDING','SENT','EMAIL_SENDING'].indexOf(response.state.status)<0) return HtmlService.createHtmlOutput('This response has already been recorded.');
-    // GET never records a decision or mutates a calendar: scanner-safe.
-    return HtmlService.createHtmlOutput(tmv3_preInspectionClassificationForm_(response.state,p.choice)).setTitle('Classic Fireplace — Appointment confirmation');
-  } catch(err) {return HtmlService.createHtmlOutput(tmv3_preInspectionHtmlEscape_(String(err.message || err)));}
-}
-function tmv3_submitPreInspectionClassification(input) {
-  const lock=LockService.getScriptLock();
-  if (!lock.tryLock(30000)) throw new Error('The system is processing another request. Please try again shortly.');
-  try {
-    const response=tmv3_preInspectionClassificationLoad_(input && input.token);
-    const state=response.state;const props=PropertiesService.getScriptProperties();
-    if (['PENDING','SENT','EMAIL_SENDING'].indexOf(state.status)<0) return {message:'This response has already been recorded. No further changes were made.'};
-    if (input.choice!=='YES' && input.choice!=='NO') throw new Error('Choose YES or NO.');
-    if (input.choice==='NO') {
-      state.status='NO';state.respondedAt=new Date().toISOString();props.setProperty(response.key,JSON.stringify(state));
-      return {message:state.testMode ? 'TEST: NO recorded. No live event was changed.' : 'NO recorded. This event will not be enrolled in CF Preinspects.'};
-    }
-    const customerNumber=String(input.customerNumber || '').trim();const orderNumber=String(input.orderNumber || '').trim();
-    if (!/^\d{1,10}$/.test(customerNumber)) throw new Error('Enter a valid Customer Number.');
-    if (orderNumber && !/^\d{1,10}$/.test(orderNumber)) throw new Error('Enter a numeric Sales Order Number or leave it blank.');
-    const refs=tmv3_step4IdentityIndex_();const customer=refs.customerByNumber[customerNumber];
-    if (!customer) throw new Error('Customer Number could not be verified. Please check it; newly created customers may need the next source refresh.');
-    if (state.customerNumber && String(state.customerNumber)!==customerNumber) throw new Error('Customer Number conflicts with the current appointment. Please correct the event before confirming.');
-    if (orderNumber) {
-      const orders=(refs.orders || []).filter(function(o){return String(o['Order Number'])===orderNumber;});
-      if (orders.length!==1 || String(orders[0]['Customer ID'])!==String(customer['Customer ID'])) throw new Error('Sales Order could not be verified for this customer. Check the number or leave it blank.');
-    }
-    if (state.testMode) {
-      state.status='TEST_YES';state.customerNumber=customerNumber;state.orderNumber=orderNumber;props.setProperty(response.key,JSON.stringify(state));
-      return {message:'TEST: YES and numbers validated. No calendar event was changed and no task was created.'};
-    }
-    tmv3_assertOperationWrite_('PREINSPECTIONAUTO','PREINSPECTION_CONFIRMATION');
-    const found=tmv3_findCalendarEventById_(state.calendarId,state.eventId);
-    if (!found || !found.event) throw new Error('The original appointment is no longer available.');
-    const cfg=TMV3.VERTICALS.PreInspection;
-    const record=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:state.calendarId,role:'SECONDARY_STEPHEN'},found.event,{applyEligibility:false});
-    if (tmv3_preInspectionCreatorEmail_(record)!==state.recipient) throw new Error('The event creator changed. A new confirmation is required.');
-    if (record.customerNumber && String(record.customerNumber)!==customerNumber) throw new Error('Customer Number changed on the event. A new confirmation is required.');
-    const raw=String(found.event.getDescription() || '');
-    const body=tmv3_preInspectionEnsureLegacyTitle_(raw,found.event.getTitle());
-    const html=/<[a-z][^>]*>/i.test(body);const sep=html?'<br>':'\n';
-    const description=body+(html?'<br><br>':'\n\n')+'PRE-INSPECTION'+sep+'Customer Number: '+customerNumber+(orderNumber?sep+'Sales Order Number: '+orderNumber:'');
-    state.status='APPLYING';state.customerNumber=customerNumber;state.orderNumber=orderNumber;props.setProperty(response.key,JSON.stringify(state));
-    found.event.setDescription(description);
-    if (String(found.event.getDescription())!==description) throw new Error('Description verification failed; response held for review.');
-    const guests=found.event.getGuestList(true).map(function(g){return tmv3_normEmail_(g.getEmail());});
-    [cfg.primaryCalendarId,cfg.secondaryOwnerEmail].forEach(function(email){if(guests.indexOf(tmv3_normEmail_(email))<0) found.event.addGuest(email);});
-    const after=found.event.getGuestList(true).map(function(g){return tmv3_normEmail_(g.getEmail());});
-    if (after.indexOf(tmv3_normEmail_(cfg.primaryCalendarId))<0) throw new Error('Calendar enrollment verification failed; response held for review.');
-    state.status='YES';state.respondedAt=new Date().toISOString();props.setProperty(response.key,JSON.stringify(state));
-    return {message:'Preinspection confirmed and CF Preinspects added. The next 8 AM, 1 PM or 5 PM check will standardise the event and create or reuse its task.'};
-  } finally {lock.releaseLock();}
-}
-function tmv3_preInspectionClassificationCycle_() {
-  const props=PropertiesService.getScriptProperties();const url=props.getProperty('TMV3_PI_CONFIRMATION_WEBAPP_URL');
-  if (TMV3.OPERATIONS.preInspectionClassificationEmailsEnabled!==true || !url) return {status:'CLASSIFICATION_DELIVERY_GATED',sent:0};
-  const cfg=TMV3.VERTICALS.PreInspection;const records=[];
-  (cfg.secondaryCalendarIds || []).forEach(function(id){
-    const cal=CalendarApp.getCalendarById(id);if(!cal) return;
-    const start=new Date();const end=new Date(start.getTime()+Number(cfg.lookaheadDays || 365)*86400000);
-    cal.getEvents(start,end).forEach(function(event){
-      const r=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:id,role:'SECONDARY_STEPHEN'},event,{applyEligibility:false});
-      if(tmv3_preInspectionPossibleCandidate_(r) && !tmv3_findCalendarEventById_(cfg.primaryCalendarId,r.eventId)) records.push(r);
-    });
-  });
-  let sent=0;
-  records.forEach(function(r){
-    const key=tmv3_preInspectionClassificationKey_(r.eventId);let state=JSON.parse(props.getProperty(key) || 'null');
-    if (state && ['YES','NO','APPLYING','EMAIL_SENDING','TEST_YES'].indexOf(state.status)>=0) return;
-    const timing=tmv3_preInspectionNotificationDecision_(r,state && state.sentCount ? {status:'SENT',sentCount:state.sentCount,lastSentAt:state.lastSentAt} : null);
-    if(!timing.send) return;
-    if(!state) state=tmv3_preInspectionClassificationCreate_(r,false);
-    if(Date.now()>new Date(state.expiresAt).getTime()) return;
-    if(MailApp.getRemainingDailyQuota()<3) return;
-    const email=tmv3_preInspectionClassificationEmail_(state,url);
-    state.status='EMAIL_SENDING';props.setProperty(key,JSON.stringify(state));
-    MailApp.sendEmail({to:email.to,cc:tmv3_preInspectionNotificationCc_().join(','),subject:email.subject,htmlBody:email.htmlBody,body:'Please confirm whether this appointment is a Preinspection using the buttons in this email.',name:'Classic Fireplace & BBQ Store'});
-    state.status='SENT';state.sentCount++;state.lastSentAt=new Date().toISOString();props.setProperty(key,JSON.stringify(state));sent++;
-  });
-  return {status:'COMPLETE',sent:sent,candidates:records.length};
-}
-function tmv3_sendPreInspectionClassificationTest(eventId) {
-  const url=PropertiesService.getScriptProperties().getProperty('TMV3_PI_CONFIRMATION_WEBAPP_URL');
-  const cfg=TMV3.VERTICALS.PreInspection;let record=null;
-  (cfg.secondaryCalendarIds || []).some(function(id){const found=tmv3_findCalendarEventById_(id,eventId);if(!found) return false;record=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:id,role:'SECONDARY_STEPHEN'},found.event,{applyEligibility:false});return true;});
-  if(!record || !tmv3_preInspectionPossibleCandidate_(record)) throw new Error('Test requires a verified possible Preinspection appointment on Stephen.');
-  const state=tmv3_preInspectionClassificationCreate_(record,true);
-  const email=tmv3_preInspectionClassificationEmail_(state,url);
-  MailApp.sendEmail({to:'pramodh@classicfireplace.ca',subject:email.subject,htmlBody:email.htmlBody,body:'TEST: Confirm appointment purpose using the YES/NO buttons. No live calendar or task changes will be made.',name:'Classic Fireplace & BBQ Store'});
-  return {status:'TEST_SENT',to:'pramodh@classicfireplace.ca',eventId:eventId};
+// Google Apps Script: verification-only actions must not keep a converged event pending.
+function tmv3_preInspectionCompletionVerified_(plans, execution) {
+  if (!Array.isArray(plans) || plans.length !== 1) return false;
+  const plan = plans[0];
+  if (!plan || plan.blocker || !Array.isArray(plan.actions)) return false;
+  if (plan.actions.length === 0) return true;
+  if (plan.plan !== 'NO_CHANGE' || plan.actions.some(function(action) {
+    return action !== TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS;
+  })) return false;
+  return !!(execution &&
+    ['VERIFIED_CONVERGENCE','CREATED_VERIFIED_AND_CONVERGED'].indexOf(execution.status) >= 0 &&
+    execution.calendarLinks &&
+    execution.calendarLinks.status === 'CALENDAR_LINKS_VERIFIED');
 }
