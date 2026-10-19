@@ -112,18 +112,20 @@ async function main(){
       'ONE_EVENT_NOT_VERIFIED';
   }finally{
     result.phase='SOURCE_RESTORE';save();
-    if(temporaryApplied){
-      const latest=await api('/projects/'+encodeURIComponent(ID)+'/content');
-      assertExpected(latest,desired,'SOURCE_CHANGED_DURING_CANARY_NO_BLIND_RESTORE');
+    const latest=await api('/projects/'+encodeURIComponent(ID)+'/content');
+    let isTemporary=false;
+    try{assertExpected(latest,desired,'NOT_TEMPORARY')}catch(e){
+      assertExpected(latest,expected,'SOURCE_CHANGED_DURING_CANARY_NO_BLIND_RESTORE');
+    }
+    if(byName(latest).get('appsscript.json')===desired.get('appsscript.json')){
+      isTemporary=true;
+    }
+    if(isTemporary){
       await api('/projects/'+encodeURIComponent(ID)+'/content','PUT',{files:live.files});
       const restored=await api('/projects/'+encodeURIComponent(ID)+'/content');
       assertExpected(restored,expected,'SOURCE_RESTORE_READBACK_FAILED');
-      result.sourceRestored=true;
-    }else{
-      const untouched=await api('/projects/'+encodeURIComponent(ID)+'/content');
-      assertExpected(untouched,expected,'SOURCE_UNEXPECTEDLY_MUTATED');
-      result.sourceRestored=true;
     }
+    result.sourceRestored=true;
   }
   result.phase='COMPLETE';save();
 }
