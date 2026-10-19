@@ -3903,3 +3903,78 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
   return result;
 }
 
+/************************************************************
+ * PREINSPECTION SOURCE TASK CLOCK — DETERMINISTIC REGRESSION
+ * No Striven requests, Calendar writes, or Sheet writes.
+ ************************************************************/
+function tmv3_preInspectionSourceClockRegression() {
+  const before = {
+    'Task ID':'19236', 'Task Number':'19236',
+    'Task Type ID':105, 'Task Type':'Pre Inspection',
+    'Status':'Open',
+    'Name':'Mona AZARIN - 22 Simpson Ave, Toronto - (416) 818-6940',
+    'Customer ID':'62734', 'Location ID':'58357', 'Contact ID':'23',
+    'Order ID':'',
+    'Start':'2026-10-19T01:00:00-04:00',
+    'Due':'2026-10-19T02:00:00-04:00',
+    'Assignees':'Stephen Foley', 'Pools':'Preinspection Pool',
+    'Fingerprint':'OLD_FINGERPRINT'
+  };
+  const event = {
+    existingTaskId:'19236',
+    calendarRole:'PRIMARY_SHARED',
+    customer:{'Customer ID':'62734'},
+    locationId:'58357',
+    start:'2026-10-19T13:00:00-04:00',
+    end:'2026-10-19T14:00:00-04:00'
+  };
+  const cases = [];
+  function check(name, condition) {
+    cases.push({name:name, pass:condition === true});
+  }
+  const corrected = tmv3_preInspectionCorrectSourceTaskClock_(before, [event]);
+  check('EXACT_LINKED_PM_12H_CORRECTED',
+    corrected.Start === event.start && corrected.Due === event.end);
+  check('SOURCE_FINGERPRINT_RECALCULATED',
+    corrected.Fingerprint !== before.Fingerprint &&
+    corrected.Fingerprint === tmv3_hash_([
+      corrected['Task ID'], corrected['Task Number'], corrected['Task Type ID'],
+      corrected['Task Type'], corrected['Status'], corrected['Name'],
+      corrected['Customer ID'], corrected['Location ID'], corrected['Contact ID'],
+      corrected['Order ID'], corrected['Start'], corrected['Due'],
+      corrected['Assignees'], corrected['Pools']
+    ].map(tmv3_clean_).join('|')));
+  check('INPUT_NOT_MUTATED', before.Start === '2026-10-19T01:00:00-04:00');
+  const wrongLocation = tmv3_preInspectionCorrectSourceTaskClock_(
+    before, [Object.assign({}, event, {locationId:'99999'})]);
+  check('WRONG_LOCATION_DOES_NOT_CORRECT',
+    wrongLocation.Start === before.Start);
+  const duplicateEvent = tmv3_preInspectionCorrectSourceTaskClock_(
+    before, [event, event]);
+  check('AMBIGUOUS_LINK_DOES_NOT_CORRECT',
+    duplicateEvent.Start === before.Start);
+  const wrongRole = tmv3_preInspectionCorrectSourceTaskClock_(
+    before, [Object.assign({}, event, {calendarRole:'SECONDARY_STEPHEN'})]);
+  check('NONPRIMARY_CALENDAR_DOES_NOT_CORRECT',
+    wrongRole.Start === before.Start);
+  const partialMismatch = tmv3_preInspectionCorrectSourceTaskClock_(
+    Object.assign({}, before, {Due:event.end}), [event]);
+  check('PARTIAL_MISMATCH_DOES_NOT_CORRECT',
+    partialMismatch.Start === before.Start);
+  const morning = tmv3_preInspectionCorrectSourceTaskClock_(
+    Object.assign({}, before, {
+      Start:'2026-10-19T09:00:00-04:00',
+      Due:'2026-10-19T10:00:00-04:00'
+    }), [Object.assign({}, event, {
+      start:'2026-10-19T09:00:00-04:00',
+      end:'2026-10-19T10:00:00-04:00'
+    })]);
+  check('LEGITIMATE_MORNING_UNCHANGED',
+    morning.Start === '2026-10-19T09:00:00-04:00');
+  const failures = cases.filter(function(c) {return !c.pass;});
+  if (failures.length) throw new Error(
+    'PreInspection source clock regression failed: ' + JSON.stringify(failures)
+  );
+  return {status:'PASS', cases:cases.length, results:cases};
+}
+
