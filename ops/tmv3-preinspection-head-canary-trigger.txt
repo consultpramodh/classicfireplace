@@ -1,0 +1,2 @@
+PreInspection V3 one-event production canary using only an existing HEAD web-app deployment.
+Strict 22-file verified source before/after. Temporary high-entropy token endpoint removed, and no new Apps Script versions or deployments.
