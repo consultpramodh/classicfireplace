@@ -2,3 +2,5 @@ Source restoration safeguard after PreInspection single-event HEAD canary, seria
 If live is exact base, no writes. If exact temporary runner, restore. If unexpected drift, stop without modifying it.
 
 Second queued recovery: verify source after next eligible canary; only exact temp runner eligible for removal.
+
+Post-second-canary dedicated verification: Task19237 return sourceRestored=true, verify source exactly 22 files.
