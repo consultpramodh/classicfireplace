@@ -2927,7 +2927,7 @@ function tmv3_parseCanadianCustomerLocation_(address, customerId) {
       City:city,
       State:provinceMatch[1],
       PostalCode:postalMatch[1] + ' ' + postalMatch[2],
-      Country:'Canada'
+      Country:'CA'
     }
   };
 }
@@ -3231,7 +3231,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       );
     }
     tmv3_audit_(contract.vertical,contract.eventId,'','LOCATION_VALIDATION_RECONCILED','PASS',
-      'Prior HTTP 400 Address-object rejection; complete fresh owned-Location read found no match. Corrected nested Address schema authorized once.');
+      'Prior explicit HTTP 400 Address/Country validation rejection; complete fresh owned-Location read found no match. Corrected nested Address and CA country-code schema authorized once.');
   }
 
   if (preflight.matches.length === 1) {
@@ -3268,7 +3268,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
       address:contract.expectedLocationAddress,
-      addressSchema:'nested-address-v1'
+      addressSchema:'nested-address-country-code-v2'
     }
   );
 
@@ -3306,7 +3306,7 @@ function tmv3_ensureStep7LocationUnlocked_(
         eventId:contract.eventId,
         customerId:contract.expectedCustomerId,
         address:contract.expectedLocationAddress,
-      addressSchema:'nested-address-v1',
+      addressSchema:'nested-address-country-code-v2',
         error:String(err && err.message || err)
       }
     );
@@ -3335,7 +3335,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
       address:contract.expectedLocationAddress,
-      addressSchema:'nested-address-v1',
+      addressSchema:'nested-address-country-code-v2',
       locationId:locationId
     }
   );
@@ -3382,7 +3382,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
       address:contract.expectedLocationAddress,
-      addressSchema:'nested-address-v1',
+      addressSchema:'nested-address-country-code-v2',
       locationId:locationId
     }
   );
@@ -5839,14 +5839,16 @@ function tmv3_preInspectionCustomerLocationsFresh_(customerId) {
 
 // Only an old, explicit validation rejection can be recovered; ambiguous results remain blocked.
 function tmv3_preInspectionRejectedAddressGuard_(guard,preflight) {
-  return !!(guard && guard.state==='UNCERTAIN' && !guard.locationId && !guard.addressSchema &&
-    /HTTP 400\b/.test(String(guard.error || '')) &&
-    /Address object is required/i.test(String(guard.error || '')) &&
-    preflight && Array.isArray(preflight.owned) && Array.isArray(preflight.matches) &&
-    preflight.matches.length===0);
+  if(!guard || guard.state!=='UNCERTAIN' || guard.locationId ||
+      !preflight || !Array.isArray(preflight.owned) || !Array.isArray(preflight.matches) || preflight.matches.length!==0) return false;
+  const error=String(guard.error||'');
+  if(!/HTTP 400\b/.test(error)) return false;
+  const oldAddress=!guard.addressSchema && /Address object is required/i.test(error);
+  const oldCountry=guard.addressSchema==='nested-address-v1' &&
+    /country_Invalid/.test(error) && /country code Canada could not be read/i.test(error);
+  return oldAddress || oldCountry;
 }
 
-// Google Apps Script: optional SO evidence may break a Location tie, never attach an Order to a PI Task.
 function tmv3_preInspectionOptionalOrderLocationEvidence_(record) {
   if (!record || record.vertical!=='PreInspection' || !/^\d+$/.test(String(record.orderNumber||''))) return {status:'NOT_REQUIRED'};
   const s2=tmv3_step2CalendarRecords_([record]);
