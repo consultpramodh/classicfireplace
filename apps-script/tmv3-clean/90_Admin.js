@@ -144,7 +144,8 @@ function tmv3_preInspectionTodayRunNext(excludeEventIds) {
   const props=PropertiesService.getScriptProperties();
   const day=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
   const key='TMV3_PI_ELIGIBLE_CURSOR_'+day;
-  const cursor=Number(props.getProperty(key)||0);
+  const cursor=Array.isArray(excludeEventIds)&&excludeEventIds.length
+    ? 0 : Number(props.getProperty(key)||0);
   let recent=0;
   for(let i=0;i<queue.eligible.length;i++){
     const index=(cursor+i)%queue.eligible.length;
