@@ -71,7 +71,7 @@ function tmv3_preInspectionTodayRecords_() {
   });
 }
 function tmv3_preInspectionCompactPlan_(plan) {
-  return {eventId:plan.eventId,taskId:plan.taskId,plan:plan.plan,blocker:plan.blocker,
+  return {eventId:plan.eventId,taskId:plan.taskId,taskStatus:plan.taskStatus,plan:plan.plan,blocker:plan.blocker,
     customer:plan.customerCheck,location:plan.locationCheck,requestedBy:plan.requestedByCheck,
     start:plan.startCheck,end:plan.endCheck,assignment:plan.assignmentCheck,
     calendarTitle:plan.calendarTitleCheck,taskName:plan.taskNameCheck};
@@ -233,4 +233,21 @@ function tmv3_preInspectionTodayRunUnlinked() {
   const result=tmv3_preInspectionAutomationCycle_({force:true,eventId:record.eventId,reason:'TODAY_UNLINKED_EVENT'});
   Logger.log(JSON.stringify({eventId:record.eventId,title:record.title,result:result,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count}));
   return result;
+}
+
+// Read-only response metadata for current-day events without Task links.
+function tmv3_preInspectionTodayLocationResponseShape() {
+  const records=tmv3_preInspectionTodayRecords_();
+  const rows=tmv3_sheet_(TMV3.SHEETS.PREINSPECTION).getDataRange().getDisplayValues().slice(1);
+  records.forEach(function(record){
+    const matches=rows.filter(function(row){return row[14]===record.eventId;});
+    if(matches.length!==1 || matches[0][24]) return;
+    const s2=tmv3_step2CalendarRecords_([record]);
+    const s3=tmv3_step3BusinessAnchorRecords_(s2,tmv3_step3AnchorIndex_());
+    const s4=tmv3_step4IdentityRecords_(s3,tmv3_step4IdentityIndex_());
+    const id=Number(s4[0]&&s4[0].step4&&s4[0].step4.customer&&s4[0].step4.customer['Customer ID']);
+    if(!Number.isInteger(id)||id<=0) return;
+    const response=tmv3_fetchJson_(TMV3.API_BASE+'/v1/customers/'+id+'/locations',{method:'get'});
+    Logger.log(JSON.stringify({eventId:record.eventId,customerId:id,keys:Object.keys(response||{}),responseArray:Array.isArray(response),count:response&&(response.TotalCount!==undefined?response.TotalCount:response.totalCount),dataType:response&&(response.Data===null||response.data===null?'null':Array.isArray(response.Data||response.data)?'array':typeof(response.Data||response.data)),length:response&&Array.isArray(response.Data||response.data)?(response.Data||response.data).length:null}));
+  });
 }
