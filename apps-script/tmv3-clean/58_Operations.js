@@ -5429,16 +5429,40 @@ function tmv3_preInspectionCreatorFirstName_(email) {
     : 'there';
 }
 
+// Notification-only evidence check. Does not authorize identity or task writes.
+function tmv3_preInspectionNotificationCustomerNumber_(record,customers) {
+  const title=tmv3_clean_(record && record.title);
+  const stripped=tmv3_stripPhonesForOrderParsing_(title)
+    .replace(/https?:\/\/\S+/gi,' ')
+    .replace(/\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*\d{4,8}(?:\s*\/\s*\d{2,8})*/ig,' ');
+  const numbers=stripped.match(/\b\d{4,8}\b/g)||[];
+  const phone=tmv3_phone10_(record && record.phone || tmv3_extractPhone_(title));
+  const words=title.toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean);
+  const matches=(customers||[]).filter(function(customer){
+    const number=tmv3_clean_(customer['Customer Number']);
+    if(numbers.indexOf(number)<0) return false;
+    const nameWords=tmv3_clean_(customer.Name).toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean);
+    const nameMatches=nameWords.length>=2 && nameWords.every(function(word){return words.indexOf(word)>=0;});
+    const profilePhone=tmv3_phone10_(customer['Primary Phone']);
+    return (phone && profilePhone && phone===profilePhone) || nameMatches;
+  });
+  if(matches.length!==1) return '';
+  const number=tmv3_clean_(matches[0]['Customer Number']);
+  if((customers||[]).filter(function(c){return tmv3_clean_(c['Customer Number'])===number;}).length!==1) return '';
+  return number;
+}
+
 function tmv3_preInspectionMissingDetailAssessment_(eventRecord) {
   const record = eventRecord || {};
   const text = [record.title || '', record.identityDescriptionClean ||
     record.descriptionClean || record.rawDescription || ''].join(' ');
-  const customerNumber = tmv3_extractCustomerNumberForVertical_('PreInspection', text);
+  const customerNumber = tmv3_extractCustomerNumberForVertical_('PreInspection', text) ||
+    tmv3_preInspectionNotificationCustomerNumber_(record,tmv3_rows_(TMV3.SHEETS.CUSTOMERS));
   const missing = [];
   if (!customerNumber) missing.push({code:'CUSTOMER_NUMBER',field:'Title',
     message:'Customer Number missing'});
   if (!tmv3_preInspectionHasSalesOrderReference_(record)) {
-    missing.push({code:'SALES_ORDER',field:'Sales Order Number',message:'Sales Order Number missing'});
+    missing.push({code:'SALES_ORDER',field:'Sales Order Number',message:'Sales Order Number not provided (optional; task creation can proceed)'});
   }
   if (!tmv3_clean_(record.location)) missing.push({code:'LOCATION',field:'Location',
     message:'Location missing — please add the full job-site address'});
