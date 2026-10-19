@@ -5806,13 +5806,22 @@ function tmv3_preInspectionCustomerLocationsFresh_(customerId) {
   const id=Number(customerId);
   if (!Number.isInteger(id) || id<=0) throw new Error('LOCATION_CUSTOMER_ID_INVALID');
   const response=tmv3_fetchJson_(TMV3.API_BASE+'/v1/customers/'+encodeURIComponent(id)+'/locations',{method:'get'});
-  if (!response || !Array.isArray(response.Data) ||
-      !Number.isInteger(response.TotalCount) || response.TotalCount!==response.Data.length) {
+  const data=response && (response.Data || response.data);
+  const count=response && (response.TotalCount!==undefined?response.TotalCount:response.totalCount);
+  if (!response || !Array.isArray(data) ||
+      !Number.isInteger(count) || count!==data.length) {
     throw new Error('LOCATION_RESPONSE_INCOMPLETE_NO_CREATE');
   }
   const seen={};
-  return response.Data.map(function(row) {
-    if (!row || !Number.isInteger(row.Id) || row.Id<=0 || seen[row.Id] ||
+  return data.map(function(raw) {
+    const customer=raw && (raw.Customer || raw.customer);
+    const address=raw && (raw.Address || raw.address);
+    const row={Id:raw && (raw.Id!==undefined?raw.Id:raw.id),
+      Customer:customer && {Id:customer.Id!==undefined?customer.Id:customer.id},
+      Address:address && {Address1:address.Address1 || address.address1,FullAddress:address.FullAddress || address.fullAddress,
+        Address2:address.Address2 || address.address2,City:address.City || address.city,
+        State:address.State || address.state,PostalCode:address.PostalCode || address.postalCode}};
+    if (!raw || !Number.isInteger(row.Id) || row.Id<=0 || seen[row.Id] ||
         !row.Customer || Number(row.Customer.Id)!==id || !row.Address ||
         !tmv3_clean_(row.Address.Address1 || row.Address.FullAddress)) {
       throw new Error('LOCATION_RESPONSE_IDENTITY_INVALID_NO_CREATE');
@@ -5833,4 +5842,48 @@ function tmv3_preInspectionRejectedAddressGuard_(guard,preflight) {
     /Address object is required/i.test(String(guard.error || '')) &&
     preflight && Array.isArray(preflight.owned) && Array.isArray(preflight.matches) &&
     preflight.matches.length===0);
+}
+
+// Google Apps Script: optional SO evidence may break a Location tie, never attach an Order to a PI Task.
+function tmv3_preInspectionOptionalOrderLocationEvidence_(record) {
+  if (!record || record.vertical!=='PreInspection' || !/^\d+$/.test(String(record.orderNumber||''))) return {status:'NOT_REQUIRED'};
+  const s2=tmv3_step2CalendarRecords_([record]);
+  const s3=tmv3_step3BusinessAnchorRecords_(s2,tmv3_step3AnchorIndex_());
+  const s4=tmv3_step4IdentityRecords_(s3,tmv3_step4IdentityIndex_());
+  if (s4.length!==1 || !s4[0].step4 || s4[0].step4.code!=='AMBIGUOUS_STRONG_LOCATION') return {status:'NOT_REQUIRED'};
+  const customerId=Number(s4[0].step4.customer && s4[0].step4.customer['Customer ID']);
+  if (!Number.isInteger(customerId) || customerId<=0) return {status:'CUSTOMER_UNRESOLVED'};
+  const number=String(record.orderNumber);
+  const found=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',
+    payload:JSON.stringify({PageIndex:0,PageSize:2,Number:number,CustomerId:customerId})});
+  const data=found && (found.Data || found.data);
+  const count=found && (found.TotalCount!==undefined?found.TotalCount:found.totalCount);
+  if (!found || !Array.isArray(data) || count!==data.length || data.length!==1) return {status:'ORDER_NOT_UNIQUE'};
+  const rawCandidate=data[0];
+  const candidate={Id:tmv3_first_(rawCandidate,['Id']),Number:tmv3_first_(rawCandidate,['Number']),
+    Customer:{Id:tmv3_first_(tmv3_first_(rawCandidate,['Customer']),['Id'])}};
+  if (String(candidate.Number)!==number || !candidate.Customer || Number(candidate.Customer.Id)!==customerId || !Number.isInteger(candidate.Id) || candidate.Id<=0) return {status:'ORDER_IDENTITY_CONFLICT'};
+  const rawOrder=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+candidate.Id,{method:'get'});
+  const order={Id:tmv3_first_(rawOrder,['Id']),OrderNumber:tmv3_first_(rawOrder,['OrderNumber']),OrderName:tmv3_first_(rawOrder,['OrderName']),
+    Customer:{Id:tmv3_first_(tmv3_first_(rawOrder,['Customer']),['Id'])},
+    ShipToLocation:{Id:tmv3_first_(tmv3_first_(rawOrder,['ShipToLocation']),['Id'])},
+    Contact:{Id:tmv3_first_(tmv3_first_(rawOrder,['Contact']),['Id'])},
+    Status:{Name:tmv3_first_(tmv3_first_(rawOrder,['Status']),['Name'])}};
+  if (!order || order.Id!==candidate.Id || String(order.OrderNumber)!==number || !order.Customer || Number(order.Customer.Id)!==customerId) return {status:'ORDER_READBACK_CONFLICT'};
+  const locationId=Number(order.ShipToLocation && order.ShipToLocation.Id);
+  const owned=tmv3_preInspectionCustomerLocationsFresh_(customerId);
+  const matches=owned.filter(function(location){return Number(location['Location ID'])===locationId &&
+    tmv3_addressStrongMatch_(tmv3_addressParts_(record.location),tmv3_addressParts_(tmv3_locationFullAddress_(location)));});
+  if (matches.length!==1) return {status:'ORDER_LOCATION_CONFLICT'};
+  const row=tmv3_normalizeOrder_({Id:order.Id,OrderNumber:number,CustomerId:customerId,LocationId:locationId,
+    ContactId:order.Contact&&order.Contact.Id,Status:order.Status&&order.Status.Name,Name:order.OrderName},'SALES_ORDER');
+  const sheet=tmv3_sheet_(TMV3.SHEETS.ORDERS),values=sheet.getDataRange().getValues();
+  if (!values.length || values[0][0]!=='Order ID' || values[0][1]!=='Order Number') throw new Error('ORDER_CACHE_SCHEMA_NO_WRITE');
+  const existing=[];
+  values.slice(1).forEach(function(value,index){if(String(value[1])===number && value[7]==='SALES_ORDER')existing.push({value:value,row:index+2});});
+  if (existing.length>1 || existing.some(function(item){return Number(item.value[0])!==order.Id || Number(item.value[2])!==customerId;})) return {status:'ORDER_CACHE_CONFLICT'};
+  sheet.getRange(existing.length?existing[0].row:values.length+1,1,1,row.length).setValues([row]);
+  tmv3_audit_('PreInspection',record.eventId,'','OPTIONAL_ORDER_LOCATION_EVIDENCE','PASS',
+    JSON.stringify({orderId:order.Id,customerId:customerId,locationId:locationId,orderAttachedToTask:false}));
+  return {status:'CACHE_REPAIRED',orderId:order.Id,locationId:locationId};
 }
