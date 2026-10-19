@@ -21,4 +21,6 @@ assert.equal(ok(guard,fresh),true);
 for(const g of [{...guard,locationId:12},{...guard,addressSchema:'nested-address-v1'},{...guard,error:'HTTP 500'},{...guard,error:'HTTP 400: permission denied'},{...guard,state:'ATTEMPT_STARTED'}])assert.equal(ok(g,fresh),false);
 assert.equal(ok(guard,{owned:[row],matches:[row]}),false);
 response={totalCount:1,data:[{id:12,customer:{id:77},address:{address1:'12 Main St',city:'Toronto'}}]};assert.equal(c.tmv3_preInspectionCustomerLocationsFresh_(77)[0]['Location ID'],12);
+for(const empty of [{totalCount:0,data:null},{TotalCount:0,Data:null}]){response=empty;assert.equal(c.tmv3_preInspectionCustomerLocationsFresh_(77).length,0);}
+for(const bad of [{totalCount:1,data:null},{totalCount:0},{data:null},{totalCount:'0',data:null}]){response=bad;assert.throws(()=>c.tmv3_preInspectionCustomerLocationsFresh_(77),/NO_CREATE/);}
 console.log('Location payload, targeted read, six unsafe response cases, and seven recovery guards passed');
