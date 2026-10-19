@@ -1,0 +1,23 @@
+// JavaScript / Node.js: notification evidence never changes write authorization.
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const path=require('path');
+const dir=process.env.TMV3_TEST_SOURCE_DIR || path.join(__dirname,'../apps-script/tmv3-clean');
+const c={};vm.createContext(c);
+for(const file of fs.readdirSync(dir).filter(f=>f.endsWith('.js')).sort()) vm.runInContext(fs.readFileSync(path.join(dir,file),'utf8'),c,{filename:file});
+const row={'Customer Number':'12345',Name:'Test Person','Primary Phone':'4165550101'};const f=(title,rows=[row])=>c.tmv3_preInspectionNotificationCustomerNumber_({title},rows);
+assert.equal(f('12345 Test Person 416.555.0101'),'12345');
+assert.equal(f('Test Person 416.555.0101 12345 SO#586000'),'12345');
+assert.equal(f('12345 Test Person'),'12345');
+assert.equal(f('Test Person SO#12345'),'');
+assert.equal(f('12345 Other Person 416.555.0102'),'');
+assert.equal(f('99999 Test Person 416.555.0101'),'');
+assert.equal(f('12345 Test Person',[row,{...row}]),'');
+assert.equal(f('12345 Test Person 22222 Second Person',[row,{'Customer Number':'22222',Name:'Second Person'}]),'');
+assert.equal(f('Test Person 416.555.0101'),'');
+assert.equal(f('Test Person https://example.com/12345'),'');
+c.tmv3_rows_=()=>[row];
+let assessment=c.tmv3_preInspectionMissingDetailAssessment_({title:'12345 Test Person 416.555.0101',location:'12 Main St',orderNumber:'586000'});
+assert.equal(assessment.shouldNotify,false);
+assessment=c.tmv3_preInspectionMissingDetailAssessment_({title:'12345 Test Person',location:'12 Main St'});
+assert.equal(assessment.missing.length,1);assert.equal(assessment.missing[0].code,'SALES_ORDER');assert.match(assessment.missing[0].message,/optional/);
+console.log('12 notification evidence and assessment cases passed');
