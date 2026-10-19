@@ -391,6 +391,13 @@ function tmv3_step7FreshLocationOwnership_(contract) {
 
   if (!locationId) return { status:'N/A' };
 
+  if (contract.vertical === 'PreInspection') {
+    const owned=tmv3_preInspectionCustomerLocationsFresh_(customerId);
+    const matches=owned.filter(function(row){return tmv3_clean_(row['Location ID'])===locationId;});
+    if (matches.length!==1) throw new Error('Fresh PreInspection Location ownership could not be verified.');
+    return {status:'VERIFIED',locationId:locationId,customerId:customerId};
+  }
+
   // The Customer-number map is also freshly read from Striven so a stale
   // Source Customers sheet cannot manufacture Location ownership.
   const customerNumberToId = {};
@@ -2912,14 +2919,16 @@ function tmv3_parseCanadianCustomerLocation_(address, customerId) {
   }
 
   return {
-    CustomerId:customer,
+    Id:0,
     Name:raw,
-    Address1:street,
-    City:city,
-    State:provinceMatch[1],
-    PostalCode:postalMatch[1] + ' ' + postalMatch[2],
-    Country:'Canada',
-    IsActive:true
+    IsPrimary:false,
+    Address:{
+      Address1:street,
+      City:city,
+      State:provinceMatch[1],
+      PostalCode:postalMatch[1] + ' ' + postalMatch[2],
+      Country:'Canada'
+    }
   };
 }
 
@@ -2940,32 +2949,9 @@ function tmv3_normalizedLocationObject_(normalized) {
 }
 
 function tmv3_freshCustomerLocationCandidates_(bundle, customerId, address) {
-  const customerNumberToId = {};
-
-  (bundle.refs.customers || []).forEach(function(customer) {
-    const number = tmv3_clean_(customer['Customer Number']);
-    const id = tmv3_clean_(customer['Customer ID']);
-
-    if (number && id) {
-      customerNumberToId[number] = id;
-    }
-  });
-
   const target = tmv3_addressParts_(address);
   const exactKey = tmv3_normalizeAddress_(address);
-
-  const owned = tmv3_reportRows_(TMV3.PROPERTIES.LOCATIONS)
-    .map(function(raw) {
-      return tmv3_normalizedLocationObject_(
-        tmv3_normalizeLocation_(raw, customerNumberToId)
-      );
-    })
-    .filter(function(location) {
-      return (
-        tmv3_clean_(location['Location ID']) &&
-        tmv3_clean_(location['Customer ID']) === tmv3_clean_(customerId)
-      );
-    });
+  const owned = tmv3_preInspectionCustomerLocationsFresh_(customerId);
 
   const exact = owned.filter(function(location) {
     return (
@@ -3237,11 +3223,15 @@ function tmv3_ensureStep7LocationUnlocked_(
       );
     }
 
-    throw new Error(
-      'CREATE_LOCATION blocked: a previous Location write attempt is ' +
-      tmv3_clean_(guard.state || 'UNCERTAIN') +
-      ' and no unique fresh Location can yet be reconciled. No second POST is allowed.'
-    );
+    if (!tmv3_preInspectionRejectedAddressGuard_(guard,preflight)) {
+      throw new Error(
+        'CREATE_LOCATION blocked: a previous Location write attempt is ' +
+        tmv3_clean_(guard.state || 'UNCERTAIN') +
+        ' and no unique fresh Location can yet be reconciled. No second POST is allowed.'
+      );
+    }
+    tmv3_audit_(contract.vertical,contract.eventId,'','LOCATION_VALIDATION_RECONCILED','PASS',
+      'Prior HTTP 400 Address-object rejection; complete fresh owned-Location read found no match. Corrected nested Address schema authorized once.');
   }
 
   if (preflight.matches.length === 1) {
@@ -3277,7 +3267,8 @@ function tmv3_ensureStep7LocationUnlocked_(
       vertical:contract.vertical,
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
-      address:contract.expectedLocationAddress
+      address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-v1'
     }
   );
 
@@ -3315,6 +3306,7 @@ function tmv3_ensureStep7LocationUnlocked_(
         eventId:contract.eventId,
         customerId:contract.expectedCustomerId,
         address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-v1',
         error:String(err && err.message || err)
       }
     );
@@ -3343,6 +3335,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
       address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-v1',
       locationId:locationId
     }
   );
@@ -3389,6 +3382,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
       address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-v1',
       locationId:locationId
     }
   );
@@ -5806,3 +5800,37 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
   return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid};
 }
 
+
+// Google Apps Script: one complete, customer-scoped read instead of the whole Location report.
+function tmv3_preInspectionCustomerLocationsFresh_(customerId) {
+  const id=Number(customerId);
+  if (!Number.isInteger(id) || id<=0) throw new Error('LOCATION_CUSTOMER_ID_INVALID');
+  const response=tmv3_fetchJson_(TMV3.API_BASE+'/v1/customers/'+encodeURIComponent(id)+'/locations',{method:'get'});
+  if (!response || !Array.isArray(response.Data) ||
+      !Number.isInteger(response.TotalCount) || response.TotalCount!==response.Data.length) {
+    throw new Error('LOCATION_RESPONSE_INCOMPLETE_NO_CREATE');
+  }
+  const seen={};
+  return response.Data.map(function(row) {
+    if (!row || !Number.isInteger(row.Id) || row.Id<=0 || seen[row.Id] ||
+        !row.Customer || Number(row.Customer.Id)!==id || !row.Address ||
+        !tmv3_clean_(row.Address.Address1 || row.Address.FullAddress)) {
+      throw new Error('LOCATION_RESPONSE_IDENTITY_INVALID_NO_CREATE');
+    }
+    seen[row.Id]=true;
+    const a=row.Address;
+    return tmv3_normalizedLocationObject_(tmv3_normalizeLocation_({
+      Id:row.Id,CustomerId:id,Address1:a.Address1 || a.FullAddress,Address2:a.Address2 || '',
+      City:a.City || '',State:a.State || '',PostalCode:a.PostalCode || ''
+    },{}));
+  });
+}
+
+// Only an old, explicit validation rejection can be recovered; ambiguous results remain blocked.
+function tmv3_preInspectionRejectedAddressGuard_(guard,preflight) {
+  return !!(guard && guard.state==='UNCERTAIN' && !guard.locationId && !guard.addressSchema &&
+    /HTTP 400\b/.test(String(guard.error || '')) &&
+    /Address object is required/i.test(String(guard.error || '')) &&
+    preflight && Array.isArray(preflight.owned) && Array.isArray(preflight.matches) &&
+    preflight.matches.length===0);
+}
