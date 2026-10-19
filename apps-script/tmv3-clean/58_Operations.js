@@ -2920,7 +2920,7 @@ function tmv3_parseCanadianCustomerLocation_(address, customerId) {
 
   return {
     Id:0,
-    Name:raw,
+    Name:'Primary',
     IsPrimary:false,
     Address:{
       Address1:street,
