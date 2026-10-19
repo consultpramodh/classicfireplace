@@ -1,0 +1,2 @@
+Source restoration safeguard after PreInspection single-event HEAD canary, serialized under same GitHub Actions concurrency group.
+If live is exact base, no writes. If exact temporary runner, restore. If unexpected drift, stop without modifying it.
