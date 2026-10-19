@@ -1535,7 +1535,11 @@ function tmv3_preInspectionAutomationCycle_(options) {
             pending=pending.filter(function(id){return id!==record.eventId;});
             props.setProperty(doneKey,JSON.stringify({fingerprint:fresh.fingerprint,at:Date.now()}));
           }
-          else if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
+          else {
+            one.status='ATTENTION';
+            result.status='ATTENTION';
+            if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
+          }
         }
         result.notifications += Number(one.notification && one.notification.sent || 0);
       } catch(err) {
