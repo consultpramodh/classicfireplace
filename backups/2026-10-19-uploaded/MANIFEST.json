@@ -1,0 +1,65 @@
+{
+  "source": "User-supplied attachments, not a live Apps Script pull",
+  "files": [
+    {
+      "path": "backups/2026-10-19-uploaded/action_hub.gs",
+      "sha256": "296cea6b9586bc3f1d9fc59545a6d17dbb3a782fb19c2d84fd1b115c77192876"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/auth.gs",
+      "sha256": "1ccce9ee7d4c6abff9e2bd70d347d6b28d800843770a67d81de4d30bd33a96d1"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/enternewpart.gs",
+      "sha256": "4e7ce8069f130899f51843a1466b86e526ec5b1a820e7b727e57e52998a79111"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/enternewpart_quoted.gs",
+      "sha256": "80b5bac9aaf373358513cf2af9f740ac67ec748d79d6073aca41b7ef8276a19c"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/inventory.gs",
+      "sha256": "7b9792ec687aa3c1bc36adc402ab71b2fe633619d0d5218ababd8336344804e8"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/manualcreation.gs",
+      "sha256": "dc64ffe7e2d63dcbaf5113bea529cbf4f8ffe10258a6f416b5bf8ac72d4f12c0"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/newitem.gs",
+      "sha256": "85ef6c15af78d27c20e6108e375c05005649433bc3ab150b47175aab28990590"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/report_sync.gs",
+      "sha256": "4628e18e6a7934fc0fb67ff4b515e022f090a00e85d4420a91e9679de83de6c5"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/enternewpart_pipeline.gs",
+      "sha256": "fed557d6bd1c30a7fb62c31fd1ec875ef33e075861d32a5dbe37eb0e5952776a"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/1.-enp_config_menu.gs",
+      "sha256": "fec7f6826030c9dc0d77923920a16a6a140f2257e00e34faea04afcba5587574"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/01_config_menu.gs",
+      "sha256": "85235f23b9f2e71de6a11edc371a563a3b1c27a9230c46b2ab50826840f2fd0b"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/02_striven_core.gs",
+      "sha256": "e7c647c90e5fd7e23bcfc9b51a9a2190a42d952d8d37d8a5d49ae51a8c862ac2"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/03_enternewpart_sync_and_actions.gs",
+      "sha256": "a22f69c42b3de8597b556042575b880d8c8bbb3b6d08a428dcf85a06f97ddc0e"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/04_actionhub.gs",
+      "sha256": "8ebda29dd998f41a67587d53a488e1d08ae14ef3a185e94048c73e38158ac636"
+    },
+    {
+      "path": "backups/2026-10-19-uploaded/05_manual_item_creation.gs",
+      "sha256": "5df725b4f7a879e436aedd543706251e2fd5f6311a1da216ab61984f680d8f6d"
+    }
+  ]
+}
