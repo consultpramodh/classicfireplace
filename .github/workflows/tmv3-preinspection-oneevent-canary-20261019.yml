@@ -1,0 +1,51 @@
+name: Guarded V3 PreInspection one-event production canary
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/tmv3-preinspection-canary-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cf-v3-preinspection-eligible-hotfix-production
+  cancel-in-progress: false
+
+jobs:
+  temporary-self-only-canary:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout verified production hotfix source
+        uses: actions/checkout@v4
+        with:
+          ref: c5d415d8e63eea0d6cdfbbf1d17b89e74324d8b3
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify guarded canary syntax
+        run: |
+          node --check tools/tmv3-preinspection-eligible-canary-20261019.js
+          node --check apps-script/tmv3-clean/90_Admin.js
+      - name: Execute one bounded event with guaranteed source restoration
+        shell: bash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}" || { echo 'AUTH_SECRET_UNAVAILABLE'; exit 1; }
+          node tools/tmv3-preinspection-eligible-canary-20261019.js
+      - name: Upload sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-preinspection-oneevent-${{ github.run_id }}
+          path: tmv3-preinspection-canary-evidence/result.json
+          if-no-files-found: warn
+          retention-days: 14
