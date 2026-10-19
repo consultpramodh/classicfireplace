@@ -231,7 +231,12 @@ function tmv3_preInspectionTodayRunUnlinked() {
   if(!candidates.length){Logger.log(JSON.stringify({status:'NO_UNLINKED_EVENTS',strivenCalls:0}));return;}
   const record=candidates[0].record;
   const result=tmv3_preInspectionAutomationCycle_({force:true,eventId:record.eventId,reason:'TODAY_UNLINKED_EVENT'});
-  Logger.log(JSON.stringify({eventId:record.eventId,title:record.title,result:result,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count}));
+  const one=(result.results||[])[0]||{},execution=one.execution||{};
+  Logger.log(JSON.stringify({status:result.status,eventId:record.eventId,title:record.title,
+    taskId:execution.taskId||one.taskId||'',executionStatus:execution.status||'NO_EXECUTION',
+    after:one.afterPlans||[],checks:execution.readbackPlan?tmv3_preInspectionCompactPlan_(execution.readbackPlan):null,
+    optionalOrderEvidence:one.optionalOrderEvidence||null,error:one.error||result.error||'',
+    before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count}));
   return result;
 }
 
