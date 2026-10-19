@@ -110,7 +110,7 @@ function tmv3_preInspectionTodayEligibleQueue_(records, sheetRows) {
     else if (entry.duplicate) reason='DUPLICATE_OPERATOR_ROWS';
     else if (!decision) reason='STEP6_NOT_ELIGIBLE: '+status;
     else if (!/Customer:\s*#\d+\b/i.test(evidence)) reason='CUSTOMER_NOT_RESOLVED_IN_OPERATOR_VIEW';
-    else if (!/Location ID:\s*\d+\b/i.test(evidence)) reason='LOCATION_NOT_RESOLVED_IN_OPERATOR_VIEW';
+    else if (!/Location ID:\s*\d+\b/i.test(evidence) && decision[1].toUpperCase()==='MATCH_EXISTING') reason='LOCATION_NOT_RESOLVED_IN_OPERATOR_VIEW';
     if (reason) {excluded.push({eventId:record.eventId,title:record.title,reason:reason});return;}
     const disposition=decision[1].toUpperCase();
     eligible.push({record:record,disposition:disposition,
@@ -211,4 +211,26 @@ function tmv3_preInspectionTodayLocationEvidence() {
     return {eventId:record.eventId,title:record.title,evidence:tmv3_preInspectionOptionalOrderLocationEvidence_(record)};
   });
   Logger.log(JSON.stringify({results:results,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count}));
+}
+
+// Retry one current-day event lacking a Task link. Cached rows select only;
+// native fresh identity, history, API and durable create guards authorize writes.
+function tmv3_preInspectionTodayRunUnlinked() {
+  const before=tmv3_strivenApiBudgetStatus_();
+  if (before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) throw new Error('INSUFFICIENT_READBACK_HEADROOM');
+  const records=tmv3_preInspectionTodayRecords_();
+  const rows=tmv3_sheet_(TMV3.SHEETS.PREINSPECTION).getDataRange().getDisplayValues().slice(1);
+  const props=PropertiesService.getScriptProperties();
+  const candidates=records.map(function(record){
+    const matches=rows.filter(function(row){return row[14]===record.eventId;});
+    if(matches.length!==1 || matches[0][24]) return null;
+    const done=JSON.parse(props.getProperty('TMV3_PI_DONE_'+tmv3_hash_(record.eventId))||'null');
+    if(done && done.fingerprint===record.fingerprint && Date.now()-Number(done.at||0)<3600000) return null;
+    return {record:record,priority:/CREATE_TASK/.test(matches[0][9])?0:1};
+  }).filter(Boolean).sort(function(a,b){return a.priority-b.priority || new Date(a.record.start)-new Date(b.record.start);});
+  if(!candidates.length){Logger.log(JSON.stringify({status:'NO_UNLINKED_EVENTS',strivenCalls:0}));return;}
+  const record=candidates[0].record;
+  const result=tmv3_preInspectionAutomationCycle_({force:true,eventId:record.eventId,reason:'TODAY_UNLINKED_EVENT'});
+  Logger.log(JSON.stringify({eventId:record.eventId,title:record.title,result:result,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count}));
+  return result;
 }
