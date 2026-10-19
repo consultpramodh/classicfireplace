@@ -262,16 +262,24 @@ function tmv3_preInspectionTodayRefreshTaskCacheSchedules() {
   const before=tmv3_strivenApiBudgetStatus_();
   if(before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) throw new Error('INSUFFICIENT_READBACK_HEADROOM');
   const records=tmv3_preInspectionTodayRecords_(),rows=tmv3_sheet_(TMV3.SHEETS.PREINSPECTION).getDataRange().getDisplayValues().slice(1);
-  const results=[];
+  const results=[],cachedTasks=tmv3_rows_(TMV3.SHEETS.TASKS);
   records.forEach(function(record){
     const matches=rows.filter(function(row){return row[14]===record.eventId;});
     if(matches.length!==1) return;
     const found=String(matches[0][24]||'').match(/[?&]TaskID=([1-9][0-9]*)/i);
-    if(!found) return;
-    const task=tmv3_getTaskById_(Number(found[1]));
-    if(Number(task['Task Type ID'])!==105 || String(task['Task ID'])!==found[1]) throw new Error('PI_TASK_CACHE_IDENTITY_UNVERIFIED');
+    const id=tmv3_clean_(record.existingTaskId||record.taskNumber||(found&&found[1]));
+    if(!/^[1-9][0-9]*$/.test(id)) return;
+    if(found && found[1]!==id) throw new Error('TASK_LINK_CACHE_CONFLICT');
+    const cached=cachedTasks.filter(function(task){return String(task['Task ID'])===id;});
+    if(cached.length>1) throw new Error('DUPLICATE_TASK_CACHE_ROWS');
+    if(cached.length===1 && tmv3_sameMinute_(record.start,cached[0].Start) && tmv3_sameMinute_(record.end,cached[0].Due)) {
+      results.push({taskId:id,status:'ALREADY_CACHED_MATCH'});return;
+    }
+    const task=tmv3_getTaskById_(Number(id));
+    if(Number(task['Task Type ID'])!==105 || String(task['Task ID'])!==id) throw new Error('PI_TASK_CACHE_IDENTITY_UNVERIFIED');
     tmv3_upsertTaskCacheRow_(task);
-    results.push({taskId:found[1],status:'CANONICAL_V1_SCHEDULE_CACHED'});
+    results.push({taskId:id,status:'CANONICAL_V1_SCHEDULE_CACHED'});
   });
+  tmv3_step6TaskDecisionRunCached('PREINSPECTION_CANONICAL_CACHE_READBACK');
   Logger.log(JSON.stringify({results:results,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count,strivenWrites:0}));
 }
