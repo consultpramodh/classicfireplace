@@ -1,0 +1,51 @@
+name: Guarded V3 PreInspection HEAD one-event canary
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/tmv3-preinspection-head-canary-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cf-v3-preinspection-eligible-hotfix-production
+  cancel-in-progress: false
+
+jobs:
+  reuse-existing-head-only:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned verified hotfix code
+        uses: actions/checkout@v4
+        with:
+          ref: 8e6e1dafd3471929daf504fda440d63e81890ff0
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax and source guards
+        run: |
+          node --check tools/tmv3-preinspection-head-canary-20261019.js
+          node --check apps-script/tmv3-clean/90_Admin.js
+      - name: Run authenticated one-event canary on existing HEAD and restore all source
+        shell: bash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}" || { echo 'GOOGLE_AUTH_UNAVAILABLE'; exit 1; }
+          node tools/tmv3-preinspection-head-canary-20261019.js
+      - name: Preserve sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-preinspection-head-oneevent-${{ github.run_id }}
+          path: tmv3-preinspection-head-evidence/result.json
+          if-no-files-found: warn
+          retention-days: 14
