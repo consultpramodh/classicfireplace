@@ -1,0 +1,48 @@
+name: V3 PreInspection HEAD recovery guard
+
+on:
+  push:
+    branches:
+      - task_mapping
+    paths:
+      - ops/tmv3-preinspection-head-recovery-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cf-v3-preinspection-eligible-hotfix-production
+  cancel-in-progress: false
+
+jobs:
+  verify-source-restored:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout pinned repaired source and guarded recovery logic
+        uses: actions/checkout@v4
+        with:
+          ref: 2d5e45891622f5a5422523f02f9d2b1f329a6027
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate recovery syntax
+        run: node --check tools/tmv3-preinspection-head-recovery-20261019.js
+      - name: Read back or safely restore exact temporary canary source
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}" || { echo 'GOOGLE_AUTH_UNAVAILABLE'; exit 1; }
+          node tools/tmv3-preinspection-head-recovery-20261019.js
+      - name: Preserve source-recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-preinspection-source-recovery-${{ github.run_id }}
+          path: tmv3-preinspection-head-recovery-evidence/result.json
+          if-no-files-found: warn
+          retention-days: 14
