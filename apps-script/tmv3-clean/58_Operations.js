@@ -391,6 +391,13 @@ function tmv3_step7FreshLocationOwnership_(contract) {
 
   if (!locationId) return { status:'N/A' };
 
+  if (contract.vertical === 'PreInspection') {
+    const owned=tmv3_preInspectionCustomerLocationsFresh_(customerId);
+    const matches=owned.filter(function(row){return tmv3_clean_(row['Location ID'])===locationId;});
+    if (matches.length!==1) throw new Error('Fresh PreInspection Location ownership could not be verified.');
+    return {status:'VERIFIED',locationId:locationId,customerId:customerId};
+  }
+
   // The Customer-number map is also freshly read from Striven so a stale
   // Source Customers sheet cannot manufacture Location ownership.
   const customerNumberToId = {};
@@ -845,6 +852,7 @@ function tmv3_taskAssignmentsFromRaw_(raw) {
 
 function tmv3_upsertTaskCacheRow_(task) {
   if (!task || !task['Task ID']) return;
+  if(Number(task['Task Type ID'])===105) task=tmv3_preInspectionCanonicalCacheTask_(task,tmv3_getCanonicalV1TaskSchedule_(task['Task ID']));
 
   const sh = tmv3_sheet_(TMV3.SHEETS.TASKS);
   const headers = [
@@ -2912,14 +2920,16 @@ function tmv3_parseCanadianCustomerLocation_(address, customerId) {
   }
 
   return {
-    CustomerId:customer,
-    Name:raw,
-    Address1:street,
-    City:city,
-    State:provinceMatch[1],
-    PostalCode:postalMatch[1] + ' ' + postalMatch[2],
-    Country:'Canada',
-    IsActive:true
+    Id:0,
+    Name:'Primary',
+    IsPrimary:false,
+    Address:{
+      Address1:street,
+      City:city,
+      State:provinceMatch[1],
+      PostalCode:postalMatch[1] + ' ' + postalMatch[2],
+      Country:'CA'
+    }
   };
 }
 
@@ -2940,32 +2950,9 @@ function tmv3_normalizedLocationObject_(normalized) {
 }
 
 function tmv3_freshCustomerLocationCandidates_(bundle, customerId, address) {
-  const customerNumberToId = {};
-
-  (bundle.refs.customers || []).forEach(function(customer) {
-    const number = tmv3_clean_(customer['Customer Number']);
-    const id = tmv3_clean_(customer['Customer ID']);
-
-    if (number && id) {
-      customerNumberToId[number] = id;
-    }
-  });
-
   const target = tmv3_addressParts_(address);
   const exactKey = tmv3_normalizeAddress_(address);
-
-  const owned = tmv3_reportRows_(TMV3.PROPERTIES.LOCATIONS)
-    .map(function(raw) {
-      return tmv3_normalizedLocationObject_(
-        tmv3_normalizeLocation_(raw, customerNumberToId)
-      );
-    })
-    .filter(function(location) {
-      return (
-        tmv3_clean_(location['Location ID']) &&
-        tmv3_clean_(location['Customer ID']) === tmv3_clean_(customerId)
-      );
-    });
+  const owned = tmv3_preInspectionCustomerLocationsFresh_(customerId);
 
   const exact = owned.filter(function(location) {
     return (
@@ -3237,11 +3224,15 @@ function tmv3_ensureStep7LocationUnlocked_(
       );
     }
 
-    throw new Error(
-      'CREATE_LOCATION blocked: a previous Location write attempt is ' +
-      tmv3_clean_(guard.state || 'UNCERTAIN') +
-      ' and no unique fresh Location can yet be reconciled. No second POST is allowed.'
-    );
+    if (!tmv3_preInspectionRejectedAddressGuard_(guard,preflight)) {
+      throw new Error(
+        'CREATE_LOCATION blocked: a previous Location write attempt is ' +
+        tmv3_clean_(guard.state || 'UNCERTAIN') +
+        ' and no unique fresh Location can yet be reconciled. No second POST is allowed.'
+      );
+    }
+    tmv3_audit_(contract.vertical,contract.eventId,'','LOCATION_VALIDATION_RECONCILED','PASS',
+      'Prior explicit HTTP 400 Address/Country validation rejection; complete fresh owned-Location read found no match. Corrected nested Address and CA country-code schema authorized once.');
   }
 
   if (preflight.matches.length === 1) {
@@ -3277,7 +3268,8 @@ function tmv3_ensureStep7LocationUnlocked_(
       vertical:contract.vertical,
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
-      address:contract.expectedLocationAddress
+      address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-country-code-v2'
     }
   );
 
@@ -3315,6 +3307,7 @@ function tmv3_ensureStep7LocationUnlocked_(
         eventId:contract.eventId,
         customerId:contract.expectedCustomerId,
         address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-country-code-v2',
         error:String(err && err.message || err)
       }
     );
@@ -3343,6 +3336,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
       address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-country-code-v2',
       locationId:locationId
     }
   );
@@ -3389,6 +3383,7 @@ function tmv3_ensureStep7LocationUnlocked_(
       eventId:contract.eventId,
       customerId:contract.expectedCustomerId,
       address:contract.expectedLocationAddress,
+      addressSchema:'nested-address-country-code-v2',
       locationId:locationId
     }
   );
@@ -5434,16 +5429,40 @@ function tmv3_preInspectionCreatorFirstName_(email) {
     : 'there';
 }
 
+// Notification-only evidence check. Does not authorize identity or task writes.
+function tmv3_preInspectionNotificationCustomerNumber_(record,customers) {
+  const title=tmv3_clean_(record && record.title);
+  const stripped=tmv3_stripPhonesForOrderParsing_(title)
+    .replace(/https?:\/\/\S+/gi,' ')
+    .replace(/\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*\d{4,8}(?:\s*\/\s*\d{2,8})*/ig,' ');
+  const numbers=stripped.match(/\b\d{4,8}\b/g)||[];
+  const phone=tmv3_phone10_(record && record.phone || tmv3_extractPhone_(title));
+  const words=title.toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean);
+  const matches=(customers||[]).filter(function(customer){
+    const number=tmv3_clean_(customer['Customer Number']);
+    if(numbers.indexOf(number)<0) return false;
+    const nameWords=tmv3_clean_(customer.Name).toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean);
+    const nameMatches=nameWords.length>=2 && nameWords.every(function(word){return words.indexOf(word)>=0;});
+    const profilePhone=tmv3_phone10_(customer['Primary Phone']);
+    return (phone && profilePhone && phone===profilePhone) || nameMatches;
+  });
+  if(matches.length!==1) return '';
+  const number=tmv3_clean_(matches[0]['Customer Number']);
+  if((customers||[]).filter(function(c){return tmv3_clean_(c['Customer Number'])===number;}).length!==1) return '';
+  return number;
+}
+
 function tmv3_preInspectionMissingDetailAssessment_(eventRecord) {
   const record = eventRecord || {};
   const text = [record.title || '', record.identityDescriptionClean ||
     record.descriptionClean || record.rawDescription || ''].join(' ');
-  const customerNumber = tmv3_extractCustomerNumberForVertical_('PreInspection', text);
+  const customerNumber = tmv3_extractCustomerNumberForVertical_('PreInspection', text) ||
+    tmv3_preInspectionNotificationCustomerNumber_(record,tmv3_rows_(TMV3.SHEETS.CUSTOMERS));
   const missing = [];
   if (!customerNumber) missing.push({code:'CUSTOMER_NUMBER',field:'Title',
     message:'Customer Number missing'});
   if (!tmv3_preInspectionHasSalesOrderReference_(record)) {
-    missing.push({code:'SALES_ORDER',field:'Sales Order Number',message:'Sales Order Number missing'});
+    missing.push({code:'SALES_ORDER',field:'Sales Order Number',message:'Sales Order Number not provided (optional; task creation can proceed)'});
   }
   if (!tmv3_clean_(record.location)) missing.push({code:'LOCATION',field:'Location',
     message:'Location missing — please add the full job-site address'});
@@ -5806,3 +5825,110 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
   return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid};
 }
 
+
+// Google Apps Script: one complete, customer-scoped read instead of the whole Location report.
+function tmv3_preInspectionCustomerLocationsFresh_(customerId) {
+  const id=Number(customerId);
+  if (!Number.isInteger(id) || id<=0) throw new Error('LOCATION_CUSTOMER_ID_INVALID');
+  const response=tmv3_fetchJson_(TMV3.API_BASE+'/v1/customers/'+encodeURIComponent(id)+'/locations',{method:'get'});
+  const rawData=response && (response.Data!==undefined?response.Data:response.data);
+  const count=response && (response.TotalCount!==undefined?response.TotalCount:response.totalCount);
+  // Live Striven represents an explicitly empty collection as count=0, data=null.
+  const data=count===0 && rawData===null ? [] : rawData;
+  if (!response || !Array.isArray(data) ||
+      !Number.isInteger(count) || count!==data.length) {
+    throw new Error('LOCATION_RESPONSE_INCOMPLETE_NO_CREATE');
+  }
+  const seen={};
+  return data.map(function(raw) {
+    const customer=raw && (raw.Customer || raw.customer);
+    const address=raw && (raw.Address || raw.address);
+    const row={Id:raw && (raw.Id!==undefined?raw.Id:raw.id),
+      Customer:customer && {Id:customer.Id!==undefined?customer.Id:customer.id},
+      Address:address && {Address1:address.Address1 || address.address1,FullAddress:address.FullAddress || address.fullAddress,
+        Address2:address.Address2 || address.address2,City:address.City || address.city,
+        State:address.State || address.state,PostalCode:address.PostalCode || address.postalCode}};
+    if (!raw || !Number.isInteger(row.Id) || row.Id<=0 || seen[row.Id] ||
+        !row.Customer || Number(row.Customer.Id)!==id || !row.Address ||
+        !tmv3_clean_(row.Address.Address1 || row.Address.FullAddress)) {
+      throw new Error('LOCATION_RESPONSE_IDENTITY_INVALID_NO_CREATE');
+    }
+    seen[row.Id]=true;
+    const a=row.Address;
+    return tmv3_normalizedLocationObject_(tmv3_normalizeLocation_({
+      Id:row.Id,CustomerId:id,Address1:a.Address1 || a.FullAddress,Address2:a.Address2 || '',
+      City:a.City || '',State:a.State || '',PostalCode:a.PostalCode || ''
+    },{}));
+  });
+}
+
+// Only an old, explicit validation rejection can be recovered; ambiguous results remain blocked.
+function tmv3_preInspectionRejectedAddressGuard_(guard,preflight) {
+  if(!guard || guard.state!=='UNCERTAIN' || guard.locationId ||
+      !preflight || !Array.isArray(preflight.owned) || !Array.isArray(preflight.matches) || preflight.matches.length!==0) return false;
+  const error=String(guard.error||'');
+  if(!/HTTP 400\b/.test(error)) return false;
+  const oldAddress=!guard.addressSchema && /Address object is required/i.test(error);
+  const oldCountry=guard.addressSchema==='nested-address-v1' &&
+    /country_Invalid/.test(error) && /country code Canada could not be read/i.test(error);
+  return oldAddress || oldCountry;
+}
+
+function tmv3_preInspectionOptionalOrderLocationEvidence_(record) {
+  if (!record || record.vertical!=='PreInspection' || !/^\d+$/.test(String(record.orderNumber||''))) return {status:'NOT_REQUIRED'};
+  const s2=tmv3_step2CalendarRecords_([record]);
+  const s3=tmv3_step3BusinessAnchorRecords_(s2,tmv3_step3AnchorIndex_());
+  const s4=tmv3_step4IdentityRecords_(s3,tmv3_step4IdentityIndex_());
+  if (s4.length!==1 || !s4[0].step4 || s4[0].step4.code!=='AMBIGUOUS_STRONG_LOCATION') return {status:'NOT_REQUIRED'};
+  const customerId=Number(s4[0].step4.customer && s4[0].step4.customer['Customer ID']);
+  if (!Number.isInteger(customerId) || customerId<=0) return {status:'CUSTOMER_UNRESOLVED'};
+  const number=String(record.orderNumber);
+  const found=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',
+    payload:JSON.stringify({PageIndex:0,PageSize:2,Number:number,CustomerId:customerId})});
+  const data=found && (found.Data || found.data);
+  const count=found && (found.TotalCount!==undefined?found.TotalCount:found.totalCount);
+  if (!found || !Array.isArray(data) || count!==data.length || data.length!==1) return {status:'ORDER_NOT_UNIQUE'};
+  const rawCandidate=data[0];
+  const candidate={Id:tmv3_first_(rawCandidate,['Id']),Number:tmv3_first_(rawCandidate,['Number']),
+    Customer:{Id:tmv3_first_(tmv3_first_(rawCandidate,['Customer']),['Id'])}};
+  if (String(candidate.Number)!==number || !candidate.Customer || Number(candidate.Customer.Id)!==customerId || !Number.isInteger(candidate.Id) || candidate.Id<=0) return {status:'ORDER_IDENTITY_CONFLICT'};
+  const rawOrder=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+candidate.Id,{method:'get'});
+  const order={Id:tmv3_first_(rawOrder,['Id']),OrderNumber:tmv3_first_(rawOrder,['OrderNumber']),OrderName:tmv3_first_(rawOrder,['OrderName']),
+    Customer:{Id:tmv3_first_(tmv3_first_(rawOrder,['Customer']),['Id'])},
+    ShipToLocation:{Id:tmv3_first_(tmv3_first_(rawOrder,['ShipToLocation']),['Id'])},
+    Contact:{Id:tmv3_first_(tmv3_first_(rawOrder,['Contact']),['Id'])},
+    Status:{Name:tmv3_first_(tmv3_first_(rawOrder,['Status']),['Name'])}};
+  if (!order || order.Id!==candidate.Id || String(order.OrderNumber)!==number || !order.Customer || Number(order.Customer.Id)!==customerId) return {status:'ORDER_READBACK_CONFLICT'};
+  const locationId=Number(order.ShipToLocation && order.ShipToLocation.Id);
+  const owned=tmv3_preInspectionCustomerLocationsFresh_(customerId);
+  const matches=owned.filter(function(location){return Number(location['Location ID'])===locationId &&
+    tmv3_addressStrongMatch_(tmv3_addressParts_(record.location),tmv3_addressParts_(tmv3_locationFullAddress_(location)));});
+  if (matches.length!==1) return {status:'ORDER_LOCATION_CONFLICT'};
+  const row=tmv3_normalizeOrder_({Id:order.Id,OrderNumber:number,CustomerId:customerId,LocationId:locationId,
+    ContactId:order.Contact&&order.Contact.Id,Status:order.Status&&order.Status.Name,Name:order.OrderName},'SALES_ORDER');
+  const sheet=tmv3_sheet_(TMV3.SHEETS.ORDERS),values=sheet.getDataRange().getValues();
+  if (!values.length || values[0][0]!=='Order ID' || values[0][1]!=='Order Number') throw new Error('ORDER_CACHE_SCHEMA_NO_WRITE');
+  const existing=[];
+  values.slice(1).forEach(function(value,index){if(String(value[1])===number && value[7]==='SALES_ORDER')existing.push({value:value,row:index+2});});
+  if (existing.length>1 || existing.some(function(item){return Number(item.value[0])!==order.Id || Number(item.value[2])!==customerId;})) return {status:'ORDER_CACHE_CONFLICT'};
+  const cachedLocations=tmv3_rows_(TMV3.SHEETS.LOCATIONS).filter(function(item){return Number(item['Location ID'])===locationId;});
+  if(cachedLocations.length>1 || cachedLocations.some(function(item){return Number(item['Customer ID'])!==customerId;})) return {status:'LOCATION_CACHE_CONFLICT'};
+  tmv3_upsertLocationCacheObject_(matches[0]);
+  sheet.getRange(existing.length?existing[0].row:values.length+1,1,1,row.length).setValues([row]);
+  tmv3_audit_('PreInspection',record.eventId,'','OPTIONAL_ORDER_LOCATION_EVIDENCE','PASS',
+    JSON.stringify({orderId:order.Id,customerId:customerId,locationId:locationId,orderAttachedToTask:false}));
+  return {status:'CACHE_REPAIRED',orderId:order.Id,locationId:locationId};
+}
+
+// Cache the authoritative schedule; never infer a twelve-hour shift or write Task dates.
+function tmv3_preInspectionCanonicalCacheTask_(task,canonical) {
+  if(Number(task&&task['Task Type ID'])!==105) return task;
+  if(!canonical || Number(canonical.taskId)!==Number(task['Task ID']) ||
+      !canonical.startDateTime || !canonical.dueDateTime ||
+      !Number.isFinite(new Date(canonical.startDateTime).getTime()) ||
+      !Number.isFinite(new Date(canonical.dueDateTime).getTime()) ||
+      new Date(canonical.dueDateTime).getTime()<new Date(canonical.startDateTime).getTime()) throw new Error('CANONICAL_PI_CACHE_SCHEDULE_UNVERIFIED_NO_CACHE_WRITE');
+  const verified=Object.assign({},task,{'Start':canonical.startDateTime,'Due':canonical.dueDateTime});
+  verified.Fingerprint=tmv3_hash_(['Task ID','Task Number','Task Type ID','Task Type','Status','Name','Customer ID','Location ID','Contact ID','Order ID','Start','Due','Assignees','Pools'].map(function(key){return verified[key]||'';}).join('|'));
+  return verified;
+}
