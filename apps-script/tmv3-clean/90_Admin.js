@@ -123,7 +123,7 @@ function tmv3_preInspectionTodayEligibleQueue_(records, sheetRows) {
   return {eligible:eligible,excluded:excluded};
 }
 
-function tmv3_preInspectionTodayRunNext() {
+function tmv3_preInspectionTodayRunNext(excludeEventIds) {
   const before=tmv3_strivenApiBudgetStatus_();
   if (before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) {
     const gated={status:'API_BUDGET_GATED',remaining:before.remaining,
@@ -135,6 +135,8 @@ function tmv3_preInspectionTodayRunNext() {
   const last=sheet.getLastRow();
   const rows=last>1?sheet.getRange(2,6,last-1,10).getDisplayValues():[];
   const queue=tmv3_preInspectionTodayEligibleQueue_(records,rows);
+  const skipIds={};
+  (Array.isArray(excludeEventIds)?excludeEventIds:[]).forEach(function(id){skipIds[String(id)]=true;});
   if (!queue.eligible.length) {
     const empty={status:'NO_ELIGIBLE_EVENTS',events:records.length,excluded:queue.excluded,strivenCalls:0};
     Logger.log(JSON.stringify(empty));return empty;
@@ -147,6 +149,7 @@ function tmv3_preInspectionTodayRunNext() {
   for(let i=0;i<queue.eligible.length;i++){
     const index=(cursor+i)%queue.eligible.length;
     const candidate=queue.eligible[index],record=candidate.record;
+    if (skipIds[record.eventId]) continue;
     const done=JSON.parse(props.getProperty('TMV3_PI_DONE_'+tmv3_hash_(record.eventId))||'null');
     if (done && done.fingerprint===record.fingerprint &&
         Date.now()-Number(done.at||0)<3600000){recent++;continue;}
@@ -161,8 +164,8 @@ function tmv3_preInspectionTodayRunNext() {
     const taskId=tmv3_clean_(one.taskId||
       (one.execution&&one.execution.taskId)||
       (after[0]&&after[0].taskId));
-    const complete=result.status==='COMPLETE'&&after.length===1&&
-      !after[0].blocker&&!(after[0].actions||[]).length&&!!taskId;
+    const complete=result.status==='COMPLETE'&&!!taskId&&
+      tmv3_preInspectionCompletionVerified_(after,one.execution);
     const response={
       status:complete?'EVENT_RECONCILED_AND_VERIFIED':'EVENT_NOT_CONVERGED',
       eventId:record.eventId,title:record.title,
@@ -186,7 +189,7 @@ function tmv3_preInspectionTodayRunNext() {
 function tmv3_preInspectionTodayRunEligibleBatch() {
   const results=[],seen={};
   for(let i=0;i<3;i++){
-    const r=tmv3_preInspectionTodayRunNext();
+    const r=tmv3_preInspectionTodayRunNext(Object.keys(seen));
     if (!r.eventId){if (!results.length) results.push(r);break;}
     if (seen[r.eventId]){results.push({status:'CURSOR_DID_NOT_ADVANCE',eventId:r.eventId});break;}
     seen[r.eventId]=true;
