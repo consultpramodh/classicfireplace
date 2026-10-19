@@ -1501,6 +1501,10 @@ function tmv3_preInspectionAutomationCycle_(options) {
           one.notification = {status:'WAITING_FOR_INTAKE',sent:0};
         } else {
           let plans = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
+          if (plans.length===1 && plans[0].blocker) {
+            one.optionalOrderEvidence=tmv3_preInspectionOptionalOrderLocationEvidence_(record);
+            if (one.optionalOrderEvidence.status==='CACHE_REPAIRED') plans=tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
+          }
           if (plans.length === 1 && !plans[0].blocker && (plans[0].actions || []).some(function(a) {
             return a===TMV3_STEP7_ACTION.CREATE_TASK || a===TMV3_STEP7_ACTION.RECREATE_TASK;
           })) {
