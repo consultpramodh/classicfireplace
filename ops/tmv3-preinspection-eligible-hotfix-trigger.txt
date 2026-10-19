@@ -1,0 +1,4 @@
+2026-10-19 Correct PreInspection V3 3.11.92 eligible runner.
+Guard: exact live baseline source or verified prior hotfix, no unrelated files modified.
+Deploy only 90_Admin.js, fresh remote readback required, one canary only if execution allowed.
+Report outcome to PR #128.
