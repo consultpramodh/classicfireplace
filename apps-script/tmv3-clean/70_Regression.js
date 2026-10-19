@@ -1000,12 +1000,13 @@ function tmv3_issue2CreateSafetyRegression() {
 
   check(
     'PREINSPECTION_LOCATION_PAYLOAD_CONTRACT',
-    parsedAddress.CustomerId === 54635 &&
-      parsedAddress.Address1 === '183 Hudson Dr' &&
-      parsedAddress.City === 'Toronto' &&
-      parsedAddress.State === 'ON' &&
-      parsedAddress.PostalCode === 'M4T 2K7' &&
-      parsedAddress.Country === 'Canada',
+    parsedAddress.Id === 0 && parsedAddress.IsPrimary === false &&
+      parsedAddress.Address && parsedAddress.Address1 === undefined &&
+      parsedAddress.Address.Address1 === '183 Hudson Dr' &&
+      parsedAddress.Address.City === 'Toronto' &&
+      parsedAddress.Address.State === 'ON' &&
+      parsedAddress.Address.PostalCode === 'M4T 2K7' &&
+      parsedAddress.Address.Country === 'Canada',
     JSON.stringify(parsedAddress)
   );
 
