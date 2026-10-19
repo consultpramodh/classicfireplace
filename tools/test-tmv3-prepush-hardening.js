@@ -17,3 +17,5 @@ console.log(JSON.stringify({status:result.status,cases:total,suites}));
 
 
 require("node:child_process").execFileSync(process.execPath,[path.join(__dirname,"test-tmv3-preinspection-automation.js")],{stdio:"inherit"});
+require("node:child_process").execFileSync(process.execPath,[path.join(__dirname,"test-tmv3-install-readiness.js")],{stdio:"inherit"});
+

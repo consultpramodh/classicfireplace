@@ -93,6 +93,10 @@ const TMV3 = Object.freeze({
   MAX_PAGES: 50,
   OPERATIONS: Object.freeze({
     manualWritesEnabled: false,
+    // Install stays disabled until exact-event live acceptance is recorded.
+    installAutomationEnabled: false,
+    installAutomationCanaryEventId: '',
+    installAutomationIntervalMinutes: 60,
     // Independent relationship-only production lane. Other V3 writers remain gated.
     taskFirstProductionEnabled: true,
     taskFirstProductionMaxWritesPerRun: 1,
@@ -296,4 +300,5 @@ const TMV3_OPERATOR_HEADERS = Object.freeze([
 ]);
 
 // TMV3 parity R1 verification trigger — 2026-09-23
+
 
