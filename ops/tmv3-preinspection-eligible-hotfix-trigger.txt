@@ -1,0 +1,4 @@
+2026-10-19 V3 PreInspection eligible-runner correction
+Base live source must exactly match commit 95c312296fb605678ce4989864a70cd9de439ca8
+Deploy only 90_Admin.js; abort on any baseline drift.
+Run one eligible canary after full source readback verification.
