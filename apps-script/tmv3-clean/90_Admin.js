@@ -202,3 +202,13 @@ function tmv3_preInspectionTodayRunEligibleBatch() {
     verified:verified,attempted:results.length,results:results};
   Logger.log(JSON.stringify(result));return result;
 }
+
+// Resolve only customer-owned location evidence; never creates or patches a Task.
+function tmv3_preInspectionTodayLocationEvidence() {
+  const before=tmv3_strivenApiBudgetStatus_();
+  if (before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) throw new Error('INSUFFICIENT_READBACK_HEADROOM');
+  const results=tmv3_preInspectionTodayRecords_().map(function(record){
+    return {eventId:record.eventId,title:record.title,evidence:tmv3_preInspectionOptionalOrderLocationEvidence_(record)};
+  });
+  Logger.log(JSON.stringify({results:results,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count}));
+}
