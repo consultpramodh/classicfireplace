@@ -22,6 +22,8 @@ function onOpen() {
         .addItem('Refresh Sources + Mapping', 'tmv3_shadowRun')
         .addItem('Refresh Mapping From Cache', 'tmv3_shadowMapFromCache')
         .addItem('Refresh Morning Ops', 'tmv3_refreshMorningOps')
+        .addItem('Audit Install Readiness (7 days)', 'tmv3_installReadinessAudit')
+        .addItem('Run Exact Install Canary', 'tmv3_runInstallCanary')
         .addSeparator()
         .addItem('Run Safe READY Rows Now', 'tmv3_runSafeReadyRows_MANUAL')
     )
@@ -1137,6 +1139,7 @@ function tmv3_taskFirstProductionCycle_() {
 }
 
 function tmv3_scheduledOperations() {
+  const install = tmv3_installCanaryCycle_();
   const preInspection = tmv3_preInspectionAutomationCycle_({reason:'SCHEDULED_OPERATIONS'});
   // Relationship-first is independent from the Stage-7 Calendar gate.
   const taskFirst = tmv3_taskFirstProductionCycle_();
@@ -1146,7 +1149,7 @@ function tmv3_scheduledOperations() {
 
   if (tmv3_executionStage_() < 7) {
     return {
-      taskFirst:taskFirst,preInspection:preInspection,
+      taskFirst:taskFirst,preInspection:preInspection,install:install,
       stage:tmv3_executionStage_(),
       mapped:tmv3_calendarStageRefresh_(
         'SCHEDULED_CALENDAR_STAGE_REFRESH'
@@ -1157,13 +1160,13 @@ function tmv3_scheduledOperations() {
 
   if (tmv3_executionStage_() === 7) {
     return Object.assign(
-      {taskFirst:taskFirst,preInspection:preInspection},
+      {taskFirst:taskFirst,preInspection:preInspection,install:install},
       tmv3_stage7AutomaticCanaryCycle_('SCHEDULED_CALENDAR_STAGE_REFRESH')
     );
   }
 
   return Object.assign(
-    {taskFirst:taskFirst,preInspection:preInspection},
+    {taskFirst:taskFirst,preInspection:preInspection,install:install},
     tmv3_runProductionAutomationCycle_('SCHEDULED_OPERATIONS',{
       maxSourceAgeMinutes:30,forceSourceRefresh:false
     })
@@ -1303,6 +1306,94 @@ function tmv3_preInspectionExplicitCandidate_(record) {
   return !!record && !tmv3_step2PreInspectionNonCustomer_(record) &&
     /\bpre[\s-]*inspect(?:ion)?\b/i.test([record.title || '',
       record.descriptionClean || record.rawDescription || ''].join(' '));
+}
+
+// Google Apps Script: exact-event Install acceptance; disabled by default.
+function tmv3_installCanaryCycle_(options) {
+  options = options || {};
+  if (!tmv3_operationWritesEnabled_('INSTALLAUTO')) return {status:'INSTALL_GATED',attempted:0};
+  const now = new Date();
+  const hour = Number(Utilities.formatDate(now,TMV3_TIMEZONE,'H'));
+  const weekday = Number(Utilities.formatDate(now,TMV3_TIMEZONE,'u'));
+  if (weekday > 5 || hour < 7 || hour >= 19) return {status:'OUTSIDE_INSTALL_BUSINESS_HOURS',attempted:0};
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return {status:'LOCK_BUSY',attempted:0};
+  const props = PropertiesService.getScriptProperties();
+  const eventId = tmv3_clean_(TMV3.OPERATIONS.installAutomationCanaryEventId);
+  const result = {vertical:'Install',eventId:eventId,status:'ATTENTION',attempted:0};
+  try {
+    const interval = Math.max(60,Number(TMV3.OPERATIONS.installAutomationIntervalMinutes) || 60)*60000;
+    const key = 'TMV3_INSTALL_LAST_CYCLE_'+tmv3_hash_(eventId);
+    const previous = Number(props.getProperty(key) || 0);
+    if (!options.manual && now.getTime()-previous < interval) return {status:'THROTTLED',attempted:0};
+    const budget = tmv3_strivenApiBudgetStatus_();
+    if (budget.exhausted || !Number.isFinite(budget.remaining) || budget.remaining < 30) {
+      return {status:'API_HEADROOM_REQUIRED',attempted:0};
+    }
+    props.setProperty(key,String(now.getTime()));
+    // Do not invoke a cross-vertical bulk refresh from this acceptance lane.
+    // Stale/missing cache evidence requires the normal source-refresh process.
+    const operational = tmv3_operationalSourceRefreshState_();
+    const master = tmv3_masterSourceRefreshState_();
+    if (!Number.isFinite(operational.ageMinutes) || operational.ageMinutes < 0 ||
+        operational.ageMinutes >= tmv3_operationalSourceMinAgeMinutes_() ||
+        !Number.isFinite(master.ageMinutes) || master.ageMinutes < 0 ||
+        master.ageMinutes >= tmv3_masterSourceMinAgeMinutes_()) {
+      throw new Error('INSTALL_SOURCE_CACHE_STALE_NO_WRITE');
+    }
+    const record = tmv3_findFreshEventRecord_('Install',eventId);
+    if (!record || record.vertical !== 'Install' || record.status === 'cancelled' ||
+        !Number.isFinite(new Date(record.start).getTime()) ||
+        !Number.isFinite(new Date(record.end).getTime()) ||
+        new Date(record.start).getTime() <= now.getTime() ||
+        new Date(record.end).getTime() <= new Date(record.start).getTime()) {
+      throw new Error('INSTALL_FUTURE_APPOINTMENT_REQUIRED');
+    }
+    const eligibility = tmv3_step2ClassifyCalendarRecord_(record);
+    if (!eligibility || eligibility.disposition !== 'ELIGIBLE') throw new Error('INSTALL_EVENT_NOT_ELIGIBLE');
+    const plans = tmv3_step7FreshPlansForEvent_('Install',eventId);
+    if (plans.length !== 1) throw new Error('INSTALL_ONE_CANONICAL_PLAN_REQUIRED');
+    const plan = plans[0];
+    result.taskId = plan.taskId || '';
+    result.plan = plan.plan;
+    result.blocker = plan.blocker || '';
+    tmv3_assertInstallExistingContract_(plan);
+    result.attempted = 1;
+    const execution = tmv3_executeFreshStep7Selection_({previousPlan:plan.plan,contract:plan},'INSTALLAUTO','ALL');
+    result.executionStatus = execution.status;
+    const after = tmv3_step7FreshPlansForEvent_('Install',eventId);
+    result.after = after.map(function(p) {return {taskId:p.taskId,plan:p.plan,blocker:p.blocker || '',actions:p.actions};});
+    if (!tmv3_installCompletionVerified_(after,execution,plan.taskId,eventId)) {
+      throw new Error('INSTALL_READBACK_NOT_CONVERGED');
+    }
+    result.status = 'INSTALL_EXISTING_TASK_VERIFIED';
+  } catch (err) {
+    result.status = 'ATTENTION';
+    result.error = String(err && err.message || err);
+  } finally {
+    lock.releaseLock();
+  }
+  props.setProperty('TMV3_INSTALL_LAST_RESULT',JSON.stringify(result));
+  tmv3_audit_('Install',eventId,result.taskId || '','INSTALL_CANARY',
+    result.status === 'INSTALL_EXISTING_TASK_VERIFIED' ? 'PASS' : 'ATTENTION',JSON.stringify(result));
+  return result;
+}
+
+function tmv3_installCompletionVerified_(plans,execution,taskId,eventId) {
+  if (!Array.isArray(plans) || plans.length !== 1 || !execution ||
+      execution.status !== 'VERIFIED_CONVERGENCE') return false;
+  const plan = plans[0];
+  return plan.vertical === 'Install' && plan.eventId === eventId && String(plan.taskId) === String(taskId) &&
+    plan.plan === 'NO_CHANGE' && !tmv3_clean_(plan.blocker) &&
+    tmv3_taskIsOpen_(plan.taskStatus) && Array.isArray(plan.actions) &&
+    plan.actions.every(function(action) {return action === 'VERIFY_CALENDAR_LINKS';}) &&
+    !!(execution.calendarLinks && execution.calendarLinks.status === 'CALENDAR_LINKS_VERIFIED');
+}
+
+function tmv3_runInstallCanary() {
+  const result = tmv3_installCanaryCycle_({manual:true});
+  Logger.log(JSON.stringify(result));
+  return result;
 }
 
 function tmv3_preInspectionIntakeRecords_() {
@@ -1869,3 +1960,4 @@ function tmv3_sendPreInspectionClassificationTest(eventId) {
   MailApp.sendEmail({to:'pramodh@classicfireplace.ca',subject:email.subject,htmlBody:email.htmlBody,body:'TEST: Confirm appointment purpose using the YES/NO buttons. No live calendar or task changes will be made.',name:'Classic Fireplace & BBQ Store'});
   return {status:'TEST_SENT',to:'pramodh@classicfireplace.ca',eventId:eventId};
 }
+

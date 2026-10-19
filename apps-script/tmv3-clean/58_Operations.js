@@ -13,6 +13,32 @@ function tmv3_operationPolicy_() {
   return TMV3.OPERATIONS || {};
 }
 
+// Google Apps Script: this permission covers one existing Install Task only.
+function tmv3_assertInstallExistingContract_(contract) {
+  const policy = tmv3_operationPolicy_();
+  if (!contract || contract.vertical !== 'Install' ||
+      !tmv3_clean_(policy.installAutomationCanaryEventId) ||
+      contract.eventId !== policy.installAutomationCanaryEventId) {
+    throw new Error('INSTALL_EXACT_EVENT_REQUIRED');
+  }
+  if (!/^[1-9]\d*$/.test(String(contract.taskId || '')) ||
+      !tmv3_taskIsOpen_(contract.taskStatus) ||
+      !/^[1-9]\d*$/.test(String(contract.expectedCustomerId || '')) ||
+      !/^[1-9]\d*$/.test(String(contract.expectedOrderId || '')) ||
+      !/^[1-9]\d*$/.test(String(contract.expectedLocationId || '')) ||
+      !/^[1-9]\d*$/.test(String(contract.expectedRequestedById || '')) ||
+      tmv3_norm_(contract.expectedRequestedByType) !== 'contact' ||
+      tmv3_clean_(contract.blocker) || !Array.isArray(contract.actions)) {
+    throw new Error('INSTALL_EXISTING_TASK_RELATIONSHIPS_REQUIRED');
+  }
+  const allowed = ['PATCH_DATES','PATCH_LOCATION','PATCH_ORDER',
+    'PATCH_REQUESTED_BY','PATCH_ASSIGNMENTS','VERIFY_CALENDAR_LINKS'];
+  if (contract.actions.some(function(action) {return allowed.indexOf(action) < 0;})) {
+    throw new Error('INSTALL_ACTION_NOT_ACCEPTED: creation and title/name changes remain gated');
+  }
+  return true;
+}
+
 function tmv3_operationWritesEnabled_(scope) {
   const policy = tmv3_operationPolicy_();
   const mode = tmv3_norm_(scope || '');
@@ -23,6 +49,15 @@ function tmv3_operationWritesEnabled_(scope) {
   // A policy flag may narrow an authorized write mode, but it must never
   // elevate SHADOW_READ_ONLY into a write-capable mode.
   if (!externalWriteMode) return false;
+
+  if (mode === 'installauto') {
+    return TMV3.MODE === 'PRODUCTION_WRITE' &&
+      tmv3_executionStage_() === 7 &&
+      policy.installAutomationEnabled === true &&
+      !!String(policy.installAutomationCanaryEventId || '').trim() &&
+      policy.manualWritesEnabled === false &&
+      policy.automationWritesEnabled === false;
+  }
 
   if (mode === 'preinspectionauto') {
     return TMV3.MODE === 'PRODUCTION_WRITE' &&
@@ -673,6 +708,10 @@ function tmv3_step7ActionsForMode_(contract, mode) {
 }
 
 function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
+  if (tmv3_norm_(scope) === 'installauto') {
+    tmv3_assertOperationWrite_(scope);
+    tmv3_assertInstallExistingContract_(selection && selection.contract);
+  }
   if (tmv3_norm_(scope) === 'preinspectionauto' &&
       (!selection || !selection.contract || selection.contract.vertical !== 'PreInspection')) {
     throw new Error('PREINSPECTION_ONLY_SCOPE: other verticals cannot execute.');
@@ -5805,4 +5844,5 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
   }
   return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid};
 }
+
 
