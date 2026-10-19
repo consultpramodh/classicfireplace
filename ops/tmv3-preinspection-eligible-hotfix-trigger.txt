@@ -2,3 +2,5 @@
 Base live source must exactly match commit 95c312296fb605678ce4989864a70cd9de439ca8
 Deploy only 90_Admin.js; abort on any baseline drift.
 Run one eligible canary after full source readback verification.
+
+Second guarded verification run: idempotent patch/readback with PR #128 evidence report. Abort on any live source drift.
