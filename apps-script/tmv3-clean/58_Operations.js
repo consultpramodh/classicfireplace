@@ -5882,6 +5882,9 @@ function tmv3_preInspectionOptionalOrderLocationEvidence_(record) {
   const existing=[];
   values.slice(1).forEach(function(value,index){if(String(value[1])===number && value[7]==='SALES_ORDER')existing.push({value:value,row:index+2});});
   if (existing.length>1 || existing.some(function(item){return Number(item.value[0])!==order.Id || Number(item.value[2])!==customerId;})) return {status:'ORDER_CACHE_CONFLICT'};
+  const cachedLocations=tmv3_rows_(TMV3.SHEETS.LOCATIONS).filter(function(item){return Number(item['Location ID'])===locationId;});
+  if(cachedLocations.length>1 || cachedLocations.some(function(item){return Number(item['Customer ID'])!==customerId;})) return {status:'LOCATION_CACHE_CONFLICT'};
+  tmv3_upsertLocationCacheObject_(matches[0]);
   sheet.getRange(existing.length?existing[0].row:values.length+1,1,1,row.length).setValues([row]);
   tmv3_audit_('PreInspection',record.eventId,'','OPTIONAL_ORDER_LOCATION_EVIDENCE','PASS',
     JSON.stringify({orderId:order.Id,customerId:customerId,locationId:locationId,orderAttachedToTask:false}));
