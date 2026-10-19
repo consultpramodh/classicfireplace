@@ -1,6 +1,5 @@
 {
   "version": "3.11.94-preinspection-primary-and-cache-dates",
-  "verified_at": "2026-10-19T12:42:00-04:00",
   "files": {
     "15_Identity.js": "074d3a6ae9da9514b2bfd1acf79b3ecc2fffe232a4d17214249fadc79e9948fb",
     "44_Step6_Task_Decision.js": "1fdf732a4cbdc3bcf8f4af81a535b608c32e504bff80221dfcfe1b7e51ab4959",
@@ -24,5 +23,7 @@
     "46_Step7_Reconciliation.js": "81f56649a013d19156a9b3bacf95fb98fe1b8d7e3907e493601ebc18d99cf85b",
     "90_Admin.js": "37c741cf86574442a546369817c5e009134f48c28e405848787bb343b6468e92",
     "appsscript.json": "7e189dc49b9ac58af337fab5a4a96ee8532a2a5c8c190eb571dd6373cd154543"
-  }
+  },
+  "verification": "Fresh reload and 22-file exact source parity confirmed",
+  "recorded_at": "2026-10-19T16:46:42Z"
 }
