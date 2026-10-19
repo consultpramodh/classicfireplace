@@ -1,0 +1,3 @@
+2026-10-19 Live PreInspection single-event canary.
+Verify full live 3.11.92 hotfix source before any writes.
+Temporarily enable self-only Apps Script execution API, run health check and at most one eligible event, then restore source with exact readback.
