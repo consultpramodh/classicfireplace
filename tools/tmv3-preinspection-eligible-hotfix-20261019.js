@@ -88,11 +88,17 @@ async function main(){
   const live=sourceMap(pre);
   if(live.size!==exp.size)die('LIVE_FILE_COUNT_DRIFT:'+live.size);
   let alreadyPatched=false;
+  const priorHotfix=execFileSync('git',
+    ['show','07f413534b7e9a4bb71a39380a94935461117e92:'+DIR+'/'+TARGET+'.js'],
+    {encoding:'utf8'});
   for(const [name,v] of exp){
     const f=live.get(name);
     if(!f)die('LIVE_FILE_MISSING:'+name);
-    if(name===TARGET+'.js'&&f.source===v.current){alreadyPatched=true;continue}
-    if(f.source!==v.prior)die('LIVE_SOURCE_DRIFT:'+name);
+    if(name===TARGET+'.js'){
+      if(f.source===v.current){alreadyPatched=true;continue}
+      if(f.source===v.prior||f.source===priorHotfix)continue;
+    }else if(f.source===v.prior)continue;
+    die('LIVE_SOURCE_DRIFT:'+name);
   }
   record('preSourceVerified',true);
   record('alreadyPatched',alreadyPatched);
@@ -104,7 +110,7 @@ async function main(){
   // Fresh compare just before the write, protecting against intervening editors.
   const justBefore=sourceMap(await google('/projects/'+encodeURIComponent(SCRIPT_ID)+'/content'));
   for(const [name,v] of exp){
-    const wanted=name===TARGET+'.js'&&alreadyPatched?v.current:v.prior;
+    const wanted=live.get(name)?.source;
     if(justBefore.get(name)?.source!==wanted)die('SOURCE_CHANGED_BEFORE_WRITE:'+name);
   }
   record('stage',alreadyPatched?'ALREADY_DEPLOYED_READBACK':'ONE_FILE_WRITE');
