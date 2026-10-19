@@ -87,12 +87,15 @@ async function main(){
   const pre=await google('/projects/'+encodeURIComponent(SCRIPT_ID)+'/content');
   const live=sourceMap(pre);
   if(live.size!==exp.size)die('LIVE_FILE_COUNT_DRIFT:'+live.size);
+  let alreadyPatched=false;
   for(const [name,v] of exp){
     const f=live.get(name);
     if(!f)die('LIVE_FILE_MISSING:'+name);
+    if(name===TARGET+'.js'&&f.source===v.current){alreadyPatched=true;continue}
     if(f.source!==v.prior)die('LIVE_SOURCE_DRIFT:'+name);
   }
   record('preSourceVerified',true);
+  record('alreadyPatched',alreadyPatched);
   record('preSourceSha256',sha(JSON.stringify([...live].map(([k,v])=>[k,sha(v.source)]).sort())));
   const modified=JSON.parse(JSON.stringify(pre));
   const file=modified.files.find(x=>x.name===TARGET&&x.type==='SERVER_JS');
@@ -100,12 +103,17 @@ async function main(){
   file.source=exp.get(TARGET+'.js').current;
   // Fresh compare just before the write, protecting against intervening editors.
   const justBefore=sourceMap(await google('/projects/'+encodeURIComponent(SCRIPT_ID)+'/content'));
-  for(const [name,v] of exp){if(justBefore.get(name)?.source!==v.prior)die('SOURCE_CHANGED_BEFORE_WRITE:'+name)}
-  record('stage','ONE_FILE_WRITE');
+  for(const [name,v] of exp){
+    const wanted=name===TARGET+'.js'&&alreadyPatched?v.current:v.prior;
+    if(justBefore.get(name)?.source!==wanted)die('SOURCE_CHANGED_BEFORE_WRITE:'+name);
+  }
+  record('stage',alreadyPatched?'ALREADY_DEPLOYED_READBACK':'ONE_FILE_WRITE');
   let pushed=false;
   try{
-    await google('/projects/'+encodeURIComponent(SCRIPT_ID)+'/content','PUT',{files:modified.files});
-    pushed=true;
+    if(!alreadyPatched){
+      await google('/projects/'+encodeURIComponent(SCRIPT_ID)+'/content','PUT',{files:modified.files});
+      pushed=true;
+    }
     record('stage','POST_WRITE_READBACK');
     const after=sourceMap(await google('/projects/'+encodeURIComponent(SCRIPT_ID)+'/content'));
     if(after.size!==exp.size)die('POST_WRITE_INVENTORY_DRIFT');
