@@ -289,3 +289,36 @@ function tmv3_preInspectionTodayRefreshTaskCacheSchedules(targetDate) {
 function tmv3_preInspectionOct21Preview() { return tmv3_preInspectionTodayPreview("2026-10-21"); }
 function tmv3_preInspectionOct21RunNext() { return tmv3_preInspectionTodayRunNext([],"2026-10-21"); }
 function tmv3_preInspectionOct21RefreshCache() { return tmv3_preInspectionTodayRefreshTaskCacheSchedules("2026-10-21"); }
+
+// Google Apps Script: retrospective audit only. Never executes proposed actions or sends mail.
+function tmv3_preInspectionLastWeekAudit() {
+  const before=tmv3_strivenApiBudgetStatus_();
+  if(before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) throw new Error('INSUFFICIENT_READBACK_HEADROOM');
+  const cfg=TMV3.VERTICALS.PreInspection;
+  const source=tmv3_verticalCalendars_('PreInspection',cfg).filter(function(c){return c.role==='PRIMARY_SHARED';})[0];
+  if(!source) throw new Error('AUTHORITATIVE_PI_SOURCE_REQUIRED');
+  const calendar=CalendarApp.getCalendarById(source.calendarId);
+  if(!calendar) throw new Error('AUTHORITATIVE_PI_CALENDAR_UNAVAILABLE');
+  const records=calendar.getEvents(new Date('2026-10-12T00:00:00-04:00'),new Date('2026-10-19T00:00:00-04:00'))
+    .map(function(event){return tmv3_calendarEvent_('PreInspection',cfg,source,event,{applyEligibility:false});})
+    .filter(function(record){return record && !tmv3_step2PreInspectionNonCustomer_(record);});
+  if(records.length>20) throw new Error('AUDIT_EVENT_CAP_EXCEEDED');
+  const cache=tmv3_rows_(TMV3.SHEETS.TASKS);
+  records.forEach(function(record){
+    const taskId=tmv3_clean_(record.existingTaskId||record.taskNumber);
+    const cached=cache.filter(function(task){return String(task['Task ID'])===taskId;});
+    let plans=[],error='';
+    try {plans=tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);}
+    catch(err){error=String(err&&err.message||err);}
+    Logger.log(JSON.stringify({eventId:record.eventId,title:record.title,start:tmv3_iso_(record.start),end:tmv3_iso_(record.end),
+      sourceClassification:tmv3_step2ClassifyPreInspection_(record),linkedTaskId:taskId,cacheRows:cached.length,
+      notificationAssessment:tmv3_preInspectionMissingDetailAssessment_(record),
+      plans:plans.map(function(plan){return Object.assign(tmv3_preInspectionCompactPlan_(plan),{
+        expectedStart:plan.expectedStart,taskStart:plan.taskStart,expectedDue:plan.expectedDue,taskDue:plan.taskDue,
+        expectedRequestedById:plan.expectedRequestedById,expectedRequestedByType:plan.expectedRequestedByType,
+        actualRequestedById:plan.actualRequestedById,actualRequestedByType:plan.actualRequestedByType,actions:plan.actions});}),error:error}));
+  });
+  Logger.log(JSON.stringify({status:'READ_ONLY_RETROSPECTIVE_AUDIT',from:'2026-10-12',untilExclusive:'2026-10-19',
+    events:records.length,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count,
+    strivenWrites:0,calendarWrites:0,notifications:0}));
+}
