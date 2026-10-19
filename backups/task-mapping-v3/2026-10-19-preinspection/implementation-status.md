@@ -38,3 +38,8 @@ The final operator-view refresh at 13:52 Toronto passed with all eight schedules
 - Notification formatting still contains repeated appointment summaries; this release corrects evidence and optional wording, not the layout.
 
 PR #127 remains open as draft. Successful October 21 acceptance does not establish full unattended queue throughput.
+
+## Two-week re-audit superseding broader readiness assumptions
+Full unattended launch is blocked. Fresh audit of October 12–25: 22 formal events, 16 NO_CHANGE, five completed/protected, one current STEP6 NOT_RUN despite an existing correct task. Five cached afternoon schedules reverted to morning while actual task schedules remained correct. Bulk hydration bypasses canonical schedule handling; refresh can lose verified Location/order evidence and previously linked task rows. The earlier canonical-cache implementation claim is limited to the upsert path.
+
+All eight October 21 events still pass point-in-time reconciliation. Required next acceptance is full master/transaction cache refresh followed by scheduled execution and readback, after fixing cache persistence. Queue continuation, fulfilled-history status and blocked-plan visibility remain unresolved. See [two-week audit](../../../audits/preinspection/2026-10-19-two-week-readiness.md). The audit added only a bounded retrospective helper; no business-logic repair or wider activation occurred.
