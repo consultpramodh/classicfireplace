@@ -256,3 +256,22 @@ function tmv3_preInspectionTodayLocationResponseShape() {
     Logger.log(JSON.stringify({eventId:record.eventId,customerId:id,keys:Object.keys(response||{}),responseArray:Array.isArray(response),count:response&&(response.TotalCount!==undefined?response.TotalCount:response.totalCount),dataType:response&&(response.Data===null||response.data===null?'null':Array.isArray(response.Data||response.data)?'array':typeof(response.Data||response.data)),length:response&&Array.isArray(response.Data||response.data)?(response.Data||response.data).length:null}));
   });
 }
+
+// Read-only Striven reconciliation of current-day cached task schedules.
+function tmv3_preInspectionTodayRefreshTaskCacheSchedules() {
+  const before=tmv3_strivenApiBudgetStatus_();
+  if(before.exhausted || !Number.isFinite(before.remaining) || before.remaining<100) throw new Error('INSUFFICIENT_READBACK_HEADROOM');
+  const records=tmv3_preInspectionTodayRecords_(),rows=tmv3_sheet_(TMV3.SHEETS.PREINSPECTION).getDataRange().getDisplayValues().slice(1);
+  const results=[];
+  records.forEach(function(record){
+    const matches=rows.filter(function(row){return row[14]===record.eventId;});
+    if(matches.length!==1) return;
+    const found=String(matches[0][24]||'').match(/[?&]TaskID=([1-9][0-9]*)/i);
+    if(!found) return;
+    const task=tmv3_getTaskById_(Number(found[1]));
+    if(Number(task['Task Type ID'])!==105 || String(task['Task ID'])!==found[1]) throw new Error('PI_TASK_CACHE_IDENTITY_UNVERIFIED');
+    tmv3_upsertTaskCacheRow_(task);
+    results.push({taskId:found[1],status:'CANONICAL_V1_SCHEDULE_CACHED'});
+  });
+  Logger.log(JSON.stringify({results:results,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count,strivenWrites:0}));
+}
