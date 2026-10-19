@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const source=fs.readFileSync(__dirname+'/../apps-script/tmv3-clean/58_Operations.js','utf8');
+const start=source.indexOf('function tmv3_preInspectionCanonicalCacheTask_(');
+const c={tmv3_hash_:x=>'hash:'+x};vm.createContext(c);vm.runInContext(source.slice(start),c);
+const task={'Task ID':123,'Task Type ID':105,Start:'2026-10-19T03:00:00-04:00',Due:'2026-10-19T04:00:00-04:00'};
+const schedule={taskId:123,startDateTime:'2026-10-19T15:00:00-04:00',dueDateTime:'2026-10-19T16:00:00-04:00'};
+const fixed=c.tmv3_preInspectionCanonicalCacheTask_(task,schedule);
+assert.equal(fixed.Start,schedule.startDateTime);assert.equal(fixed.Due,schedule.dueDateTime);assert.equal(task.Start,'2026-10-19T03:00:00-04:00');
+for(const invalid of [null,{...schedule,taskId:124},{...schedule,startDateTime:''},{...schedule,dueDateTime:'invalid'},{...schedule,dueDateTime:'2026-10-19T14:00:00-04:00'}])assert.throws(()=>c.tmv3_preInspectionCanonicalCacheTask_(task,invalid),/NO_CACHE_WRITE/);
+const other={...task,'Task Type ID':100};assert.equal(c.tmv3_preInspectionCanonicalCacheTask_(other,null),other);
+const morning={taskId:123,startDateTime:'2026-10-19T09:00:00-04:00',dueDateTime:'2026-10-19T10:00:00-04:00'};assert.equal(c.tmv3_preInspectionCanonicalCacheTask_(task,morning).Start,morning.startDateTime);
+console.log('8 canonical cache schedule cases passed; no inferred 12-hour shifts');
