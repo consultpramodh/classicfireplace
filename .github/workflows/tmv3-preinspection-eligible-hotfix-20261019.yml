@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: cf-v3-preinspection-eligible-hotfix-production
@@ -49,6 +50,29 @@ jobs:
             exit 1
           fi
           node tools/tmv3-preinspection-eligible-hotfix-20261019.js
+      - name: Post deployment verification to PR 128
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          node - <<'NODE' > /tmp/v3-preinspection-hotfix-report.md
+          const fs=require('fs');
+          const f='tmv3-preinspection-hotfix-evidence/result.json';
+          const x=fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')):{};
+          const lines=[
+            '### Guarded V3 PreInspection hotfix — GitHub Actions result',
+            '- Run: https://github.com/consultpramodh/classicfireplace/actions/runs/'+process.env.GITHUB_RUN_ID,
+            '- Status: `'+String(x.status||'NO_EVIDENCE').slice(0,80)+'`',
+            '- Baseline source verified: `'+Boolean(x.preSourceVerified)+'`',
+            '- Production source readback verified: `'+Boolean(x.postSourceVerified)+'`',
+            '- Live already had patch: `'+Boolean(x.alreadyPatched)+'`',
+            '- Canary: `'+String(x.canary&&x.canary.status||'NOT_VERIFIED').slice(0,100)+'`',
+            '- Blocker: `'+String(x.error||x.runtimeExecutionLimitation||'none').replace(/[`\r\n]/g,' ').slice(0,220)+'`'
+          ];
+          process.stdout.write(lines.join('\n')+'\n');
+          NODE
+          gh issue comment 128 --repo consultpramodh/classicfireplace --body-file /tmp/v3-preinspection-hotfix-report.md
       - name: Preserve non-secret readback evidence
         if: always()
         uses: actions/upload-artifact@v4
