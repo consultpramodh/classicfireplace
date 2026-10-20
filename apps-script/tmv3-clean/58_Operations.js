@@ -5198,7 +5198,27 @@ function tmv3_markInstallReminderSent_(eventId) {
   PropertiesService.getScriptProperties().setProperty(key, tmv3_iso_(new Date()));
 }
 
+// Google Apps Script: notifications have a separate gate from task/calendar writes.
 function tmv3_sendInstallMissingSoReminders_(scope) {
+  const preview = scope === 'PREVIEW';
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return {status:'LOCKED', checked:0, sent:0};
+  try {
+    return tmv3_installMissingSoReminderCycle_(scope, preview);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function tmv3_installMissingSoRecipients_(record) {
+  // Guests and description emails can belong to customers; never use them.
+  return tmv3_unique_([].concat(record.sourceCreators || [])
+    .concat(String(record.creator || '').split(','))
+    .map(function(email) { return tmv3_clean_(email).toLowerCase(); })
+    .filter(function(email) { return /^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@classicfireplace\.ca$/.test(email); }));
+}
+
+function tmv3_installMissingSoReminderCycle_(scope, preview) {
   const policy = tmv3_operationPolicy_();
   if (policy.installRemindersEnabled !== true) {
     return { status: 'REMINDERS_GATED', checked: 0, sent: 0 };
@@ -5223,6 +5243,7 @@ function tmv3_sendInstallMissingSoReminders_(scope) {
   let sent = 0;
   let skipped = 0;
   let errors = 0;
+  const candidates = [];
 
   cal.getEvents(start, end).forEach(function(event) {
     const record = tmv3_calendarEvent_(
@@ -5250,10 +5271,10 @@ function tmv3_sendInstallMissingSoReminders_(scope) {
       return;
     }
 
-    const recipients = tmv3_emailListFromEvent_(record);
+    const recipients = tmv3_installMissingSoRecipients_(record);
     if (!recipients.length) {
       skipped++;
-      tmv3_audit_('Install',record.eventId,'','MISSING_SO_REMINDER','ATTENTION','No valid recipient found.');
+      if (!preview) tmv3_audit_('Install',record.eventId,'','MISSING_SO_REMINDER','ATTENTION','No verified internal event creator; no email sent.');
       return;
     }
 
@@ -5267,6 +5288,9 @@ function tmv3_sendInstallMissingSoReminders_(scope) {
       'When: ' + when + '\n' +
       'Where: ' + (record.location || 'n/a') + '\n\n' +
       'Next step: Add the correct Sales Order # to the Calendar Event.';
+
+    candidates.push({eventId:record.eventId, title:record.title, to:recipients.join(','), subject:subject, body:textBody});
+    if (preview) return;
 
     try {
       MailApp.sendEmail({
@@ -5284,17 +5308,25 @@ function tmv3_sendInstallMissingSoReminders_(scope) {
   });
 
   return {
-    status: errors ? 'COMPLETE_WITH_ERRORS' : 'COMPLETE',
+    status: preview ? 'PREVIEW' : errors ? 'COMPLETE_WITH_ERRORS' : 'COMPLETE',
     scope: scope,
     checked: checked,
     sent: sent,
     skipped: skipped,
-    errors: errors
+    errors: errors,
+    candidates: preview ? candidates : undefined
   };
 }
 
 function tmv3_sendInstallMissingSoRemindersNow() {
   return tmv3_sendInstallMissingSoReminders_('MANUAL');
+}
+
+// Google Apps Script: runnable from the Sheet menu and Apps Script editor.
+function tmv3_previewInstallMissingSoReminders() {
+  const result = tmv3_sendInstallMissingSoReminders_('PREVIEW');
+  Logger.log(JSON.stringify(result));
+  return result;
 }
 
 function tmv3_runCalendarLinksForReady_AUTO() {

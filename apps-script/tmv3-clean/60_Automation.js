@@ -41,6 +41,7 @@ function onOpen() {
     )
     .addSubMenu(
       ui.createMenu('Reminders')
+        .addItem('Preview Install Missing SO Emails', 'tmv3_previewInstallMissingSoReminders')
         .addItem('Send Missing SO Reminder Emails Now', 'tmv3_sendInstallMissingSoRemindersNow')
         .addItem('Preview Pre-Inspection Missing Detail Emails', 'tmv3_previewPreInspectionMissingDetailEmails')
         .addItem('Run Pre-Inspection Automation Now', 'tmv3_runPreInspectionAutomation')
@@ -1199,9 +1200,7 @@ function tmv3_refreshLinksSlot_1600() { return tmv3_refreshLinksSlot_('4:00 PM')
 function tmv3_refreshLinksSlot_1800() { return tmv3_refreshLinksSlot_('6:00 PM'); }
 
 function tmv3_installReminderCheck() {
-  if (tmv3_executionStage_() <= 7) {
-    return { status: 'CALENDAR_STAGE_GATED', sent: 0 };
-  }
+  // Notification-only permission: this entrypoint cannot reconcile tasks or Calendar.
   return tmv3_sendInstallMissingSoReminders_('AUTO');
 }
 
