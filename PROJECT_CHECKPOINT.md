@@ -2,6 +2,14 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## Active-Order repair guard — 2026-10-20
+
+- User identifies SO 586061 / ID 27795 as canceled. Task type incompatibility is not established by the prior HTTP 400. Exclude this exact SO from the native worker pending operator review; do not cancel Task 19198 or invent a replacement Order.
+- Other inspected cached OPEN candidates include Service 19201, 19203, 19218 and Delivery 19190, 19195, 19204, 19205, 19206 and 19214. Cached identity columns are often omitted; every write still requires fresh Task/Order/Contact evidence.
+- Prepared two-function native-path update: authoritative Order proof requires Approved (22) or In Progress (25), rejects unknown/conflicting/inactive statuses, and returns only verified Order contact ID. Worker uses that shared proof before repair. Repeat ownership verification in writer protects changes between preflight and PATCH. Official status mapping: https://api.striven.com/Help/StaticLists.
+- Existing one-candidate/60-minute throttle and write permissions preserved. No date/assignment/Calendar or CREATE activation. Deployment uses durable PRE backup, function-specific before/after hashes and full-project read-back; live drift aborts before mutation.
+- Runtime Task results remain pending native execution; source deployment alone is not a Task-update claim.
+
 ## One-function live deployment — 2026-10-20 16:18 Toronto
 
 - Actions run 39490784704 succeeded. PRE source preserved before mutation in artifact 12296395235; deployment evidence in artifact 12294759583.

@@ -5706,6 +5706,10 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
       }
       if (!field.actual) changes.push(field);
     } catch (err) {
+      if (field.label === 'ORDER' &&
+          String(err && err.message || err).indexOf('ORDER_NOT_VERIFIED_ACTIVE') !== -1) {
+        throw err; // Contact inferred from this Order must not bypass its lifecycle guard.
+      }
       review.push(field.label + '_OWNERSHIP_NOT_VERIFIED');
     }
   });
@@ -5807,12 +5811,34 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
   const fetchedCustomerId = tmv3_clean_(tmv3_first_(customer,['id','Id']));
   const orderNumber = tmv3_clean_(tmv3_first_(order,
     ['orderNumber','OrderNumber','number','Number']));
+  // Striven official Order Status IDs: Approved=22, In Progress=25.
+  // Only fresh active-order evidence authorizes new relationships.
+  const rawStatus = order.status !== undefined ? order.status : order.Status;
+  const statusObject = rawStatus && typeof rawStatus === 'object' ? rawStatus : {};
+  const statusId = tmv3_clean_(tmv3_first_(statusObject,['id','Id']) ||
+    tmv3_first_(order,['statusId','StatusId']) ||
+    (/^\d+$/.test(String(rawStatus)) ? rawStatus : ''));
+  const statusName = tmv3_norm_(tmv3_first_(statusObject,['name','Name']) ||
+    tmv3_first_(order,['statusName','StatusName']) ||
+    (typeof rawStatus === 'string' ? rawStatus : ''));
+  const known = {'18':'incomplete','19':'quoted','20':'pending approval',
+    '21':'declined','22':'approved','23':'canceled','24':'lost','25':'in progress','27':'completed'};
+  const normalizedName = statusName === 'cancelled' ? 'canceled' : statusName;
+  const statusFromId = known[statusId] || '';
+  if ((statusId && !statusFromId) ||
+      (statusFromId && normalizedName && statusFromId !== normalizedName) ||
+      ['approved','in progress'].indexOf(statusFromId || normalizedName) < 0) {
+    throw new Error('ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.');
+  }
   const nameMarker = tmv3_clean_(taskName)
     .match(/\bSO\s*#\s*(\d+)\b/i);
   if (fetchedId !== String(id) || fetchedCustomerId !== cid ||
       !nameMarker || !orderNumber || nameMarker[1] !== orderNumber) {
     throw new Error('Order ID, Customer ownership or Task SO number disagrees with fresh Striven Order.');
   }
-  return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid};
+  const contact = order.contact || order.Contact || {};
+  const contactId = tmv3_clean_(tmv3_first_(contact,['id','Id']));
+  return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid,
+    status:statusFromId || normalizedName,contactId:/^[1-9]\d*$/.test(contactId) ? contactId : ''};
 }
 

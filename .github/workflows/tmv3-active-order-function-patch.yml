@@ -1,0 +1,53 @@
+name: Guarded active Order relationship repair
+on:
+  push:
+    branches: [task_mapping]
+    paths: [ops/tmv3-active-order-patch-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TMV3_FUNCTION_PATCH_MANIFEST: release-candidates/tmv3-active-order-function-patch.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify patch safety
+        run: |
+          node --check tools/tmv3-relationship-function-patch.js
+          node tools/test-tmv3-relationship-function-patch.js
+          node tools/test-tmv3-active-order-function-patch.js
+          node tools/test-tmv3-task-first-relationships.js
+          node tools/test-tmv3-task-first-production-lane.js
+      - name: Capture exact live source and prepare one-function plan
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-relationship-function-patch.js prepare
+      - name: Preserve PRE source before any production source write
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-active-order-PRE-${{ github.run_id }}
+          path: autopatch-output-relationship-function/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Apply one function and verify entire project read-back
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-relationship-function-patch.js apply
+      - name: Preserve deployment result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmv3-active-order-result-${{ github.run_id }}
+          path: autopatch-output-relationship-function/result.json
+          if-no-files-found: warn
+          retention-days: 30

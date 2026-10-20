@@ -1,0 +1,23 @@
+{
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "patches": [
+    {
+      "sourceFile": "58_Operations",
+      "functionName": "tmv3_repairExistingTaskRelationships",
+      "nextFunctionName": null,
+      "payloadPath": "tools/tmv3-active-order-ownership-function.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "a416ff0ea90b59230347edf60a73d77022a696157e33d19f560c78c2e4793eba",
+      "expectedAfterFunctionSha256": "88f5b7c8f73bdc10db1bd2d951bc7eb379a9b5b416b473cb95724263711c9d3c"
+    },
+    {
+      "sourceFile": "60_Automation",
+      "functionName": "tmv3_taskFirstProductionCycle_",
+      "nextFunctionName": "tmv3_scheduledOperations",
+      "payloadPath": "tools/tmv3-active-order-worker-function.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "6142d8282e88e5fd472606de855fa688f48ee198475ab00e5022db5e825d6ba9",
+      "expectedAfterFunctionSha256": "6b655109089c5d914098027f4c23f99430db37084f53cbcb5828cadd7e231e5e"
+    }
+  ]
+}

@@ -1034,6 +1034,8 @@ function tmv3_taskFirstProductionCycle_() {
         const status = tmv3_norm_(row['Status']);
         return status === 'open' &&
           (type.indexOf('service') !== -1 || type.indexOf('delivery') !== -1) &&
+          // SO 586061 / 27795 was explicitly identified as canceled by the operator.
+          !/\bSO\s*#\s*586061\b/i.test(tmv3_clean_(row['Name'])) &&
           Number.isSafeInteger(Number(row['Task ID'])) && Number(row['Task ID']) > 0 &&
           (!tmv3_clean_(row['Order ID']) || !tmv3_clean_(row['Contact ID'])) &&
           /\bSO\s*#\s*\d{4,9}\b/i.test(tmv3_clean_(row['Name']));
@@ -1093,19 +1095,15 @@ function tmv3_taskFirstProductionCycle_() {
       // Work Order identity must be independently proven from Striven, never
       // inferred solely from the task name or stale Source Orders cache.
       const id = Number(match[0]['Order ID']);
-      const order = tmv3_fetchJson_(
-        TMV3.API_BASE + '/v1/sales-orders/' + encodeURIComponent(id),
-        {method:'get'}
-      ) || {};
-      const owner = tmv3_clean_(tmv3_first_(order.customer || {},['id','Id']));
-      const number = tmv3_clean_(tmv3_first_(order,['orderNumber','OrderNumber']));
-      if (tmv3_clean_(tmv3_first_(order,['id','Id'])) !== String(id) ||
-          owner !== liveCustomerId || number !== marker[1]) {
-        return {status:'REVIEW_ORDER_OWNERSHIP',taskId:taskId,writes:0};
+      let proof;
+      try {
+        proof = tmv3_taskFirstFreshOrderOwnershipById_(id,liveCustomerId,title);
+      } catch (err) {
+        const reason = String(err && err.message || err);
+        tmv3_audit_(vertical,'',String(taskId),'TASK_FIRST_AUTO','REVIEW',reason);
+        return {status:'REVIEW_ORDER_NOT_VERIFIED_ACTIVE',taskId:taskId,writes:0,reason:reason,requiresReadback:false,writeOutcome:'NOT_ATTEMPTED'};
       }
-
-      const proposedContactId = tmv3_clean_(tmv3_first_(order.contact || {},['id','Id']));
-      const contactId = /^[1-9]\d*$/.test(proposedContactId) ? proposedContactId : '';
+      const contactId = proof.contactId;
       // Missing/conflicting Contact remains REVIEW in the guarded writer;
       // it must not prevent an independently safe Order relationship repair.
 

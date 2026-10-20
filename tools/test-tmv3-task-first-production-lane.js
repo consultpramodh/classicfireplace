@@ -26,7 +26,7 @@ function run(opts={}) {
     'Task ID':opts.badCacheId?'bad':19083,'Task Type':opts.delivery?'Fireplace Delivery':'Service: Clean and Service',
     'Status':opts.cacheDone?'Done':'Open',
     'Order ID':opts.cacheOrder||'','Contact ID':opts.cacheContact||'',
-    'Name':'Level 2 - SO#585914 - Don Dwyer'
+    'Name':opts.canceledMarker?'Level 2 - SO#586061 - Paul Romanuk':'Level 2 - SO#585914 - Don Dwyer'
   };
   const raw={customerId:opts.wrongCustomer?999:62860,orderId:opts.liveOrder||'',
     locationId:58475,requestedById:opts.alreadyCorrect?'56760':'',status:'Open'};
@@ -55,6 +55,13 @@ function run(opts={}) {
       id:27648,customer:{id:opts.orderWrongOwner?7:62860},
       orderNumber:'585914',contact:opts.noContact?null:{id:56760}
     };},
+    tmv3_taskFirstFreshOrderOwnershipById_:(id,customer,title)=>{
+      getCalls++;
+      if(opts.orderReadError)throw Error('read failed');
+      if(opts.orderWrongOwner)throw Error('Order ownership');
+      if(opts.inactiveOrder)throw Error('ORDER_NOT_VERIFIED_ACTIVE');
+      return {verified:true,contactId:opts.noContact?'':'56760'};
+    },
     tmv3_first_:(o,keys)=>{for(const k of keys){if(o&&o[k]!==undefined)return o[k];}return '';},
     tmv3_repairExistingTaskRelationships:(_id,_kind,expected,permission)=>{
       assert.equal(permission,'TASK_FIRST_PRODUCTION');
@@ -87,7 +94,7 @@ assert.equal(t.run().status,'THROTTLED');
 assert.equal(t.writes(),1);
 t=run({enabled:false});assert.equal(t.run().status,'TASK_FIRST_PRODUCTION_GATED');assert.equal(t.getCalls(),0);
 t=run({mode:'SHADOW_READ_ONLY'});assert.equal(t.run().status,'TASK_FIRST_PRODUCTION_GATED');
-t=run({orderWrongOwner:true});assert.equal(t.run().status,'REVIEW_ORDER_OWNERSHIP');assert.equal(t.writes(),0);
+t=run({orderWrongOwner:true});assert.equal(t.run().status,'REVIEW_ORDER_NOT_VERIFIED_ACTIVE');assert.equal(t.writes(),0);
 t=run({noContact:true});assert.equal(t.run().status,'PARTIAL_PATCH_VERIFIED');assert.equal(t.writes(),1);
 t=run({cacheDone:true});assert.equal(t.run().status,'NO_CACHED_CANDIDATES');assert.equal(t.getCalls(),0);
 t=run({liveOrder:'12345'});assert.equal(t.run().status,'REVIEW_EXISTING_ORDER_CONFLICT');assert.equal(t.writes(),0);
@@ -102,6 +109,8 @@ t=run({noContact:true});t.run();assert.equal(t.audits().at(-1)[4],'REVIEW');
 t=run({alreadyCorrect:true,liveOrder:'27648'});assert.equal(t.run().status,'NO_CHANGE_VERIFIED');assert.equal(t.audits().at(-1)[4],'PASS');assert.equal(t.writes(),0);
 t=run({delivery:true});assert.equal(t.run().status,'PATCHED_AND_VERIFIED');
 t=run({delivery:true,wrongOrderType:true});assert.equal(t.run().status,'REVIEW');assert.equal(t.getCalls(),0);
+t=run({inactiveOrder:true});assert.equal(t.run().status,'REVIEW_ORDER_NOT_VERIFIED_ACTIVE');assert.equal(t.writes(),0);
+t=run({canceledMarker:true});assert.equal(t.run().status,'NO_CACHED_CANDIDATES');assert.equal(t.getCalls(),0);
 console.log('V3 task-first production lane PASS: 20 scenarios including Contact-only repair, both verticals, audit labels and uncertain writes.');
 
 // Execute the real hourly fallback; do not merely inspect its text.

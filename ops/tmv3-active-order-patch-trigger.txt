@@ -1,0 +1,1 @@
+2026-10-20: verify fresh active Orders and skip operator-confirmed canceled SO 586061; no throttle or permission changes.

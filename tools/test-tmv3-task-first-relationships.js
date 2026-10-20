@@ -30,7 +30,7 @@ function runCase(opts={}) {
       'Location ID':raw.location
     }),
     tmv3_step7RequestedByFromRaw_:raw=>({id:raw.contact,type:raw.type}),
-    tmv3_taskFirstFreshOrderOwnershipById_:()=>{if(opts.orderUnverified)throw Error('Order identity');},
+    tmv3_taskFirstFreshOrderOwnershipById_:()=>{if(opts.inactiveOrder)throw Error('ORDER_NOT_VERIFIED_ACTIVE');if(opts.orderUnverified)throw Error('Order identity');},
     tmv3_step7FreshLocationOwnership_:()=>{if(opts.locationUnverified)throw Error('Location identity');},
     tmv3_getContactById_:()=>({__ownershipVerified:!opts.contactUnverified}),
     tmv3_operationPatchTask_:(id,payload)=>{
@@ -113,7 +113,7 @@ function auditCase(opts={}) {
    'Customer ID':opts.badCustomer?'bad':'56491','Order ID':opts.conflict?'999':'27661','Location ID':'52482'},
    requestedBy:{id:'50483',type:'contact'}}),
   tmv3_first_:(o,keys)=>{for(const k of keys)if(o&&o[k]!==undefined)return o[k];return '';},
-  tmv3_fetchJson_:()=>{reads++;return {id:opts.badId?9:27661,orderNumber:opts.badNumber?'bad':'585927',customer:{id:opts.badOwner?9:56491}};},
+  tmv3_fetchJson_:()=>{reads++;return {id:opts.badId?9:27661,status:{id:25,name:'In Progress'},orderNumber:opts.badNumber?'bad':'585927',customer:{id:opts.badOwner?9:56491}};},
   tmv3_operationPatchTask_:()=>{throw Error('READ_ONLY_AUDIT_MUST_NOT_WRITE');}};
  vm.runInNewContext(ownershipSource+'\n'+auditSource,ctx);
  return {answer:ctx.tmv3_taskFirstRelationshipAudit(19098,'Service'),reads};
@@ -163,3 +163,27 @@ for(const vertical of ['Service','Delivery']) {
   assert.ok(r.answer.review.includes('LOCATION_OWNERSHIP_NOT_VERIFIED'));safetyCases++;
 }
 console.log('Service/Delivery relationship safety PASS: '+safetyCases+' cases.');
+
+// Execute the authoritative active-order helper with fresh API-shaped fixtures.
+let statusCases=0;
+for(const status of [{id:22,name:'Approved'},{id:25,name:'In Progress'},22,25,'Approved','In Progress']) {
+ const ctx={tmv3_clean_:x=>String(x==null?'':x).trim(),tmv3_norm_:x=>String(x||'').toLowerCase(),
+  tmv3_first_:(o,ks)=>{for(const k of ks)if(o&&o[k]!==undefined)return o[k];return '';},
+  tmv3_fetchJson_:()=>({id:27790,orderNumber:'586056',customer:{id:100},status,contact:{id:42}}),
+  TMV3:{API_BASE:'https://example.invalid'},Number,encodeURIComponent};
+ vm.runInNewContext(ownershipSource,ctx);
+ assert.equal(ctx.tmv3_taskFirstFreshOrderOwnershipById_(27790,'100','SO#586056').contactId,'42');statusCases++;
+}
+for(const status of [undefined,null,'',{},23,'Canceled','Cancelled',{id:23,name:'Canceled'},
+  {id:25,name:'Canceled'},27,21,24,18,19,20,'Completed','Pending Approval','unknown',{id:999,name:'Approved'}]) {
+ const ctx={tmv3_clean_:x=>String(x==null?'':x).trim(),tmv3_norm_:x=>String(x||'').toLowerCase(),
+  tmv3_first_:(o,ks)=>{for(const k of ks)if(o&&o[k]!==undefined)return o[k];return '';},
+  tmv3_fetchJson_:()=>({id:27790,orderNumber:'586056',customer:{id:100},status}),
+  TMV3:{API_BASE:'https://example.invalid'},Number,encodeURIComponent};
+ vm.runInNewContext(ownershipSource,ctx);
+ assert.throws(()=>ctx.tmv3_taskFirstFreshOrderOwnershipById_(27790,'100','SO#586056'),/ORDER_NOT_VERIFIED_ACTIVE/);statusCases++;
+}
+console.log('Active Order guard PASS: '+statusCases+' fresh-status cases.');
+
+for(const vertical of ['Service','Delivery']) {const r=runCase({vertical,inactiveOrder:true});assert.equal(r.writes,0);assert.match(r.error,/ORDER_NOT_VERIFIED_ACTIVE/);}
+console.log('PASS: inactive Order blocks all inferred relationship writes in both verticals.');
