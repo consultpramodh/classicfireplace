@@ -2,6 +2,15 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## Service / Delivery verification repair — 2026-10-20
+
+- Branch `fix/service-delivery-20261020`, based on canonical `task_mapping` commit `ff31ac706a590136bd7216bec68ac117931a5d0b`.
+- Existing relationships without expected IDs now remain explicit REVIEW; independent safe fields may still be patched.
+- Read-back checks unchanged relationships and Requested By type, Task type and status, in addition to intended changes, Customer and Task ID. Failure throws without retry.
+- Executed locally: all Apps Script syntax checks and all eight task-first workflow regression scripts PASS, including 30 new Service/Delivery safety cases and the existing 185-case hardening suite.
+- NOT DEPLOYED. Live `58_Operations` differs from repository. After fresh live capture/PRE backup, apply only changed `tmv3_repairExistingTaskRelationships`; preserve all other live functions and gates. Do not deploy this branch wholesale.
+- Task 19198 Order/type incompatibility, Delivery schedules, identity/location ambiguity and multi-fireplace completion remain unresolved; this batch makes no live Task writes or compatibility claims.
+
 ## Execution access investigation — 2026-10-20
 
 - Deployment inventory run 39484992048 verified one existing deployment with both WEB_APP and EXECUTION_API entrypoints. No deployment or access settings were changed.

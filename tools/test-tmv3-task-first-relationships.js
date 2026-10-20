@@ -13,7 +13,7 @@ const helperStart = source.indexOf('function tmv3_taskFirstFreshOrderOwnershipBy
 const isolated = source.slice(start, helperStart > start ? helperStart : undefined);
 
 function runCase(opts={}) {
-  let state=Object.assign({customer:'62851',order:'',location:'',contact:'',type:''}, opts.state||{});
+  let state=Object.assign({customer:'62851',order:'',location:'',contact:'',type:'',status:'Open',taskType:opts.vertical==='Delivery'?'Delivery':'Service: Clean and Service'}, opts.state||{});
   let writes=0, taskReads=0, audit=[];
   const ctx = {
     Number, Boolean, String, JSON,
@@ -21,12 +21,12 @@ function runCase(opts={}) {
     tmv3_clean_:x=>String(x==null?'':x).trim(),
     tmv3_norm_:x=>String(x==null?'':x).toLowerCase(),
     tmv3_assertOperationWrite_:()=>{if(opts.shadow)throw Error('SHADOW gate');},
-    tmv3_rows_:()=>[{'Task ID':'19081','Task Type':'Service: Clean and Service'}],
+    tmv3_rows_:()=>Array.from({length:opts.duplicateTask?2:1},()=>({'Task ID':'19081','Task Type':state.taskType})),
     tmv3_taskIsOpen_:status=>status==='Open',
     tmv3_rawTaskById_:()=>{taskReads++;return {...state};},
     tmv3_normalizeV2TaskModel_:raw=>({
-      'Task ID':opts.wrongTaskId?'9':'19081','Task Type':opts.wrongTaskType?'Install':'Service: Clean and Service',
-      'Status':'Open','Customer ID':raw.customer,'Order ID':raw.order,
+      'Task ID':opts.wrongTaskId?'9':'19081','Task Type':opts.wrongTaskType?'Install':raw.taskType,
+      'Status':raw.status,'Customer ID':raw.customer,'Order ID':raw.order,
       'Location ID':raw.location
     }),
     tmv3_step7RequestedByFromRaw_:raw=>({id:raw.contact,type:raw.type}),
@@ -42,6 +42,7 @@ function runCase(opts={}) {
         state.type=payload.RequestedBy.Type;
       }
       if(opts.badReadback)state.order='';
+      if(opts.mutateAfterPatch)Object.assign(state,opts.mutateAfterPatch);
       return {status:'PATCHED_AND_READ_BACK'};
     },
     tmv3_audit_:(...args)=>audit.push(args)
@@ -50,7 +51,7 @@ function runCase(opts={}) {
   vm.runInContext(isolated,ctx,{timeout:3000});
   let answer, error;
   try {
-    answer=ctx.tmv3_repairExistingTaskRelationships(19081,'Service',
+    answer=ctx.tmv3_repairExistingTaskRelationships(19081,opts.vertical||'Service',
       opts.expected||{customerId:'62851',orderId:'27635',locationId:'58463',contactId:'12345'});
   } catch(e) {error=e.message;}
   return {answer,error,writes,taskReads,state,audit};
@@ -130,3 +131,35 @@ for(const opts of [{duplicate:true},{conflict:true},{badCustomer:true}]) {
  const a=auditCase(opts);assert.equal(a.answer.orderCandidate.customerOwnershipVerified,false);assert.equal(a.reads,0);
 }
 console.log('Task-first audit PASS: 8 omission/conflict/ownership cases; at most one targeted Order GET, no writes.');
+
+// Service and Delivery must distinguish populated fields from verified fields,
+// and must detect changes to relationships the PATCH did not request.
+let safetyCases=0;
+for(const vertical of ['Service','Delivery']) {
+  r=runCase({vertical});
+  assert.equal(r.answer.status,'PATCHED_AND_VERIFIED');safetyCases++;
+  for(const field of ['order','location','contact']) {
+    const expected={customerId:'62851',orderId:'27635',locationId:'58463',contactId:'12345'};
+    delete expected[{order:'orderId',location:'locationId',contact:'contactId'}[field]];
+    const opts={vertical,expected,state:{order:'27635',location:'58463',contact:'12345',type:'contact'}};
+    r=runCase(opts);
+    assert.equal(r.answer.status,'REVIEW_NO_SAFE_PATCH');
+    assert.equal(r.writes,0);
+    assert.ok(r.answer.review.includes(({order:'ORDER',location:'LOCATION',contact:'REQUESTED_BY'})[field]+'_EXPECTED_ID_UNRESOLVED'));
+    // A missing independently safe field can still be patched, with REVIEW retained.
+    opts.state[field==='order'?'contact':'order']='';
+    r=runCase(opts);assert.equal(r.answer.status,'PARTIAL_PATCH_VERIFIED');assert.equal(r.writes,1);
+    safetyCases+=2;
+  }
+  for(const mutateAfterPatch of [{location:'999'},{contact:'999'},{type:'employee'},{taskType:'Install'},{status:'Done'}]) {
+    r=runCase({vertical,state:{location:'58463',contact:'12345',type:'contact'},mutateAfterPatch});
+    assert.equal(r.writes,1);assert.match(r.error,/read-back failed/);safetyCases++;
+  }
+  r=runCase({vertical,state:{order:'999'},mutateAfterPatch:{order:'888'}});
+  assert.match(r.error,/read-back failed/);safetyCases++;
+  r=runCase({vertical,duplicateTask:true});assert.equal(r.writes,0);assert.match(r.error,/exactly one/);safetyCases++;
+  r=runCase({vertical,locationUnverified:true,state:{location:'58463'}});
+  assert.equal(r.answer.status,'PARTIAL_PATCH_VERIFIED');
+  assert.ok(r.answer.review.includes('LOCATION_OWNERSHIP_NOT_VERIFIED'));safetyCases++;
+}
+console.log('Service/Delivery relationship safety PASS: '+safetyCases+' cases.');
