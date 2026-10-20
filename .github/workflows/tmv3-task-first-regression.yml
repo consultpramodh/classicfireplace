@@ -51,3 +51,6 @@ jobs:
           node tools/test-tmv3-step6-safe-block-verification.js
           node tools/test-tmv3-calendar-link-task-name.js
           node tools/test-tmv3-prepush-hardening.js
+
+      - name: PreInspection shared customer-number regression
+        run: node tools/test-tmv3-preinspection-notification-evidence.js
