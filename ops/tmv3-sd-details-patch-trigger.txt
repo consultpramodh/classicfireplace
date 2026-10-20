@@ -1,1 +1,1 @@
-2026-10-20: resolve missing cached Orders using official Number/CustomerId search; Delivery Order links independent of Calendar approval reports.
+2026-10-20: preserve fixed backlog continuation after native Calendar lock collisions; expose unchanged daily API budget in batch audit.
