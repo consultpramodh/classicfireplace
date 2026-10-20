@@ -166,7 +166,13 @@ async function createDeployment(versionNumber, description) {
 }
 
 async function runScriptFunction(functionName, parameters) {
-  return api('/scripts/' + encodeURIComponent(V3_SCRIPT_ID) + ':run', {
+  const inventory = await getDeployments();
+  const candidates = (inventory.deployments || []).filter(d =>
+    (d.entryPoints || []).some(ep => ep.executionApi));
+  if (candidates.length !== 1 || !candidates[0].deploymentId) {
+    fail('Execution requires exactly one verified API deployment.');
+  }
+  return api('/scripts/' + encodeURIComponent(candidates[0].deploymentId) + ':run', {
     method: 'POST',
     body: JSON.stringify({
       function: functionName,
@@ -2345,6 +2351,23 @@ async function main() {
           taskWritesPerformed:result.taskWritesPerformed}));
       }
     }
+    return;
+  }
+
+  if (RUN_MODE === 'EXECUTION_HEALTH') {
+    const response = await runScriptFunction('tmv3_servicePolicy', []);
+    if (response.error) {
+      console.log(JSON.stringify({status:'EXECUTION_HEALTH_FAILED',errorCode:response.error.code || '',errorStatus:response.error.status || ''}));
+      fail('Execution health did not return a successful result.');
+    }
+    const result = response.response && response.response.result;
+    if (!result || result.orderRequired !== true || result.operationalName !== 'Work Order') {
+      fail('Execution health returned unexpected Service policy.');
+    }
+    const summary={status:'EXECUTION_HEALTH_VERIFIED',orderRequired:result.orderRequired,
+      operationalName:result.operationalName,taskWritesPerformed:false,sourceWritesPerformed:false};
+    fs.writeFileSync(path.join(outDir,'execution-health.json'),JSON.stringify(summary,null,2));
+    console.log(JSON.stringify(summary));
     return;
   }
 
