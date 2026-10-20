@@ -15,6 +15,6 @@ for(const body of [null,'invalid JSON',{}, {token:'wrong',action:'FIXED_SD_ORDER
 r=run({token,action:'FIXED_SD_ORDER_BACKFILL'},true);assert.equal(r.response.ok,false);assert.equal(r.calls,0);cases++;
 assert.throws(()=>runner('bad',Date.now()),/INVALID_AUTH/);cases++;
 const fs=require('fs'),script=fs.readFileSync('tools/tmv3-service-delivery-backfill-launch.js','utf8');
-assert.ok(script.indexOf('headRestored=true')<script.indexOf("api('/deployments','POST'"));cases++;
+assert.ok(script.includes("api('/deployments')"));assert.ok(!script.includes("api('/versions','POST'"));assert.ok(!script.includes("api('/deployments','POST'"));cases++;
 assert.ok(!runner(digest,Date.now()).includes(token));cases++;
 console.log('PASS: '+cases+' expiring authentication, fixed-action isolation, source restoration and no-plaintext-token checks.');

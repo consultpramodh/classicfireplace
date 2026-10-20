@@ -1,1 +1,1 @@
-2026-10-20: launch fixed 81-Task Order backfill once; no caller-selected IDs; expire and delete temporary deployment.
+2026-10-20: launch fixed queue on existing HEAD with authenticated request, no new versions or deployments, exact source restore.

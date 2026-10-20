@@ -24,7 +24,7 @@ jobs:
           node --check tools/tmv3-service-delivery-backfill-launch.js
           node tools/test-tmv3-service-delivery-order-backfill.js
           node tools/test-tmv3-service-delivery-backfill-launch.js
-      - name: Read exact canonical source before temporary version
+      - name: Read exact canonical source before temporary HEAD launch
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-service-delivery-backfill-launch.js prepare
@@ -35,11 +35,11 @@ jobs:
           path: autopatch-output-sd-backfill-launch/
           if-no-files-found: error
           retention-days: 30
-      - name: Restore HEAD then launch isolated fixed backlog and delete temporary deployment
+      - name: Launch fixed backlog on existing HEAD and restore exact canonical source
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-service-delivery-backfill-launch.js run
-      - name: Preserve launch outcome and isolated version backup
+      - name: Preserve launch outcome and temporary source backup
         if: always()
         uses: actions/upload-artifact@v4
         with:
