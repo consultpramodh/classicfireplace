@@ -113,6 +113,18 @@ async function api(pathname, options = {}) {
   return json;
 }
 
+// Read-only OAuth diagnostics. Never persist tokens, client secrets or user IDs.
+function executionScopeAssessment(required, granted) {
+  if (!Array.isArray(required) || !required.length ||
+      required.some(s => typeof s !== 'string' || !s.trim())) {
+    throw new Error('Live manifest has no explicit valid OAuth scope list.');
+  }
+  const actual = new Set(String(granted || '').split(/\s+/).filter(Boolean));
+  const missing = [...new Set(required)].filter(s => !actual.has(s));
+  return {requiredScopes:[...new Set(required)], missingScopes:missing,
+    grantedScopeCount:actual.size, scopeCoverage:missing.length ? 'MISSING_SCOPES' : 'COMPLETE'};
+}
+
 async function getContent() {
   return api('/projects/' + encodeURIComponent(V3_SCRIPT_ID) + '/content');
 }
@@ -2351,6 +2363,39 @@ async function main() {
           taskWritesPerformed:result.taskWritesPerformed}));
       }
     }
+    return;
+  }
+
+  if (RUN_MODE === 'EXECUTION_AUTH_DIAGNOSTICS') {
+    const head = await getContent();
+    const manifest = getManifest(head);
+    const inventory = await getDeployments();
+    // Token goes only to Google's introspection endpoint, in the POST body.
+    const response = await fetch('https://oauth2.googleapis.com/tokeninfo', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({access_token:accessToken}), redirect:'error'
+    });
+    if (!response.ok) fail('TOKEN_INTROSPECTION_FAILED_HTTP_' + response.status);
+    const tokenInfo = await response.json();
+    const raw = JSON.parse(process.env.CLASPRC_JSON);
+    const settings = raw.oauth2ClientSettings || raw.oauth2Client || raw.client || {};
+    const clientId = settings.clientId || settings.client_id || deepFind(raw,['clientId','client_id']);
+    const audience = tokenInfo.aud || tokenInfo.audience || tokenInfo.issued_to || '';
+    const assessment = executionScopeAssessment(manifest.oauthScopes, tokenInfo.scope);
+    const summary = {
+      status:'EXECUTION_AUTH_DIAGNOSTICS_COMPLETE',sourceHash:canonicalHash(head),
+      ...assessment,tokenClientMatchesConfiguration:audience ? audience === clientId : 'UNKNOWN',
+      apiDeployments:(inventory.deployments || []).filter(d =>
+        (d.entryPoints || []).some(ep => ep.executionApi)).map(d => ({
+          versionNumber:d.deploymentConfig && d.deploymentConfig.versionNumber || null,
+          executionAccess:(d.entryPoints || []).filter(ep => ep.executionApi)
+            .map(ep => ep.executionApi.entryPointConfig && ep.executionApi.entryPointConfig.access || 'UNKNOWN')
+        })),
+      sameCloudProject:'UNKNOWN_REQUIRES_PROJECT_SETTINGS_COMPARISON',
+      taskWritesPerformed:false,sourceWritesPerformed:false,permissionChangesPerformed:false
+    };
+    fs.writeFileSync(path.join(outDir,'execution-auth-diagnostics.json'),JSON.stringify(summary,null,2));
+    console.log(JSON.stringify(summary));
     return;
   }
 
