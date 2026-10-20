@@ -2,6 +2,14 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## Active-Order guard deployed — 2026-10-20 16:40 Toronto
+
+- First guarded attempt 39493651209 stopped before source mutation because the repository baseline omitted appended live PreInspection helpers. Inspected durable PRE artifact 12296395235: worker matched; drift was unrelated appended 58_Operations functions. Scoped boundary reconciled without removing those helpers.
+- Retry 39493925963 succeeded. PRE artifact 12296078379 preserved before write; result artifact 12296896732. Entire project source hash changed from 00ab98af9cbbdf4af61cfb83de539e4fd8e0e3981143c19b304bd650c73aa661 to a001f164f3d750bf4c4212f4b120140c2cde0d07a943d5d4c59bf9e26ad7741e and matched read-back exactly. Changed only reviewed relationship writer/Order ownership proof and native worker functions; unrelated live source and permissions preserved.
+- Validated all Apps Script syntax, eight existing regression scripts, 15 generic deployment checks, 14 scoped active-Order patch checks, 25 fresh-status cases and both-vertical inactive-order no-write cases. Focused tests reran successfully in deployment workflow.
+- Source Orders cache shows 27792 / 586058 (Task 19201), 27789 / 586055 (Task 19203), and 27824 / 586090 (Task 19218) as In Progress. These are candidates, not fresh ownership verification. Delivery cached statuses are blank and require fresh API status proof.
+- No new Task write has been confirmed in this session. Source deployment did not execute Tasks. Existing native one-candidate/60-minute worker remains the authorized execution path; post-deployment runtime acceptance is pending.
+
 ## Active-Order repair guard — 2026-10-20
 
 - User identifies SO 586061 / ID 27795 as canceled. Task type incompatibility is not established by the prior HTTP 400. Exclude this exact SO from the native worker pending operator review; do not cancel Task 19198 or invent a replacement Order.
