@@ -2,6 +2,15 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## Task data push attempt — 2026-10-20
+
+- Source-read preflight succeeded: Actions run 39484326844. Exact deployed version is 3.11.95-preinspection-date-controls-and-notifications; canonical source hash is 4d49f011e822864b8ca073a8bdfd76d2271726d942212015bb16400378e9a929.
+- Current deployed manualWritesEnabled=false and automationWritesEnabled=false; taskFirstProductionEnabled=true. Version-list access alone was not proof of executable access.
+- Six deployed files differ from repository: 00_Config, 20_Striven, 58_Operations, 60_Automation, 70_Regression, 90_Admin. Do not overwrite these with repository copies.
+- Bounded read-only reconciliation attempt through scripts.run failed with PERMISSION_DENIED (Actions run 39484474005). No Task writes were attempted and no Apps Script source was updated by these preflight modes.
+- GitHub runner syntax validation passed. Preflight defaults restored to metadata-only to avoid repeated execution attempts.
+- Service/Delivery data push remains BLOCKED: source parity and an authorized execution path must be established; global write flags must not be broadly enabled as a shortcut.
+
 ## Service and Delivery audit update — 2026-10-20
 
 This update supersedes current-state interpretations of the October 13 checkpoint below; its historical evidence is retained.
