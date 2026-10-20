@@ -1,0 +1,870 @@
+{
+  "completedAt": "2026-10-20T17:55:03-04:00",
+  "cacheReconciledAt": "2026-10-20T22:02:34Z",
+  "finalCheckedAt": "2026-10-20T22:05:58.415Z",
+  "targetCount": 81,
+  "counts": {
+    "Service": {
+      "targets": 55,
+      "patched": 50,
+      "alreadyLinked": 1,
+      "held": 4
+    },
+    "Delivery": {
+      "targets": 26,
+      "patched": 18,
+      "alreadyLinked": 1,
+      "held": 7
+    },
+    "total": {
+      "targets": 81,
+      "patched": 68,
+      "alreadyLinked": 2,
+      "held": 11,
+      "pending": 0,
+      "uncertain": 0
+    }
+  },
+  "nativeTally": {
+    "verified": 69,
+    "blocked": 12,
+    "pending": 0,
+    "uncertain": 0
+  },
+  "tallyExplanation": "Task19098 failed the active-Order condition for a new write but already has Order27661; the final fresh cache-only API read confirmed that existing link. It belongs in alreadyLinked for the original missing-link request.",
+  "sourceHash": "0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b",
+  "checks": {
+    "all68NewOrderIdsMatchReconciledSource": true,
+    "all81TargetIdsPresentExactlyOnce": true,
+    "displacedHistoricalCacheTask16025Restored": true,
+    "cacheRepairStrivenWrites": 0,
+    "canonicalHeadRestorationVerified": true
+  },
+  "remainingRisk": "The underlying cause of the observed cache omissions/duplicate-row discrepancy is not established. This operation corrected and rechecked the current cache, not the upstream cause.",
+  "records": [
+    {
+      "taskId": 18374,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 26689,
+      "soNumber": "584959",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:11:20.210Z"
+    },
+    {
+      "taskId": 18471,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 26362,
+      "soNumber": "584632",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:11:30.466Z"
+    },
+    {
+      "taskId": 18733,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27195,
+      "soNumber": "585463",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:11:38.937Z"
+    },
+    {
+      "taskId": 18735,
+      "vertical": "Delivery",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "585478",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:26:09.041Z"
+    },
+    {
+      "taskId": 18754,
+      "vertical": "Delivery",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "585496",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:26:11.450Z"
+    },
+    {
+      "taskId": 18774,
+      "vertical": "Delivery",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "585512",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:26:13.987Z"
+    },
+    {
+      "taskId": 18801,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27284,
+      "soNumber": "585552",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:11:57.418Z"
+    },
+    {
+      "taskId": 18806,
+      "vertical": "Delivery",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "585557",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:26:16.758Z"
+    },
+    {
+      "taskId": 18831,
+      "vertical": "Delivery",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "585585",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:26:19.493Z"
+    },
+    {
+      "taskId": 18896,
+      "vertical": "Delivery",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "585658",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:26:21.752Z"
+    },
+    {
+      "taskId": 18897,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27388,
+      "soNumber": "585656",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:14:00.959Z"
+    },
+    {
+      "taskId": 18908,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27404,
+      "soNumber": "585672",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:14:17.501Z"
+    },
+    {
+      "taskId": 18913,
+      "vertical": "Delivery",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "585694",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:26:24.360Z"
+    },
+    {
+      "taskId": 18914,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27427,
+      "soNumber": "585695",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:26:34.037Z"
+    },
+    {
+      "taskId": 18979,
+      "vertical": "Delivery",
+      "outcome": "ALREADY_LINKED",
+      "orderId": 27254,
+      "soNumber": null,
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "reason": "ALREADY_LINKED_FRESH_VERIFIED",
+      "verifiedAt": "2026-10-20T21:28:01.719Z"
+    },
+    {
+      "taskId": 19037,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27573,
+      "soNumber": "585839",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:14:36.539Z"
+    },
+    {
+      "taskId": 19064,
+      "vertical": "Service",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": null,
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "TASK_TITLE_SO_MISSING",
+      "verifiedAt": "2026-10-20T21:16:28.546Z"
+    },
+    {
+      "taskId": 19098,
+      "vertical": "Service",
+      "outcome": "ALREADY_LINKED",
+      "orderId": 27661,
+      "soNumber": "585927",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:28:04.600Z"
+    },
+    {
+      "taskId": 19109,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27682,
+      "soNumber": "585948",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:17:05.802Z"
+    },
+    {
+      "taskId": 19126,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27694,
+      "soNumber": "585960",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:28:14.888Z"
+    },
+    {
+      "taskId": 19137,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27718,
+      "soNumber": "585984",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:28:24.657Z"
+    },
+    {
+      "taskId": 19190,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27461,
+      "soNumber": "585729",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:17:55.648Z"
+    },
+    {
+      "taskId": 19195,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27788,
+      "soNumber": "586054",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:18:28.704Z"
+    },
+    {
+      "taskId": 19198,
+      "vertical": "Service",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "586061",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:28:27.780Z"
+    },
+    {
+      "taskId": 19201,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27792,
+      "soNumber": "586058",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:28:39.401Z"
+    },
+    {
+      "taskId": 19203,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27789,
+      "soNumber": "586055",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:28:49.610Z"
+    },
+    {
+      "taskId": 19204,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27628,
+      "soNumber": "585894",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:29:01.712Z"
+    },
+    {
+      "taskId": 19205,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27803,
+      "soNumber": "586069",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:30:33.606Z"
+    },
+    {
+      "taskId": 19214,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27814,
+      "soNumber": "586080",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:30:49.742Z"
+    },
+    {
+      "taskId": 19218,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27824,
+      "soNumber": "586090",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:31:04.587Z"
+    },
+    {
+      "taskId": 19221,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27837,
+      "soNumber": "586103",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:31:19.340Z"
+    },
+    {
+      "taskId": 19222,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27231,
+      "soNumber": "585499",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:31:33.083Z"
+    },
+    {
+      "taskId": 19223,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27829,
+      "soNumber": "586095",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:31:47.606Z"
+    },
+    {
+      "taskId": 19224,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27831,
+      "soNumber": "586097",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:33:29.493Z"
+    },
+    {
+      "taskId": 19225,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27841,
+      "soNumber": "586107",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:33:39.147Z"
+    },
+    {
+      "taskId": 19226,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27806,
+      "soNumber": "586072",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:33:50.625Z"
+    },
+    {
+      "taskId": 19227,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27815,
+      "soNumber": "586081",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:33:59.822Z"
+    },
+    {
+      "taskId": 19228,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27825,
+      "soNumber": "586091",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:34:10.340Z"
+    },
+    {
+      "taskId": 19229,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27830,
+      "soNumber": "586096",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:34:20.460Z"
+    },
+    {
+      "taskId": 19230,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27833,
+      "soNumber": "586099",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:34:32.777Z"
+    },
+    {
+      "taskId": 19231,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27832,
+      "soNumber": "586098",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:36:16.492Z"
+    },
+    {
+      "taskId": 19232,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27827,
+      "soNumber": "586093",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:36:27.898Z"
+    },
+    {
+      "taskId": 19233,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27840,
+      "soNumber": "586106",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:36:37.796Z"
+    },
+    {
+      "taskId": 19234,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27839,
+      "soNumber": "586105",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:36:47.473Z"
+    },
+    {
+      "taskId": 19235,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27834,
+      "soNumber": "586100",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:36:59.135Z"
+    },
+    {
+      "taskId": 19240,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27842,
+      "soNumber": "586108",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:37:09.996Z"
+    },
+    {
+      "taskId": 19241,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27846,
+      "soNumber": "586112",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:37:20.824Z"
+    },
+    {
+      "taskId": 19242,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27848,
+      "soNumber": "586114",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:39:44.290Z"
+    },
+    {
+      "taskId": 19248,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27850,
+      "soNumber": "586116",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:39:53.169Z"
+    },
+    {
+      "taskId": 19249,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27854,
+      "soNumber": "586120",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:40:05.411Z"
+    },
+    {
+      "taskId": 19250,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27856,
+      "soNumber": "586122",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:40:14.009Z"
+    },
+    {
+      "taskId": 19251,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27851,
+      "soNumber": "586117",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:42:27.176Z"
+    },
+    {
+      "taskId": 19252,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27853,
+      "soNumber": "586119",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:42:36.524Z"
+    },
+    {
+      "taskId": 19253,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27859,
+      "soNumber": "586125",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:42:44.281Z"
+    },
+    {
+      "taskId": 19255,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27858,
+      "soNumber": "586124",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:42:52.840Z"
+    },
+    {
+      "taskId": 19256,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27855,
+      "soNumber": "586121",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:44:25.736Z"
+    },
+    {
+      "taskId": 19257,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27843,
+      "soNumber": "586109",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:44:37.444Z"
+    },
+    {
+      "taskId": 19258,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27844,
+      "soNumber": "586110",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:44:47.523Z"
+    },
+    {
+      "taskId": 19259,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27862,
+      "soNumber": "586128",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:44:57.256Z"
+    },
+    {
+      "taskId": 19260,
+      "vertical": "Service",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": "586111",
+      "taskStatus": "Open",
+      "nativeState": "BLOCKED",
+      "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
+      "verifiedAt": "2026-10-20T21:45:23.350Z"
+    },
+    {
+      "taskId": 19261,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27867,
+      "soNumber": "586133",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:45:32.608Z"
+    },
+    {
+      "taskId": 19262,
+      "vertical": "Service",
+      "outcome": "HELD",
+      "orderId": null,
+      "soNumber": null,
+      "taskStatus": "Canceled",
+      "nativeState": "BLOCKED",
+      "reason": "FRESH_TASK_IDENTITY_STATUS_OR_CUSTOMER",
+      "freshTaskCanceled": true,
+      "verifiedAt": "2026-10-20T21:45:33.427Z"
+    },
+    {
+      "taskId": 19263,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27869,
+      "soNumber": "586135",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:45:44.355Z"
+    },
+    {
+      "taskId": 19264,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27863,
+      "soNumber": "586129",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:45:54.641Z"
+    },
+    {
+      "taskId": 19265,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27868,
+      "soNumber": "586134",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:46:05.659Z"
+    },
+    {
+      "taskId": 19266,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27757,
+      "soNumber": "586023",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:48:05.975Z"
+    },
+    {
+      "taskId": 19267,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27847,
+      "soNumber": "586113",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:48:17.083Z"
+    },
+    {
+      "taskId": 19268,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27866,
+      "soNumber": "586132",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:48:26.876Z"
+    },
+    {
+      "taskId": 19269,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27865,
+      "soNumber": "586131",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:48:37.720Z"
+    },
+    {
+      "taskId": 19270,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27875,
+      "soNumber": "586141",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:50:43.527Z"
+    },
+    {
+      "taskId": 19272,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27892,
+      "soNumber": "586158",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:50:54.242Z"
+    },
+    {
+      "taskId": 19273,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27882,
+      "soNumber": "586148",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:51:03.958Z"
+    },
+    {
+      "taskId": 19274,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27886,
+      "soNumber": "586152",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:51:14.659Z"
+    },
+    {
+      "taskId": 19275,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27895,
+      "soNumber": "586161",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:52:20.932Z"
+    },
+    {
+      "taskId": 19276,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27891,
+      "soNumber": "586157",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:52:34.159Z"
+    },
+    {
+      "taskId": 19279,
+      "vertical": "Delivery",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27904,
+      "soNumber": "586170",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:52:47.830Z"
+    },
+    {
+      "taskId": 19280,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27748,
+      "soNumber": "586014",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:53:00.839Z"
+    },
+    {
+      "taskId": 19281,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27906,
+      "soNumber": "586172",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:54:26.026Z"
+    },
+    {
+      "taskId": 19282,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27910,
+      "soNumber": "586176",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:54:36.910Z"
+    },
+    {
+      "taskId": 19283,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27896,
+      "soNumber": "586162",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:54:45.983Z"
+    },
+    {
+      "taskId": 19284,
+      "vertical": "Service",
+      "outcome": "PATCHED_AND_READBACK_VERIFIED",
+      "orderId": 27909,
+      "soNumber": "586175",
+      "taskStatus": "Open",
+      "nativeState": "VERIFIED",
+      "verifiedAt": "2026-10-20T21:54:56.268Z"
+    }
+  ]
+}

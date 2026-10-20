@@ -33,7 +33,7 @@ function fixture(opts={}){
   tmv3_taskFirstFreshOrderOwnershipById_:(id,cid,title)=>{spend(1);if(opts.inactive===String(id))throw Error('ORDER_NOT_VERIFIED_ACTIVE');assert.ok(title.includes('SO#'));assert.equal(cid,String(1000+Number(id)-2000));return {verified:true};},
   tmv3_repairExistingTaskRelationships:(id,v,expected,permission)=>{
    assert.equal(locked,true);assert.equal(permission,'TASK_FIRST_PRODUCTION');assert.equal(expected.contactId,'');assert.equal(expected.locationId,'');
-   calls.push(id);spend(5);
+   calls.push(id);spend(6);
    if(opts.uncertain===id){if(opts.applied)live[id]['Order ID']=expected.orderId;throw Error('PATCH outcome uncertain');}
    writes++;live[id]['Order ID']=expected.orderId;
    if(opts.badReadback===id)live[id]['Order ID']='99999';
@@ -101,3 +101,4 @@ f.ctx.tmv3_serviceDeliveryOrderBackfill();assert.equal(f.triggers.length,1);case
 f=fixture();f.run();assert.equal(f.triggers[0].delay,60000);cases++;
 f=fixture({perCallMs:2000});f.run();assert.equal(f.triggers[0].delay,1000);cases++;
 console.log('PASS: '+cases+' real backfill cases, including all 81 IDs across 21 rapid mocked slices, both verticals, retries, rate budget and scope.');
+

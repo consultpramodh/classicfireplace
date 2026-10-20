@@ -121,3 +121,8 @@
 ## Explicit one-time Service/Delivery backlog authorization — 2026-10-20
 
 User requested all55 Service and26 Delivery Tasks be patched without the hourly wait. Approved implementation is a fixed81-ID, resumable Order-only queue, independently verified per Task; this supersedes the prior one/hour constraint for that queue only. Ordinary routine capacity, global flags, API brake, Calendar/full-detail gates, Install and PreInspection remain unchanged. Existing Delivery Task Order linkage accepts an exact Sales Order identity without a DELIVERY_APPROVED report row. Missing report identities use the verified official Number/CustomerId search schema, complete-result uniqueness and fresh Order GET proof. Cancelled/inactive Orders, conflicts, missing title SO# and uncertain writes remain held. No completion claim until native per-Task readbacks and the final tally are observed.
+
+
+## Fixed backlog execution completed — 2026-10-20
+
+All81 targets processed automatically. Final link outcomes68 patched/2 already linked/11 held; no pending or uncertain writes. Hold9 Orders that fail the active condition, Task19064 without SO# and canceled Task19262. Existing19098→27661 is preserved even though that Order is outside new-link eligibility. Fresh cache reconciliation and68 unique native Order-only readbacks agree; the cause of the separately observed cache discrepancy remains unconfirmed. Do not infer a permanent cache-sync fix or broader vertical acceptance from this backfill.

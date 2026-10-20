@@ -1,3 +1,15 @@
+## Bulk Order-link backfill completed — 2026-10-20 18:04 Toronto
+
+- All81 captured targets processed; zero pending and zero uncertain writes. Final outcomes: **68 new Order links patched and freshly read-back verified,2 existing links confirmed,11 still unlinked and held**.
+- Service55:50 patched,1 already linked (19098),4 held (19064,19198,19260,19262). Delivery26:18 patched,1 already linked (18979),7 held (18735,18754,18774,18806,18831,18896,18913).
+- Held causes:9 Order-active checks failed;19064 has no SO# title;19262 is currently Canceled, confirmed by fresh Task GET. No Order/Task lifecycle changes were made.
+- Native final audit17:55:03 reports69 VERIFIED/12 BLOCKED. This is consistent with the link outcomes:19098 was held from new writes on lifecycle grounds but already has Order27661, confirmed in the later cache-only read. There were68 unique ORDER-only PATCH audit records, each readbackVerified=true.
+- Current deployed source hash0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b. Guarded source deployment39501646932 succeeded. Source parity and canonical HEAD restoration were again verified after cache cleanup39505037029; no versions/deployments created.
+- Final independent Sheet reconciliation found each of81 target IDs exactly once and no disagreement for any of68 new Order IDs. Cache discrepancies (omitted links, duplicate19281 and displaced historical16025 row) were restored from fresh API reads with a private pre-repair backup and zero Striven writes.19262 was reintroduced in cache with its true Canceled status. The underlying cause of these cache discrepancies remains UNKNOWN; do not claim a permanent upstream cache-sync fix.
+- API budget after cache cleanup:897/1200 V3 calls,303 remaining. This is the shared V3 daily counter, not an isolated backfill-call total.
+- Executed focused checks:36 backfill cases,14 cache-only cases,11 expiring-auth cases,37 deployment checks; existing relationship/status/production-lane and43 details cases passed. Scope stayed Order-only for these writes.
+- Final machine-readable record:ops/tmv3-service-delivery-order-backfill-results-20261020.json. Routine automation retains its existing policy; the accelerated fixed queue is complete and its continuation was removed at the final native slice.
+
 ## Fixed 81-Task Order backfill running — 2026-10-20 17:20 Toronto
 
 - User explicitly authorized bulk processing of all 55 Service and 26 Delivery open Tasks with blank cached Order IDs. The ordinary one-candidate/hour limit is bypassed only for this fixed, durable queue.

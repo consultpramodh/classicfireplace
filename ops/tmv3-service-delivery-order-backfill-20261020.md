@@ -1,22 +1,23 @@
-# Service and Delivery Order backfill — 2026-10-20
+# Service and Delivery Order backfill — completed 2026-10-20
 
-User explicitly authorized processing all 55 Service and 26 Delivery open Tasks whose Source Tasks Order ID is blank, without the one-per-hour wait.
+The user authorized all55 Service and26 Delivery Tasks whose report-cache Order ID was blank. Final live outcomes were68 new Order links patched and verified,2 links already present,11 held,0 pending and0 uncertain.
 
-The fixed 81 Task IDs are in `release-candidates/tmv3-service-delivery-order-backfill-20261020.json`. Source Tasks and all 8,298 Source Orders rows were read before enrollment. These are candidates, not 81 proven missing live relationships. The fresh Task GET is authoritative.
+| Vertical | Captured | Patched | Already linked | Held |
+| --- | ---: | ---: | ---: | ---: |
+| Service |55|50|1|4|
+| Delivery |26|18|1|7|
+| Total |81|68|2|11|
 
-## Execution
+Every patch required an existing open correct-vertical Task, unique SO# title, compatible cached identity or complete official Number/CustomerId search result, and fresh Order identity/Customer/active-status proof. Only the Order field was sent to the existing guarded relationship writer. It preserved other relationships, dates, assignments, names and notes.
 
-- Existing authorized native scheduled/hourly worker starts the one-time queue before its ordinary hourly throttle.
-- At most 8 candidates, approximately 56 Striven calls and 120 seconds per slice; continuation after at least 60 seconds. An advance 180-second continuation recovers a hard timeout. Only the dedicated backfill continuation trigger is replaced or deleted.
-- Every Task requires unique source identity, fresh open status and correct Service/Delivery type, a unique SO# title, one compatible cached Order identity, then fresh Order ID/number/Customer/active-status proof.
-- User-provided 19198 / SO586061 / Order27795 identity is available even if absent from cache; cancellation still blocks it through fresh proof.
-- Existing guarded relationship writer receives only Customer and Order expectations; no Contact, Location, dates, assignments, Task creation, notes, Calendar or PreInspection mutations in this backfill.
-- Durable per-Task INTENT precedes PATCH. Fresh readback verifies the exact Order, Customer, Task ID/type/title/open status. An interrupted write gets one fresh reconciliation; an unconfirmed result is parked, never blindly retried by either queue or normal worker.
-- Transient failures before a write get at most three attempts. Cancelled/inactive, missing/ambiguous anchors, conflicts and wrong identities are recorded individually; other Tasks continue.
-- Global write flags, per-transaction permission gate, existing schedules, API daily brake, Install and PreInspection functions remain unchanged. The fixed-ID exception does not increase routine throughput permanently.
+The fixed queue runs before the ordinary hourly throttle. It persists INTENT before mutation, verifies by fresh GET, reconciles interrupted writes without blindly retrying, and requeues a consumed continuation after Calendar lock collisions. The final pacing threshold limits each slice to at most40 calls (32-call starting threshold plus one bounded transaction), with at least one minute between timer-slice starts and no extra idle minute after slow work. The daily API brake stays in force. No general write flags or Install/PreInspection functions were expanded.
 
-## Verification
+The official OpenAPI document was read in Action39498743786: POST /v1/sales-orders/search uses Number,CustomerId,PageIndex,PageSize and returns Data/TotalCount. Search completeness, exact number/Customer, unique ID and a subsequent authoritative Order GET are mandatory. Existing Delivery Task linking also accepts SALES_ORDER identity without requiring a Calendar delivery-approved report row.
 
-22 executed batch tests include all 81 IDs through 12 mocked automatic slices, both verticals, duplicate/ambiguous/missing Orders, missing/multiple title numbers, existing relationships, closed Tasks, wrong identities, failed readback, interrupted writes, transient read failures, daily budget and preservation of unrelated triggers. Existing 43 autonomous-details tests and relationship/production-lane regressions also pass.
+The native final tally69 VERIFIED/12 BLOCKED differs from the link-outcome table because19098 already has Order27661 but failed the condition for making a new link to an active Order. A fresh cache-only GET confirmed the existing link. All68 new patches have native readbackVerified audit records.
 
-Live deployment and native batch outcomes are pending; source deployment alone is not evidence of Task patches.
+Current cache was independently reconciled after detecting omitted IDs and a duplicate19281/displaced16025 row. Fresh API reads restored the old row, removed the duplicate and filled omitted Order IDs, with zero Striven mutations and a private pre-repair backup. All81 target IDs are present exactly once; all68 patched Order IDs match. The source of the cache discrepancy remains unconfirmed.
+
+Tests executed:36 actual worker/batch cases,14 cache-only cases,11 expiring-auth cases,37 deployment checks,43 existing details cases and the relationship/status/production-lane regressions.
+
+See the results JSON for each Task, the held reasons and exact source hash. The completed fixed queue does not imply all Task detail fields or the entire vertical are production-verified.
