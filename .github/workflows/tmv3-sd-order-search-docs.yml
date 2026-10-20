@@ -12,12 +12,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Read public official documentation only
+      - name: Read official OpenAPI search request and response models only
         run: |
           node --input-type=module <<'JS'
-          const urls=['https://api.striven.com/Help/Api/POST-v1-sales-orders-search','https://api.striven.com/'];
-          for(const url of urls){
-            const r=await fetch(url);const html=await r.text();
-            console.log(JSON.stringify({url,status:r.status,contentType:r.headers.get('content-type'),body:html.slice(0,100000)}));
+          const r=await fetch('https://api.striven.com/swagger/v1/swagger.json');
+          if(!r.ok)throw Error('DOCS_HTTP_'+r.status);
+          const j=await r.json(),op=j.paths['/v1/sales-orders/search'];
+          console.log(JSON.stringify({path:'/v1/sales-orders/search',operation:op}));
+          const schemas={};
+          function follow(value,depth){
+            if(!value||typeof value!=='object'||depth>5)return;
+            for(const [k,v] of Object.entries(value)){
+              if(k==='$ref'&&typeof v==='string'){
+                const name=v.split('/').pop();
+                const model=j.components.schemas[name];
+                if(!schemas[name]){schemas[name]=model;follow(model,depth+1);}
+              }else follow(v,depth);
+            }
           }
+          follow(op.post.requestBody,0);
+          console.log(JSON.stringify({requestSchemas:schemas}));
+          const responses={};for(const [name,model]of Object.entries(j.components.schemas))if(/SalesOrder.*(Search|List)|Paged.*SalesOrder/i.test(name))responses[name]=model;
+          console.log(JSON.stringify({responseSchemas:responses}));
           JS
