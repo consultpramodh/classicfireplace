@@ -2328,6 +2328,23 @@ async function main() {
     };
     fs.writeFileSync(path.join(outDir,'service-delivery-preflight.json'),JSON.stringify(summary,null,2));
     console.log(JSON.stringify(summary));
+    if (RELEASE_MANIFEST.reconcileServiceDelivery === true) {
+      const reconciliationFile = summary.files.find(f=>f.name==='46_Step7_Reconciliation');
+      if (!reconciliationFile || !reconciliationFile.repositoryMatch) fail('RECONCILIATION_SOURCE_PARITY_REQUIRED');
+      for (const vertical of ['Delivery','Service']) {
+        const response = await runScriptFunction('tmv3_step7ReconciliationBatchRun',
+          ['AUTHORIZED_TASK_PUSH_PREFLIGHT',vertical,0,10,false]);
+        if (response.error) {
+          console.log(JSON.stringify({status:'DIRECT_RECONCILIATION_FAILED',vertical,errorCode:response.error.code || '',errorStatus:response.error.status || ''}));
+          fail('Direct reconciliation API returned an error; no task writes attempted.');
+        }
+        const result=response.response && response.response.result;
+        if (!result || result.taskWritesPerformed !== false) fail('READ_ONLY_RESULT_NOT_PROVEN');
+        console.log(JSON.stringify({status:'DIRECT_RECONCILIATION_COMPLETE',vertical,
+          version:result.version,counts:result.counts,batch:result.batch,
+          taskWritesPerformed:result.taskWritesPerformed}));
+      }
+    }
     return;
   }
 
