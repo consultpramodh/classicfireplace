@@ -41,6 +41,8 @@ jobs:
       - name: Check V3 Apps Script syntax
         run: |
           for file in apps-script/tmv3-clean/*.js; do node --check "$file"; done
+      - name: PreInspection shared customer-number regression
+        run: node tools/test-tmv3-preinspection-notification-evidence.js
       - name: Task-first relationship mock regression
         run: |
           node tools/test-tmv3-task-first-relationships.js

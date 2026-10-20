@@ -1414,6 +1414,11 @@ function tmv3_preInspectionNotificationDecision_(record,state,nowValue) {
 }
 function tmv3_preInspectionSendMissingDetails_(record) {
   const assessment=tmv3_preInspectionMissingDetailAssessment_(record);
+  if (assessment.customerNumberReviewRequired) {
+    tmv3_audit_('PreInspection',record.eventId,'','CUSTOMER_NUMBER_EVIDENCE','REVIEW',
+      JSON.stringify({parser:'PI_CUSTOMER_EVIDENCE_V1',
+        source:'Source Customers',evidence:assessment.customerNumberEvidence}));
+  }
   if (!assessment.shouldNotify) return {status:'NO_MISSING_DETAILS',sent:0};
   if (TMV3.MODE!=='PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled!==true) return {status:'DELIVERY_GATED',sent:0};
   const props=PropertiesService.getScriptProperties();
@@ -1440,7 +1445,7 @@ function tmv3_preInspectionSendMissingDetails_(record) {
     body:(decision.followupNumber ? 'FOLLOW-UP #'+decision.followupNumber+': ' : '')+'Please update the missing Pre-Inspection details: '+assessment.missing.map(function(x){return x.message;}).join('; '),
     htmlBody:email.htmlBody,name:'Classic Fireplace & BBQ Store'});
   next.status='SENT';props.setProperty(key,JSON.stringify(next));
-  tmv3_audit_('PreInspection',record.eventId,'','MISSING_DETAILS_EMAIL','SENT',JSON.stringify({to:email.recipient,followupNumber:decision.followupNumber,missing:assessment.missing}));
+  tmv3_audit_('PreInspection',record.eventId,'','MISSING_DETAILS_EMAIL','SENT',JSON.stringify({to:email.recipient,followupNumber:decision.followupNumber,missing:assessment.missing,customerNumberEvidence:assessment.customerNumberEvidence}));
   return {status:'SENT',sent:1,to:email.recipient,followupNumber:decision.followupNumber,missing:assessment.missing};
 }
 
