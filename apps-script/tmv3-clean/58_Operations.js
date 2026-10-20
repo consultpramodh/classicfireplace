@@ -5218,6 +5218,55 @@ function tmv3_installMissingSoRecipients_(record) {
     .filter(function(email) { return /^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@classicfireplace\.ca$/.test(email); }));
 }
 
+// Google Apps Script: Install-only presentation; no delivery or business writes.
+function tmv3_installReminderEmail_(record, options) {
+  options = options || {};
+  const escape = tmv3_preInspectionHtmlEscape_;
+  const recipients = tmv3_installMissingSoRecipients_(record);
+  const recipient = options.test ? 'pramodh@classicfireplace.ca' : recipients.join(',');
+  const firstName = tmv3_preInspectionCreatorFirstName_(recipient.split(',')[0]);
+  const followup = Math.max(0, Math.floor(Number(options.followupNumber) || 0));
+  const label = (options.test ? 'TEST — ' : '') + (followup ? 'FOLLOW-UP #' + followup + ' — ' : '');
+  const when = Utilities.formatDate(record.start, TMV3_TIMEZONE, 'MMM d, yyyy') + ' · ' +
+    Utilities.formatDate(record.start, TMV3_TIMEZONE, 'h:mm a') + ' – ' +
+    Utilities.formatDate(record.end, TMV3_TIMEZONE, 'h:mm a');
+  const unclassified = !tmv3_clean_(record.location) && !tmv3_extractPhone_(record.title || '');
+  const missing = [];
+  if (unclassified) missing.push({field:'Appointment purpose', current:'Customer installation not established',
+    expected:'Confirm customer installation or planning/capacity block'});
+  if (!record.orderNumber && !record.existingOrderId) missing.push({field:'Sales Order',
+    current:'No Sales Order reference detected', expected:unclassified ? 'If this is a customer install, add the correct SO #' : 'Add the correct Sales Order #'});
+  if (!tmv3_clean_(record.location)) missing.push({field:'Location',current:'No job-site address supplied',
+    expected:unclassified ? 'If this is a customer install, add the full job-site address' : 'Add the full job-site address'});
+  if (!missing.length) return null;
+  const url = tmv3_calendarEventUrl_(record.eventId, record.calendarId || record.organizerCalendarId) || record.eventUrl || '';
+  const safeUrl = /^https:\/\/(?:www\.)?(?:google\.com\/calendar|calendar\.google\.com)\//i.test(url) ? url : '';
+  const notes = tmv3_clean_(tmv3_calendarReadableDescription_(tmv3_stripAuthoredCalendarNotes_(record.rawDescription || record.description || '')));
+  const rows = missing.map(function(item) {return '<tr><td style="padding:12px;border:1px solid #ddd;font-weight:700">'+escape(item.field)+'</td><td style="padding:12px;border:1px solid #ddd;color:#B42318">'+escape(item.current)+'</td><td style="padding:12px;border:1px solid #ddd;color:#28632f">'+escape(item.expected)+'</td></tr>';}).join('');
+  const alerts = missing.map(function(item) {return '<div style="margin:4px 0">❌ '+escape(item.current)+'</div>';}).join('');
+  const title = record.title || '(Untitled event)';
+  const intro = unclassified ? 'Confirm the purpose of this event first. It is not yet established as a customer installation. Add the conditional details below only if it is a customer job.' : 'Please update the missing details highlighted below in the calendar event.';
+  const notice = options.test ? 'TEST PREVIEW — sent only to Pramodh. This tests the email presentation; it does not verify the scheduled V3 sender. No production reminder history is changed.' : 'This is an automated email notification from Classic Fireplace & BBQ Store.';
+  const html = '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f4f3f1;font-family:Arial,Helvetica,sans-serif;color:#222">'+
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:20px 12px"><table role="presentation" width="760" cellspacing="0" cellpadding="0" style="width:100%;max-width:760px;background:#fff;table-layout:fixed;overflow-wrap:anywhere">'+
+    '<tr><td style="background:#202020;border-top:4px solid #b42b2f;padding:18px 24px"><div style="font-size:18px;font-weight:700;color:#fff">'+escape(label)+'Install Update Required</div><div style="font-size:12px;color:#aaa;margin-top:3px">Classic Fireplace &amp; BBQ Store</div></td></tr>'+
+    '<tr><td style="padding:20px 24px 12px;font-size:14px;line-height:21px"><div style="font-size:12px;color:#666;font-style:italic;margin-bottom:16px">'+escape(notice)+'</div>Hi <strong>'+escape(firstName)+'</strong>,'+
+    '<div style="margin-top:12px;padding:12px;background:#f6f5f3;border:1px solid #e2e0dc"><strong>Appointment requiring attention</strong><br>'+escape(title)+'<br><strong>'+escape(when)+'</strong><br>'+escape(record.location || 'Location not supplied')+'</div>'+
+    '<p>'+escape(intro)+'</p><div style="background:#fff5f5;border-left:4px solid #b42b2f;padding:11px 13px;font-size:13px;color:#8f2024;font-weight:700">'+alerts+'</div></td></tr>'+
+    '<tr><td style="padding:8px 24px 20px"><table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;table-layout:fixed;font-size:13px;line-height:19px"><tr><th width="22%" style="padding:10px;background:#f3f3f3;border:1px solid #ddd;text-align:left">Field</th><th width="39%" style="padding:10px;background:#fff1f1;color:#9b1c1f;border:1px solid #ddd;text-align:left">What it is now</th><th width="39%" style="padding:10px;background:#f1f8f1;color:#28632f;border:1px solid #ddd;text-align:left">What it should be</th></tr>'+rows+'</table></td></tr>'+
+    (notes ? '<tr><td style="padding:0 24px 20px"><div style="padding:14px;background:#f6f5f3;font-size:13px;line-height:20px"><strong>Calendar notes</strong><div style="white-space:pre-wrap;margin-top:8px">'+escape(notes)+'</div></div></td></tr>' : '')+
+    '<tr><td style="padding:0 24px 22px;font-size:14px;line-height:22px">'+(safeUrl ? '<a href="'+escape(safeUrl)+'" style="display:inline-block;background:#b42b2f;color:#fff;padding:11px 18px;text-decoration:none">Open calendar appointment</a>' : '<strong>Calendar appointment link unavailable — review required.</strong>')+'<p>Please update the calendar event, then let the next check reassess it.</p>Thank you.</td></tr>'+
+    '<tr><td style="background:#202020;padding:12px 24px;text-align:center;color:#fff;font-size:12px;font-weight:700">Classic Fireplace &amp; BBQ Store</td></tr></table></td></tr></table></body></html>';
+  return {recipient:recipient, subject:label+'INSTALL '+(unclassified ? 'REVIEW' : 'MISSING DETAILS')+': '+title+' | '+when+' | '+missing.map(function(item){return item.field;}).join(', '),
+    htmlBody:html,body:notice+'\n\n'+title+'\n'+when+'\n\n'+intro+'\n'+missing.map(function(item){return item.field+': '+item.current+' → '+item.expected;}).join('\n')+'\n'+safeUrl,
+    missing:missing,classificationRequired:unclassified};
+}
+
+function tmv3_installReminderCount_(eventId) {
+  const value = Number(PropertiesService.getScriptProperties().getProperty('TMV3_INSTALL_SO_COUNT_' + tmv3_hash_(eventId)) || 0);
+  return Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+
 function tmv3_installMissingSoReminderCycle_(scope, preview) {
   const policy = tmv3_operationPolicy_();
   if (policy.installRemindersEnabled !== true) {
@@ -5278,27 +5327,24 @@ function tmv3_installMissingSoReminderCycle_(scope, preview) {
       return;
     }
 
-    const when = tmv3_date_(record.start) + ' ' + tmv3_time_(record.start) +
-      '–' + tmv3_time_(record.end);
-    const subject = 'ACTION REQUIRED: Sales Order # missing from install event';
-    const textBody =
-      'ACTION REQUIRED\n\n' +
-      'The install calendar event below is missing the Sales Order #.\n\n' +
-      'Event: ' + (record.title || '(no title)') + '\n' +
-      'When: ' + when + '\n' +
-      'Where: ' + (record.location || 'n/a') + '\n\n' +
-      'Next step: Add the correct Sales Order # to the Calendar Event.';
-
-    candidates.push({eventId:record.eventId, title:record.title, to:recipients.join(','), subject:subject, body:textBody});
+    const followup = tmv3_installReminderCount_(record.eventId);
+    const email = tmv3_installReminderEmail_(record, {followupNumber:followup});
+    if (!email) { skipped++; return; }
+    candidates.push({eventId:record.eventId, title:record.title, to:email.recipient,
+      subject:email.subject, body:email.body, htmlBody:email.htmlBody,
+      classificationRequired:email.classificationRequired});
     if (preview) return;
 
     try {
       MailApp.sendEmail({
         to: recipients.join(','),
-        subject: subject,
-        body: textBody
+        subject: email.subject,
+        body: email.body,
+        htmlBody: email.htmlBody
       });
       tmv3_markInstallReminderSent_(record.eventId);
+      PropertiesService.getScriptProperties().setProperty(
+        'TMV3_INSTALL_SO_COUNT_' + tmv3_hash_(record.eventId), String(followup + 1));
       sent++;
       tmv3_audit_('Install',record.eventId,'','MISSING_SO_REMINDER','PASS','Sent to ' + recipients.join(','));
     } catch (err) {
