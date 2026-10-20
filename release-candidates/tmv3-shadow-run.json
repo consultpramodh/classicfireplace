@@ -6,7 +6,7 @@
   "runMode": "SERVICE_DELIVERY_PREFLIGHT",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "SERVICE_DELIVERY_TASK_PUSH_PREFLIGHT_20261020",
+  "requestTag": "SERVICE_DELIVERY_TASK_PUSH_PREFLIGHT_20261020_R2",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
   "eventId": "6bnhkq9hrpfr6rub4ka545m8bi@google.com",
