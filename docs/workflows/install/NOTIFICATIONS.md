@@ -10,7 +10,7 @@ Menu/editor preview: `tmv3_previewInstallMissingSoReminders`; returns candidate 
 
 Validation: 30 dedicated checks; existing 185 hardening cases, PreInspection suites and 81 Install readiness cases passed locally.
 
-Release gate: pull and back up live bound source, compare to repository baseline, apply only intended changes, run pre-push checks, deploy to same project, re-pull/hash, preview exact recipients, then test delivery and confirm the existing trigger. Live access is currently policy-blocked. No live email or production changes were performed.
+Release gate: pull and back up live bound source, compare to repository baseline, apply only intended changes, run pre-push checks, deploy to same project, re-pull/hash, preview exact recipients, then test delivery and confirm the existing trigger. Live access is currently policy-blocked. No production Apps Script, Calendar or Striven changes were performed. Gmail preview tests were sent only to Pramodh; they do not verify scheduled Apps Script delivery.
 
 ## Dynamic email presentation
 
