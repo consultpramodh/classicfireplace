@@ -29,6 +29,7 @@ jobs:
           node tools/test-tmv3-task-first-relationships.js
           node tools/test-tmv3-task-first-production-lane.js
           node tools/test-tmv3-service-delivery-details-auto.js
+          node tools/test-tmv3-service-delivery-order-backfill.js
           node tools/test-tmv3-service-delivery-details-patch.js
       - name: Capture exact live source and prepare one-function plan
         env:

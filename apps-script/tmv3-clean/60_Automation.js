@@ -1009,6 +1009,9 @@ function tmv3_taskFirstProductionCycle_() {
 
   try {
     const props = PropertiesService.getScriptProperties();
+    // Explicit one-time backlog: independent of the routine hourly allowance.
+    const backfill = tmv3_serviceDeliveryOrderBackfill_(props);
+    if (backfill) return backfill;
     const lastKey = 'TMV3_TASK_FIRST_PRODUCTION_LAST_ATTEMPT_MS';
     const cursorKey = 'TMV3_TASK_FIRST_PRODUCTION_CURSOR';
     const last = Number(props.getProperty(lastKey) || 0);
@@ -1184,6 +1187,8 @@ function tmv3_taskFirstProductionCycle_() {
       .filter(function(row) {
         const type = tmv3_norm_(row['Task Type']);
         const status = tmv3_norm_(row['Status']);
+        const backfillState=JSON.parse(props.getProperty('TMV3_SD_ORDER_BACKFILL_20261020_'+row['Task ID']) || 'null');
+        if (backfillState && ['INTENT','UNCERTAIN'].indexOf(backfillState.state)>=0) return false;
         return status === 'open' &&
           (type.indexOf('service') !== -1 || type.indexOf('delivery') !== -1) &&
           Number.isSafeInteger(Number(row['Task ID'])) && Number(row['Task ID']) > 0 &&
@@ -1308,6 +1313,137 @@ function tmv3_taskFirstProductionCycle_() {
   } finally {
     lock.releaseLock();
   }
+}
+
+/** Google Apps Script: dedicated resumable continuation, never a general write gate. */
+function tmv3_serviceDeliveryOrderBackfill() {
+  return tmv3_taskFirstProductionCycle_();
+}
+
+function tmv3_serviceDeliveryOrderBackfill_(props) {
+  const ids = [18374,18471,18733,18735,18754,18774,18801,18806,18831,18896,18897,18908,18913,18914,18979,19037,19064,19098,19109,19126,19137,19190,19195,19198,19201,19203,19204,19205,19214,19218,19221,19222,19223,19224,19225,19226,19227,19228,19229,19230,19231,19232,19233,19234,19235,19240,19241,19242,19248,19249,19250,19251,19252,19253,19255,19256,19257,19258,19259,19260,19261,19262,19263,19264,19265,19266,19267,19268,19269,19270,19272,19273,19274,19275,19276,19279,19280,19281,19282,19283,19284];
+  const prefix = 'TMV3_SD_ORDER_BACKFILL_20261020_';
+  const handler = 'tmv3_serviceDeliveryOrderBackfill';
+  const tasks = tmv3_rows_(TMV3.SHEETS.TASKS);
+  // Isolated test projects and other source sets never enroll extra Tasks.
+  if (!ids.some(function(id){return tasks.some(function(row){return String(row['Task ID'])===String(id);});})) return null;
+  const pending = ids.filter(function(id){
+    const value=props.getProperty(prefix+id);
+    if (!value) return true;
+    return ['INTENT','RETRY'].indexOf(JSON.parse(value).state)>=0;
+  });
+  if (!pending.length) return null;
+  const started=Date.now();
+  const initialBudget=tmv3_strivenApiBudgetStatus_();
+  const orders=tmv3_rows_(TMV3.SHEETS.ORDERS);
+  let processed=0,writes=0,paused='';
+  function save(id,value) {
+    const result=Object.assign({taskId:id,at:new Date().toISOString()},value);
+    props.setProperty(prefix+id,JSON.stringify(result));
+    tmv3_audit_(result.vertical || 'SYSTEM','',String(id),'SD_ORDER_BACKFILL',
+      result.state==='VERIFIED'?'PASS':'REVIEW',JSON.stringify(result));
+    return result;
+  }
+  function continueLater(delay) {
+    // Only our own one-shot continuation is replaced; installed schedules stay intact.
+    ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;})
+      .forEach(function(t){ScriptApp.deleteTrigger(t);});
+    ScriptApp.newTrigger(handler).timeBased().after(delay).create();
+  }
+  // Queue the next slice before work so a hard timeout cannot strand the backlog.
+  continueLater(180000);
+  for (let n=0;n<pending.length && processed<8;n++) {
+    const budget=tmv3_strivenApiBudgetStatus_();
+    if (budget.exhausted || budget.remaining<12) {paused='API_DAILY_BUDGET';break;}
+    if (budget.count-initialBudget.count>=56 || Date.now()-started>=120000) {paused='SLICE_BUDGET';break;}
+    const id=pending[n];
+    processed++;
+    let intent=false,vertical='',expectedOrderId='',customerId='';
+    try {
+      const source=tasks.filter(function(row){return String(row['Task ID'])===String(id);});
+      if (source.length!==1) {save(id,{state:'BLOCKED',reason:'SOURCE_TASK_NOT_UNIQUE'});continue;}
+      const sourceType=tmv3_norm_(source[0]['Task Type']);
+      vertical=sourceType.indexOf('service')>=0?'Service':sourceType.indexOf('deliver')>=0?'Delivery':'';
+      if (!vertical) {save(id,{state:'BLOCKED',reason:'WRONG_VERTICAL'});continue;}
+      const live=tmv3_normalizeV2TaskModel_(tmv3_rawTaskById_(id));
+      const type=tmv3_norm_(live['Task Type']);
+      customerId=tmv3_clean_(live['Customer ID']);
+      if (String(live['Task ID'])!==String(id) || !tmv3_taskIsOpen_(live.Status) ||
+          (vertical==='Service'?type.indexOf('service')<0:type.indexOf('deliver')<0) ||
+          !/^[1-9]\d*$/.test(customerId)) {
+        save(id,{state:'BLOCKED',vertical:vertical,reason:'FRESH_TASK_IDENTITY_STATUS_OR_CUSTOMER'});continue;
+      }
+      tmv3_upsertTaskCacheRow_(live);
+      const title=tmv3_taskFirstTitleOrderNumber_(live.Name);
+      if (title.status!=='UNIQUE') {save(id,{state:'BLOCKED',vertical:vertical,reason:'TASK_TITLE_SO_'+title.status});continue;}
+      const matches=orders.filter(function(order){return tmv3_clean_(order['Order Number'])===title.number &&
+        tmv3_step3OrderMatchesVertical_(order,vertical);});
+      const orderIds=[];
+      matches.forEach(function(order){const value=tmv3_clean_(order['Order ID']);
+        if (/^[1-9]\d*$/.test(value) && orderIds.indexOf(value)<0) orderIds.push(value);});
+      // Explicit user-provided identity; fresh API proof still must accept the lifecycle.
+      if (!orderIds.length && id===19198 && title.number==='586061') orderIds.push('27795');
+      if (orderIds.length!==1) {save(id,{state:'BLOCKED',vertical:vertical,soNumber:title.number,
+        reason:orderIds.length?'AMBIGUOUS_ORDER':'ORDER_NOT_IN_CACHE'});continue;}
+      expectedOrderId=orderIds[0];
+      const actual=tmv3_clean_(live['Order ID']);
+      if (actual && actual!==expectedOrderId) {save(id,{state:'BLOCKED',vertical:vertical,reason:'EXISTING_ORDER_CONFLICT'});continue;}
+      tmv3_taskFirstFreshOrderOwnershipById_(expectedOrderId,customerId,live.Name);
+      const prior=JSON.parse(props.getProperty(prefix+id) || 'null');
+      if (prior && prior.state==='INTENT') {
+        if (prior.orderId===actual && prior.customerId===customerId) {
+          save(id,{state:'VERIFIED',vertical:vertical,orderId:actual,customerId:customerId,
+            reason:'INTENT_RECONCILED_BY_FRESH_READ',writes:0});
+        } else save(id,{state:'UNCERTAIN',vertical:vertical,orderId:expectedOrderId,
+          reason:'PREVIOUS_WRITE_NOT_CONFIRMED_NO_RETRY'});
+        continue;
+      }
+      if (actual===expectedOrderId) {
+        save(id,{state:'VERIFIED',vertical:vertical,orderId:actual,customerId:customerId,
+          reason:'ALREADY_LINKED_FRESH_VERIFIED',writes:0});continue;
+      }
+      // Persist intent before the existing, independently guarded, Order-only PATCH.
+      props.setProperty(prefix+id,JSON.stringify({state:'INTENT',taskId:id,vertical:vertical,
+        orderId:expectedOrderId,customerId:customerId,at:new Date().toISOString()}));
+      intent=true;
+      const result=tmv3_repairExistingTaskRelationships(id,vertical,
+        {customerId:customerId,orderId:expectedOrderId,contactId:'',locationId:''},'TASK_FIRST_PRODUCTION');
+      writes+=Number(result.writes || 0);
+      const after=tmv3_normalizeV2TaskModel_(tmv3_rawTaskById_(id));
+      if (String(after['Task ID'])!==String(id) || tmv3_clean_(after['Order ID'])!==expectedOrderId ||
+          tmv3_clean_(after['Customer ID'])!==customerId || !tmv3_taskIsOpen_(after.Status) ||
+          tmv3_clean_(after['Task Type'])!==tmv3_clean_(live['Task Type']) ||
+          tmv3_clean_(after.Name)!==tmv3_clean_(live.Name)) throw new Error('BACKFILL_READBACK_MISMATCH');
+      tmv3_upsertTaskCacheRow_(after);
+      save(id,{state:'VERIFIED',vertical:vertical,orderId:expectedOrderId,customerId:customerId,
+        soNumber:title.number,writes:Number(result.writes || 0),readbackVerified:true});
+    } catch(err) {
+      const reason=String(err && err.message || err).slice(0,600);
+      if (intent) {
+        // Keep INTENT for one automatic fresh read on continuation; never blind retry.
+        tmv3_audit_(vertical,'',String(id),'SD_ORDER_BACKFILL','ATTENTION',reason);
+      } else {
+        const prior=JSON.parse(props.getProperty(prefix+id) || 'null');
+        const attempts=Number(prior && prior.attempts || 0)+1;
+        const transient=/HTTP (429|5\d\d)|DAILY_GUARD|GET failure|timed out|timeout|temporar|Service invoked too many/i.test(reason);
+        save(id,{state:transient && attempts<3?'RETRY':'BLOCKED',vertical:vertical,reason:reason,attempts:attempts});
+      }
+      if (/429|DAILY_GUARD/.test(reason)) {paused='API_RATE_OR_DAILY_GUARD';break;}
+    }
+  }
+  const tally={VERIFIED:0,BLOCKED:0,UNCERTAIN:0,PENDING:0};
+  ids.forEach(function(id){const value=JSON.parse(props.getProperty(prefix+id) || 'null');
+    const state=value && value.state;
+    if (state && Object.prototype.hasOwnProperty.call(tally,state)) tally[state]++;
+    else tally.PENDING++;});
+  ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;})
+    .forEach(function(t){ScriptApp.deleteTrigger(t);});
+  if (tally.PENDING) continueLater(paused==='API_DAILY_BUDGET'?3600000:60000);
+  const summary={status:tally.PENDING?'ORDER_BACKFILL_CONTINUING':'ORDER_BACKFILL_COMPLETE',
+    total:ids.length,processed:processed,writes:writes,tally:tally,paused:paused};
+  props.setProperty(prefix+'SUMMARY',JSON.stringify(summary));
+  tmv3_audit_('SYSTEM','','','SD_ORDER_BACKFILL_SUMMARY','INFO',JSON.stringify(summary));
+  return summary;
 }
 
 function tmv3_scheduledOperations() {

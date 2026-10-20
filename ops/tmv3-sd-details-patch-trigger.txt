@@ -1,1 +1,1 @@
-2026-10-20 R2: dynamic status eligibility; unresolved title links cannot starve automatic Task details.
+2026-10-20: user-authorized Order-only backfill for 55 Service and 26 Delivery Tasks; fixed 81 IDs, fresh ownership, native resumable slices.
