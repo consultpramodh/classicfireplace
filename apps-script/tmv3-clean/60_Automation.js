@@ -1317,7 +1317,15 @@ function tmv3_taskFirstProductionCycle_() {
 
 /** Google Apps Script: dedicated resumable continuation, never a general write gate. */
 function tmv3_serviceDeliveryOrderBackfill() {
-  return tmv3_taskFirstProductionCycle_();
+  const result=tmv3_taskFirstProductionCycle_();
+  if (result && result.status==='LOCK_BUSY') {
+    // A consumed one-shot must survive a collision with an existing Calendar refresh.
+    const handler='tmv3_serviceDeliveryOrderBackfill';
+    ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;})
+      .forEach(function(t){ScriptApp.deleteTrigger(t);});
+    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
+  }
+  return result;
 }
 
 function tmv3_serviceDeliveryOrderBackfill_(props) {
@@ -1452,7 +1460,7 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
     .forEach(function(t){ScriptApp.deleteTrigger(t);});
   if (tally.PENDING) continueLater(paused==='API_DAILY_BUDGET'?3600000:60000);
   const summary={status:tally.PENDING?'ORDER_BACKFILL_CONTINUING':'ORDER_BACKFILL_COMPLETE',
-    total:ids.length,processed:processed,writes:writes,tally:tally,paused:paused};
+    total:ids.length,processed:processed,writes:writes,tally:tally,paused:paused,apiBudget:tmv3_strivenApiBudgetStatus_()};
   props.setProperty(prefix+'SUMMARY',JSON.stringify(summary));
   tmv3_audit_('SYSTEM','','','SD_ORDER_BACKFILL_SUMMARY','INFO',JSON.stringify(summary));
   return summary;

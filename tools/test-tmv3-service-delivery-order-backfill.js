@@ -92,4 +92,8 @@ for(const opts of [
  {searchRows:[{Id:2000,Number:'500000',Customer:{Id:1000}}],searchTotal:101}
 ]) {f=fixture(opts);f.orders.shift();f.run();assert.equal(f.state(ids[0]).state,'BLOCKED');assert.ok(!f.calls.includes(ids[0]));cases++;}
 f=fixture({searchRows:[{Id:2000,Number:'500000',Customer:{Id:1000}}],inactive:'2000'});f.orders.shift();f.run();assert.equal(f.state(ids[0]).state,'BLOCKED');assert.ok(!f.calls.includes(ids[0]));cases++;
+// A native Calendar lock collision cannot consume the only continuation.
+f=fixture();f.ctx.LockService.getScriptLock=()=>({tryLock:()=>false});
+assert.equal(f.ctx.tmv3_serviceDeliveryOrderBackfill().status,'LOCK_BUSY');assert.equal(f.triggers.length,1);assert.equal(f.triggers[0].delay,60000);assert.equal(f.writes(),0);cases++;
+f.ctx.tmv3_serviceDeliveryOrderBackfill();assert.equal(f.triggers.length,1);cases++;
 console.log('PASS: '+cases+' real backfill cases, including all 81 IDs across 12 automatic slices, both verticals, retries, rate budget and scope.');
