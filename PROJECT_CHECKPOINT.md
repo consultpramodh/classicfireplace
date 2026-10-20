@@ -1,3 +1,15 @@
+## Fixed 81-Task Order backfill running — 2026-10-20 17:20 Toronto
+
+- User explicitly authorized bulk processing of all 55 Service and 26 Delivery open Tasks with blank cached Order IDs. The ordinary one-candidate/hour limit is bypassed only for this fixed, durable queue.
+- Canonical code commit: 3a875057bb94e3763b0453c41f071c5942cd7ee3. Guarded deployment 39498989016 succeeded; full live source hash ba07493d564dbea536131b1acd43dab8b09bf3b8298c205f4bcc417162fd2765 matches read-back. Live PreInspection helpers and all source outside the worker region were preserved.
+- Immediate native launch succeeded through the existing authenticated HEAD deployment in run 39498234649. No versions or deployments were created; expiring token-gated temporary doPost and manifest were removed, canonical source restored and SHA verified. Earlier immutable-version launch failed HTTP429 before execution; source restoration was verified. Do not retry version creation against the known 200-version inventory.
+- Native audit now independently shows 10 Order-only patches verified across three slices (17:12,17:14,17:18 summaries); remaining outcomes are pending, not claimed successful. Original cache holds are automatically re-enrolled after the targeted-search correction.
+- Fixed queue: at most 8 candidates / approximately 56 calls /120 seconds per slice, automatic continuation after at least60 seconds, prequeued timeout recovery, existing daily API brake retained. Per-Task INTENT, exact fresh Order read-back, no blind retry after uncertain mutation. Source cache omissions never count as proof of a missing live relationship.
+- Direct lookup schema was retrieved from official https://api.striven.com/swagger/v1/swagger.json in Actions 39498743786: POST /v1/sales-orders/search, Number/CustomerId/PageIndex/PageSize; Data/TotalCount and Id/Number/Customer responses. Require complete results, exact number and Customer, a unique ID, then authoritative GET ownership/current active status.
+- Linking an existing Delivery Task does not require a DELIVERY_APPROVED cache row; SALES_ORDER identity is also accepted for this Order-link lane. Calendar/full-details planning keeps its original gates.
+- Tests: all source compiles;32 real batch cases,43 existing details cases,37 deployment checks, relationship/status/production-lane suites pass. One Task19064 has no SO# title and is held. Current runtime verified counts must be refreshed before reporting final completion.
+- Queue IDs and contract: release-candidates/tmv3-service-delivery-order-backfill-20261020.json and ops/tmv3-service-delivery-order-backfill-20261020.md.
+
 # CF Tasks — V3 ACTIVE — Clean Rebuild
 
 Checkpoint update: 2026-10-20 (America/Toronto).

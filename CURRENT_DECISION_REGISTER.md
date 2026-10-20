@@ -116,3 +116,8 @@
 - Calendar-backed dates, customer-owned Location and intended employee/pool assignments use fresh canonical Step 7 evidence under the dedicated existing-Task detail context. Do not enable general manual/automation flags or permit Task creation, Calendar/title edits, technician-note/custom-field changes through this path.
 - Preserve manual employees; remove only Pool 4 after intended employees are independently read back. Preserve the shared one-candidate/hour limit until a separately verified capacity change.
 - SO 586061 / ID 27795 is operator-confirmed canceled. Do not attach inactive Orders or automatically cancel Task 19198. Recheck lifecycle dynamically; a genuinely reactivated Order can become eligible after fresh proof, without a code blacklist or manual patch. Never invent a replacement Order.
+
+
+## Explicit one-time Service/Delivery backlog authorization — 2026-10-20
+
+User requested all55 Service and26 Delivery Tasks be patched without the hourly wait. Approved implementation is a fixed81-ID, resumable Order-only queue, independently verified per Task; this supersedes the prior one/hour constraint for that queue only. Ordinary routine capacity, global flags, API brake, Calendar/full-detail gates, Install and PreInspection remain unchanged. Existing Delivery Task Order linkage accepts an exact Sales Order identity without a DELIVERY_APPROVED report row. Missing report identities use the verified official Number/CustomerId search schema, complete-result uniqueness and fresh Order GET proof. Cancelled/inactive Orders, conflicts, missing title SO# and uncertain writes remain held. No completion claim until native per-Task readbacks and the final tally are observed.
