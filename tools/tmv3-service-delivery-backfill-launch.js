@@ -3,7 +3,7 @@
 const fs=require('node:fs'),crypto=require('node:crypto'),vm=require('node:vm');
 const {canonical}=require('./tmv3-relationship-function-patch');
 const scriptId='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
-const expected='12efdb7b097d9975e0028049e5968d8dc8e5293ac5cf9e345fb2a43a3ee3f860';
+const expected='0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b';
 const dir='autopatch-output-sd-backfill-launch';
 function deepFind(o,keys){if(!o||typeof o!=='object')return '';for(const [k,v]of Object.entries(o))if(keys.includes(k)&&typeof v==='string'&&v)return v;for(const v of Object.values(o)){const found=deepFind(v,keys);if(found)return found;}return '';}
 function runner(digest,expires){
@@ -22,6 +22,7 @@ function doPost(e) {
 }
 `;
 }
+function cacheRunner(digest,expires){return runner(digest,expires).replaceAll('FIXED_SD_ORDER_BACKFILL','FIXED_SD_CACHE_REPAIR').replace('tmv3_serviceDeliveryOrderBackfill()','tmv3_fixedBackfillCacheRepair_()')+'\n'+"// Google Apps Script: reconcile report cache from fresh existing Task GETs; no Striven mutations.\nfunction tmv3_fixedBackfillCacheRepair_() {\n  const lock=LockService.getScriptLock();\n  if(!lock.tryLock(20000))throw new Error('CACHE_REPAIR_LOCK_BUSY');\n  try {\n    const sh=tmv3_sheet_(TMV3.SHEETS.TASKS);\n    const headers=['Task ID','Task Number','Task Type ID','Task Type','Status','Name','Customer ID','Location ID','Contact ID','Order ID','Start','Due','Assignees','Pools','URL','Fingerprint'];\n    const current=sh.getRange(1,1,1,16).getValues()[0].map(tmv3_clean_);\n    if(JSON.stringify(current)!==JSON.stringify(headers))throw new Error('CACHE_SCHEMA_DRIFT');\n    const ids=[16025,18979,19098,19126,19221,19262,19281];\n    const models={},result=[];\n    ids.forEach(function(id){\n      const task=tmv3_normalizeV2TaskModel_(tmv3_rawTaskById_(id));\n      if(String(task['Task ID'])!==String(id) || !tmv3_clean_(task.Name) ||\n        !/service|deliver/.test(tmv3_norm_(task['Task Type']))) {\n        result.push({taskId:id,status:'FRESH_IDENTITY_NOT_USABLE',actualId:task['Task ID'],type:task['Task Type'],taskStatus:task.Status});return;\n      }\n      models[id]=task;\n    });\n    function rows(){return sh.getRange(2,1,sh.getLastRow()-1,16).getValues();}\n    function find(id){return rows().map(function(row,i){return {row:row,index:i+2};}).filter(function(x){return String(x.row[0])===String(id);});}\n    const backup={at:new Date().toISOString(),rows:rows().map(function(row,i){return {row:i+2,values:row};}).filter(function(x){return ids.indexOf(Number(x.values[0]))>=0;})};\n    const serialized=JSON.stringify(backup);\n    if(serialized.length>8000)throw new Error('CACHE_BACKUP_TOO_LARGE_NO_WRITE');\n    PropertiesService.getScriptProperties().setProperty('TMV3_SD_CACHE_REPAIR_PRE_20261020',serialized);\n    // The captured pre-backfill snapshot proves row2501 held16025. Restore only the exact observed duplicate state.\n    if(!find(16025).length && models[16025]) {\n      const duplicate=find(19281);\n      if(duplicate.length!==2 || duplicate[0].index!==2501 || String(sh.getRange(2501,1).getValue())!=='19281')throw new Error('CACHE_RESTORE_PRECONDITION_DRIFT');\n      const task=models[16025],schedule=tmv3_getCanonicalV1TaskSchedule_(16025);\n      task.Start=schedule.startDateTime || '';task.Due=schedule.dueDateTime || '';\n      const row=headers.map(function(h){return task[h]===undefined?'':task[h];});\n      row[15]=tmv3_hash_(row.slice(0,14).map(String).join('|'));\n      sh.getRange(2501,1,1,16).setValues([row]);\n      if(String(sh.getRange(2501,1).getValue())!=='16025')throw new Error('RESTORED_TASK_CACHE_READBACK_FAILED');\n      result.push({taskId:16025,status:'RESTORED_CACHE_FROM_FRESH_API',orderId:task['Order ID'],taskStatus:task.Status});\n    }\n    ids.filter(function(id){return id!==16025 && models[id];}).forEach(function(id){\n      const task=models[id],matches=find(id);\n      if(matches.length>1)throw new Error('CACHE_TASK_DUPLICATE_'+id);\n      let target=matches.length?matches[0].index:sh.getLastRow()+1;\n      if(matches.length && String(sh.getRange(target,1).getValue())!==String(id))throw new Error('CACHE_ROW_MOVED_'+id);\n      const row=matches.length?matches[0].row.slice():headers.map(function(h){return task[h]===undefined?'':task[h];});\n      for(let c=0;c<10;c++)row[c]=task[headers[c]]===undefined?'':task[headers[c]];\n      row[15]=tmv3_hash_(row.slice(0,14).map(String).join('|'));\n      sh.getRange(target,1,1,16).setValues([row]);\n      const after=find(id);\n      if(after.length!==1 || tmv3_clean_(after[0].row[9])!==tmv3_clean_(task['Order ID']))throw new Error('CACHE_TASK_READBACK_FAILED_'+id);\n      result.push({taskId:id,status:'CACHE_RECONCILED',orderId:task['Order ID'],taskStatus:task.Status,hasCustomer:Boolean(task['Customer ID'])});\n    });\n    tmv3_audit_('SYSTEM','','','SD_ORDER_CACHE_RECONCILE','PASS',JSON.stringify({strivenWrites:0,result:result}));\n    return {status:'CACHE_RECONCILED',strivenWrites:0,result:result,apiBudget:tmv3_strivenApiBudgetStatus_()};\n  } finally {lock.releaseLock();}\n}\n";}
 async function main(mode){
  fs.mkdirSync(dir,{recursive:true,mode:0o700});
  const config=JSON.parse(process.env.CLASPRC_JSON||'{}');
@@ -45,7 +46,8 @@ async function main(mode){
  const before=JSON.parse(fs.readFileSync(dir+'/before.json'));
  if(canonical(before)!==expected || canonical(await api('/content'))!==expected)throw Error('LIVE_PROJECT_DRIFT_NO_WRITE');
  const token=crypto.randomBytes(32).toString('hex'),digest=crypto.createHash('sha256').update(token).digest('hex');
- const source=runner(digest,Date.now()+5*60000);new vm.Script(source);
+ const cacheOnly=process.env.TMV3_BACKFILL_LAUNCH_KIND==='CACHE_REPAIR';
+ const source=(cacheOnly?cacheRunner:runner)(digest,Date.now()+5*60000);new vm.Script(source);
  const temporary={files:before.files.map(f=>{
   if(f.name!=='appsscript')return f;
   const manifest=JSON.parse(f.source);manifest.webapp={access:'ANYONE_ANONYMOUS',executeAs:'USER_DEPLOYING'};
@@ -63,7 +65,7 @@ async function main(mode){
   // Existing authorized HEAD deployment avoids the full 200-version inventory.
   const url='https://script.google.com/macros/s/'+encodeURIComponent(head[0].deploymentId)+'/dev';
   // Exactly one launch request; a timeout is an uncertain outcome, never an HTTP retry.
-  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+auth.access_token},body:JSON.stringify({token,action:'FIXED_SD_ORDER_BACKFILL'}),redirect:'follow',signal:AbortSignal.timeout(150000)});
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+auth.access_token},body:JSON.stringify({token,action:cacheOnly?'FIXED_SD_CACHE_REPAIR':'FIXED_SD_ORDER_BACKFILL'}),redirect:'follow',signal:AbortSignal.timeout(150000)});
   if(!response.ok)throw Error('LAUNCH_HTTP_'+response.status);
   const body=await response.json();
   if(!body.ok)throw Error('NATIVE_LAUNCH_REJECTED_'+String(body.error||'UNKNOWN'));
@@ -78,6 +80,5 @@ async function main(mode){
  }
  if(result.status!=='NATIVE_BACKFILL_LAUNCHED'||!result.sourceParityVerified||!result.headRestoredVerified)throw Error('LAUNCH_OR_CLEANUP_NOT_VERIFIED');
 }
-module.exports={runner};
+module.exports={runner,cacheRunner};
 if(require.main===module)main(process.argv[2]).catch(err=>{console.error(err.message);process.exitCode=1;});
-

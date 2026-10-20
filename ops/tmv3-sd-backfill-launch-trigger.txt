@@ -1,1 +1,1 @@
-2026-10-20: rearm fixed backlog after Calendar lock collision; require exact deployed source 12efdb7b097d9975e0028049e5968d8dc8e5293ac5cf9e345fb2a43a3ee3f860.
+2026-10-20: cache-only reconciliation of verified Order links; restore captured historical row16025, remove duplicate19281, diagnose19262; zero Striven mutations.

@@ -12,6 +12,8 @@ jobs:
   launch:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      TMV3_BACKFILL_LAUNCH_KIND: CACHE_REPAIR
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,6 +26,7 @@ jobs:
           node --check tools/tmv3-service-delivery-backfill-launch.js
           node tools/test-tmv3-service-delivery-order-backfill.js
           node tools/test-tmv3-service-delivery-backfill-launch.js
+          node tools/test-tmv3-service-delivery-cache-reconcile.js
       - name: Read exact canonical source before temporary HEAD launch
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
