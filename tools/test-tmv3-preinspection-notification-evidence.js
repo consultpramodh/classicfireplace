@@ -53,3 +53,10 @@ assert.equal(c.tmv3_preInspectionMissingDetailAssessment_(complete).shouldNotify
 assert.equal(c.tmv3_extractCustomerNumberForVertical_('Install','Customer #12345'),'12345');
 assert.equal(c.tmv3_extractCustomerNumberForVertical_('Delivery','12345 - Test Person'),'');
 console.log('Shared customer-number intake and notification regressions passed');
+
+const noLookup=()=>{throw new Error('Unexpected customer-cache read');};
+assert.equal(c.tmv3_preInspectionCustomerNumberEvidence_(
+  {title:'Customer #12345 - Test Person'},noLookup).number,'12345');
+assert.equal(c.tmv3_preInspectionCustomerNumberEvidence_(
+  {title:'Test Person 416 555-0101'},noLookup).status,'MISSING');
+console.log('PASS: labelled and truly missing customer numbers require zero cache reads');
