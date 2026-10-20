@@ -11,9 +11,9 @@ This update supersedes current-state interpretations of the October 13 checkpoin
 - Delivery schedule exceptions, unresolved business anchors, Service identity/location ambiguity, multi-fireplace completeness, and false positive Location checklist indicators require repair.
 - TM Reconcile still contains September 28 plans labeled 3.11.19. Overview says 3.11.81, canonical repository configuration says 3.11.90, and October 20 execution logs say 3.11.95. Exact deployed source parity is UNKNOWN.
 - Local execution is unavailable and browser Apps Script access is policy-restricted. Google Sheets connector access works.
-- Existing GitHub Actions workflow supports Google-authenticated read-only VERSION_INVENTORY. Access check requested by commit 49ea17f5a6894f2a868d191881b66f44e912f230; run https://github.com/consultpramodh/classicfireplace/actions/runs/39483379368. Result pending at the time this update was written.
+- Existing GitHub Actions workflow supports Google-authenticated read-only VERSION_INVENTORY. Access check requested by commit 49ea17f5a6894f2a868d191881b66f44e912f230; run https://github.com/consultpramodh/classicfireplace/actions/runs/39483379368. SUCCESS: inspected job logs show V3_VERSION_INVENTORY_COMPLETE, 200 versions (1–200), no next page. This verifies Google-authenticated Apps Script version-list access from Actions; it does not establish current HEAD source parity or production repair.
 - No Service/Delivery source repair or production deployment is claimed by this documentation update.
-- Next: verify Actions access result; capture exact deployed source through an authorized read-only workflow; back up and reconcile before preparing changed-file repairs and regressions. Preserve Service Task creation ownership in Striven's Work Order workflow.
+- Next: capture exact deployed source through an authorized read-only workflow; back up and reconcile before preparing changed-file repairs and regressions. Preserve Service Task creation ownership in Striven's Work Order workflow.
 - The unavailable Verification Council skill was not executed; findings derive from checked workbook data, audit records, and repository files.
 
 ## Historical checkpoint — 2026-10-13
