@@ -1,0 +1,23 @@
+name: Read official Striven Order search schema
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-sd-order-search-docs.yml]
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read public official documentation only
+        run: |
+          node --input-type=module <<'JS'
+          const urls=['https://api.striven.com/Help/Api/POST-v1-sales-orders-search','https://api.striven.com/'];
+          for(const url of urls){
+            const r=await fetch(url);const html=await r.text();
+            console.log(JSON.stringify({url,status:r.status,contentType:r.headers.get('content-type'),body:html.slice(0,100000)}));
+          }
+          JS
