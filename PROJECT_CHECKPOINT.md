@@ -1,6 +1,22 @@
 # CF Tasks — V3 ACTIVE — Clean Rebuild
 
-Checkpoint: 2026-10-13 (America/Toronto).
+Checkpoint update: 2026-10-20 (America/Toronto).
+
+## Service and Delivery audit update — 2026-10-20
+
+This update supersedes current-state interpretations of the October 13 checkpoint below; its historical evidence is retained.
+
+- Live workbook audit: Service has 177 event rows (128 single-task matches, 2 multi-task matches, 5 blocked, 42 not run). Delivery has 12 event rows (8 matched, 4 not run). A match is not end-to-end verification.
+- October 20 TM Audit records successful Service relationship patches with read-back, plus an HTTP 400 rejection stating that an Order cannot be associated with the Task type. Task-type compatibility remains unresolved.
+- Delivery schedule exceptions, unresolved business anchors, Service identity/location ambiguity, multi-fireplace completeness, and false positive Location checklist indicators require repair.
+- TM Reconcile still contains September 28 plans labeled 3.11.19. Overview says 3.11.81, canonical repository configuration says 3.11.90, and October 20 execution logs say 3.11.95. Exact deployed source parity is UNKNOWN.
+- Local execution is unavailable and browser Apps Script access is policy-restricted. Google Sheets connector access works.
+- Existing GitHub Actions workflow supports Google-authenticated read-only VERSION_INVENTORY. Access check requested by commit 49ea17f5a6894f2a868d191881b66f44e912f230; run https://github.com/consultpramodh/classicfireplace/actions/runs/39483379368. Result pending at the time this update was written.
+- No Service/Delivery source repair or production deployment is claimed by this documentation update.
+- Next: verify Actions access result; capture exact deployed source through an authorized read-only workflow; back up and reconcile before preparing changed-file repairs and regressions. Preserve Service Task creation ownership in Striven's Work Order workflow.
+- The unavailable Verification Council skill was not executed; findings derive from checked workbook data, audit records, and repository files.
+
+## Historical checkpoint — 2026-10-13
 
 ## Active source
 
