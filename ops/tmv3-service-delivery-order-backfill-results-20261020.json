@@ -50,7 +50,7 @@
       "soNumber": "584959",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:11:20.210Z"
+      "nativeObservedAt": "2026-10-20T21:11:20.210Z"
     },
     {
       "taskId": 18471,
@@ -60,7 +60,7 @@
       "soNumber": "584632",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:11:30.466Z"
+      "nativeObservedAt": "2026-10-20T21:11:30.466Z"
     },
     {
       "taskId": 18733,
@@ -70,7 +70,7 @@
       "soNumber": "585463",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:11:38.937Z"
+      "nativeObservedAt": "2026-10-20T21:11:38.937Z"
     },
     {
       "taskId": 18735,
@@ -81,7 +81,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:26:09.041Z"
+      "nativeObservedAt": "2026-10-20T21:26:09.041Z"
     },
     {
       "taskId": 18754,
@@ -92,7 +92,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:26:11.450Z"
+      "nativeObservedAt": "2026-10-20T21:26:11.450Z"
     },
     {
       "taskId": 18774,
@@ -103,7 +103,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:26:13.987Z"
+      "nativeObservedAt": "2026-10-20T21:26:13.987Z"
     },
     {
       "taskId": 18801,
@@ -113,7 +113,7 @@
       "soNumber": "585552",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:11:57.418Z"
+      "nativeObservedAt": "2026-10-20T21:11:57.418Z"
     },
     {
       "taskId": 18806,
@@ -124,7 +124,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:26:16.758Z"
+      "nativeObservedAt": "2026-10-20T21:26:16.758Z"
     },
     {
       "taskId": 18831,
@@ -135,7 +135,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:26:19.493Z"
+      "nativeObservedAt": "2026-10-20T21:26:19.493Z"
     },
     {
       "taskId": 18896,
@@ -146,7 +146,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:26:21.752Z"
+      "nativeObservedAt": "2026-10-20T21:26:21.752Z"
     },
     {
       "taskId": 18897,
@@ -156,7 +156,7 @@
       "soNumber": "585656",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:14:00.959Z"
+      "nativeObservedAt": "2026-10-20T21:14:00.959Z"
     },
     {
       "taskId": 18908,
@@ -166,7 +166,7 @@
       "soNumber": "585672",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:14:17.501Z"
+      "nativeObservedAt": "2026-10-20T21:14:17.501Z"
     },
     {
       "taskId": 18913,
@@ -177,7 +177,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:26:24.360Z"
+      "nativeObservedAt": "2026-10-20T21:26:24.360Z"
     },
     {
       "taskId": 18914,
@@ -187,7 +187,7 @@
       "soNumber": "585695",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:26:34.037Z"
+      "nativeObservedAt": "2026-10-20T21:26:34.037Z"
     },
     {
       "taskId": 18979,
@@ -198,7 +198,7 @@
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
       "reason": "ALREADY_LINKED_FRESH_VERIFIED",
-      "verifiedAt": "2026-10-20T21:28:01.719Z"
+      "nativeObservedAt": "2026-10-20T21:28:01.719Z"
     },
     {
       "taskId": 19037,
@@ -208,7 +208,7 @@
       "soNumber": "585839",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:14:36.539Z"
+      "nativeObservedAt": "2026-10-20T21:14:36.539Z"
     },
     {
       "taskId": 19064,
@@ -219,7 +219,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "TASK_TITLE_SO_MISSING",
-      "verifiedAt": "2026-10-20T21:16:28.546Z"
+      "nativeObservedAt": "2026-10-20T21:16:28.546Z"
     },
     {
       "taskId": 19098,
@@ -230,7 +230,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:28:04.600Z"
+      "nativeObservedAt": "2026-10-20T21:28:04.600Z"
     },
     {
       "taskId": 19109,
@@ -240,7 +240,7 @@
       "soNumber": "585948",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:17:05.802Z"
+      "nativeObservedAt": "2026-10-20T21:17:05.802Z"
     },
     {
       "taskId": 19126,
@@ -250,7 +250,7 @@
       "soNumber": "585960",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:28:14.888Z"
+      "nativeObservedAt": "2026-10-20T21:28:14.888Z"
     },
     {
       "taskId": 19137,
@@ -260,7 +260,7 @@
       "soNumber": "585984",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:28:24.657Z"
+      "nativeObservedAt": "2026-10-20T21:28:24.657Z"
     },
     {
       "taskId": 19190,
@@ -270,7 +270,7 @@
       "soNumber": "585729",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:17:55.648Z"
+      "nativeObservedAt": "2026-10-20T21:17:55.648Z"
     },
     {
       "taskId": 19195,
@@ -280,7 +280,7 @@
       "soNumber": "586054",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:18:28.704Z"
+      "nativeObservedAt": "2026-10-20T21:18:28.704Z"
     },
     {
       "taskId": 19198,
@@ -291,7 +291,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:28:27.780Z"
+      "nativeObservedAt": "2026-10-20T21:28:27.780Z"
     },
     {
       "taskId": 19201,
@@ -301,7 +301,7 @@
       "soNumber": "586058",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:28:39.401Z"
+      "nativeObservedAt": "2026-10-20T21:28:39.401Z"
     },
     {
       "taskId": 19203,
@@ -311,7 +311,7 @@
       "soNumber": "586055",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:28:49.610Z"
+      "nativeObservedAt": "2026-10-20T21:28:49.610Z"
     },
     {
       "taskId": 19204,
@@ -321,7 +321,7 @@
       "soNumber": "585894",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:29:01.712Z"
+      "nativeObservedAt": "2026-10-20T21:29:01.712Z"
     },
     {
       "taskId": 19205,
@@ -331,7 +331,7 @@
       "soNumber": "586069",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:30:33.606Z"
+      "nativeObservedAt": "2026-10-20T21:30:33.606Z"
     },
     {
       "taskId": 19214,
@@ -341,7 +341,7 @@
       "soNumber": "586080",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:30:49.742Z"
+      "nativeObservedAt": "2026-10-20T21:30:49.742Z"
     },
     {
       "taskId": 19218,
@@ -351,7 +351,7 @@
       "soNumber": "586090",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:31:04.587Z"
+      "nativeObservedAt": "2026-10-20T21:31:04.587Z"
     },
     {
       "taskId": 19221,
@@ -361,7 +361,7 @@
       "soNumber": "586103",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:31:19.340Z"
+      "nativeObservedAt": "2026-10-20T21:31:19.340Z"
     },
     {
       "taskId": 19222,
@@ -371,7 +371,7 @@
       "soNumber": "585499",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:31:33.083Z"
+      "nativeObservedAt": "2026-10-20T21:31:33.083Z"
     },
     {
       "taskId": 19223,
@@ -381,7 +381,7 @@
       "soNumber": "586095",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:31:47.606Z"
+      "nativeObservedAt": "2026-10-20T21:31:47.606Z"
     },
     {
       "taskId": 19224,
@@ -391,7 +391,7 @@
       "soNumber": "586097",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:33:29.493Z"
+      "nativeObservedAt": "2026-10-20T21:33:29.493Z"
     },
     {
       "taskId": 19225,
@@ -401,7 +401,7 @@
       "soNumber": "586107",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:33:39.147Z"
+      "nativeObservedAt": "2026-10-20T21:33:39.147Z"
     },
     {
       "taskId": 19226,
@@ -411,7 +411,7 @@
       "soNumber": "586072",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:33:50.625Z"
+      "nativeObservedAt": "2026-10-20T21:33:50.625Z"
     },
     {
       "taskId": 19227,
@@ -421,7 +421,7 @@
       "soNumber": "586081",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:33:59.822Z"
+      "nativeObservedAt": "2026-10-20T21:33:59.822Z"
     },
     {
       "taskId": 19228,
@@ -431,7 +431,7 @@
       "soNumber": "586091",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:34:10.340Z"
+      "nativeObservedAt": "2026-10-20T21:34:10.340Z"
     },
     {
       "taskId": 19229,
@@ -441,7 +441,7 @@
       "soNumber": "586096",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:34:20.460Z"
+      "nativeObservedAt": "2026-10-20T21:34:20.460Z"
     },
     {
       "taskId": 19230,
@@ -451,7 +451,7 @@
       "soNumber": "586099",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:34:32.777Z"
+      "nativeObservedAt": "2026-10-20T21:34:32.777Z"
     },
     {
       "taskId": 19231,
@@ -461,7 +461,7 @@
       "soNumber": "586098",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:36:16.492Z"
+      "nativeObservedAt": "2026-10-20T21:36:16.492Z"
     },
     {
       "taskId": 19232,
@@ -471,7 +471,7 @@
       "soNumber": "586093",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:36:27.898Z"
+      "nativeObservedAt": "2026-10-20T21:36:27.898Z"
     },
     {
       "taskId": 19233,
@@ -481,7 +481,7 @@
       "soNumber": "586106",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:36:37.796Z"
+      "nativeObservedAt": "2026-10-20T21:36:37.796Z"
     },
     {
       "taskId": 19234,
@@ -491,7 +491,7 @@
       "soNumber": "586105",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:36:47.473Z"
+      "nativeObservedAt": "2026-10-20T21:36:47.473Z"
     },
     {
       "taskId": 19235,
@@ -501,7 +501,7 @@
       "soNumber": "586100",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:36:59.135Z"
+      "nativeObservedAt": "2026-10-20T21:36:59.135Z"
     },
     {
       "taskId": 19240,
@@ -511,7 +511,7 @@
       "soNumber": "586108",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:37:09.996Z"
+      "nativeObservedAt": "2026-10-20T21:37:09.996Z"
     },
     {
       "taskId": 19241,
@@ -521,7 +521,7 @@
       "soNumber": "586112",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:37:20.824Z"
+      "nativeObservedAt": "2026-10-20T21:37:20.824Z"
     },
     {
       "taskId": 19242,
@@ -531,7 +531,7 @@
       "soNumber": "586114",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:39:44.290Z"
+      "nativeObservedAt": "2026-10-20T21:39:44.290Z"
     },
     {
       "taskId": 19248,
@@ -541,7 +541,7 @@
       "soNumber": "586116",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:39:53.169Z"
+      "nativeObservedAt": "2026-10-20T21:39:53.169Z"
     },
     {
       "taskId": 19249,
@@ -551,7 +551,7 @@
       "soNumber": "586120",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:40:05.411Z"
+      "nativeObservedAt": "2026-10-20T21:40:05.411Z"
     },
     {
       "taskId": 19250,
@@ -561,7 +561,7 @@
       "soNumber": "586122",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:40:14.009Z"
+      "nativeObservedAt": "2026-10-20T21:40:14.009Z"
     },
     {
       "taskId": 19251,
@@ -571,7 +571,7 @@
       "soNumber": "586117",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:42:27.176Z"
+      "nativeObservedAt": "2026-10-20T21:42:27.176Z"
     },
     {
       "taskId": 19252,
@@ -581,7 +581,7 @@
       "soNumber": "586119",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:42:36.524Z"
+      "nativeObservedAt": "2026-10-20T21:42:36.524Z"
     },
     {
       "taskId": 19253,
@@ -591,7 +591,7 @@
       "soNumber": "586125",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:42:44.281Z"
+      "nativeObservedAt": "2026-10-20T21:42:44.281Z"
     },
     {
       "taskId": 19255,
@@ -601,7 +601,7 @@
       "soNumber": "586124",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:42:52.840Z"
+      "nativeObservedAt": "2026-10-20T21:42:52.840Z"
     },
     {
       "taskId": 19256,
@@ -611,7 +611,7 @@
       "soNumber": "586121",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:44:25.736Z"
+      "nativeObservedAt": "2026-10-20T21:44:25.736Z"
     },
     {
       "taskId": 19257,
@@ -621,7 +621,7 @@
       "soNumber": "586109",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:44:37.444Z"
+      "nativeObservedAt": "2026-10-20T21:44:37.444Z"
     },
     {
       "taskId": 19258,
@@ -631,7 +631,7 @@
       "soNumber": "586110",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:44:47.523Z"
+      "nativeObservedAt": "2026-10-20T21:44:47.523Z"
     },
     {
       "taskId": 19259,
@@ -641,7 +641,7 @@
       "soNumber": "586128",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:44:57.256Z"
+      "nativeObservedAt": "2026-10-20T21:44:57.256Z"
     },
     {
       "taskId": 19260,
@@ -652,7 +652,7 @@
       "taskStatus": "Open",
       "nativeState": "BLOCKED",
       "reason": "ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.",
-      "verifiedAt": "2026-10-20T21:45:23.350Z"
+      "nativeObservedAt": "2026-10-20T21:45:23.350Z"
     },
     {
       "taskId": 19261,
@@ -662,7 +662,7 @@
       "soNumber": "586133",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:45:32.608Z"
+      "nativeObservedAt": "2026-10-20T21:45:32.608Z"
     },
     {
       "taskId": 19262,
@@ -674,7 +674,7 @@
       "nativeState": "BLOCKED",
       "reason": "FRESH_TASK_IDENTITY_STATUS_OR_CUSTOMER",
       "freshTaskCanceled": true,
-      "verifiedAt": "2026-10-20T21:45:33.427Z"
+      "nativeObservedAt": "2026-10-20T21:45:33.427Z"
     },
     {
       "taskId": 19263,
@@ -684,7 +684,7 @@
       "soNumber": "586135",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:45:44.355Z"
+      "nativeObservedAt": "2026-10-20T21:45:44.355Z"
     },
     {
       "taskId": 19264,
@@ -694,7 +694,7 @@
       "soNumber": "586129",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:45:54.641Z"
+      "nativeObservedAt": "2026-10-20T21:45:54.641Z"
     },
     {
       "taskId": 19265,
@@ -704,7 +704,7 @@
       "soNumber": "586134",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:46:05.659Z"
+      "nativeObservedAt": "2026-10-20T21:46:05.659Z"
     },
     {
       "taskId": 19266,
@@ -714,7 +714,7 @@
       "soNumber": "586023",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:48:05.975Z"
+      "nativeObservedAt": "2026-10-20T21:48:05.975Z"
     },
     {
       "taskId": 19267,
@@ -724,7 +724,7 @@
       "soNumber": "586113",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:48:17.083Z"
+      "nativeObservedAt": "2026-10-20T21:48:17.083Z"
     },
     {
       "taskId": 19268,
@@ -734,7 +734,7 @@
       "soNumber": "586132",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:48:26.876Z"
+      "nativeObservedAt": "2026-10-20T21:48:26.876Z"
     },
     {
       "taskId": 19269,
@@ -744,7 +744,7 @@
       "soNumber": "586131",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:48:37.720Z"
+      "nativeObservedAt": "2026-10-20T21:48:37.720Z"
     },
     {
       "taskId": 19270,
@@ -754,7 +754,7 @@
       "soNumber": "586141",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:50:43.527Z"
+      "nativeObservedAt": "2026-10-20T21:50:43.527Z"
     },
     {
       "taskId": 19272,
@@ -764,7 +764,7 @@
       "soNumber": "586158",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:50:54.242Z"
+      "nativeObservedAt": "2026-10-20T21:50:54.242Z"
     },
     {
       "taskId": 19273,
@@ -774,7 +774,7 @@
       "soNumber": "586148",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:51:03.958Z"
+      "nativeObservedAt": "2026-10-20T21:51:03.958Z"
     },
     {
       "taskId": 19274,
@@ -784,7 +784,7 @@
       "soNumber": "586152",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:51:14.659Z"
+      "nativeObservedAt": "2026-10-20T21:51:14.659Z"
     },
     {
       "taskId": 19275,
@@ -794,7 +794,7 @@
       "soNumber": "586161",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:52:20.932Z"
+      "nativeObservedAt": "2026-10-20T21:52:20.932Z"
     },
     {
       "taskId": 19276,
@@ -804,7 +804,7 @@
       "soNumber": "586157",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:52:34.159Z"
+      "nativeObservedAt": "2026-10-20T21:52:34.159Z"
     },
     {
       "taskId": 19279,
@@ -814,7 +814,7 @@
       "soNumber": "586170",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:52:47.830Z"
+      "nativeObservedAt": "2026-10-20T21:52:47.830Z"
     },
     {
       "taskId": 19280,
@@ -824,7 +824,7 @@
       "soNumber": "586014",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:53:00.839Z"
+      "nativeObservedAt": "2026-10-20T21:53:00.839Z"
     },
     {
       "taskId": 19281,
@@ -834,7 +834,7 @@
       "soNumber": "586172",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:54:26.026Z"
+      "nativeObservedAt": "2026-10-20T21:54:26.026Z"
     },
     {
       "taskId": 19282,
@@ -844,7 +844,7 @@
       "soNumber": "586176",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:54:36.910Z"
+      "nativeObservedAt": "2026-10-20T21:54:36.910Z"
     },
     {
       "taskId": 19283,
@@ -854,7 +854,7 @@
       "soNumber": "586162",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:54:45.983Z"
+      "nativeObservedAt": "2026-10-20T21:54:45.983Z"
     },
     {
       "taskId": 19284,
@@ -864,7 +864,7 @@
       "soNumber": "586175",
       "taskStatus": "Open",
       "nativeState": "VERIFIED",
-      "verifiedAt": "2026-10-20T21:54:56.268Z"
+      "nativeObservedAt": "2026-10-20T21:54:56.268Z"
     }
   ]
 }

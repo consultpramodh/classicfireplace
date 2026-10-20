@@ -1,4 +1,4 @@
-## Bulk Order-link backfill completed — 2026-10-20 18:04 Toronto
+## Bulk Order-link backfill completed — 2026-10-20
 
 - All81 captured targets processed; zero pending and zero uncertain writes. Final outcomes: **68 new Order links patched and freshly read-back verified,2 existing links confirmed,11 still unlinked and held**.
 - Service55:50 patched,1 already linked (19098),4 held (19064,19198,19260,19262). Delivery26:18 patched,1 already linked (18979),7 held (18735,18754,18774,18806,18831,18896,18913).
