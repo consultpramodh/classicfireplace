@@ -2,6 +2,16 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## One-function live deployment — 2026-10-20 16:18 Toronto
+
+- Actions run 39490784704 succeeded. PRE source preserved before mutation in artifact 12296395235; deployment evidence in artifact 12294759583.
+- Only tmv3_repairExistingTaskRelationships in live 58_Operations changed. Full project source hash read-back: before 4d49f011e822864b8ca073a8bdfd76d2271726d942212015bb16400378e9a929; after 00ab98af9cbbdf4af61cfb83de539e4fd8e0e3981143c19b304bd650c73aa661. Permissions and all other source were preserved.
+- Deployment runner passed 15 isolated safety checks. Relationship regression passed existing 10 repair cases, 8 audit cases and 30 new Service/Delivery safety cases; all eight regression scripts passed in PR 131 CI before deployment.
+- New function is deployed, but post-deployment native runtime / Task canary remains PENDING. Deployment itself executed zero Task writes and did not invoke scripts.run.
+- Live workbook audit independently confirms native Service worker repairs earlier today: Tasks 19199 (10:52), 19202 (13:52) and 19200 (15:33), ORDER and REQUESTED_BY, readbackVerified=true. These precede deployment and are not acceptance evidence for the new function.
+- Task 19198 still has an Order/type compatibility rejection. Delivery schedule/identity blockers remain open. General dates, assignments, Calendar and CREATE gates were not enabled.
+- Canonical repository relationship function and its regression now synchronized with deployed patch; other live/repository drift identified earlier remains outside this patch. Do not overwrite the entire live project from repository source.
+
 ## OAuth scope diagnosis — 2026-10-20
 
 - Read-only Actions run 39490128947 completed the OAuth diagnostic against live HEAD hash 4d49f011e822864b8ca073a8bdfd76d2271726d942212015bb16400378e9a929.
