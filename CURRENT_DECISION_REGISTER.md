@@ -115,4 +115,4 @@
 - Existing native triggers perform routine patches. Do not make the operator run editor/menu functions for normal Task-detail synchronization.
 - Calendar-backed dates, customer-owned Location and intended employee/pool assignments use fresh canonical Step 7 evidence under the dedicated existing-Task detail context. Do not enable general manual/automation flags or permit Task creation, Calendar/title edits, technician-note/custom-field changes through this path.
 - Preserve manual employees; remove only Pool 4 after intended employees are independently read back. Preserve the shared one-candidate/hour limit until a separately verified capacity change.
-- SO 586061 / ID 27795 is operator-confirmed canceled; Task 19198 is excluded pending business review, without automatically canceling that Task or inventing a replacement Order.
+- SO 586061 / ID 27795 is operator-confirmed canceled. Do not attach inactive Orders or automatically cancel Task 19198. Recheck lifecycle dynamically; a genuinely reactivated Order can become eligible after fresh proof, without a code blacklist or manual patch. Never invent a replacement Order.
