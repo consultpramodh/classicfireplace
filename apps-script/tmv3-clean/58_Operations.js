@@ -5438,7 +5438,7 @@ function tmv3_preInspectionNotificationCustomerNumber_(record, customers) {
 function tmv3_preInspectionMissingDetailAssessment_(eventRecord) {
   const record = eventRecord || {};
   const customerEvidence = tmv3_preInspectionCustomerNumberEvidence_(
-    record, tmv3_rows_(TMV3.SHEETS.CUSTOMERS)
+    record, function() { return tmv3_rows_(TMV3.SHEETS.CUSTOMERS); }
   );
   const missing = [];
   // Cache absence, conflicting identity or duplicates are internal review
@@ -5457,8 +5457,8 @@ function tmv3_preInspectionMissingDetailAssessment_(eventRecord) {
   return {eventId:record.eventId || '',title:tmv3_clean_(record.title),
     creatorEmail:tmv3_preInspectionCreatorEmail_(record),missing:missing,
     customerNumberEvidence:customerEvidence,
-    customerNumberReviewRequired:customerEvidence.status === 'PRESENT_UNVERIFIED' ||
-      customerEvidence.status === 'AMBIGUOUS',
+    customerNumberReviewRequired:!customerEvidence.number &&
+      (customerEvidence.status === 'PRESENT_UNVERIFIED' || customerEvidence.status === 'AMBIGUOUS'),
     shouldNotify:missing.length > 0};
 }
 
