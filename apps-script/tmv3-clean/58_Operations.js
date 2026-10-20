@@ -5676,8 +5676,9 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
   const changes = [];
   fields.forEach(function(field) {
     if (!field.id) {
-      if (!field.actual) review.push(field.label + '_UNRESOLVED');
-      return; // Independent verified fields may still proceed.
+      review.push(field.label + (field.actual
+        ? '_EXPECTED_ID_UNRESOLVED' : '_UNRESOLVED'));
+      return; // Presence alone does not verify identity or ownership.
     }
     if (field.actual && field.actual !== field.id) {
       review.push(field.label + '_CONFLICT');
@@ -5710,8 +5711,7 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
   });
   if (!changes.length) {
     const complete = !review.length &&
-      Boolean(orderId) && Boolean(contactId) &&
-      Boolean(tmv3_clean_(before['Location ID'])) &&
+      Boolean(orderId) && Boolean(contactId) && Boolean(locationId) &&
       fields.filter(function(field) { return Boolean(field.id); })
         .every(function(field) { return field.actual === field.id; });
     const result = {
@@ -5760,8 +5760,18 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
     }
     return tmv3_clean_(afterBy.id) === field.id &&
       tmv3_norm_(afterBy.type) === 'contact';
+  }) && fields.filter(function(field) {
+    return !changes.some(function(change) { return change.label === field.label; });
+  }).every(function(field) {
+    const actual = field.label === 'ORDER' ? after['Order ID']
+      : field.label === 'LOCATION' ? after['Location ID'] : afterBy.id;
+    return tmv3_clean_(actual) === field.actual &&
+      (field.label !== 'REQUESTED_BY' ||
+        tmv3_norm_(afterBy.type) === tmv3_norm_(beforeBy.type));
   }) && tmv3_clean_(after['Customer ID']) === customerId &&
-    tmv3_clean_(after['Task ID']) === String(id);
+    tmv3_clean_(after['Task ID']) === String(id) &&
+    tmv3_clean_(after['Task Type']) === tmv3_clean_(before['Task Type']) &&
+    tmv3_clean_(after['Status']) === tmv3_clean_(before['Status']);
   const result = {
     status:verified ? (review.length ? 'PARTIAL_PATCH_VERIFIED' : 'PATCHED_AND_VERIFIED')
       : 'READBACK_MISMATCH',
