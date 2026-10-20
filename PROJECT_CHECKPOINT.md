@@ -2,6 +2,17 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## Native automatic SO-title linkage and Task details deployed — 2026-10-20 16:57 Toronto
+
+- No operator editor/menu run is required for routine patches. Existing native scheduled/hourly handlers invoke the shared worker. Missing Order links are resolved from the unique SO# in the fresh existing Service/Delivery Task title, independently of Calendar. Title is not Customer proof; fresh Order ID/number/current active status and Task Customer ownership remain mandatory.
+- Native runtime evidence observed at 16:52:12, before this wider release: Delivery Task 19206 automatically patched ORDER and REQUESTED_BY, readbackVerified=true. Independent current Source Tasks read shows Task 19206, SO 586073 / ID 27807, Customer 62933, Requested By Contact 56837, Location 58552. Location was pre-existing and remains unverified against an expected job Location in that transaction; no dates were invented.
+- Wider deployment 39495904017 succeeded at 16:54 with durable PRE artifact 12298275540 and result artifact 12297587688. Source hash a001f164f3d750bf4c4212f4b120140c2cde0d07a943d5d4c59bf9e26ad7741e -> db507f4968c468011bf8f55076683c6bdf748f5ad100faf81de3956fa2b63881 matched full read-back.
+- Queue/lifecycle follow-up 39496375101 applied and source read-back verified at 16:57:43. PRE artifact 12297083325; result artifact 12296904269. Current full source hash 9d5fb6a3576fbf80ba81d9fd2d9cc7bc7d44f2fc8047b00679fe0d6f7997c30d. Only worker changed in follow-up; other six guarded regions were idempotent.
+- Closed/missing/ambiguous cached Order candidates cannot starve Calendar-backed details. Cancellation is checked dynamically rather than a permanent SO-number blacklist, allowing a genuinely reactivated Order to become eligible after fresh proof. Do not automatically cancel Task 19198 or invent a replacement SO.
+- Calendar-backed existing Task detail writes are restricted to Location, Order, Requested By, dates and intended assignments under an ephemeral exact-contract context. General flags remain false. Manual employees, notes, names and unrelated fields are preserved; Pool 4 removal requires independent employee read-back. No Calendar edits or Task/Location creation.
+- Validation: all eight prior regression scripts passed locally; focused workflow tests passed before both deployments. Current dedicated tests cover 43 automation/ownership/title/scope/read-back cases, 37 scoped deployment cases, 27 Order-status cases, report deduplication and changed/ambiguous fresh titles. GitHub source read-back matches.
+- Full-field native runtime acceptance remains PENDING; observed 19206 runtime proves the inherited autonomous relationship path, not the new date/assignment path. One shared candidate/hour limit is preserved. Uncertain writes are held and automatically re-read before completion can be claimed.
+
 ## Native automatic Task details — prepared 2026-10-20
 
 - Operator confirms Tasks are created by Striven after the SO moves to In Progress. Task Mapping must automatically attach the Order named by the unique SO# marker in an existing Service/Delivery Task title, without requiring a Calendar appointment or a manual run.
