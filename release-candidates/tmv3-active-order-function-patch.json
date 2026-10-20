@@ -4,11 +4,11 @@
     {
       "sourceFile": "58_Operations",
       "functionName": "tmv3_repairExistingTaskRelationships",
-      "nextFunctionName": null,
+      "nextFunctionName": "tmv3_preInspectionCustomerLocationsFresh_",
       "payloadPath": "tools/tmv3-active-order-ownership-function.js",
       "taskWritesRequested": false,
-      "expectedBeforeFunctionSha256": "a416ff0ea90b59230347edf60a73d77022a696157e33d19f560c78c2e4793eba",
-      "expectedAfterFunctionSha256": "88f5b7c8f73bdc10db1bd2d951bc7eb379a9b5b416b473cb95724263711c9d3c"
+      "expectedBeforeFunctionSha256": "ae45a298b819ea5621414a22c3ec77c48f824c5890e379b4670aee4f778e2b12",
+      "expectedAfterFunctionSha256": "faf267d69283f392d304524d989b70dd00eb590924d4288a0a044ee131ee65dd"
     },
     {
       "sourceFile": "60_Automation",

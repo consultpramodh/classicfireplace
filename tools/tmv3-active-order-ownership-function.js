@@ -228,3 +228,5 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
     status:statusFromId || normalizedName,contactId:/^[1-9]\d*$/.test(contactId) ? contactId : ''};
 }
 
+
+// Google Apps Script: one complete, customer-scoped read instead of the whole Location report.

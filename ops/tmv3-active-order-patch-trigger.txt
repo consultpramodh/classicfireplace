@@ -1,1 +1,1 @@
-2026-10-20: verify fresh active Orders and skip operator-confirmed canceled SO 586061; no throttle or permission changes.
+2026-10-20 R2: retain inspected live PreInspection helpers; apply only reviewed active-Order repair functions.
