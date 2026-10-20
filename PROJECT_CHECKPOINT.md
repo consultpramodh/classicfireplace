@@ -2,6 +2,14 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## OAuth scope diagnosis — 2026-10-20
+
+- Read-only Actions run 39490128947 completed the OAuth diagnostic against live HEAD hash 4d49f011e822864b8ca073a8bdfd76d2271726d942212015bb16400378e9a929.
+- Token introspection reports 13 granted scopes but lacks all five explicit live scopes: spreadsheets, calendar, script.external_request, script.scriptapp and script.send_mail (Google auth URL prefix applies to each).
+- Token audience matches configured OAuth client. Existing API executable access is MYSELF. Shared standard Cloud project and deployer identity alignment remain unverified; scope remediation alone is not yet proven sufficient.
+- Reauthorize the existing same-project client with the live required scopes while retaining the management scopes used for source/deployment access; securely update CLASPRC_JSON. Never commit or paste credentials into issues/chat. Recheck read-only diagnostics, then run only tmv3_servicePolicy as the execution canary before any Task write.
+- Diagnostic mode and 10 offline scope cases committed as 97745e78ebb22bdc2e28c7616a258efdefcd4a8e. Exact remote file read-back matched. No Task writes, Apps Script source writes, permission changes or credential replacement occurred.
+
 ## Execution access investigation — 2026-10-20
 
 - Deployment inventory run 39484992048 verified one existing deployment with both WEB_APP and EXECUTION_API entrypoints. No deployment or access settings were changed.
