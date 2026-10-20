@@ -2,6 +2,15 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## Execution access investigation — 2026-10-20
+
+- Deployment inventory run 39484992048 verified one existing deployment with both WEB_APP and EXECUTION_API entrypoints. No deployment or access settings were changed.
+- Current official scripts.run documentation requires the API deployment ID in the request path. GitHub runner previously sent the script project ID; corrected in commit 0676b85da7d31951ef48b717e33490ca7cc142b9.
+- Non-mutating execution health check invokes only tmv3_servicePolicy. Run 39485143532 passed runner syntax validation but the API still returned PERMISSION_DENIED before function execution.
+- Execution is NOT established. Google documents the same-Cloud-project requirement for the calling OAuth client and script; their alignment and full required OAuth scope coverage remain unverified.
+- Next operator-assisted check: Apps Script Project Settings > Google Cloud Platform project, then compare with the Cloud project owning the OAuth client used by the existing GitHub authorization. Do not publish client secrets or tokens. Reauthorize only after identifying the mismatch; retain current deployment access restrictions.
+- No Task writes, Apps Script source writes, new deployments, or permission expansions were performed by this investigation.
+
 ## Task data push attempt — 2026-10-20
 
 - Source-read preflight succeeded: Actions run 39484326844. Exact deployed version is 3.11.95-preinspection-date-controls-and-notifications; canonical source hash is 4d49f011e822864b8ca073a8bdfd76d2271726d942212015bb16400378e9a929.
