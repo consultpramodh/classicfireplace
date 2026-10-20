@@ -2302,6 +2302,35 @@ async function main() {
     return;
   }
 
+
+  if (RUN_MODE === 'SERVICE_DELIVERY_PREFLIGHT') {
+    const head = await getContent();
+    const files = head.files || [];
+    const cfg = (files.find(f => f.name === '00_Config') || {}).source || '';
+    const setting = name => {
+      const match = cfg.match(new RegExp('\\\\b' + name + '\\\\s*:\\\\s*(true|false|[0-9]+)'));
+      return match ? match[1] : 'UNKNOWN';
+    };
+    const version = cfg.match(/const TMV3_VERSION\\s*=\\s*'([A-Za-z0-9._-]+)'/);
+    const summary = {
+      status:'SERVICE_DELIVERY_HEAD_READ',
+      sourceHash:canonicalHash(head),
+      version:version ? version[1] : 'UNKNOWN',
+      settings:Object.fromEntries(['manualWritesEnabled','automationWritesEnabled','taskFirstProductionEnabled','autoMaxWritesPerRun'].map(n=>[n,setting(n)])),
+      files:files.map(f=>({
+        name:f.name,
+        sha256:crypto.createHash('sha256').update(f.source || '').digest('hex'),
+        repositoryMatch:fs.existsSync(path.join(process.cwd(),'apps-script/tmv3-clean',f.name+(f.type==='JSON'?'.json':'.js'))) &&
+          fs.readFileSync(path.join(process.cwd(),'apps-script/tmv3-clean',f.name+(f.type==='JSON'?'.json':'.js')),'utf8')===(f.source || ''),
+        functions:[...(f.source || '').matchAll(/^function (tmv3_[A-Za-z0-9_]+)\\(/gm)].map(m=>m[1]).filter(n=>/step7|runSafe|executeVerified|operationWrites/.test(n))
+      })),
+      productionWritesPerformed:false
+    };
+    fs.writeFileSync(path.join(outDir,'service-delivery-preflight.json'),JSON.stringify(summary,null,2));
+    console.log(JSON.stringify(summary));
+    return;
+  }
+
   const pre = await getContent();
   const preHash = canonicalHash(pre);
   if (RUN_MODE === 'PREINSPECTION_COMPARISON_AUDIT') {
