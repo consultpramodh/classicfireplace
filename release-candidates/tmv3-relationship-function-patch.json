@@ -1,0 +1,7 @@
+{
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "expectedBeforeFunctionSha256": "551c7dc8a27d99fdb92471d35af4164177adec04164a7fbc39deecab50caeb46",
+  "expectedAfterFunctionSha256": "fb754888d44abc2fefd9ad64f73651ebb2310624493a921dbaf86899101bfbd8",
+  "sourceFile": "58_Operations",
+  "taskWritesRequested": false
+}
