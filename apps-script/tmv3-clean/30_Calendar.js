@@ -164,7 +164,9 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
 
   const customerNumber = tmv3_extractCustomerNumberForVertical_(
     vertical,
-    title + ' ' + identityDescriptionClean
+    title + ' ' + identityDescriptionClean,
+    {title:title, identityDescriptionClean:identityDescriptionClean},
+    vertical === 'PreInspection' ? tmv3_rows_(TMV3.SHEETS.CUSTOMERS) : undefined
   );
 
   const phone = tmv3_extractPhone_(
@@ -637,21 +639,17 @@ function tmv3_extractLegacyPreInspectionOrderNumber_(description) {
   return match ? match[1] : '';
 }
 
-function tmv3_extractCustomerNumberForVertical_(vertical, text) {
+function tmv3_extractCustomerNumberForVertical_(vertical, text, record, customers) {
+  if (vertical === 'PreInspection') {
+    return tmv3_preInspectionCustomerNumberEvidence_(
+      record || {title:text}, customers
+    ).number;
+  }
   const s = tmv3_clean_(text);
-
   const labelled = s.match(
     /(?:Customer|Cust(?:omer)?\s*#?|C\s*#)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{3,8})/i
   );
-
-  if (labelled) return labelled[1];
-
-  if (vertical === 'PreInspection') {
-    const leading = s.match(/^\s*#?(\d{4,8})\s*[-–—]/);
-    return leading ? leading[1] : '';
-  }
-
-  return '';
+  return labelled ? labelled[1] : '';
 }
 
 function tmv3_extractCalendarCustomerName_(vertical, title, customerNumber, phone, orderNumber, calCfg) {
@@ -878,3 +876,71 @@ function tmv3_safeCalendar_(fn, fallback) {
   }
 }
 
+
+// Google Apps Script: one evidence parser for PreInspection intake and notifications.
+// Candidate presence and verified identity are separate; this function performs no writes.
+function tmv3_preInspectionCustomerNumberEvidence_(record, customers) {
+  record = record || {};
+  const title = tmv3_clean_(record.title);
+  const description = tmv3_clean_(record.identityDescriptionClean !== undefined
+    ? record.identityDescriptionClean : record.descriptionClean !== undefined
+      ? record.descriptionClean : record.rawDescription || '');
+  const withoutUrls = function(text) {
+    return tmv3_clean_(text).replace(/https?:\/\/\S+/gi, ' ');
+  };
+  const unique = function(values) {
+    return values.filter(function(value, index) { return values.indexOf(value) === index; });
+  };
+  const explicit = [];
+  const labelled = /\b(?:Customer|Cust(?:omer)?\s*#?|C\s*#)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*(\d{3,8})(?!\d)/gi;
+  const labelledText = withoutUrls(title) + ' ' + withoutUrls(description);
+  let match;
+  while ((match = labelled.exec(labelledText)) !== null) explicit.push(match[1]);
+  const leading = withoutUrls(title).match(/^\s*#?(\d{4,8})\s*[-–—]/);
+  if (leading) explicit.push(leading[1]);
+  const explicitNumbers = unique(explicit);
+  const stripped = tmv3_stripPhonesForOrderParsing_(withoutUrls(title))
+    .replace(/\b(?:SO|S\/O|Sales\s*Order|Order)\s*(?:#|No\.?|Number)?\s*[:\-]?\s*\d{4,8}(?:\s*\/\s*\d{2,8})*/ig, ' ');
+  const candidates = unique(explicitNumbers.concat(stripped.match(/\b\d{4,8}\b/g) || []));
+  const result = {status:'MISSING', number:'', candidateNumbers:candidates,
+    explicitNumbers:explicitNumbers, source:explicitNumbers.length ? 'LABEL_OR_LEADING_TITLE' : 'TITLE_CANDIDATE'};
+  if (!candidates.length) return result;
+  result.status = 'PRESENT_UNVERIFIED';
+  if (explicitNumbers.length > 1) {
+    result.status = 'AMBIGUOUS';
+    return result;
+  }
+  // Retain the existing explicit-number contract. Identity resolution must still
+  // verify that number and all Customer-owned relationships before any write.
+  if (explicitNumbers.length === 1) result.number = explicitNumbers[0];
+  const rows = Array.isArray(customers) ? customers : [];
+  const phone = tmv3_phone10_(record.phone || tmv3_extractPhone_(title + ' ' + description));
+  const words = (title + ' ' + description).toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').split(' ').filter(Boolean);
+  const targetNumbers = explicitNumbers.length ? explicitNumbers : candidates;
+  const matches = rows.filter(function(customer) {
+    if (targetNumbers.indexOf(tmv3_clean_(customer['Customer Number'])) < 0) return false;
+    const nameWords = tmv3_clean_(customer.Name).toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ').split(' ').filter(Boolean);
+    const nameMatches = nameWords.length >= 2 && nameWords.every(function(word) {
+      return words.indexOf(word) >= 0;
+    });
+    const profilePhone = tmv3_phone10_(customer['Primary Phone']);
+    return (phone && profilePhone && phone === profilePhone) || nameMatches;
+  });
+  if (matches.length > 1) {
+    result.status = 'AMBIGUOUS';
+    return result;
+  }
+  if (matches.length !== 1) return result;
+  const number = tmv3_clean_(matches[0]['Customer Number']);
+  if (rows.filter(function(customer) {
+    return tmv3_clean_(customer['Customer Number']) === number;
+  }).length !== 1) {
+    result.status = 'AMBIGUOUS';
+    return result;
+  }
+  result.status = 'VERIFIED';
+  result.number = number;
+  return result;
+}
