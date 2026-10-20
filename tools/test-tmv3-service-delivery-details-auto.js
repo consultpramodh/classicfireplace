@@ -34,7 +34,7 @@ function run(opts={}) {
   tmv3_clean_:clean,tmv3_norm_:norm,tmv3_assertHardRules_:()=>{},
   LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})},
   PropertiesService:{getScriptProperties:()=>({getProperty:k=>storage[k]||null,setProperty:(k,v)=>{storage[k]=String(v);}})},
-  tmv3_rows_:sheet=>sheet===vertical?[{'Event ID':'event-1'}]:sheet==='TASKS'?[{...normalized(state),'Order ID':'200','Contact ID':'400'}]:[],
+  tmv3_rows_:sheet=>sheet===vertical?[{'Event ID':'event-1'}]:sheet==='TASKS'?[{...normalized(state),'Order ID':'200','Contact ID':'400'},...(opts.unresolvedLink?[{'Task ID':999,'Task Type':vertical==='Service'?'Service':'BBQ Delivery',Status:'Open',Name:'SO#999999 - No cached Order','Order ID':'','Contact ID':''}]:[])]:[],
   tmv3_findFreshEventRecord_:()=>({...record,fingerprint:opts.changedCalendar?'changed':'fingerprint'}),
   tmv3_step7FreshPlansForEvent_:()=>[{...expected}],tmv3_step7ValidateExecutionContract_:p=>p,
   tmv3_step7FreshExecutionContract_:()=>({...expected,actions:opts.failedReadback?['PATCH_DATES']:[]}),
@@ -71,6 +71,7 @@ function run(opts={}) {
 }
 let count=0;
 for(const vertical of ['Service','Delivery']) {
+ let unresolved=run({vertical,unresolvedLink:true});assert.equal(unresolved.result.status,'TASK_DETAILS_PATCHED_AND_VERIFIED');count++;
  let r=run({vertical});assert.equal(r.result.status,'TASK_DETAILS_PATCHED_AND_VERIFIED');
  assert.equal(r.patches,1);assert.equal(r.state.location,'300');assert.equal(r.state.contact,'400');
  assert.equal(r.state.start,'2026-10-21T14:00:00Z');assert.ok(r.state.assignments.some(a=>a.id===99));

@@ -1142,7 +1142,6 @@ function tmv3_taskFirstProductionCycle_() {
       props.setProperty(detailCursorKey,String((detailCursor+j+1)%detailEvents.length));
       try {
         const record=tmv3_findFreshEventRecord_(item.vertical,item.eventId);
-        if(String(record.orderNumber)==='586061')continue;
         const plans=tmv3_step7FreshPlansForEvent_(item.vertical,item.eventId);
         for(let k=0;k<plans.length;k++) {
           const plan=plans[k];
@@ -1187,8 +1186,6 @@ function tmv3_taskFirstProductionCycle_() {
         const status = tmv3_norm_(row['Status']);
         return status === 'open' &&
           (type.indexOf('service') !== -1 || type.indexOf('delivery') !== -1) &&
-          // SO 586061 / 27795 was explicitly identified as canceled by the operator.
-          !/\bSO\s*#\s*586061\b/i.test(tmv3_clean_(row['Name'])) &&
           Number.isSafeInteger(Number(row['Task ID'])) && Number(row['Task ID']) > 0 &&
           (!tmv3_clean_(row['Order ID']) || !tmv3_clean_(row['Contact ID'])) &&
           /\bSO\s*#\s*\d{4,9}\b/i.test(tmv3_clean_(row['Name']));
@@ -1196,7 +1193,20 @@ function tmv3_taskFirstProductionCycle_() {
       .sort(function(a,b) {
         return Number(b['Task ID'] || 0)-Number(a['Task ID'] || 0);
       });
-    const unlinked=candidates.filter(function(row){return !tmv3_clean_(row['Order ID']);});
+    const unlinked=candidates.filter(function(row){
+      if(tmv3_clean_(row['Order ID']))return false;
+      const title=tmv3_taskFirstTitleOrderNumber_(row.Name);
+      if(title.status!=='UNIQUE')return false;
+      const vertical=tmv3_norm_(row['Task Type']).indexOf('deliver')>=0?'Delivery':'Service';
+      const matches=(orderMap[title.number] || []).filter(function(order){return tmv3_step3OrderMatchesVertical_(order,vertical);});
+      const ids=[];matches.forEach(function(order){const id=tmv3_clean_(order['Order ID']);if(ids.indexOf(id)<0)ids.push(id);});
+      // Unresolved or known-closed links cannot starve Calendar-backed details.
+      // A refreshed active Order automatically becomes eligible again.
+      return ids.length===1 && matches.some(function(order){
+        const status=tmv3_norm_(order.Status);
+        return !status || status==='approved' || status==='in progress';
+      });
+    });
     if (unlinked.length) candidates.splice(0,candidates.length,...unlinked);
     else {const details=detailCycle();if(details)return details;}
     if (!candidates.length) {

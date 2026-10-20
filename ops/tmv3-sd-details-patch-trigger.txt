@@ -1,1 +1,1 @@
-2026-10-20: native automatic SO-title linkage first, then scoped existing Task detail reconciliation. No manual runs or new triggers.
+2026-10-20 R2: dynamic status eligibility; unresolved title links cannot starve automatic Task details.

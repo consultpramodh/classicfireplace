@@ -112,7 +112,7 @@ t=run({alreadyCorrect:true,liveOrder:'27648'});assert.equal(t.run().status,'NO_C
 t=run({delivery:true});assert.equal(t.run().status,'PATCHED_AND_VERIFIED');
 t=run({delivery:true,wrongOrderType:true});assert.equal(t.run().status,'REVIEW');assert.equal(t.getCalls(),0);
 t=run({inactiveOrder:true});assert.equal(t.run().status,'REVIEW_ORDER_NOT_VERIFIED_ACTIVE');assert.equal(t.writes(),0);
-t=run({canceledMarker:true});assert.equal(t.run().status,'NO_CACHED_CANDIDATES');assert.equal(t.getCalls(),0);
+t=run({canceledMarker:true});assert.equal(t.run().status,'REVIEW');assert.equal(t.getCalls(),0);
 console.log('V3 task-first production lane PASS: 20 scenarios including Contact-only repair, both verticals, audit labels and uncertain writes.');
 
 // Execute the real hourly fallback; do not merely inspect its text.
