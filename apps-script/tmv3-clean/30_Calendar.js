@@ -166,7 +166,7 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
     vertical,
     title + ' ' + identityDescriptionClean,
     {title:title, identityDescriptionClean:identityDescriptionClean},
-    vertical === 'PreInspection' ? tmv3_rows_(TMV3.SHEETS.CUSTOMERS) : undefined
+    vertical === 'PreInspection' ? function() { return tmv3_rows_(TMV3.SHEETS.CUSTOMERS); } : undefined
   );
 
   const phone = tmv3_extractPhone_(
@@ -913,7 +913,10 @@ function tmv3_preInspectionCustomerNumberEvidence_(record, customers) {
   // Retain the existing explicit-number contract. Identity resolution must still
   // verify that number and all Customer-owned relationships before any write.
   if (explicitNumbers.length === 1) result.number = explicitNumbers[0];
-  const rows = Array.isArray(customers) ? customers : [];
+  // Explicit labels and truly missing numbers do not require a cache scan.
+  const provided = typeof customers === 'function' && !result.number
+    ? customers() : customers;
+  const rows = Array.isArray(provided) ? provided : [];
   const phone = tmv3_phone10_(record.phone || tmv3_extractPhone_(title + ' ' + description));
   const words = (title + ' ' + description).toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ').split(' ').filter(Boolean);
