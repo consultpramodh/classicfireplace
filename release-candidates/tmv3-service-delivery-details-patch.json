@@ -1,0 +1,68 @@
+{
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "patches": [
+    {
+      "sourceFile": "58_Operations",
+      "functionName": "tmv3_operationWritesEnabled_",
+      "nextFunctionName": "tmv3_assertOperationWrite_",
+      "payloadPath": "tools/tmv3-sd-details-function-0.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "9eb6af9ca108d4884b23a21b462a4a935f308191f1d39e1656996122afe9bc3e",
+      "expectedAfterFunctionSha256": "68bcd0ea935ea848653b1496bbcb6291bab173b552af9abc5ef6877d6bd9a619"
+    },
+    {
+      "sourceFile": "58_Operations",
+      "functionName": "tmv3_assertOperationWrite_",
+      "nextFunctionName": "tmv3_selectedContext_",
+      "payloadPath": "tools/tmv3-sd-details-function-1.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "60383f694b7b982e4c94d963c7399ddd98a7cba1947bd946e4de26186141677e",
+      "expectedAfterFunctionSha256": "66a2cd82a6bacc60810d0bb81244eceb75bb704b3b0001746efdf50971c4b142"
+    },
+    {
+      "sourceFile": "58_Operations",
+      "functionName": "tmv3_operationPatchTask_",
+      "nextFunctionName": "tmv3_operationAssignmentRequest_",
+      "payloadPath": "tools/tmv3-sd-details-function-2.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "b133169817b9d93ffbbd1a51eca43e882cd4a24214743a25b0784398890ded2e",
+      "expectedAfterFunctionSha256": "a09c4538dfe4a187a37a4a3da0b7be59df045ae3ff2bd3388ee5a8b309973a80"
+    },
+    {
+      "sourceFile": "58_Operations",
+      "functionName": "tmv3_operationAssignmentRequest_",
+      "nextFunctionName": "tmv3_reconcileTaskAssignments_",
+      "payloadPath": "tools/tmv3-sd-details-function-3.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "f1cb83dd14c4ff31e4dcde8388ac0034c58abe0c845f730cc8ee6f1b40410c6c",
+      "expectedAfterFunctionSha256": "3364000cb26efdbdb37ff6457720b951ef9950d0f1f5add60f363f090223c115"
+    },
+    {
+      "sourceFile": "58_Operations",
+      "functionName": "tmv3_reconcileTaskAssignments_",
+      "nextFunctionName": "tmv3_assertResolvedOwnership_",
+      "payloadPath": "tools/tmv3-sd-details-function-4.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "41cbd9a182d026478b7c35188420611f55e38c78bd3ce3b4c599e07d98fb48e9",
+      "expectedAfterFunctionSha256": "c00d8e3d39420ded0890631b29d283e0c04376a1b37c6de1df34ca9cc76ce10a"
+    },
+    {
+      "sourceFile": "58_Operations",
+      "functionName": "tmv3_taskFirstFreshOrderOwnershipById_",
+      "nextFunctionName": "tmv3_preInspectionCustomerLocationsFresh_",
+      "payloadPath": "tools/tmv3-sd-details-function-5.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "4f0bb24f618dd453bcf60c47c22bc938189d1b31855bb4f1cb086e98f64ae99b",
+      "expectedAfterFunctionSha256": "67e22d5075c6301327924d19925eefabf94b375c2908ba73d738a073bc8a7d92"
+    },
+    {
+      "sourceFile": "60_Automation",
+      "functionName": "tmv3_taskFirstProductionCycle_",
+      "nextFunctionName": "tmv3_scheduledOperations",
+      "payloadPath": "tools/tmv3-sd-details-function-6.js",
+      "taskWritesRequested": false,
+      "expectedBeforeFunctionSha256": "6b655109089c5d914098027f4c23f99430db37084f53cbcb5828cadd7e231e5e",
+      "expectedAfterFunctionSha256": "988297da6b8dade42edf90bc952bb6cbb8a693850329c882c61d7e627651efbc"
+    }
+  ]
+}

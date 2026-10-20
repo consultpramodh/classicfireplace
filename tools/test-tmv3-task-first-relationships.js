@@ -166,7 +166,7 @@ console.log('Service/Delivery relationship safety PASS: '+safetyCases+' cases.')
 
 // Execute the authoritative active-order helper with fresh API-shaped fixtures.
 let statusCases=0;
-for(const status of [{id:22,name:'Approved'},{id:25,name:'In Progress'},22,25,'Approved','In Progress']) {
+for(const status of [{id:22,name:'Approved'},{id:25,name:'In Progress'},22,25,'22','25','Approved','In Progress']) {
  const ctx={tmv3_clean_:x=>String(x==null?'':x).trim(),tmv3_norm_:x=>String(x||'').toLowerCase(),
   tmv3_first_:(o,ks)=>{for(const k of ks)if(o&&o[k]!==undefined)return o[k];return '';},
   tmv3_fetchJson_:()=>({id:27790,orderNumber:'586056',customer:{id:100},status,contact:{id:42}}),

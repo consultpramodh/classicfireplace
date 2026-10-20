@@ -31,6 +31,16 @@ function tmv3_operationWritesEnabled_(scope) {
       policy.manualWritesEnabled === false;
   }
 
+  if (mode === 'servicedeliverydetails') {
+    const context = typeof tmv3_taskFirstProductionCycle_ === 'function' &&
+      tmv3_taskFirstProductionCycle_.detailContext;
+    return TMV3.MODE === 'PRODUCTION_WRITE' &&
+      policy.taskFirstProductionEnabled === true &&
+      policy.manualWritesEnabled === false && policy.automationWritesEnabled === false &&
+      Number(policy.taskFirstProductionMaxWritesPerRun) === 1 && !!context &&
+      (context.vertical === 'Service' || context.vertical === 'Delivery');
+  }
+
   // The dedicated production permission cannot unlock legacy/manual/calendar writers.
   if (mode === 'taskfirstproduction') {
     return TMV3.MODE === 'PRODUCTION_WRITE' &&
@@ -69,6 +79,10 @@ function tmv3_assertOperationWrite_(scope, action) {
     );
   }
   const normalizedScope = tmv3_norm_(scope);
+  if (normalizedScope === 'servicedeliverydetails' &&
+      ['TASK_RELATIONSHIP_PATCH','TASK_DETAIL_ASSIGNMENT'].indexOf(action) < 0) {
+    throw new Error('TASK_DETAILS_ONLY_SCOPE: no Calendar, creation, notes or title writes.');
+  }
   if ((normalizedScope === 'taskfirstproduction' || normalizedScope === 'taskfirstcanary19083') &&
       action !== 'TASK_RELATIONSHIP_REPAIR' && action !== 'TASK_RELATIONSHIP_PATCH') {
     throw new Error('RELATIONSHIP_ONLY_SCOPE: Task-first permission cannot authorize this action.');
@@ -905,6 +919,17 @@ function tmv3_operationPatchTask_(taskId, payload, scope) {
     }
   }
 
+  if (normalizedScope === 'servicedeliverydetails') {
+    const context = tmv3_taskFirstProductionCycle_.detailContext;
+    const allowed = ['Id','SalesOrder','RequestedBy','Location','StartDateTime','DueDateTime'];
+    if (!context || Number(context.taskId) !== id ||
+        Number((payload || {}).Id) !== id ||
+        Object.keys(payload || {}).some(function(k){return allowed.indexOf(k)<0;}) ||
+        JSON.stringify(payload) !== JSON.stringify(context.payload)) {
+      throw new Error('TASK_DETAILS_PAYLOAD_OUTSIDE_FRESH_CONTRACT');
+    }
+  }
+
   const safe = tmv3_safeTaskPatchPayload_(payload || {}, id);
   if (Object.keys(safe).length <= 1) {
     return {
@@ -935,7 +960,27 @@ function tmv3_operationPatchTask_(taskId, payload, scope) {
 }
 
 function tmv3_operationAssignmentRequest_(taskId, assignment, method, scope) {
-  tmv3_assertOperationWrite_(scope);
+  tmv3_assertOperationWrite_(scope, 'TASK_DETAIL_ASSIGNMENT');
+
+  if (tmv3_norm_(scope) === 'servicedeliverydetails') {
+    const context = tmv3_taskFirstProductionCycle_.detailContext;
+    const type = tmv3_norm_(assignment.type), id = Number(assignment.id);
+    const desired = context && context.desiredAssignment || {};
+    const allowedAdd = method === 'post' && (
+      (type === 'employee' && (desired.employeeIds || []).indexOf(id)>=0) ||
+      (type === 'pool' && (desired.poolIds || []).indexOf(id)>=0));
+    const allowedRemove = method === 'delete' && type === 'pool' && id === 4 &&
+      (desired.employeeIds || []).length > 0;
+    if (!context || Number(context.taskId)!==Number(taskId) || (!allowedAdd && !allowedRemove)) {
+      throw new Error('TASK_DETAILS_ASSIGNMENT_OUTSIDE_FRESH_CONTRACT');
+    }
+    if (allowedRemove) {
+      const actual = tmv3_taskAssignmentsFromRaw_(tmv3_rawTaskById_(taskId));
+      if (!(desired.employeeIds || []).every(function(employeeId){
+        return actual.some(function(a){return a.type==='employee' && Number(a.id)===employeeId;});
+      })) throw new Error('TASK_DETAILS_EMPLOYEE_NOT_READBACK_VERIFIED_NO_POOL_REMOVAL');
+    }
+  }
 
   return tmv3_fetchJson_(
     TMV3.API_BASE + '/v2/tasks/' + encodeURIComponent(Number(taskId)) + '/assignments',
@@ -953,7 +998,7 @@ function tmv3_operationAssignmentRequest_(taskId, assignment, method, scope) {
 
 function tmv3_reconcileTaskAssignments_(eventRecord, taskId, scope, options) {
   options = options || {};
-  tmv3_assertOperationWrite_(scope);
+  tmv3_assertOperationWrite_(scope, 'TASK_DETAIL_ASSIGNMENT');
 
   const desired = options.desiredAssignment || tmv3_desiredAssignment_(eventRecord);
   const raw = tmv3_rawTaskById_(taskId);
@@ -5820,7 +5865,7 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
     (/^\d+$/.test(String(rawStatus)) ? rawStatus : ''));
   const statusName = tmv3_norm_(tmv3_first_(statusObject,['name','Name']) ||
     tmv3_first_(order,['statusName','StatusName']) ||
-    (typeof rawStatus === 'string' ? rawStatus : ''));
+    (typeof rawStatus === 'string' && !/^\d+$/.test(rawStatus) ? rawStatus : ''));
   const known = {'18':'incomplete','19':'quoted','20':'pending approval',
     '21':'declined','22':'approved','23':'canceled','24':'lost','25':'in progress','27':'completed'};
   const normalizedName = statusName === 'cancelled' ? 'canceled' : statusName;
@@ -5830,10 +5875,9 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
       ['approved','in progress'].indexOf(statusFromId || normalizedName) < 0) {
     throw new Error('ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.');
   }
-  const nameMarker = tmv3_clean_(taskName)
-    .match(/\bSO\s*#\s*(\d+)\b/i);
+  const titleOrder = tmv3_taskFirstTitleOrderNumber_(taskName);
   if (fetchedId !== String(id) || fetchedCustomerId !== cid ||
-      !nameMarker || !orderNumber || nameMarker[1] !== orderNumber) {
+      titleOrder.status !== 'UNIQUE' || !orderNumber || titleOrder.number !== orderNumber) {
     throw new Error('Order ID, Customer ownership or Task SO number disagrees with fresh Striven Order.');
   }
   const contact = order.contact || order.Contact || {};
@@ -5842,3 +5886,15 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
     status:statusFromId || normalizedName,contactId:/^[1-9]\d*$/.test(contactId) ? contactId : ''};
 }
 
+
+// Google Apps Script: Task title is the Order-number key, never the Customer key.
+function tmv3_taskFirstTitleOrderNumber_(title) {
+  const text=String(title || '').replace(/https?:\/\/\S+/gi,' ');
+  const pattern=/\bSO\s*#\s*(\d{4,9}(?!\d)(?:\s*(?:[/&,]|\band\b)\s*(?:SO\s*#\s*)?\d{4,9}(?!\d))*)/gi;
+  const values=[];let match;
+  while((match=pattern.exec(text))!==null) {
+    (match[1].match(/\d{4,9}/g)||[]).forEach(function(n){if(values.indexOf(n)<0)values.push(n);});
+  }
+  return {status:values.length===1?'UNIQUE':values.length?'AMBIGUOUS':'MISSING',
+    number:values.length===1?values[0]:'',numbers:values};
+}

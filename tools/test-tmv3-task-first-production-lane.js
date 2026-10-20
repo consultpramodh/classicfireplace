@@ -12,7 +12,8 @@ const end=automation.indexOf('function tmv3_scheduledOperations()',begin);
 assert.ok(start>=0&&stop>start&&begin>=0&&end>begin);
 const anchors=fs.readFileSync(path.join(__dirname,'../apps-script/tmv3-clean/36_Step3_Business_Anchor.js'),'utf8');
 const anchorFns=anchors.slice(anchors.indexOf('function tmv3_step3AllowedOrderTypes_('),anchors.indexOf('function tmv3_step3BusinessAnchorRecords_('));
-const isolated=anchorFns+'\n'+operations.slice(start,stop)+'\n'+automation.slice(begin,end);
+const parser=operations.slice(operations.indexOf('function tmv3_taskFirstTitleOrderNumber_('));
+const isolated=anchorFns+'\n'+operations.slice(start,stop)+'\n'+parser+'\n'+automation.slice(begin,end);
 function run(opts={}) {
   const storage={};
   let getCalls=0,patched=0,audits=[];
@@ -26,7 +27,7 @@ function run(opts={}) {
     'Task ID':opts.badCacheId?'bad':19083,'Task Type':opts.delivery?'Fireplace Delivery':'Service: Clean and Service',
     'Status':opts.cacheDone?'Done':'Open',
     'Order ID':opts.cacheOrder||'','Contact ID':opts.cacheContact||'',
-    'Name':opts.canceledMarker?'Level 2 - SO#586061 - Paul Romanuk':'Level 2 - SO#585914 - Don Dwyer'
+    'Name':opts.canceledMarker?'Level 2 - SO#586061 - Paul Romanuk':opts.title || 'Level 2 - SO#585914 - Don Dwyer'
   };
   const raw={customerId:opts.wrongCustomer?999:62860,orderId:opts.liveOrder||'',
     locationId:58475,requestedById:opts.alreadyCorrect?'56760':'',status:'Open'};
@@ -40,12 +41,13 @@ function run(opts={}) {
     PropertiesService:{getScriptProperties:()=>({
       getProperty:k=>storage[k]||null,setProperty:(k,v)=>{storage[k]=String(v);}
     })},
-    tmv3_rows_:name=>name==='TASKS'?[candidate]:[{'Order Number':'585914','Order ID':'27648','Order Type':opts.wrongOrderType?'SALES_ORDER':opts.delivery?'SALES_ORDER|DELIVERY_APPROVED':'WORK_ORDER'}],
+    tmv3_rows_:name=>name==='TASKS'?[candidate]:Array.from({length:opts.duplicateOrder?2:1},()=>({'Order Number':'585914','Order ID':'27648','Order Type':opts.wrongOrderType?'SALES_ORDER':opts.delivery?'SALES_ORDER|DELIVERY_APPROVED':'WORK_ORDER'})),
     tmv3_rawTaskById_:()=>{getCalls++;return {...raw};},
     tmv3_normalizeV2TaskModel_:r=>({
       'Task ID':opts.wrongTaskId?9:19083,'Task Type':opts.wrongTaskType?'Install':opts.delivery?'Fireplace Delivery':'Service: Clean and Service',
       'Status':r.status,'Customer ID':r.customerId,'Order ID':r.orderId,
-      'Location ID':r.locationId,'Contact ID':r.requestedById
+      'Location ID':r.locationId,'Contact ID':r.requestedById,
+      'Name':opts.liveTitle || candidate.Name
     }),
     tmv3_upsertTaskCacheRow_:r=>{candidate['Order ID']=String(r['Order ID']||'');candidate['Contact ID']=String(r['Contact ID']||'');},
     tmv3_unique_:v=>Array.from(new Set(v)),
@@ -160,3 +162,9 @@ assert.equal(probe({first:'ATTENTION'}).result.ok,false);
 assert.equal(probe({second:'PATCHED_AND_VERIFIED'}).result.ok,false);
 console.log('Authenticated activation probe PASS: exact release/scope and repeat throttle enforced.');
 
+
+for(const liveTitle of ['SO#999999 - Different Order','SO#585914 SO#585915']){const t=run({liveTitle});assert.equal(t.run().status,'REVIEW_TASK_TITLE_CHANGED');assert.equal(t.writes(),0);}
+console.log('PASS: changed or ambiguous fresh Task title cannot link a cached Order.');
+
+for(const delivery of [false,true]) {let t=run({delivery,duplicateOrder:true});assert.equal(t.run().status,'PATCHED_AND_VERIFIED');assert.equal(t.writes(),1);t=run({delivery,title:'SO#585914/585915 - Two Orders'});assert.equal(t.run().status,'REVIEW_TASK_TITLE_SO');assert.equal(t.writes(),0);}
+console.log('PASS: SO title links independently of Calendar, same-ID report duplicates dedupe, ambiguous titles do not write.');

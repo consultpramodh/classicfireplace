@@ -106,3 +106,13 @@
 - **Superseded:** removing the previous PreInspection Calendar title from Description during title normalization.
 - **Superseded:** Stephen Calendar as an independent PreInspection business-source calendar.
 - **Superseded:** PreInspection Requested By = Customer Contact.
+
+
+## Automatic Service / Delivery Task details — 2026-10-20
+
+- Striven creates these Tasks after the Order enters In Progress. Automatically link each existing Service/Delivery Task to the unique SO# in its title; Calendar presence is not required for Order linking.
+- The title identifies the Order number only. Fresh Task Customer, exact Order ID/number/owner/status and Contact ownership remain write-critical evidence. Recheck present status; creation-time In Progress is not proof against later cancellation.
+- Existing native triggers perform routine patches. Do not make the operator run editor/menu functions for normal Task-detail synchronization.
+- Calendar-backed dates, customer-owned Location and intended employee/pool assignments use fresh canonical Step 7 evidence under the dedicated existing-Task detail context. Do not enable general manual/automation flags or permit Task creation, Calendar/title edits, technician-note/custom-field changes through this path.
+- Preserve manual employees; remove only Pool 4 after intended employees are independently read back. Preserve the shared one-candidate/hour limit until a separately verified capacity change.
+- SO 586061 / ID 27795 is operator-confirmed canceled; Task 19198 is excluded pending business review, without automatically canceling that Task or inventing a replacement Order.

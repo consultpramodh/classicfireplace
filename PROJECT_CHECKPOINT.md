@@ -2,6 +2,16 @@
 
 Checkpoint update: 2026-10-20 (America/Toronto).
 
+## Native automatic Task details — prepared 2026-10-20
+
+- Operator confirms Tasks are created by Striven after the SO moves to In Progress. Task Mapping must automatically attach the Order named by the unique SO# marker in an existing Service/Delivery Task title, without requiring a Calendar appointment or a manual run.
+- Missing Order links take priority over Calendar-backed details. The exact fresh Task title must still agree with the cached title; same-ID report duplicates are deduplicated; distinct/multiple SO references and existing relationship conflicts remain review. Fresh Order number, Customer ownership and active status are mandatory because an Order can be canceled after Task creation.
+- Existing native worker/trigger path also gains context-restricted Location/Requested By/date/assignment reconciliation from fresh Step 7 Calendar contracts. No Task/Location creation, Calendar edits, note edits or title edits are permitted through this scope. Manual employees remain; Pool 4 removal requires successful intended-employee read-back. One shared existing candidate/hour budget is retained.
+- Durable intent markers park uncertain writes; subsequent automatic read-only reconciliation may prove completion but must not blindly retry partial writes. General manual/automation flags and PreInspection permissions remain unchanged.
+- Tests executed locally: all Apps Script syntax and all eight existing regression scripts PASS, 41 autonomous detail/scope/title cases, 37 scoped deployment cases, 27 fresh Order-status cases, and added fresh-title/duplicate-report cases PASS. Deployment workflow reruns focused tests before any source write.
+- Exact last live source reconstructed and hash-verified as a001f164f3d750bf4c4212f4b120140c2cde0d07a943d5d4c59bf9e26ad7741e. Planned hash db507f4968c468011bf8f55076683c6bdf748f5ad100faf81de3956fa2b63881. Seven guarded function regions only; unrelated live PreInspection helpers preserved.
+- This section records prepared code, not a completed deployment or new live Task writes. Native runtime acceptance remains pending.
+
 ## Active-Order guard deployed — 2026-10-20 16:40 Toronto
 
 - First guarded attempt 39493651209 stopped before source mutation because the repository baseline omitted appended live PreInspection helpers. Inspected durable PRE artifact 12296395235: worker matched; drift was unrelated appended 58_Operations functions. Scoped boundary reconciled without removing those helpers.
