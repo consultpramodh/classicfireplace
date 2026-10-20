@@ -1,1 +1,1 @@
-2026-10-20: preserve fixed backlog continuation after native Calendar lock collisions; expose unchanged daily API budget in batch audit.
+2026-10-20: at most 40 Order-link API calls per rapid slice, minute-spaced starts, no added idle minute after slow slices.

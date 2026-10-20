@@ -372,7 +372,7 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
   for (let n=0;n<pending.length && processed<8;n++) {
     const budget=tmv3_strivenApiBudgetStatus_();
     if (budget.exhausted || budget.remaining<12) {paused='API_DAILY_BUDGET';break;}
-    if (budget.count-initialBudget.count>=56 || Date.now()-started>=120000) {paused='SLICE_BUDGET';break;}
+    if (budget.count-initialBudget.count>=32 || Date.now()-started>=120000) {paused='SLICE_BUDGET';break;}
     const id=pending[n];
     processed++;
     let intent=false,vertical='',expectedOrderId='',customerId='',soNumber='',searchAttempted=false;
@@ -458,7 +458,8 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
     else tally.PENDING++;});
   ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;})
     .forEach(function(t){ScriptApp.deleteTrigger(t);});
-  if (tally.PENDING) continueLater(paused==='API_DAILY_BUDGET'?3600000:60000);
+  if (tally.PENDING) continueLater(paused==='API_DAILY_BUDGET'?3600000:
+    Math.max(1000,60000-(Date.now()-started))); // At least 60 seconds between slice starts; no extra idle minute after a slow slice.
   const summary={status:tally.PENDING?'ORDER_BACKFILL_CONTINUING':'ORDER_BACKFILL_COMPLETE',
     total:ids.length,processed:processed,writes:writes,tally:tally,paused:paused,apiBudget:tmv3_strivenApiBudgetStatus_()};
   props.setProperty(prefix+'SUMMARY',JSON.stringify(summary));

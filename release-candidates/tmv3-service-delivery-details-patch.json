@@ -61,8 +61,8 @@
       "nextFunctionName": "tmv3_scheduledOperations",
       "payloadPath": "tools/tmv3-sd-details-function-6.js",
       "taskWritesRequested": false,
-      "expectedBeforeFunctionSha256": "66f43f74a546448b3fefa5e7065d4f7bcf87c39df2218f0dd2ed3ec2de859d1d",
-      "expectedAfterFunctionSha256": "d4c76e521a12961b5d1c00b2d00605c9e7a0d12454b64fc272c5e3e7fbac5188"
+      "expectedBeforeFunctionSha256": "d4c76e521a12961b5d1c00b2d00605c9e7a0d12454b64fc272c5e3e7fbac5188",
+      "expectedAfterFunctionSha256": "8cf1e7870f60b2f2305faec0710e3fa68741eb3e76edd824d523d66d0546e789"
     }
   ]
 }
