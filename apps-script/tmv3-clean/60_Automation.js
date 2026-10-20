@@ -1382,6 +1382,8 @@ function tmv3_installCompletionVerified_(plans,execution,taskId,eventId) {
   if (!Array.isArray(plans) || plans.length !== 1 || !execution ||
       execution.status !== 'VERIFIED_CONVERGENCE') return false;
   const plan = plans[0];
+  // A Calendar link or NO_CHANGE label alone is not full Install completion.
+  try { tmv3_assertInstallExistingContract_(plan); } catch (err) { return false; }
   return plan.vertical === 'Install' && plan.eventId === eventId && String(plan.taskId) === String(taskId) &&
     plan.plan === 'NO_CHANGE' && !tmv3_clean_(plan.blocker) &&
     tmv3_taskIsOpen_(plan.taskStatus) && Array.isArray(plan.actions) &&

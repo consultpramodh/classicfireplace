@@ -21,3 +21,5 @@ require("node:child_process").execFileSync(process.execPath,[path.join(__dirname
 
 
 require("node:child_process").execFileSync(process.execPath,[path.join(__dirname,"test-tmv3-install-reminders.js")],{stdio:"inherit"});
+
+require("node:child_process").execFileSync(process.execPath,[path.join(__dirname,"test-tmv3-install-defaults.js")],{stdio:"inherit"});

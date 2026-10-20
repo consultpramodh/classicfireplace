@@ -550,6 +550,15 @@ function tmv3_assertHardRules_() {
   requireRule(globalRules.missingPrerequisiteDecision === 'BLOCK_OR_REVIEW_BEFORE_TASK_WRITE', 'Missing required Customer/Location/Order prerequisites must block before Task writes.');
   requireRule(globalRules.missingLinkedTaskCacheDecision === 'REVIEW_FAIL_CLOSED', 'Unverified linked Tasks must fail closed to REVIEW.');
 
+  requireRule(TMV3_HARD_RULES.Install.requestedByRequired === true,
+    'Install requires Requested By; missing Contact must block completion.');
+  requireRule(TMV3_HARD_RULES.Install.requestedBySource === 'VERIFIED_CUSTOMER_CONTACT',
+    'Install Requested By must be a verified Customer Contact.');
+  requireRule(TMV3_HARD_RULES.Install.scheduleSource === 'CALENDAR_START_END',
+    'Install dates and times come from Calendar start/end.');
+  requireRule(TMV3_HARD_RULES.Install.completionPolicy === 'ALL_REQUIRED_FIELDS_AND_CALENDAR_TASK_LINK',
+    'Install completion requires required Task fields plus Calendar Task link.');
+
   requireRule(pre.orderRequired === false, 'PreInspection must not require a Sales Order.');
   requireRule(pre.attachOrderToTask === false, 'PreInspection must not attach a Sales Order to the Task.');
   requireRule(Number(pre.taskTypeId || 0) === 105, 'PreInspection Task Type must remain 105.');

@@ -24,6 +24,10 @@
 - Preserve unrelated/manual employees.
 - Managed Calendar output: verified Task link.
 
+- Default Install reconciliation must verify Customer, customer-owned job-site Location/address, Sales Order, Requested By as a verified customer-owned Contact, Calendar start/end date and time, preserved/manual-safe assignment, and a clickable Calendar Task link. Link-only success is not full completion.
+- Missing Requested By Contact is REVIEW; never silently omit it or mark the Task complete.
+- Apply the contract to every eligible Install plan; repair only proven differences. Completed/cancelled Tasks and historical appointments retain existing lifecycle safeguards; no blanket historical rewrite.
+
 ## Delivery
 
 - Sales Order required.

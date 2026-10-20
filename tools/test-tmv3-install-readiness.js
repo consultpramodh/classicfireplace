@@ -60,7 +60,9 @@ for(const patch of [{vertical:'Service'},{eventId:'other'},{taskId:0},{taskStatu
 }
 for(const options of [{executeError:true},{execution:{status:'PLAN_CHANGED_NO_WRITE'}},
  {execution:{calendarLinks:null}},{after:{taskId:999}},{after:{eventId:'other'}},{after:{vertical:'Delivery'}},
- {after:{blocker:'conflict'}},{after:{actions:['PATCH_DATES']}},{after:{taskStatus:'Done'}},{after:{plan:'PATCH_REQUIRED'}}]){
+ {after:{blocker:'conflict'}},{after:{actions:['PATCH_DATES']}},{after:{taskStatus:'Done'}},{after:{plan:'PATCH_REQUIRED'}},
+ {after:{expectedCustomerId:''}},{after:{expectedOrderId:''}},{after:{expectedLocationId:''}},
+ {after:{expectedRequestedById:''}},{after:{expectedRequestedByType:'employee'}}]){
  e=env(options);check(e.run().status==='ATTENTION','no false convergence');
 }
 // Actual dispatcher must enforce scope before even considering a changed plan.

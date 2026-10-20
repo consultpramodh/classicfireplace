@@ -89,3 +89,9 @@ Before Install source code is moved or consolidated, capture:
 - assignment/requested-by rules;
 - fingerprints/idempotency rules;
 - compatibility aliases and callers.
+
+## Default field-completion contract — 2026-10-20
+
+All eligible Install plans must resolve verified Customer, customer-owned Location/address, Sales Order and customer-owned Requested By Contact; reconcile Calendar start/end date/time; preserve unrelated/manual assignments; return one clickable Task link to Calendar. Missing contact is REVIEW before existing-task or CREATE/RECREATE mutation. A link-only repair never certifies full completion.
+
+The same contract applies across Install; it does not authorize blind historical writes. Task status/lifecycle/duplicate gates remain authoritative. Existing exact-event automation permission remains disabled pending deployed-source parity, future-event acceptance, no-change repeat and full queue/trigger acceptance. Connie was repaired directly in Striven and does not prove V3 scheduled execution. No global production cutover is claimed.

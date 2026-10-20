@@ -650,6 +650,12 @@ function tmv3_step7Expected_(record, runtime, verifyContactOwnership) {
     return expected;
   }
 
+  if (record.vertical === 'Install' && !identityContactId) {
+    expected.requestedByError =
+      'Install Requested By requires a verified customer-owned Contact; missing contact is REVIEW, not complete.';
+    return expected;
+  }
+
   if (identityContactId) {
     expected.requestedById = identityContactId;
     expected.requestedByType = 'contact';

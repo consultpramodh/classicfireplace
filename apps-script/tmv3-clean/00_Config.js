@@ -29,6 +29,10 @@ const TMV3_HARD_RULES = Object.freeze({
   Install:Object.freeze({
     orderRequired:true,
     orderLabel:'Sales Order',
+    requestedByRequired:true,
+    requestedBySource:'VERIFIED_CUSTOMER_CONTACT',
+    scheduleSource:'CALENDAR_START_END',
+    completionPolicy:'ALL_REQUIRED_FIELDS_AND_CALENDAR_TASK_LINK',
     assignmentEvidence:'CALENDAR_TITLE_ONLY',
     aidenAssignment:'IGNORE',
     preserveUnrelatedManualEmployees:true
