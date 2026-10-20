@@ -6,12 +6,12 @@
   "runMode": "SERVICE_DELIVERY_PREFLIGHT",
   "refreshSources": false,
   "forceVersionedDeployment": false,
-  "requestTag": "SERVICE_DELIVERY_BOUNDED_RECONCILIATION_20261020",
+  "requestTag": "SERVICE_DELIVERY_PREFLIGHT_READ_ONLY_DEFAULT_20261020",
   "testWriteApiSoftLimit": 1200,
   "vertical": "PreInspection",
   "eventId": "6bnhkq9hrpfr6rub4ka545m8bi@google.com",
   "taskId": 0,
   "allowedDate": "2026-10-16",
   "probeTaskId": 18835,
-  "reconcileServiceDelivery": true
+  "reconcileServiceDelivery": false
 }
