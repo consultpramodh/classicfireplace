@@ -2308,10 +2308,10 @@ async function main() {
     const files = head.files || [];
     const cfg = (files.find(f => f.name === '00_Config') || {}).source || '';
     const setting = name => {
-      const match = cfg.match(new RegExp('\\\\b' + name + '\\\\s*:\\\\s*(true|false|[0-9]+)'));
+      const match = cfg.match(new RegExp('\\b' + name + '\\s*:\\s*(true|false|[0-9]+)'));
       return match ? match[1] : 'UNKNOWN';
     };
-    const version = cfg.match(/const TMV3_VERSION\\s*=\\s*'([A-Za-z0-9._-]+)'/);
+    const version = cfg.match(/const TMV3_VERSION\s*=\s*'([A-Za-z0-9._-]+)'/);
     const summary = {
       status:'SERVICE_DELIVERY_HEAD_READ',
       sourceHash:canonicalHash(head),
@@ -2322,7 +2322,7 @@ async function main() {
         sha256:crypto.createHash('sha256').update(f.source || '').digest('hex'),
         repositoryMatch:fs.existsSync(path.join(process.cwd(),'apps-script/tmv3-clean',f.name+(f.type==='JSON'?'.json':'.js'))) &&
           fs.readFileSync(path.join(process.cwd(),'apps-script/tmv3-clean',f.name+(f.type==='JSON'?'.json':'.js')),'utf8')===(f.source || ''),
-        functions:[...(f.source || '').matchAll(/^function (tmv3_[A-Za-z0-9_]+)\\(/gm)].map(m=>m[1]).filter(n=>/step7|runSafe|executeVerified|operationWrites/.test(n))
+        functions:[...(f.source || '').matchAll(/^function (tmv3_[A-Za-z0-9_]+)\(/gm)].map(m=>m[1]).filter(n=>/step7|runSafe|executeVerified|operationWrites/.test(n))
       })),
       productionWritesPerformed:false
     };
