@@ -16,7 +16,7 @@ function fixture(opts={}){
  const norm=x=>clean(x).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
  const props={getProperty:k=>store[k]||null,setProperty:(k,v)=>{store[k]=String(v);}};
  const ctx={Number,String,Object,Array,JSON,Math,Date,
-  TMV3:{SHEETS:{TASKS:'TASKS',ORDERS:'ORDERS'}},
+  TMV3:{API_BASE:'https://example.invalid',SHEETS:{TASKS:'TASKS',ORDERS:'ORDERS'}},
   tmv3_operationPolicy_:()=>({taskFirstProductionIntervalMinutes:60}),
   tmv3_operationWritesEnabled_:()=>!opts.gated,
   LockService:{getScriptLock:()=>({tryLock:()=>{if(locked)return false;locked=true;return true;},releaseLock:()=>{locked=false;}})},
@@ -28,6 +28,7 @@ function fixture(opts={}){
   tmv3_strivenApiBudgetStatus_:()=>({count,remaining:opts.noBudget?0:1200-count,exhausted:false}),
   tmv3_rawTaskById_:id=>{reads++;count++;if(opts.readFail===id)throw Error('GET failure');return {...live[id]};},
   tmv3_normalizeV2TaskModel_:r=>r,tmv3_upsertTaskCacheRow_:r=>Object.assign(rows.find(x=>x['Task ID']===r['Task ID']),r),
+  tmv3_fetchJson_:(url,options)=>{count++;assert.equal(url,'https://example.invalid/v1/sales-orders/search');assert.equal(options.method,'post');const query=JSON.parse(options.payload);assert.equal(query.PageIndex,0);assert.equal(query.PageSize,100);const data=opts.searchRows || [];return {Data:data,TotalCount:opts.searchTotal===undefined?data.length:opts.searchTotal};},
   tmv3_taskFirstFreshOrderOwnershipById_:(id,cid,title)=>{count++;if(opts.inactive===String(id))throw Error('ORDER_NOT_VERIFIED_ACTIVE');assert.ok(title.includes('SO#'));assert.equal(cid,String(1000+Number(id)-2000));return {verified:true};},
   tmv3_repairExistingTaskRelationships:(id,v,expected,permission)=>{
    assert.equal(locked,true);assert.equal(permission,'TASK_FIRST_PRODUCTION');assert.equal(expected.contactId,'');assert.equal(expected.locationId,'');
@@ -75,4 +76,20 @@ f=fixture({badReadback:ids[0]});f.run();assert.equal(f.state(ids[0]).state,'INTE
 f=fixture({readFail:ids[0]});f.run();assert.equal(f.state(ids[0]).state,'RETRY');assert.ok(f.writes()>0);f.run();f.run();assert.equal(f.state(ids[0]).state,'BLOCKED');assert.equal(f.calls.filter(x=>x===ids[0]).length,0);cases++;
 // Existing unrelated schedules survive continuation scheduling.
 f=fixture();f.triggers.push({getHandlerFunction:()=> 'tmv3_scheduledOperations'});f.run();assert.equal(f.triggers.length,2);cases++;
+// Delivery Order linkage is independent of the Calendar delivery-approved report.
+f=fixture();f.orders[1]['Order Type']='SALES_ORDER';f.run();assert.equal(f.state(ids[1]).state,'VERIFIED');cases++;
+f=fixture();const heldOrder=f.orders.shift();f.run();assert.equal(f.state(ids[0]).state,'BLOCKED');f.orders.push(heldOrder);f.run();assert.equal(f.state(ids[0]).state,'VERIFIED');cases++;
+f=fixture();f.orders[1]['Order Type']='WORK_ORDER';f.run();assert.equal(f.state(ids[1]).state,'BLOCKED');assert.ok(!f.calls.includes(ids[1]));cases++;
+// Exact official query schema; partial search results never prove uniqueness.
+for(const lower of [false,true]){
+ const row=lower?{id:2000,number:'500000',customer:{id:1000}}:{Id:2000,Number:'500000',Customer:{Id:1000}};
+ f=fixture({searchRows:[row]});f.orders.shift();f.run();assert.equal(f.state(ids[0]).state,'VERIFIED');cases++;
+}
+for(const opts of [
+ {searchRows:[{Id:2000,Number:'500001',Customer:{Id:1000}}]},
+ {searchRows:[{Id:2000,Number:'500000',Customer:{Id:9999}}]},
+ {searchRows:[{Id:2000,Number:'500000',Customer:{Id:1000}},{Id:9999,Number:'500000',Customer:{Id:1000}}]},
+ {searchRows:[{Id:2000,Number:'500000',Customer:{Id:1000}}],searchTotal:101}
+]) {f=fixture(opts);f.orders.shift();f.run();assert.equal(f.state(ids[0]).state,'BLOCKED');assert.ok(!f.calls.includes(ids[0]));cases++;}
+f=fixture({searchRows:[{Id:2000,Number:'500000',Customer:{Id:1000}}],inactive:'2000'});f.orders.shift();f.run();assert.equal(f.state(ids[0]).state,'BLOCKED');assert.ok(!f.calls.includes(ids[0]));cases++;
 console.log('PASS: '+cases+' real backfill cases, including all 81 IDs across 12 automatic slices, both verticals, retries, rate budget and scope.');

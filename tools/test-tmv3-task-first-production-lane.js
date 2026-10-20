@@ -41,7 +41,7 @@ function run(opts={}) {
     PropertiesService:{getScriptProperties:()=>({
       getProperty:k=>storage[k]||null,setProperty:(k,v)=>{storage[k]=String(v);}
     })},
-    tmv3_rows_:name=>name==='TASKS'?[candidate]:Array.from({length:opts.duplicateOrder?2:1},()=>({'Order Number':'585914','Order ID':'27648','Order Type':opts.wrongOrderType?'SALES_ORDER':opts.delivery?'SALES_ORDER|DELIVERY_APPROVED':'WORK_ORDER'})),
+    tmv3_rows_:name=>name==='TASKS'?[candidate]:Array.from({length:opts.duplicateOrder?2:1},()=>({'Order Number':'585914','Order ID':'27648','Order Type':opts.wrongOrderType?(opts.delivery?'WORK_ORDER':'SALES_ORDER'):opts.delivery?'SALES_ORDER|DELIVERY_APPROVED':'WORK_ORDER'})),
     tmv3_rawTaskById_:()=>{getCalls++;return {...raw};},
     tmv3_normalizeV2TaskModel_:r=>({
       'Task ID':opts.wrongTaskId?9:19083,'Task Type':opts.wrongTaskType?'Install':opts.delivery?'Fireplace Delivery':'Service: Clean and Service',

@@ -1203,7 +1203,7 @@ function tmv3_taskFirstProductionCycle_() {
       const title=tmv3_taskFirstTitleOrderNumber_(row.Name);
       if(title.status!=='UNIQUE')return false;
       const vertical=tmv3_norm_(row['Task Type']).indexOf('deliver')>=0?'Delivery':'Service';
-      const matches=(orderMap[title.number] || []).filter(function(order){return tmv3_step3OrderMatchesVertical_(order,vertical);});
+      const matches=(orderMap[title.number] || []).filter(function(order){return tmv3_taskFirstOrderMatchesVertical_(order,vertical);});
       const ids=[];matches.forEach(function(order){const id=tmv3_clean_(order['Order ID']);if(ids.indexOf(id)<0)ids.push(id);});
       // Unresolved or known-closed links cannot starve Calendar-backed details.
       // A refreshed active Order automatically becomes eligible again.
@@ -1236,7 +1236,7 @@ function tmv3_taskFirstProductionCycle_() {
     const vertical = tmv3_norm_(source['Task Type']).indexOf('delivery') !== -1
       ? 'Delivery' : 'Service';
     const match = (orderMap[titleOrder.number] || []).filter(function(order) {
-      return tmv3_step3OrderMatchesVertical_(order, vertical);
+      return tmv3_taskFirstOrderMatchesVertical_(order, vertical);
     }).filter(function(order,index,all){return all.findIndex(function(other){
       return tmv3_clean_(other['Order ID'])===tmv3_clean_(order['Order ID']);
     })===index;});
@@ -1327,15 +1327,24 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
   const tasks = tmv3_rows_(TMV3.SHEETS.TASKS);
   // Isolated test projects and other source sets never enroll extra Tasks.
   if (!ids.some(function(id){return tasks.some(function(row){return String(row['Task ID'])===String(id);});})) return null;
-  const pending = ids.filter(function(id){
+  const orders=tmv3_rows_(TMV3.SHEETS.ORDERS);
+  function needsWork(id) {
     const value=props.getProperty(prefix+id);
     if (!value) return true;
-    return ['INTENT','RETRY'].indexOf(JSON.parse(value).state)>=0;
-  });
+    const saved=JSON.parse(value);
+    if (['INTENT','RETRY'].indexOf(saved.state)>=0) return true;
+    // A newly available compatible cached Order may resolve a prior cache hold.
+    if (saved.state==='BLOCKED' && ['ORDER_NOT_IN_CACHE','ORDER_SEARCH_NO_EXACT_CUSTOMER_MATCH'].indexOf(saved.reason)>=0 && saved.soNumber) {
+      if (saved.reason==='ORDER_NOT_IN_CACHE' && !saved.searchAttempted) return true;
+      return orders.some(function(order){return tmv3_clean_(order['Order Number'])===saved.soNumber &&
+        tmv3_taskFirstOrderMatchesVertical_(order,saved.vertical);});
+    }
+    return false;
+  }
+  const pending=ids.filter(needsWork);
   if (!pending.length) return null;
   const started=Date.now();
   const initialBudget=tmv3_strivenApiBudgetStatus_();
-  const orders=tmv3_rows_(TMV3.SHEETS.ORDERS);
   let processed=0,writes=0,paused='';
   function save(id,value) {
     const result=Object.assign({taskId:id,at:new Date().toISOString()},value);
@@ -1358,7 +1367,7 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
     if (budget.count-initialBudget.count>=56 || Date.now()-started>=120000) {paused='SLICE_BUDGET';break;}
     const id=pending[n];
     processed++;
-    let intent=false,vertical='',expectedOrderId='',customerId='';
+    let intent=false,vertical='',expectedOrderId='',customerId='',soNumber='',searchAttempted=false;
     try {
       const source=tasks.filter(function(row){return String(row['Task ID'])===String(id);});
       if (source.length!==1) {save(id,{state:'BLOCKED',reason:'SOURCE_TASK_NOT_UNIQUE'});continue;}
@@ -1376,13 +1385,15 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
       tmv3_upsertTaskCacheRow_(live);
       const title=tmv3_taskFirstTitleOrderNumber_(live.Name);
       if (title.status!=='UNIQUE') {save(id,{state:'BLOCKED',vertical:vertical,reason:'TASK_TITLE_SO_'+title.status});continue;}
+      soNumber=title.number;
       const matches=orders.filter(function(order){return tmv3_clean_(order['Order Number'])===title.number &&
-        tmv3_step3OrderMatchesVertical_(order,vertical);});
+        tmv3_taskFirstOrderMatchesVertical_(order,vertical);});
       const orderIds=[];
       matches.forEach(function(order){const value=tmv3_clean_(order['Order ID']);
         if (/^[1-9]\d*$/.test(value) && orderIds.indexOf(value)<0) orderIds.push(value);});
       // Explicit user-provided identity; fresh API proof still must accept the lifecycle.
       if (!orderIds.length && id===19198 && title.number==='586061') orderIds.push('27795');
+      if (!orderIds.length) {searchAttempted=true;orderIds.push(tmv3_taskFirstFindOrderByTitle_(title.number,customerId));}
       if (orderIds.length!==1) {save(id,{state:'BLOCKED',vertical:vertical,soNumber:title.number,
         reason:orderIds.length?'AMBIGUOUS_ORDER':'ORDER_NOT_IN_CACHE'});continue;}
       expectedOrderId=orderIds[0];
@@ -1426,7 +1437,7 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
         const prior=JSON.parse(props.getProperty(prefix+id) || 'null');
         const attempts=Number(prior && prior.attempts || 0)+1;
         const transient=/HTTP (429|5\d\d)|DAILY_GUARD|GET failure|timed out|timeout|temporar|Service invoked too many/i.test(reason);
-        save(id,{state:transient && attempts<3?'RETRY':'BLOCKED',vertical:vertical,reason:reason,attempts:attempts});
+        save(id,{state:transient && attempts<3?'RETRY':'BLOCKED',vertical:vertical,reason:reason,attempts:attempts,soNumber:soNumber,searchAttempted:searchAttempted});
       }
       if (/429|DAILY_GUARD/.test(reason)) {paused='API_RATE_OR_DAILY_GUARD';break;}
     }
@@ -1434,6 +1445,7 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
   const tally={VERIFIED:0,BLOCKED:0,UNCERTAIN:0,PENDING:0};
   ids.forEach(function(id){const value=JSON.parse(props.getProperty(prefix+id) || 'null');
     const state=value && value.state;
+    if (needsWork(id)) {tally.PENDING++;return;}
     if (state && Object.prototype.hasOwnProperty.call(tally,state)) tally[state]++;
     else tally.PENDING++;});
   ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;})
@@ -1444,6 +1456,37 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
   props.setProperty(prefix+'SUMMARY',JSON.stringify(summary));
   tmv3_audit_('SYSTEM','','','SD_ORDER_BACKFILL_SUMMARY','INFO',JSON.stringify(summary));
   return summary;
+}
+
+/** Existing Delivery Task identity does not require a Calendar approval-report row. */
+function tmv3_taskFirstOrderMatchesVertical_(order,vertical) {
+  if (vertical==='Delivery' && tmv3_clean_(order && order['Order Type']).split('|')
+      .some(function(type){return tmv3_clean_(type).toUpperCase()==='SALES_ORDER';})) return true;
+  return tmv3_step3OrderMatchesVertical_(order,vertical);
+}
+
+/** Official Striven OpenAPI: SalesOrderSearchParameters Number/CustomerId, paged Data/TotalCount. */
+function tmv3_taskFirstFindOrderByTitle_(number,customerId) {
+  if (!/^\d{4,9}$/.test(String(number)) || !/^[1-9]\d*$/.test(String(customerId))) throw new Error('ORDER_SEARCH_INVALID_IDENTITY');
+  const result=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{
+    method:'post',contentType:'application/json',
+    payload:JSON.stringify({Number:String(number),CustomerId:Number(customerId),PageIndex:0,PageSize:100})
+  }) || {};
+  const data=result.Data!==undefined?result.Data:result.data;
+  const total=Number(result.TotalCount!==undefined?result.TotalCount:result.totalCount);
+  if (!Array.isArray(data) || !Number.isSafeInteger(total) || total<0 || total!==data.length || total>100) {
+    throw new Error('ORDER_SEARCH_INCOMPLETE_RESULT_NO_PATCH');
+  }
+  const ids=[];
+  data.forEach(function(row){
+    const id=tmv3_clean_(row.Id!==undefined?row.Id:row.id);
+    const candidate=tmv3_clean_(row.Number!==undefined?row.Number:row.number);
+    const customer=row.Customer || row.customer || {};
+    const owner=tmv3_clean_(customer.Id!==undefined?customer.Id:customer.id);
+    if (candidate===String(number) && owner===String(customerId) && /^[1-9]\d*$/.test(id) && ids.indexOf(id)<0) ids.push(id);
+  });
+  if (ids.length!==1) throw new Error(ids.length?'ORDER_SEARCH_AMBIGUOUS_NO_PATCH':'ORDER_SEARCH_NO_EXACT_CUSTOMER_MATCH');
+  return ids[0]; // The caller must still freshly GET this Order to prove ownership and active status.
 }
 
 function tmv3_scheduledOperations() {
