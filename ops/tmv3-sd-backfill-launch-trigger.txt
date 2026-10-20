@@ -1,1 +1,1 @@
-2026-10-20: launch fixed queue on existing HEAD with authenticated request, no new versions or deployments, exact source restore.
+2026-10-20: rearm fixed backlog after Calendar lock collision; require exact deployed source 12efdb7b097d9975e0028049e5968d8dc8e5293ac5cf9e345fb2a43a3ee3f860.
