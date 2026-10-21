@@ -5,6 +5,7 @@ const source=fs.readFileSync('tools/tmv3-open-tasks-refresh-native.js','utf8');
 const headers=['Task ID','Task Number','Task Type ID','Task Type','Status','Name','Customer ID','Location ID','Contact ID','Order ID','Start','Due','Assignees','Pools','URL','Fingerprint'];
 function run(options={}) {
  let writes=0,backups=0,patches=0;const requests=[],state={};
+ if(options.finalImport){state.TMV3_OPEN_REFRESH_20261021_IMPORTED='{}';state.TMV3_OPEN_REFRESH_20261021_TASK_18983='{}';state.TMV3_OPEN_REFRESH_20261021_TASK_2='{}';state.TMV3_OPEN_REFRESH_20261021_VIEWS='old';state.TMV3_OPEN_REFRESH_20261021_RICH_VIEWS='old';}
  const prior=[18983,18983,1,'Service','Open','Old title',46902,41517,123,27499,'start','due','Chris','','url','hash'];
  const cells=[headers.slice(),prior.slice()];
  if(options.duplicateCache)cells.push(prior.slice());
@@ -12,7 +13,7 @@ function run(options={}) {
  const sheet={getLastRow:()=>cells.length,getMaxRows:()=>5000,getParent:()=>({getSheetByName:()=>null}),copyTo:()=>{backups++;return {setName:()=>({hideSheet:()=>{}})};},getRange:(row,col,n=1,width=1)=>({getValues:()=>cells.slice(row-1,row-1+n).map(r=>r.slice(col-1,col-1+width)),getValue:()=>cells[row-1]?.[col-1],setValues:values=>{writes++;values.forEach((r,i)=>{cells[row-1+i]??=[];r.forEach((v,c)=>cells[row-1+i][col-1+c]=v);});}})};
  const data=[{task}];if(options.newTask)data.push({task:{...task,'Task ID':99999}});if(options.manyTasks)for(let id=20000;id<21005;id++)data.push({task:{...task,'Task ID':id}});if(options.duplicateResult)data.push({task});if(options.wrongStatus)data[0]={task:{...task,Status:'Done'}};
  const ctx={Date,JSON,Number,String,Boolean,Object,Error,Array,encodeURIComponent,TMV3_OPEN_REFRESH_HYDRATE_IDS:[2],TMV3:{SHEETS:{TASKS:'Tasks'},API_BASE:'api',TASK_URL_BASE:'task/'},
- LockService:{getScriptLock:()=>({tryLock:()=>!options.lockBusy,releaseLock:()=>{}})},PropertiesService:{getScriptProperties:()=>({getProperty:k=>state[k],setProperty:(k,v)=>state[k]=v})},
+ LockService:{getScriptLock:()=>({tryLock:()=>!options.lockBusy,releaseLock:()=>{}})},PropertiesService:{getScriptProperties:()=>({getProperty:k=>state[k],setProperty:(k,v)=>state[k]=v,deleteProperty:k=>delete state[k]})},
  tmv3_sheet_:()=>sheet,tmv3_clean_:v=>String(v??'').trim(),tmv3_norm_:v=>String(v??'').toLowerCase(),tmv3_hash_:()=> 'newhash',
  tmv3_rawTaskById_:()=>({status:{id:17,name:'Open'},task}),tmv3_normalizeV2TaskModel_:r=>r.task,
  tmv3_strivenApiBudgetStatus_:()=>({remaining:options.lowBudget?10:200,exhausted:false}),
@@ -27,6 +28,8 @@ for(const options of [{duplicateResult:true},{wrongStatus:true},{truncated:true}
 r=run({newTask:true});assert.equal(r.result.imported.added,1);assert.equal(r.cells[2][0],99999);assert.equal(r.cells[2][8],'');cases++;
 r=run({manyTasks:true});assert.equal(r.result.imported.totalOpen,1006);assert.equal(r.requests.length,2);assert.equal(r.requests[0].PageSize,1000);assert.equal(r.cells.length,1007);cases++;
 r=run({lockBusy:true});assert.equal(r.result.status,'LOCK_BUSY');assert.equal(r.writes,0);cases++;
+r=run({finalImport:true,newTask:true});assert.equal(r.result.imported.added,1);assert.ok(r.state.TMV3_OPEN_REFRESH_20261021_FINAL_IMPORT);assert.equal(r.state.TMV3_OPEN_REFRESH_20261021_VIEWS,undefined);assert.equal(r.patches,0);cases++;
+r=run({finalImport:true,truncated:true});assert.ok(r.error);assert.equal(r.writes,0);assert.equal(r.state.TMV3_OPEN_REFRESH_20261021_FINAL_IMPORT,undefined);cases++;
 console.log('PASS: '+cases+' complete Open search, derived status, non-destructive merge, backup, budget and pagination checks.');
 // Execute the rich-text replacement itself and retain hyperlink spans after the text shift.
 {
