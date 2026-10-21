@@ -1,0 +1,21 @@
+// Google Apps Script: targeted real production test using existing guards and readbacks.
+function tmv3_fridayLiveTest20261023() {
+  var id='456nv1pujrb3eo7ielg2enj0ll@google.com';
+  if(TMV3.MODE!=='PRODUCTION_WRITE')throw new Error('PRODUCTION_MODE_REQUIRED');
+  if(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId&&TMV3.OPERATIONS.preInspectionAutomationCanaryEventId!==id)throw new Error('DIFFERENT_CANARY_SCOPE_NO_RUN');
+  var record=tmv3_preInspectionRecoveryRecord_(id);
+  if(Utilities.formatDate(new Date(record.start),TMV3_TIMEZONE,'yyyy-MM-dd')!=='2026-10-23'||String(record.title).indexOf('62971')<0)throw new Error('FRIDAY_EVENT_IDENTITY_DATE_MISMATCH');
+  var before={title:record.title,start:record.start,end:record.end,location:record.location,budget:tmv3_strivenApiBudgetStatus_()};
+  var native=tmv3_preInspectionAutomationCycle_({force:true,eventId:id,reason:'OWNER_REQUESTED_FRIDAY_REAL_TEST'});
+  var plans=tmv3_step7FreshPlansForEvent_('PreInspection',id);
+  var taskIds=plans.map(function(p){return String(p.taskId||'');}).filter(function(x){return /^\d+$/.test(x);});
+  var tasks=taskIds.map(function(taskId){return tmv3_getTaskById_(Number(taskId));});
+  var fresh=tmv3_preInspectionRecoveryRecord_(id);
+  var copies=tmv3_requiredCalendarCopiesForEvent_(fresh).map(function(calendarId){
+    var found=tmv3_findEventCopyRobust_(calendarId,id);
+    return {calendarId:calendarId,found:!!(found&&found.event),title:found&&found.event?found.event.getTitle():'',description:found&&found.event?found.event.getDescription():''};
+  });
+  var result={status:'FRIDAY_LIVE_TEST_RETURNED',eventId:id,before:before,native:native,afterPlans:plans,tasks:tasks,calendarCopies:copies,afterBudget:tmv3_strivenApiBudgetStatus_()};
+  tmv3_audit_('PreInspection',id,taskIds.join(','),'OWNER_FRIDAY_LIVE_TEST',native.status,JSON.stringify({processed:native.processed,writes:native.writes,notifications:native.notifications,plans:plans.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};})}));
+  return result;
+}
