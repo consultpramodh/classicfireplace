@@ -1,4 +1,4 @@
-name: Read official Striven Order search schema
+name: Read official Striven Task search schema
 on:
   push:
     branches: [task_mapping]
@@ -12,26 +12,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Read official OpenAPI search request and response models only
+      - name: Read Task search schemas and official status list
         run: |
           node --input-type=module <<'JS'
-          const r=await fetch('https://api.striven.com/swagger/v1/swagger.json');
-          if(!r.ok)throw Error('DOCS_HTTP_'+r.status);
-          const j=await r.json(),op=j.paths['/v1/sales-orders/search'];
-          console.log(JSON.stringify({path:'/v1/sales-orders/search',operation:op}));
-          const schemas={};
-          function follow(value,depth){
-            if(!value||typeof value!=='object'||depth>5)return;
-            for(const [k,v] of Object.entries(value)){
-              if(k==='$ref'&&typeof v==='string'){
-                const name=v.split('/').pop();
-                const model=j.components.schemas[name];
-                if(!schemas[name]){schemas[name]=model;follow(model,depth+1);}
-              }else follow(v,depth);
-            }
+          for(const version of ['v1','v2']){
+            const r=await fetch('https://api.striven.com/swagger/'+version+'/swagger.json');
+            if(!r.ok){console.log(version+' HTTP '+r.status);continue;}
+            const j=await r.json(),op=j.paths['/v2/tasks/search']||j.paths['/v1/tasks/search'];
+            const models={};
+            function follow(value,depth){if(!value||typeof value!=='object'||depth>5)return;for(const[k,v]of Object.entries(value)){if(k==='$ref'&&typeof v==='string'){const name=v.split('/').pop();if(!models[name]){models[name]=j.components.schemas[name];follow(models[name],depth+1);}}else follow(v,depth);}}
+            if(op){follow(op,0);console.log(JSON.stringify({version,operation:op,models}));}
+            else console.log(JSON.stringify({version,paths:Object.keys(j.paths).filter(p=>/task.*search|static/i.test(p))}));
           }
-          follow(op.post.requestBody,0);
-          console.log(JSON.stringify({requestSchemas:schemas}));
-          const responses={};for(const [name,model]of Object.entries(j.components.schemas))if(/SalesOrder.*(Search|List)|Paged.*SalesOrder/i.test(name))responses[name]=model;
-          console.log(JSON.stringify({responseSchemas:responses}));
           JS
