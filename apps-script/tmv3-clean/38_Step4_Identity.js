@@ -1253,6 +1253,13 @@ function tmv3_step4AddressCandidates_(calendarAddress, refs) {
 
 function tmv3_step4CorroborateCustomer_(record, customer) {
   const evidence = [];
+  // A named person after c/o is explicit account evidence, not a fuzzy company-name match.
+  const careOf=String(customer['Name']||'').match(/\bc\s*\/\s*o\s+([A-Za-z][A-Za-z .'-]+)$/i);
+  if(record.vertical==='PreInspection'&&careOf&&careOf[1].trim().split(/\s+/).length>=2&&
+      tmv3_nameCorroboratesCustomer_(record.title+' '+tmv3_identityDescriptionForRecord_(record),careOf[1])) {
+    return {matched:true,evidence:['CUSTOMER_CARE_OF_FULL_NAME_CORROBORATES_ADDRESS']};
+  }
+
 
   if (
     tmv3_nameCorroboratesCustomer_(
