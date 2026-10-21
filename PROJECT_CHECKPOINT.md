@@ -1,3 +1,12 @@
+## Requested By repair prepared — 2026-10-21
+
+- User reports Requested By still blank after the Order-only bulk backfill. No new live Contact write is verified in this session.
+- Contact-only repair committed in ca34ad9841e2d200a1609075a9b5127f2c18b4df; fixed original81 Tasks. Fresh open Task identity, existing Order link, active Order number/Customer proof and fresh Contact ownership are required. Existing Requested By values are preserved. Sparse payload is restricted before mutation to Id/RequestedBy; independent writer and fresh readback verify the result. Durable INTENT prevents blind retries.
+- Executed14 focused Contact tests and11 existing temporary authentication tests, all PASS. Runtime acceptance remains PENDING.
+- Workflow .github/workflows/tmv3-sd-requested-by.yml captures durable PRE before temporary HEAD execution, restores exact source after each bounded slice, and preserves per-slice results. Full source must match0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b or halt without write. No permanent automation changes have been deployed.
+- GitHub accepted commits ca34ad9,7857fcb,7ce1014, but repeated Actions queries show zero runs for them. Cause UNKNOWN. Direct shell push failed because HTTPS credentials are unavailable. Available GitHub connector has no workflow-dispatch operation. Do not claim execution or replay older Order/cache workflows as a Contact repair.
+- Next: start the prepared Requested By workflow on task_mapping through an authorized GitHub execution path, inspect native outcomes/source restoration, then reconcile results before claiming success.
+
 ## Bulk Order-link backfill completed — 2026-10-20
 
 - All81 captured targets processed; zero pending and zero uncertain writes. Final outcomes: **68 new Order links patched and freshly read-back verified,2 existing links confirmed,11 still unlinked and held**.
