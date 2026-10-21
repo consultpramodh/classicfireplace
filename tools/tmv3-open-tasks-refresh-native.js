@@ -23,7 +23,8 @@ function tmv3_openTasksRefresh_() {
       sh.getRange(target,1,1,16).setValues([row]);
       if(String(sh.getRange(target,1).getValue())!==id)throw Error('CACHE_ID_READBACK');
     }
-    if(!imported) {
+    const finalImport=!!imported&&!props.getProperty(prefix+'FINAL_IMPORT')&&[18983].concat(TMV3_OPEN_REFRESH_HYDRATE_IDS).every(function(id){return !!props.getProperty(prefix+'TASK_'+id);});
+    if(!imported||finalImport) {
       const seed=tmv3_rawTaskById_(18983),seedTask=tmv3_normalizeV2TaskModel_(seed),status=seed.status||seed.Status||{};
       const statusId=Number(status.id||status.Id);
       if(String(seedTask['Task ID'])!=='18983'||tmv3_norm_(seedTask.Status)!=='open'||!Number.isSafeInteger(statusId)||statusId<=0)throw Error('OPEN_STATUS_SEED_NOT_VERIFIED');
@@ -60,6 +61,7 @@ function tmv3_openTasksRefresh_() {
       const verified=index(freshRows());if(found.some(function(t){return verified[tmv3_clean_(t['Task ID'])]===undefined;}))throw Error('OPEN_IMPORT_READBACK_FAILED');
       imported={at:new Date().toISOString(),totalOpen:total,added:added,sourceRowsBefore:beforeCount,sourceRowsAfter:rows.length,byType:byType};
       props.setProperty(prefix+'IMPORTED',JSON.stringify(imported));
+      if(finalImport){props.setProperty(prefix+'FINAL_IMPORT',JSON.stringify(imported));props.deleteProperty(prefix+'VIEWS');props.deleteProperty(prefix+'RICH_VIEWS');}
       return {status:'OPEN_REFRESH_CONTINUING',imported:imported,pendingHydration:TMV3_OPEN_REFRESH_HYDRATE_IDS.length+1,apiBudget:tmv3_strivenApiBudgetStatus_()};
     }
     const started=Date.now(),hydrated=[];
