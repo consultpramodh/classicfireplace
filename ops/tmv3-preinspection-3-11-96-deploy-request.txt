@@ -1,0 +1,3 @@
+Deploy tested V3 3.11.96 source SHA f48c3e3f146b0cd6d7aa3c0eaa98e5843c6ecd16
+Guarded baseline 3.11.95 sha 35c3effa7b269aa3c4d8a7d78c7f853da8225c90
+No writes on any live source drift.
