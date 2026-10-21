@@ -1,0 +1,32 @@
+name: Diagnose Google execution access without mutations
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['.github/workflows/tmv3-execution-access-diagnostic.yml']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-execution-access-diagnostic.js
+      - name: Compare granted scopes, deployment access, and owner-mode behavior
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-execution-access-diagnostic.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: execution-access-diagnostic-${{ github.run_id }}
+          path: execution-access-diagnostic/
+          retention-days: 30
