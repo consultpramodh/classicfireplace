@@ -1,1 +1,1 @@
-Recheck every eligible Friday Oct 23 event across primary and Stephen sources. Inventory exclusions, deduplicate mirrors, verify fresh task and links; no business writes.
+Read-only reconciliation after Doug intake could not find authoritative event. Inventory both sources and existing task plans. Do not repeat intake or task writes.
