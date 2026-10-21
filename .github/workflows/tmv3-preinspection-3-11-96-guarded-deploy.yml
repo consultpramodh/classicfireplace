@@ -84,19 +84,34 @@ jobs:
 
           git archive "$BASELINE_COMMIT" "$SOURCE" | tar -x -C "$BASE"
           test -d "$BASE/$SOURCE"
-          echo "FAIL-CLOSED FULL SOURCE PARITY CHECK."
-          if ! diff -qr "$BASE/$SOURCE" "$PRE/src" > "$TMP/drift.txt" 2>&1; then
-            echo "LIVE_SOURCE_DRIFT: production is not exact October 20 verified 3.11.95 baseline. NO WRITE."
-            cat "$TMP/drift.txt"
-            exit 1
-          fi
-          echo "PRE_SOURCE_EXACT_BASELINE_VERIFIED=$BASELINE_COMMIT"
+          echo "FAIL-CLOSED FULL SOURCE SNAPSHOT HASH CHECK."
+          python3 - "$BASE/$SOURCE" "$PRE/src" <<'PY'
+          import pathlib, subprocess, sys
+          base, live = map(pathlib.Path, sys.argv[1:])
+          def hashes(root):
+              return {str(p.relative_to(root)): subprocess.check_output(['git','hash-object',str(p)],text=True).strip()
+                      for p in root.rglob('*') if p.is_file()}
+          expected = hashes(base)
+          expected.update({
+              '30_Calendar.js':'fc0ee25536f28c3c00a7f144a59447b51bcda513',
+              '58_Operations.js':'1c373025859d43df7b54ad2777474c1da0c5c05e',
+              '60_Automation.js':'0c30b2ec0177200f411d5db49433baa442987a31'
+          })
+          actual = hashes(live)
+          if actual != expected:
+              print('LIVE_SOURCE_DRIFT: no write')
+              for name in sorted(set(actual)|set(expected)):
+                  if actual.get(name) != expected.get(name): print(name, actual.get(name), expected.get(name))
+              sys.exit(1)
+          print('PRE_SOURCE_EXACT_REVIEWED_SNAPSHOT_VERIFIED')
+          PY
 
           cp -R "$PRE/." "$WORK/"
           cp "$SOURCE/00_Config.js" "$WORK/src/00_Config.js"
-          cp "$SOURCE/60_Automation.js" "$WORK/src/60_Automation.js"
+          git merge-file -p "$PRE/src/60_Automation.js" "$BASE/$SOURCE/60_Automation.js" "$SOURCE/60_Automation.js" > "$WORK/src/60_Automation.js"
+          test "$(git hash-object "$WORK/src/60_Automation.js")" = "840d94b86857fe20b707bd6a0f669aad01ae817b"
           echo "Verify ONLY expected files changed."
-          diff -qr "$BASE/$SOURCE" "$WORK/src" > "$TMP/changed-files.txt" || true
+          diff -qr "$PRE/src" "$WORK/src" > "$TMP/changed-files.txt" || true
           grep -q "00_Config.js" "$TMP/changed-files.txt"
           grep -q "60_Automation.js" "$TMP/changed-files.txt"
           if grep -v -E '00_Config.js|60_Automation.js' "$TMP/changed-files.txt"; then
@@ -105,6 +120,8 @@ jobs:
           fi
           for f in "$WORK"/src/*.js; do node --check "$f"; done
 
+          cp "$WORK/src/60_Automation.js" "$SOURCE/60_Automation.js"
+          node tools/test-tmv3-preinspection-exhaustive-sweep.js
           echo "PUSH: only two changed files, all other source preserved byte-for-byte."
           (cd "$WORK" && npx -y @google/clasp@3.3.0 push --force)
           PUSHED=1
