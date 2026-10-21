@@ -1,0 +1,1 @@
+Recheck every eligible Friday Oct 23 event across primary and Stephen sources. Inventory exclusions, deduplicate mirrors, verify fresh task and links; no business writes.
