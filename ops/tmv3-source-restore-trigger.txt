@@ -1,0 +1,2 @@
+Restore verified PRE2d0b only if live source is exact known temporary321326.
+2026-10-21 source-only cleanup.
