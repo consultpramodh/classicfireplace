@@ -17,6 +17,17 @@ async function main(){
   if(!authResponse.ok){test.refreshHttpStatus=authResponse.status;continue;}
   const auth=await authResponse.json();if(!auth.access_token){test.error='NO_ACCESS_TOKEN';continue;}
   const headers={Authorization:'Bearer '+auth.access_token};
+  test.targetCloudProjectNumber='499373863884';
+  const projectResponse=await fetch('https://cloudresourcemanager.googleapis.com/v3/projects/499373863884',{headers,redirect:'error'});
+  test.cloudProjectReadHttpStatus=projectResponse.status;
+  const projectData=await projectResponse.json();
+  if(projectResponse.ok)test.cloudProject={name:projectData.name,projectId:projectData.projectId,displayName:projectData.displayName,state:projectData.state};
+  else test.cloudProjectReadError={code:projectData.error&&projectData.error.code,message:String(projectData.error&&projectData.error.message||'').slice(0,400)};
+  const serviceResponse=await fetch('https://serviceusage.googleapis.com/v1/projects/499373863884/services/script.googleapis.com',{headers,redirect:'error'});
+  test.appsScriptServiceReadHttpStatus=serviceResponse.status;
+  const serviceData=await serviceResponse.json();
+  if(serviceResponse.ok)test.appsScriptApiState=serviceData.state;
+  else test.appsScriptServiceReadError={code:serviceData.error&&serviceData.error.code,message:String(serviceData.error&&serviceData.error.message||'').slice(0,400)};
   const contentResponse=await fetch('https://script.googleapis.com/v1/projects/'+scriptId+'/content',{headers,redirect:'error'});
   test.sourceReadHttpStatus=contentResponse.status;if(!contentResponse.ok)continue;
   const content=await contentResponse.json();const manifest=content.files.find(f=>f.name==='appsscript');

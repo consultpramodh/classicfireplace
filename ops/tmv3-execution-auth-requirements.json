@@ -1,0 +1,16 @@
+{
+  "targetGoogleCloudProjectNumber": "499373863884",
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "requiredExecutionScopes": [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/script.send_mail"
+  ],
+  "preserveExistingManagementScopes": true,
+  "oauthClientMustBelongToTargetProject": true,
+  "authorizationActor": "Script owner; confirm during Google consent",
+  "secretsDestination": "GitHub Actions secret CLASPRC_JSON; no credentials in repository or chat",
+  "verification": "Read-only tmv3_strivenApiBudgetStatus must execute successfully before any task automation"
+}
