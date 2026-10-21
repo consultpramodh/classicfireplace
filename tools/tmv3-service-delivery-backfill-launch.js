@@ -46,6 +46,17 @@ async function main(mode){
   if(!res.ok){const error=await res.json().catch(()=>({}));throw Error('APPS_SCRIPT_MANAGEMENT_'+method+'_'+path+'_HTTP_'+res.status+':'+String(error.error && error.error.message || '').slice(0,250));}
   return res.status===204?{}:res.json();
  };
+ if(mode==='restore'){
+  const before=JSON.parse(fs.readFileSync(dir+'/before.json'));
+  const temporary=JSON.parse(fs.readFileSync(dir+'/temporary-source-backup.json'));
+  if(canonical(before)!==expected||canonical(temporary)!=='32132659bf84e6c58f332be50d08b7cff41bba05bb38132285ae6c223707ff03')throw Error('RESTORE_ARTIFACT_IDENTITY_MISMATCH_NO_WRITE');
+  const live=canonical(await api('/content'));
+  if(live!==expected&&live!==canonical(temporary))throw Error('CONCURRENT_SOURCE_DRIFT_NO_RESTORE');
+  if(live!==expected)await api('/content','PUT',{files:before.files});
+  const finalHash=canonical(await api('/content'));
+  if(finalHash!==expected)throw Error('RESTORE_READBACK_FAILED');
+  console.log(JSON.stringify({status:'EXACT_PRE_SOURCE_RESTORED',finalHash,taskWrites:0}));return;
+ }
  if(mode==='inspect'){
   const live=await api('/content');
   if(live.files.some(f=>/Bearer\s+[A-Za-z0-9_.-]{24,}|(?:api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*['"][A-Za-z0-9_./+-]{20,}['"]/i.test(f.source||'')))throw Error('POSSIBLE_SOURCE_SECRET_NO_EXPORT');
