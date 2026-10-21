@@ -2,6 +2,10 @@ name: V3 PreInspection 3.11.96 guarded live deployment
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmv3-preinspection-3-11-96-guarded-deploy.yml'
 
 permissions:
   contents: read
