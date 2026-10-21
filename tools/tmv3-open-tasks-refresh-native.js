@@ -28,7 +28,7 @@ function tmv3_openTasksRefresh_() {
       const statusId=Number(status.id||status.Id);
       if(String(seedTask['Task ID'])!=='18983'||tmv3_norm_(seedTask.Status)!=='open'||!Number.isSafeInteger(statusId)||statusId<=0)throw Error('OPEN_STATUS_SEED_NOT_VERIFIED');
       // Official TaskSearchParams: Status integer array; PageIndex/PageSize paging.
-      const found=[],seen={},pageSize=100;let total=null;
+      const found=[],seen={},pageSize=1000;let total=null;
       for(let page=0;page<50;page++) {
         const budget=tmv3_strivenApiBudgetStatus_();if(budget.remaining<20||budget.exhausted)throw Error('OPEN_SEARCH_BUDGET_NO_CACHE_WRITE');
         const response=tmv3_fetchJson_(TMV3.API_BASE+'/v2/tasks/search',{method:'post',contentType:'application/json',payload:JSON.stringify({Status:[statusId],PageIndex:page,PageSize:pageSize})})||{};
