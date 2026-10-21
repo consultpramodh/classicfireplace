@@ -859,7 +859,6 @@ function tmv3_taskAssignmentsFromRaw_(raw) {
 
 function tmv3_upsertTaskCacheRow_(task) {
   if (!task || !task['Task ID']) return;
-
   if(Number(task['Task Type ID'])===105) task=tmv3_preInspectionCanonicalCacheTask_(task,tmv3_getCanonicalV1TaskSchedule_(task['Task ID']));
 
   const sh = tmv3_sheet_(TMV3.SHEETS.TASKS);
