@@ -1,4 +1,4 @@
-name: Guarded PreInspection task cache canonical clock
+name: Verify installed PreInspection canonical cache clock
 on:
   push:
     branches: [task_mapping]
@@ -34,7 +34,7 @@ jobs:
           name: task-cache-clock-PRE-${{ github.run_id }}
           path: task-cache-clock-evidence/
           retention-days: 30
-      - name: Deploy cache-only rule and verify all source hashes
+      - name: Verify installed cache rule and unchanged live source
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/deploy-tmv3-task-cache-clock.js deploy
@@ -48,3 +48,5 @@ jobs:
 # Retry read-only preflight with live cache-upsert drift evidence.
 
 # Inspect existing live canonical helper; retain fail-closed source guard.
+
+# Reconciled to tested existing production implementation; read-only verification.

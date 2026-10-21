@@ -17,39 +17,19 @@ async function main(mode){
  if(mode==='prepare'){
   const before=await api('GET');
   fs.writeFileSync(dir+'/before.json',JSON.stringify(before),{mode:0o600});
+  const ops=before.files.find(f=>f.name==='58_Operations');
   const local=fs.readFileSync('apps-script/tmv3-clean/58_Operations.js','utf8');
-  const desired=upsert(local);
-  const insertion="\n  // Canonical schedule only at the cache boundary; raw V2 models stay untouched.\n  // A failed read stops this cache write and preserves the existing row.\n  task = tmv3_taskCacheCanonicalClock_(task);\n";
-  if(desired.split(insertion).length!==2)throw Error('LOCAL_INSERTION_DRIFT');
-  const expected=desired.replace(insertion,'');
-  const work={files:before.files.map(f=>({...f}))};
-  const ops=work.files.find(f=>f.name==='58_Operations'),striven=work.files.find(f=>f.name==='20_Striven');
-  if(!ops||!striven)throw Error('LIVE_FILES_MISSING_NO_WRITE');
-  if(upsert(ops.source)!==expected){
-    console.log('LIVE_UPSERT_REVIEW_SNAPSHOT:'+JSON.stringify(upsert(ops.source)));
-    for(const f of before.files){const source=f.source||'',ix=source.indexOf('function tmv3_preInspectionCanonicalCacheTask_(');if(ix>=0){const end=source.indexOf('\nfunction ',ix+1);console.log('LIVE_EXISTING_CANONICAL_HELPER:'+JSON.stringify(source.slice(ix,end<0?undefined:end)));}}
-    throw Error('LIVE_UPSERT_DRIFT_NO_WRITE');
-  }
-  if(before.files.some(f=>(f.source||'').includes('function tmv3_taskCacheCanonicalClock_(')))throw Error('HELPER_ALREADY_PRESENT_NO_WRITE');
-  const helper=fs.readFileSync('tools/tmv3-task-cache-canonical-clock.js','utf8');
-  ops.source=ops.source.replace(expected,desired);striven.source=striven.source.trimEnd()+'\n\n'+helper;
-  const vm=require('node:vm');for(const f of work.files)if(f.type==='SERVER_JS')new vm.Script(f.source,{filename:f.name});
-  fs.writeFileSync(dir+'/before.json',JSON.stringify(before),{mode:0o600});fs.writeFileSync(dir+'/work.json',JSON.stringify(work),{mode:0o600});
-  fs.writeFileSync(dir+'/plan.json',JSON.stringify({beforeHash:hash(before),workHash:hash(work),scope:['20_Striven','58_Operations'],strivenWrites:0,calendarWrites:0}));
-  console.log('PREPARED_EXACT_LIVE_BACKUP_AND_SURGICAL_PATCH');return;
+  const helper=fs.readFileSync('tools/tmv3-task-cache-canonical-clock.js','utf8').trim();
+  if(!ops||upsert(ops.source)!==upsert(local)||!ops.source.includes(helper))throw Error('INSTALLED_CANONICAL_CACHE_RULE_DRIFT_NO_WRITE');
+  const vm=require('node:vm');new vm.Script(ops.source);
+  fs.writeFileSync(dir+'/plan.json',JSON.stringify({status:'ALREADY_INSTALLED',beforeHash:hash(before),strivenWrites:0,calendarWrites:0,sourceWrites:0}));
+  console.log('EXISTING_LIVE_CANONICAL_CACHE_RULE_MATCHES_REPOSITORY');return;
  }
  if(mode!=='deploy')throw Error('UNKNOWN_MODE');
- const before=JSON.parse(fs.readFileSync(dir+'/before.json')),work=JSON.parse(fs.readFileSync(dir+'/work.json'));
  const plan=JSON.parse(fs.readFileSync(dir+'/plan.json'));
- if(hash(before)!==plan.beforeHash||hash(work)!==plan.workHash||hash(await api('GET'))!==plan.beforeHash)throw Error('PRE_DEPLOY_SOURCE_DRIFT_NO_WRITE');
- let attempted=false;const result={status:'NOT_DEPLOYED',...plan};
- try{
-  attempted=true;await api('PUT',{files:work.files});
-  if(hash(await api('GET'))!==plan.workHash)throw Error('REMOTE_SOURCE_READBACK_MISMATCH');
-  result.status='DEPLOYED_SOURCE_VERIFIED';console.log(JSON.stringify(result));
- }catch(err){
-  result.error=String(err.message);if(attempted){const freshHash=hash(await api('GET'));if(freshHash===plan.workHash){await api('PUT',{files:before.files});result.rollbackVerified=hash(await api('GET'))===plan.beforeHash;}else result.rollbackSkippedForDrift=true;}
-  throw err;
- }finally{fs.writeFileSync(dir+'/result.json',JSON.stringify(result,null,2));}
+ if(plan.status!=='ALREADY_INSTALLED'||hash(await api('GET'))!==plan.beforeHash)throw Error('FINAL_SOURCE_DRIFT_NO_WRITE');
+ const result={...plan,status:'EXISTING_LIVE_RULE_SOURCE_VERIFIED'};
+ fs.writeFileSync(dir+'/result.json',JSON.stringify(result,null,2));
+ console.log(JSON.stringify(result));
 }
 main(process.argv[2]).catch(e=>{console.error(e.message);process.exitCode=1;});
