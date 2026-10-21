@@ -57,7 +57,7 @@ const c=api.worker();
 assert.equal(c.processed,2);assert.equal(c.sweep.remaining,0);
 assert.equal(c.sweep.status,'COMPLETE');assert.equal(triggers.length,0,'no orphan trigger');
 assert.equal(c.sweep.attempted,8);
-assert.equal(totalNotifications,8,'no full notification rescan in continuation');
+assert.equal(totalNotifications,16,'8 initial scans plus 8 per-event safety checks; no repeated full scan');
 assert.ok(logs.every(s=>s.length<2000),'compact logging');
 properties.TMV3_PI_SWEEP_STATE=JSON.stringify({
  status:'IN_PROGRESS',startedAt:new Date().toISOString(),lastKey:'',processed:0
