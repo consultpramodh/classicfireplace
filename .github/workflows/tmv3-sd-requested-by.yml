@@ -1,5 +1,6 @@
 name: Repair Service Delivery Requested By
 on:
+  workflow_dispatch:
   push:
     branches: [task_mapping]
     paths: [ops/tmv3-sd-requested-by-trigger.txt]
