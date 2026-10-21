@@ -19,7 +19,7 @@ jobs:
       - name: Checkout immutable deployment revision
         uses: actions/checkout@v4
         with:
-          ref: f48c3e3f146b0cd6d7aa3c0eaa98e5843c6ecd16
+          ref: fa0ddacbd11e728c18e3f0b3b4a66ac8d1196e9e
           fetch-depth: 0
 
       - name: Run targeted checks before any live changes
