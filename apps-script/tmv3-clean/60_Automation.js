@@ -1596,7 +1596,8 @@ function tmv3_preInspectionAutomationCycle_(options) {
       if (result.processed) sweep.lastKey=tmv3_preInspectionSweepKey_(selected[result.processed-1]);
       sweep.processed=Number(sweep.processed || 0)+result.processed;
       const remaining=Math.max(0,selected.length-result.processed);
-      sweep.status=remaining ? 'IN_PROGRESS' : 'COMPLETE';
+      sweep.status=remaining ? 'IN_PROGRESS' :
+        (pending.length ? 'SCANNED_WITH_PENDING_REVIEW' : 'COMPLETE');
       props.setProperty('TMV3_PI_SWEEP_STATE',JSON.stringify(sweep));
       result.sweep={status:sweep.status,eligible:result.eligible,attempted:sweep.processed,
         remaining:remaining,pendingReview:pending.length,lastKey:sweep.lastKey};
