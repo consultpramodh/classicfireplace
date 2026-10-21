@@ -1,2 +1,4 @@
 Run existing guarded PreInspection sweep now; preserve API brake, source, and access.
 Requested 2026-10-21 after Friday event audit.
+
+Retry requested for Friday, October 23 after deployed 3.11.97 recovery patch; preserve guard and record actual outcome.
