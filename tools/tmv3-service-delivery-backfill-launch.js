@@ -30,8 +30,8 @@ function requestedByRunner(digest,expires) {
 }
 function openRefreshRunner(digest,expires) {
  const results=JSON.parse(fs.readFileSync('ops/tmv3-service-delivery-requested-by-results-20261021.json','utf8')).results;
- const ids=results.filter(r=>['VERIFIED','PRESENT'].includes(r.state)).map(r=>r.taskId);
- if(ids.length!==71 || new Set(ids).size!==71)throw Error('HYDRATION_TARGET_DRIFT');
+ const ids=results.filter(r=>['VERIFIED','PRESENT'].includes(r.state)).map(r=>r.taskId).concat([18920,19182]);
+ if(ids.length!==73 || new Set(ids).size!==73)throw Error('HYDRATION_TARGET_DRIFT');
  return runner(digest,expires).replaceAll('FIXED_SD_ORDER_BACKFILL','FIXED_OPEN_TASK_REFRESH').replace('tmv3_serviceDeliveryOrderBackfill()','tmv3_openTasksRefresh_()')+'\nconst TMV3_OPEN_REFRESH_HYDRATE_IDS='+JSON.stringify(ids)+';\n'+fs.readFileSync('tools/tmv3-open-tasks-refresh-native.js','utf8');
 }
 async function main(mode){
