@@ -1,3 +1,4 @@
 2026-10-21: Complete Open import using official BaseSearchParameters maximum PageSize1000; preserve durable completion and prior verified cache; Task18983 guarded relationship patch.
 Launch verified complete import and cache refresh.
 Resume saved refresh and verify stale cached Open Tasks18920/19182 individually; do not re-import or retry uncertain Task writes.
+Continue remaining14 reads; verified-cleanup transport recovery with durable INTENT reads, rich-text preservation, and original daily API brake.
