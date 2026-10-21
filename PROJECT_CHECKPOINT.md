@@ -1,3 +1,12 @@
+## Connection checks and Requested By execution — 2026-10-21
+
+- This supersedes the earlier prepared-only runtime assessment. Delayed Actions evidence now proves execution. GitHub repository reads/writes work; Google Sheets metadata read succeeds; Apps Script OAuth refresh/source capture and native Striven execution succeeded. No credential reset is indicated by the inspected evidence.
+- Browser GitHub navigation fails with Host access is restricted by policy. Do not bypass that restriction or treat it as a Google OAuth failure. The authorized GitHub Actions path remains usable.
+- Runs39612306476 and39613672208 produced59 Contact-only PATCH results, all readbackVerified=true:45 Service and14 Delivery. Seven existing Requested By values were preserved (including Task19064 employee19); ten Tasks held (nine have no existing Order link,19262 fails fresh Task identity/status/Customer eligibility). Five targets remain pending:19280,19281,19282,19283,19284. Do not claim all81 complete.
+- Last successful slice budget987/1200,213 remaining. Last two HTTP response failures: HTTP500 and non-JSON HTML. Both runs verified exact source restoration/full hash0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b. Transport failure alone is not proof of credential expiration.
+- Authorized restart of job119268877579 accepted; run39613672208 attempt2 job119278112794 is currently queued. Native durable INTENT reconciliation must run before any uncertain Task mutation can be retried; existing completed outcomes are skipped.
+- Next: inspect restart final native tally and all five remaining results; preserve evidence and final source-parity proof. No permanent automation change or universal connection repair is claimed.
+
 ## Requested By repair prepared — 2026-10-21
 
 - User reports Requested By still blank after the Order-only bulk backfill. No new live Contact write is verified in this session.
