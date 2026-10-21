@@ -1,0 +1,1 @@
+Owner authorized end-to-end processing of five newly confirmed next-week PreInspections plus three existing eligible events. Exact eight-event allowlist, verified creator exclusions, sequential processing, UID and schedule checks, task duplicate guards, canonical V1 schedule readbacks and exact source restoration. No daily budget reset.

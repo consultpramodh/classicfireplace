@@ -1,0 +1,41 @@
+name: Next week confirmed PreInspection end to end
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['ops/tmv3-next-week-e2e.txt']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  process-event:
+    name: Process ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        target: [spencer, anne, bill, craig, frances, sylvia, robert, alexandra]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check tools/tmv3-next-week-e2e.cjs
+          node --check tools/tmv3-next-week-intake.cjs
+      - name: Guarded confirmed event intake, production execution and readbacks
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          TMV3_TARGET_KEY: ${{ matrix.target }}
+        run: node tools/tmv3-next-week-e2e.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-week-e2e-${{ matrix.target }}-${{ github.run_id }}
+          path: next-week-e2e-evidence/
+          retention-days: 30
