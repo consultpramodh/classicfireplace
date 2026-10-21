@@ -1,3 +1,3 @@
-Final current Open search reconciliation after detailed reads.
-Preserve current live source and rebuild Sheet views with fresh Requested By evidence.
-2026-10-21 final reconciliation pass.
+Resume after shared-lock contention and read-only Google HTTP503.
+Final inventory reconciliation and view refresh; all targeted checks pass.
+2026-10-21 15:49 UTC.
