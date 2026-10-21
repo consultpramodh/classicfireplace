@@ -12,10 +12,21 @@ Required execution scopes:
 - https://www.googleapis.com/auth/script.scriptapp
 - https://www.googleapis.com/auth/script.send_mail
 
+## Verified target project
+
+- V3 Google Cloud project number supplied by the owner: `499373863884`.
+- Apps Script API state on that project: `ENABLED` (Service Usage API returned HTTP 200).
+- Current CI credential consumer project: `1072944905499`, identified explicitly in Google's Cloud Resource Manager error response.
+- Both execution modes still return HTTP 403; all five execution scopes remain absent.
+- Cloud Resource Manager reads were rejected because that API is disabled on the credential's consumer project. This is not evidence that project 499373863884 is inaccessible.
+- Google Cloud Console browser access is blocked in this session. No client, permission, token, or repository secret has been changed.
+
+Evidence: https://github.com/consultpramodh/classicfireplace/actions/runs/39654137479
+
 ## One-time authorization required
 
-1. Read the Google Cloud project number from V3 Apps Script Project Settings. Script ID and spreadsheet ID are different identifiers.
-2. Verify the execution OAuth client and V3 use the same standard Google Cloud project, with the Apps Script API enabled. This alignment remains unverified.
+1. Use the verified V3 Cloud project number `499373863884`. Open https://console.cloud.google.com/apis/credentials?project=499373863884 and select/create an OAuth client of type Desktop app in that project. A suitable name is `CF V3 GitHub Execution`. Keep its downloaded JSON private.
+2. Verify the execution OAuth client and V3 use the same standard Google Cloud project, with the Apps Script API enabled. The current CI consumer project is different; use the new matching client rather than the existing unrelated client.
 3. Use an OAuth client in that project to obtain the owner's consent for all scopes above and the management scopes required by the existing deployment workflow.
 4. Replace the existing CLASPRC_JSON GitHub Actions secret through GitHub's secret-management interface. Never commit the credentials or send tokens in chat.
 5. Run the existing read-only execution-access diagnostic and require an actual successful budget response before invoking automation.
@@ -28,3 +39,5 @@ Source, deployment, and trigger permissions must not be widened to public access
 https://developers.google.com/apps-script/api/how-tos/execute
 
 The runner now compares granted scopes with the live manifest and reports GOOGLE_REAUTHORIZATION_REQUIRED before attempting execution when grants are incomplete.
+
+For clasp authorization, follow the first-party clasp run guide: https://github.com/google/clasp/blob/master/docs/run.md . Use project scopes and include the existing clasp management scopes so authorization repair does not break deployments. The downloaded OAuth client JSON alone is not an authorized clasp refresh-token profile.
