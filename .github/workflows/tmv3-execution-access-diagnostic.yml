@@ -24,6 +24,10 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-execution-access-diagnostic.js
+      - name: Read audit and Friday event after uncertain test without repeating writes
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-reconcile-budget-test.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
