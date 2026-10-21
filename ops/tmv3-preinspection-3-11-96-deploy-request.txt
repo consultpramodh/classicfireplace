@@ -1,0 +1,4 @@
+V3 3.11.96 guarded release requested 2026-10-21
+Expected live baseline commit 35c3effa7b269aa3c4d8a7d78c7f853da8225c90
+Only 00_Config.js and 60_Automation.js may differ after patch.
+Fail closed on drift.
