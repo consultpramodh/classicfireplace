@@ -1,0 +1,2 @@
+Run existing guarded PreInspection sweep now; preserve API brake, source, and access.
+Requested 2026-10-21 after Friday event audit.

@@ -1,0 +1,32 @@
+name: Run existing PreInspection automation now
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['ops/tmv3-run-preinspection-now-trigger.txt']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  run-existing-automation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-run-preinspection-now.js
+      - name: Invoke existing API executable without changing source or access
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-run-preinspection-now.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preinspection-run-now-${{ github.run_id }}
+          path: preinspection-run-now-evidence/
+          retention-days: 30
