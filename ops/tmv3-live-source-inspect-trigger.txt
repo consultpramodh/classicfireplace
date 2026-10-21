@@ -1,0 +1,1 @@
+2026-10-21: inspect current bound Apps Script HEAD and file hashes; zero Task/source/deployment writes.
