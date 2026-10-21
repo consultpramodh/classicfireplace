@@ -46,6 +46,14 @@ async function main(mode){
   if(!res.ok){const error=await res.json().catch(()=>({}));throw Error('APPS_SCRIPT_MANAGEMENT_'+method+'_'+path+'_HTTP_'+res.status+':'+String(error.error && error.error.message || '').slice(0,250));}
   return res.status===204?{}:res.json();
  };
+ if(mode==='inspect'){
+  const live=await api('/content');
+  if(live.files.some(f=>/Bearer\s+[A-Za-z0-9_.-]{24,}|(?:api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*['"][A-Za-z0-9_./+-]{20,}['"]/i.test(f.source||'')))throw Error('POSSIBLE_SOURCE_SECRET_NO_EXPORT');
+  const metadata={status:'LIVE_SOURCE_INSPECTED_NO_WRITE',actualHash:canonical(live),expectedHash:expected,files:live.files.map(f=>({name:f.name,type:f.type,sha256:crypto.createHash('sha256').update(f.source||'').digest('hex')}))};
+  fs.writeFileSync(dir+'/inspected-source.json',JSON.stringify(live),{mode:0o600});
+  fs.writeFileSync(dir+'/inspection.json',JSON.stringify(metadata,null,2),{mode:0o600});
+  console.log(JSON.stringify(metadata));return;
+ }
  if(mode==='prepare'){
   const before=await api('/content');if(canonical(before)!==expected)throw Error('LIVE_PROJECT_DRIFT_NO_WRITE');
   if(before.files.some(f=>/function\s+doPost\s*\(/.test(f.source||'')))throw Error('EXISTING_POST_HANDLER_NO_WRITE');
