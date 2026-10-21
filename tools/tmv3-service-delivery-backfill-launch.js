@@ -3,7 +3,7 @@
 const fs=require('node:fs'),crypto=require('node:crypto'),vm=require('node:vm');
 const {canonical}=require('./tmv3-relationship-function-patch');
 const scriptId='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
-const expected='0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b';
+const expected='2d0bdfa3a6612fb931c81e6e1bbf6e38e78ec78cea81bc7b369d83008572fe45';
 const dir='autopatch-output-sd-backfill-launch';
 function deepFind(o,keys){if(!o||typeof o!=='object')return '';for(const [k,v]of Object.entries(o))if(keys.includes(k)&&typeof v==='string'&&v)return v;for(const v of Object.values(o)){const found=deepFind(v,keys);if(found)return found;}return '';}
 function runner(digest,expires){
