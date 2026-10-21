@@ -1,1 +1,2 @@
 2026-10-21: inspect current bound Apps Script HEAD and file hashes; zero Task/source/deployment writes.
+Inspect after missed 13:00 PreInspection slot; prepare guarded automatic recovery repair.
