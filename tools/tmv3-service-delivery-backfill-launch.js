@@ -91,8 +91,19 @@ async function main(mode){
   try{result.finalHeadHash=canonical(await api('/content'));result.sourceParityVerified=result.finalHeadHash===expected;}catch(err){result.finalReadError=String(err.message||err);}
   fs.writeFileSync(dir+'/result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));
  }
- if(result.status!=='NATIVE_BACKFILL_LAUNCHED'||!result.sourceParityVerified||!result.headRestoredVerified)throw Error('LAUNCH_OR_CLEANUP_NOT_VERIFIED');
+ if(result.status!=='NATIVE_BACKFILL_LAUNCHED'||!result.sourceParityVerified||!result.headRestoredVerified){
+  if(canResumeAfterTransport(result,process.env.TMV3_BACKFILL_LAUNCH_KIND)){process.exitCode=2;return;}
+  throw Error('LAUNCH_OR_CLEANUP_NOT_VERIFIED');
+ }
 }
-module.exports={runner,cacheRunner,requestedByRunner,openRefreshRunner};
+// Native queues reconcile durable INTENT by GET before they may attempt another write.
+// This exit code permits another authenticated native reconciliation, not a PATCH retry.
+function canResumeAfterTransport(result,kind){
+ return ['OPEN_REFRESH','REQUESTED_BY'].includes(kind) && result.sourceParityVerified===true &&
+ result.headRestoredVerified===true && result.status==='LAUNCH_STOPPED_RECONCILE_BEFORE_RETRY' &&
+ !/^NATIVE_LAUNCH_REJECTED/.test(String(result.error||'')) &&
+ /LAUNCH_HTTP_(500|502|503|504)\b|Unexpected token '<'|not valid JSON|operation was aborted due to timeout/i.test(String(result.error||''));
+}
+module.exports={runner,cacheRunner,requestedByRunner,openRefreshRunner,canResumeAfterTransport};
 if(require.main===module)main(process.argv[2]).catch(err=>{console.error(err.message);process.exitCode=1;});
 

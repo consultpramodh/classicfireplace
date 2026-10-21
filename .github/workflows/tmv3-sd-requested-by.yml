@@ -26,6 +26,7 @@ jobs:
         run: |
           node tools/test-tmv3-sd-requested-by.js
           node tools/test-tmv3-service-delivery-backfill-launch.js
+          node tools/test-tmv3-transport-resume.js
       - name: Capture exact live source
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
@@ -40,8 +41,18 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
           for slice in $(seq 1 24); do
-            node tools/tmv3-service-delivery-backfill-launch.js run
+            if node tools/tmv3-service-delivery-backfill-launch.js run; then
+              code=0
+            else
+              code=$?
+            fi
             cp autopatch-output-sd-backfill-launch/result.json autopatch-output-sd-backfill-launch/result-$slice.json
+            if [ "$code" -eq 2 ]; then
+              echo 'Transport response failed; source restoration verified. Resume native GET reconciliation after delay.'
+              sleep 30
+              continue
+            fi
+            if [ "$code" -ne 0 ]; then exit "$code"; fi
             state=$(node -p "require('./autopatch-output-sd-backfill-launch/result.json').native.status")
             if [ "$state" = "REQUESTED_BY_COMPLETE" ]; then exit 0; fi
             sleep 5
