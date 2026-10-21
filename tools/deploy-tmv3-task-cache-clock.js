@@ -25,7 +25,11 @@ async function main(mode){
   const work={files:before.files.map(f=>({...f}))};
   const ops=work.files.find(f=>f.name==='58_Operations'),striven=work.files.find(f=>f.name==='20_Striven');
   if(!ops||!striven)throw Error('LIVE_FILES_MISSING_NO_WRITE');
-  if(upsert(ops.source)!==expected){console.log('LIVE_UPSERT_REVIEW_SNAPSHOT:'+JSON.stringify(upsert(ops.source)));throw Error('LIVE_UPSERT_DRIFT_NO_WRITE');}
+  if(upsert(ops.source)!==expected){
+    console.log('LIVE_UPSERT_REVIEW_SNAPSHOT:'+JSON.stringify(upsert(ops.source)));
+    for(const f of before.files){const source=f.source||'',ix=source.indexOf('function tmv3_preInspectionCanonicalCacheTask_(');if(ix>=0){const end=source.indexOf('\nfunction ',ix+1);console.log('LIVE_EXISTING_CANONICAL_HELPER:'+JSON.stringify(source.slice(ix,end<0?undefined:end)));}}
+    throw Error('LIVE_UPSERT_DRIFT_NO_WRITE');
+  }
   if(before.files.some(f=>(f.source||'').includes('function tmv3_taskCacheCanonicalClock_(')))throw Error('HELPER_ALREADY_PRESENT_NO_WRITE');
   const helper=fs.readFileSync('tools/tmv3-task-cache-canonical-clock.js','utf8');
   ops.source=ops.source.replace(expected,desired);striven.source=striven.source.trimEnd()+'\n\n'+helper;
