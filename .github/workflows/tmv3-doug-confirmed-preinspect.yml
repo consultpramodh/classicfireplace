@@ -1,0 +1,32 @@
+name: Doug Beatty owner confirmed PreInspection
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['ops/tmv3-doug-confirmed-preinspect.txt']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  friday-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-doug-confirmed-preinspect.cjs
+      - name: Target Friday event, run production guards and read back task and calendar copies
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-doug-confirmed-preinspect.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: doug-confirmed-preinspect-${{ github.run_id }}
+          path: doug-confirmed-preinspect-evidence/
+          retention-days: 30
