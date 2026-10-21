@@ -1,0 +1,128 @@
+name: V3 PreInspection 3.11.96 guarded live deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  guarded-release:
+    if: github.repository == 'consultpramodh/classicfireplace'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout immutable deployment revision
+        uses: actions/checkout@v4
+        with:
+          ref: f48c3e3f146b0cd6d7aa3c0eaa98e5843c6ecd16
+          fetch-depth: 0
+
+      - name: Run targeted checks before any live changes
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate source syntax and sweep regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in apps-script/tmv3-clean/*.js; do node --check "$f"; done
+          node tools/test-tmv3-preinspection-exhaustive-sweep.js
+          grep -Fq "const TMV3_VERSION = '3.11.96-preinspection-full-eligible-sweep-r1';" apps-script/tmv3-clean/00_Config.js
+          grep -Fq "function tmv3_preInspectionContinueEligibleSweep()" apps-script/tmv3-clean/60_Automation.js
+
+      - name: Install authorized clasp client
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASPRC_JSON:-}" ]; then
+            echo "CLASPRC_JSON unavailable; no production changes."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Guarded same-project live deployment with rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT_ID="1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt"
+          BASELINE_COMMIT="35c3effa7b269aa3c4d8a7d78c7f853da8225c90"
+          SOURCE="apps-script/tmv3-clean"
+          EXPECTED_VERSION="3.11.96-preinspection-full-eligible-sweep-r1"
+          TMP="$(mktemp -d)"
+          PRE="$TMP/pre"
+          WORK="$TMP/work"
+          VERIFY="$TMP/verify"
+          BASE="$TMP/baseline"
+          OUT="$GITHUB_WORKSPACE/preinspection-release-evidence"
+          mkdir -p "$PRE" "$WORK" "$VERIFY" "$BASE" "$OUT"
+          PUSHED=0
+
+          rollback() {
+            if [ "$PUSHED" = "1" ]; then
+              echo "Post-push verification failed. Restoring exact PRE source."
+              (cd "$PRE" && npx -y @google/clasp@3.3.0 push --force) || true
+            fi
+          }
+          trap 'exit_code=$?; if [ "$exit_code" -ne 0 ]; then rollback; fi; exit "$exit_code"' EXIT
+
+          echo "READ-ONLY PRE-FLIGHT: clone existing bound live project."
+          (cd "$PRE" && npx -y @google/clasp@3.3.0 clone "$SCRIPT_ID" --rootDir src)
+          cp -R "$PRE" "$OUT/PRE_SOURCE"
+
+          git archive "$BASELINE_COMMIT" "$SOURCE" | tar -x -C "$BASE"
+          test -d "$BASE/$SOURCE"
+          echo "FAIL-CLOSED FULL SOURCE PARITY CHECK."
+          if ! diff -qr "$BASE/$SOURCE" "$PRE/src" > "$TMP/drift.txt" 2>&1; then
+            echo "LIVE_SOURCE_DRIFT: production is not exact October 20 verified 3.11.95 baseline. NO WRITE."
+            cat "$TMP/drift.txt"
+            exit 1
+          fi
+          echo "PRE_SOURCE_EXACT_BASELINE_VERIFIED=$BASELINE_COMMIT"
+
+          cp -R "$PRE/." "$WORK/"
+          cp "$SOURCE/00_Config.js" "$WORK/src/00_Config.js"
+          cp "$SOURCE/60_Automation.js" "$WORK/src/60_Automation.js"
+          echo "Verify ONLY expected files changed."
+          diff -qr "$BASE/$SOURCE" "$WORK/src" > "$TMP/changed-files.txt" || true
+          grep -q "00_Config.js" "$TMP/changed-files.txt"
+          grep -q "60_Automation.js" "$TMP/changed-files.txt"
+          if grep -v -E '00_Config.js|60_Automation.js' "$TMP/changed-files.txt"; then
+            echo "UNEXPECTED_ADDITIONAL_DIFF; no production write."
+            exit 1
+          fi
+          for f in "$WORK"/src/*.js; do node --check "$f"; done
+
+          echo "PUSH: only two changed files, all other source preserved byte-for-byte."
+          (cd "$WORK" && npx -y @google/clasp@3.3.0 push --force)
+          PUSHED=1
+
+          echo "READ-BACK: remote clone and all-file parity."
+          (cd "$VERIFY" && npx -y @google/clasp@3.3.0 clone "$SCRIPT_ID" --rootDir src)
+          if ! diff -qr "$WORK/src" "$VERIFY/src"; then
+            echo "REMOTE_READBACK_MISMATCH; rollback."
+            exit 1
+          fi
+          echo "SOURCE_REMOTE_HASH_PARITY_VERIFIED"
+          cat > "$OUT/evidence.json" <<EOF
+          {"status":"DEPLOYED_AND_SOURCE_VERIFIED","version":"$EXPECTED_VERSION","scriptId":"$SCRIPT_ID","baselineCommit":"$BASELINE_COMMIT","deploymentSha":"$(git rev-parse HEAD)","scope":["00_Config.js","60_Automation.js"],"triggerInstallation":"NOT_REQUIRED_EXISTING_DAILY_HANDLERS"}
+          EOF
+          trap - EXIT
+          echo "V3_PREINSPECTION_3_11_96_DEPLOYED_AND_VERIFIED"
+
+      - name: Preserve evidence including PRE backup
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v3-preinspection-3-11-96-${{ github.run_id }}
+          path: preinspection-release-evidence/
+          retention-days: 30
+          if-no-files-found: warn
