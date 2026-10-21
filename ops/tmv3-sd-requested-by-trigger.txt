@@ -1,1 +1,2 @@
 2026-10-21: repair verified blank Requested By for the fixed 81 existing Service/Delivery Tasks; fresh ownership, contact-only PATCH and readback.
+Launch contact-only reconciliation after committed tests; 2026-10-21T13:54Z.
