@@ -103,7 +103,7 @@ function tmv3_openTasksRefresh_() {
       props.setProperty(prefix+'SAMUELS',JSON.stringify(samuels));
     }
     let views=null;
-    if(!pending.length&&!props.getProperty(prefix+'VIEWS')) {
+    if(!pending.length&&(!props.getProperty(prefix+'VIEWS')||!props.getProperty(prefix+'RICH_VIEWS'))) {
       views=tmv3_step6TaskDecisionRunCached('USER_ALL_OPEN_TASK_REFRESH');
       // Show fresh Task Requested By evidence instead of the older optional-contact wording.
       ['Service','Delivery'].forEach(function(vertical){
@@ -117,13 +117,33 @@ function tmv3_openTasksRefresh_() {
           if(!evidence.length||evidence.some(function(x){return !x||x.requestedByType.toLowerCase()!=='contact'||!x.requestedById;}))return;
           const label='Requested By Contact: '+evidence.map(function(x){return '#'+x.requestedById;}).join(', ')+' (fresh Task)';
           const updated=row.map(function(value){return String(value).replace(/Contact: Not required \/ not resolved/g,label);});
-          if(updated[0]!==String(row[0])||updated[1]!==String(row[1]))view.getRange(i+2,6,1,2).setValues([updated]);
+          if(updated[0]!==String(row[0])||updated[1]!==String(row[1])){
+            const range=view.getRange(i+2,6,1,2),rich=range.getRichTextValues()[0];
+            range.setRichTextValues([rich.map(function(value){return tmv3_openRefreshRichReplacement_(value,'Contact: Not required / not resolved',label);})]);
+          }
         });
       });
+      props.setProperty(prefix+'RICH_VIEWS','true');
       props.setProperty(prefix+'VIEWS',JSON.stringify({at:new Date().toISOString(),status:views.status,write:views.write}));
     }
     const summary={status:pending.length?'OPEN_REFRESH_CONTINUING':'OPEN_REFRESH_COMPLETE',imported:imported,hydrated:hydrated,pendingHydration:pending.length,samuels:samuels,views:views?{status:views.status,write:views.write}:null,apiBudget:tmv3_strivenApiBudgetStatus_()};
     tmv3_audit_('SYSTEM','','','OPEN_TASK_SOURCE_REFRESH','INFO',JSON.stringify(summary));
     return summary;
   } finally {lock.releaseLock();}
+}
+
+// Google Apps Script: preserve existing Task/Customer hyperlinks when contact text changes.
+function tmv3_openRefreshRichReplacement_(rich,needle,label) {
+  const text=rich.getText(),at=text.indexOf(needle);
+  if(at<0)return rich;
+  const stop=at+needle.length,delta=label.length-needle.length;
+  const builder=rich.copy().setText(text.slice(0,at)+label+text.slice(stop));
+  function map(position){return position<=at?position:position>=stop?position+delta:at+Math.min(position-at,label.length);}
+  rich.getRuns().forEach(function(run){
+    const start=map(run.getStartIndex()),end=map(run.getEndIndex());
+    if(end<=start)return;
+    builder.setTextStyle(start,end,run.getTextStyle());
+    const url=run.getLinkUrl();if(url)builder.setLinkUrl(start,end,url);
+  });
+  return builder.build();
 }
