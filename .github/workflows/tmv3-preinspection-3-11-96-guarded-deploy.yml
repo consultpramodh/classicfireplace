@@ -23,7 +23,7 @@ jobs:
       - name: Checkout immutable deployment revision
         uses: actions/checkout@v4
         with:
-          ref: fix/tmv3-preinspection-full-eligible-sweep-20261021
+          ref: f48c3e3f146b0cd6d7aa3c0eaa98e5843c6ecd16
           fetch-depth: 0
 
       - name: Run targeted checks before any live changes
