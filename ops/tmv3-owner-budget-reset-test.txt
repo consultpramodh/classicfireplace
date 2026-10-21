@@ -1,0 +1,1 @@
+Explicit owner instruction 2026-10-21: Reset the daily api budgets and do a test run. Reset internal V3 counters once; preserve original ledger, unchanged configured limits, guarded runner, full source restoration.

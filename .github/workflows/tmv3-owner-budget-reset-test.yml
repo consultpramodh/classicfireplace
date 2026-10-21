@@ -1,0 +1,32 @@
+name: Owner authorized budget reset and guarded test
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['ops/tmv3-owner-budget-reset-test.txt']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  reset-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-reset-budget-and-test.cjs
+      - name: One-time owner-authorized reset, guarded test, restore original source
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-reset-budget-and-test.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: budget-reset-test-${{ github.run_id }}
+          path: budget-reset-test-evidence/
+          retention-days: 30
