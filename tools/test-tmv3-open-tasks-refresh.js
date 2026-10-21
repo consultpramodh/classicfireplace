@@ -28,3 +28,14 @@ r=run({newTask:true});assert.equal(r.result.imported.added,1);assert.equal(r.cel
 r=run({manyTasks:true});assert.equal(r.result.imported.totalOpen,1006);assert.equal(r.requests.length,2);assert.equal(r.requests[0].PageSize,1000);assert.equal(r.cells.length,1007);cases++;
 r=run({lockBusy:true});assert.equal(r.result.status,'LOCK_BUSY');assert.equal(r.writes,0);cases++;
 console.log('PASS: '+cases+' complete Open search, derived status, non-destructive merge, backup, budget and pagination checks.');
+// Execute the rich-text replacement itself and retain hyperlink spans after the text shift.
+{
+ const ctx={};vm.createContext(ctx);vm.runInContext(source,ctx);
+ const needle='Contact: Not required / not resolved',text='Customer #46902\n'+needle+'\nTask #18983';
+ const linkStart=text.indexOf('Task #'),links=[],built={};
+ const builder={setText:v=>(built.text=v,builder),setTextStyle:()=>builder,setLinkUrl:(start,end,url)=>(links.push({start,end,url}),builder),build:()=>built};
+ const rich={getText:()=>text,copy:()=>builder,getRuns:()=>[{getStartIndex:()=>0,getEndIndex:()=>text.length,getTextStyle:()=>({}) ,getLinkUrl:()=>null},{getStartIndex:()=>linkStart,getEndIndex:()=>text.length,getTextStyle:()=>({}),getLinkUrl:()=> 'task/18983'}]};
+ ctx.tmv3_openRefreshRichReplacement_(rich,needle,'Requested By Contact: #41127 (fresh Task)');
+ assert.equal(built.text.slice(links[0].start,links[0].end),'Task #18983');assert.equal(links[0].url,'task/18983');
+ console.log('PASS: rich-text replacement retains the Task hyperlink and correct shifted span.');
+}
