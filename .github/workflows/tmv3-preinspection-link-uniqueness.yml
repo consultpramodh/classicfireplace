@@ -1,0 +1,23 @@
+name: PreInspection link uniqueness regression
+on:
+  push:
+    branches: [task_mapping]
+    paths:
+      - 'apps-script/tmv3-clean/35_CalendarLinks.js'
+      - 'apps-script/tmv3-clean/58_Operations.js'
+      - 'tools/test-tmv3-preinspection-link-uniqueness.js'
+      - '.github/workflows/tmv3-preinspection-link-uniqueness.yml'
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check apps-script/tmv3-clean/35_CalendarLinks.js
+          node --check apps-script/tmv3-clean/58_Operations.js
+          node tools/test-tmv3-preinspection-link-uniqueness.js

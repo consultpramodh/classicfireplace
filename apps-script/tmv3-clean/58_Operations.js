@@ -2217,6 +2217,9 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
     }
 
     const after = String(readBackFound.event.getDescription() || '');
+    if (eventRecord.vertical === 'PreInspection') {
+      tmv3_assertPreInspectionLinkDescription_(after, plan);
+    }
     const missing = (plan.links || []).filter(function(link) {
       if (eventRecord.vertical === 'PreInspection') {
         return !tmv3_preInspectionClickableLinkPresent_(
@@ -2260,6 +2263,15 @@ function tmv3_operationWriteCalendarLinks_(bundle, scope) {
           scope
         )
       : null;
+
+  // Parity reconciliation is another writer. Verify its final state too.
+  if (eventRecord.vertical === 'PreInspection') {
+    copies.forEach(function(copy) {
+      const finalCopy = tmv3_findEventCopyRobust_(copy.calendarId, plan.eventId);
+      if (!finalCopy || !finalCopy.event) throw new Error('PREINSPECTION_FINAL_COPY_MISSING');
+      tmv3_assertPreInspectionLinkDescription_(finalCopy.event.getDescription(), plan);
+    });
+  }
 
   return {
     status: 'CALENDAR_LINKS_VERIFIED',
@@ -5898,3 +5910,4 @@ function tmv3_taskFirstTitleOrderNumber_(title) {
   return {status:values.length===1?'UNIQUE':values.length?'AMBIGUOUS':'MISSING',
     number:values.length===1?values[0]:'',numbers:values};
 }
+
