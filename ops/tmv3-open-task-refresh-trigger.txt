@@ -1,1 +1,2 @@
 2026-10-21: Complete Open import using official BaseSearchParameters maximum PageSize1000; preserve durable completion and prior verified cache; Task18983 guarded relationship patch.
+Launch verified complete import and cache refresh.
