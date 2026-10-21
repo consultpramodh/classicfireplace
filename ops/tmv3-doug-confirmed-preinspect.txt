@@ -1,1 +1,1 @@
-Owner explicitly requests end-to-end Doug PreInspection. Verify and complete intake first; return exact intake blocker without masking it in post-checks. Then existing guarded production cycle.
+Complete explicitly owner-confirmed Doug PreInspection: enable Calendar API on matching project if needed; verify unique exact iCalUID canonical copy, import existing event only if absent, preserve schedule/details, then existing production task guards and readbacks. No unrelated calendar changes.
