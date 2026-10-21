@@ -1,0 +1,46 @@
+name: Guarded PreInspection task cache canonical clock
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['.github/workflows/tmv3-task-cache-clock.yml']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  cache-clock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test cache clock without external writes
+        run: |
+          node --check apps-script/tmv3-clean/20_Striven.js
+          node --check apps-script/tmv3-clean/58_Operations.js
+          node --check tools/deploy-tmv3-task-cache-clock.js
+          node tools/test-tmv3-task-cache-canonical-clock.js
+      - name: Prepare exact live backup and surgical patch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/deploy-tmv3-task-cache-clock.js prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: task-cache-clock-PRE-${{ github.run_id }}
+          path: task-cache-clock-evidence/
+          retention-days: 30
+      - name: Deploy cache-only rule and verify all source hashes
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/deploy-tmv3-task-cache-clock.js deploy
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: task-cache-clock-result-${{ github.run_id }}
+          path: task-cache-clock-evidence/
+          retention-days: 30

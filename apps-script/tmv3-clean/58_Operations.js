@@ -860,6 +860,10 @@ function tmv3_taskAssignmentsFromRaw_(raw) {
 function tmv3_upsertTaskCacheRow_(task) {
   if (!task || !task['Task ID']) return;
 
+  // Canonical schedule only at the cache boundary; raw V2 models stay untouched.
+  // A failed read stops this cache write and preserves the existing row.
+  task = tmv3_taskCacheCanonicalClock_(task);
+
   const sh = tmv3_sheet_(TMV3.SHEETS.TASKS);
   const headers = [
     'Task ID','Task Number','Task Type ID','Task Type','Status','Name',
