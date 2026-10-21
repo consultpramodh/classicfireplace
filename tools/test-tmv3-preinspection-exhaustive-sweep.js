@@ -73,4 +73,32 @@ mock.TMV3.OPERATIONS.preInspectionAutomationCanaryEventId='test-event-1';
 const canary=api.daily('17:00');
 assert.equal(canary.status,'SWEEP_BLOCKED_BY_CANARY_SCOPE');
 mock.TMV3.OPERATIONS.preInspectionAutomationCanaryEventId='';
-console.log('PASS: 8 eligible in 3 batches, one continuation, complete cursor, 8 one-time notification checks, compact logs, lock retry, canary gate');
+// Every event now requires a distinct task write. One write per cycle must
+// force an eight-batch sweep; later records must not be skipped.
+Object.keys(properties).filter(k=>k.startsWith('TMV3_PI_DONE_') ||
+  k==='TMV3_PI_SWEEP_STATE' || k==='TMV3_PI_PENDING_EVENTS').forEach(k=>delete properties[k]);
+let dirty=new Set(records.map(r=>r.eventId)),transactions=0,batches=0;
+mock.tmv3_step7FreshPlansForEvent_=(_,id)=>[dirty.has(id)?
+ {vertical:'PreInspection',eventId:id,plan:'PATCH_EXISTING',blocker:'',taskId:'123',actions:['PATCH_DATES']}:
+ {vertical:'PreInspection',eventId:id,plan:'NO_CHANGE',blocker:'',taskId:'123',actions:[]}];
+mock.tmv3_executeFreshStep7Selection_=(selection)=>{
+ const id=selection.contract.eventId;
+ assert.ok(dirty.has(id),'write must be for an unresolved event');
+ dirty.delete(id);transactions++;
+ return {status:'VERIFIED_CONVERGENCE'};
+};
+let final;
+do{
+ final=(batches===0?api.daily('08:00'):api.worker());
+ batches++;
+ assert.ok(batches<=12,'sweep did not converge within one batch per event');
+ assert.ok(final.writes<=1,'write cap breached');
+ if(final.sweep.remaining)assert.equal(triggers.length,1,'continuation must exist');
+}while(final.sweep.remaining);
+assert.equal(batches,8,'one write per batch for eight actionable events');
+assert.equal(transactions,8,'all actionable events have been updated');
+assert.equal(dirty.size,0,'no skipped records');
+assert.equal(final.sweep.status,'COMPLETE');
+assert.equal(final.sweep.remaining,0);
+assert.equal(triggers.length,0,'all continuations removed');
+console.log('PASS: complete 8-event scan in 3 batches; 8 actionable events in 8 one-write batches; no skips, no orphan triggers, canary/lock safety');
