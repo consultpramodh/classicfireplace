@@ -50,3 +50,5 @@ jobs:
 # Inspect existing live canonical helper; retain fail-closed source guard.
 
 # Reconciled to tested existing production implementation; read-only verification.
+
+# Exact live upsert whitespace parity reconciled from captured source backup.
