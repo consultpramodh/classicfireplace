@@ -16,6 +16,7 @@ async function main(mode){
  const api=async(method,body)=>{const r=await fetch('https://script.googleapis.com/v1/projects/'+scriptId+'/content',{method,headers:{Authorization:'Bearer '+auth.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error'});if(!r.ok)throw Error('CONTENT_'+method+'_HTTP_'+r.status);return r.json();};
  if(mode==='prepare'){
   const before=await api('GET');
+  fs.writeFileSync(dir+'/before.json',JSON.stringify(before),{mode:0o600});
   const local=fs.readFileSync('apps-script/tmv3-clean/58_Operations.js','utf8');
   const desired=upsert(local);
   const insertion="\n  // Canonical schedule only at the cache boundary; raw V2 models stay untouched.\n  // A failed read stops this cache write and preserves the existing row.\n  task = tmv3_taskCacheCanonicalClock_(task);\n";
@@ -23,7 +24,8 @@ async function main(mode){
   const expected=desired.replace(insertion,'');
   const work={files:before.files.map(f=>({...f}))};
   const ops=work.files.find(f=>f.name==='58_Operations'),striven=work.files.find(f=>f.name==='20_Striven');
-  if(!ops||!striven||upsert(ops.source)!==expected)throw Error('LIVE_UPSERT_DRIFT_NO_WRITE');
+  if(!ops||!striven)throw Error('LIVE_FILES_MISSING_NO_WRITE');
+  if(upsert(ops.source)!==expected){console.log('LIVE_UPSERT_REVIEW_SNAPSHOT:'+JSON.stringify(upsert(ops.source)));throw Error('LIVE_UPSERT_DRIFT_NO_WRITE');}
   if(before.files.some(f=>(f.source||'').includes('function tmv3_taskCacheCanonicalClock_(')))throw Error('HELPER_ALREADY_PRESENT_NO_WRITE');
   const helper=fs.readFileSync('tools/tmv3-task-cache-canonical-clock.js','utf8');
   ops.source=ops.source.replace(expected,desired);striven.source=striven.source.trimEnd()+'\n\n'+helper;
