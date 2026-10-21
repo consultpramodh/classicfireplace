@@ -32,3 +32,5 @@ jobs:
           retention-days: 30
 
 # Verify user-supplied V3 Cloud project 499373863884 and Apps Script API state.
+
+# Recheck replacement owner credential after successful local consent.
