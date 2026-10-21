@@ -48,7 +48,7 @@ async function main(){
  finally{
   fs.writeFileSync(dir+'/result.json',JSON.stringify(result,null,2),{mode:0o600});
   if(result.status!=='AUTOMATION_RETURNED')process.exitCode=1;
-  console.log(JSON.stringify({status:result.status,error:result.error||'',missingOAuthScopes:result.missingOAuthScopes||[],deploymentCount:result.deploymentCount,apiExecutableCount:result.apiExecutableCount,entryPointTypes:result.entryPointTypes,sourceWrites:0,permissionChanges:0,nativeStatus:result.native&&result.native.status,sweep:result.native&&result.native.sweep,continuation:result.native&&result.native.continuation}));
+  console.log(JSON.stringify({status:result.status,error:result.error||'',missingOAuthScopes:result.missingOAuthScopes||[],deploymentCount:result.deploymentCount,apiExecutableCount:result.apiExecutableCount,entryPointTypes:result.entryPointTypes,sourceWrites:0,permissionChanges:0,triggers:result.triggers,native:result.native,nativeStatus:result.native&&result.native.status,sweep:result.native&&result.native.sweep,continuation:result.native&&result.native.continuation}));
  }
  if(result.status!=='AUTOMATION_RETURNED')process.exitCode=1;
 }
