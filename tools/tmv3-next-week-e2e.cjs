@@ -11,8 +11,10 @@ async function main(){
  const ar=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p.client,client_secret:p.secret,refresh_token:p.refresh}),redirect:'error'});if(!ar.ok)throw Error('AUTH_FAILED');const a=await ar.json();
  async function api(path,method='GET',body){return new Promise((resolve,reject)=>{const payload=body?JSON.stringify(body):null;const request=https.request('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+a.access_token,...(payload?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}:{})}},response=>{let text='';response.setEncoding('utf8');response.on('data',chunk=>text+=chunk);response.on('error',reject);response.on('end',()=>{if(response.statusCode<200||response.statusCode>=300)return reject(Error('GOOGLE_HTTP_'+response.statusCode));try{resolve(JSON.parse(text));}catch(e){reject(Error('GOOGLE_RESPONSE_INVALID'));}});});const timeout=setTimeout(()=>request.destroy(Error('EXECUTION_TIMEOUT_UNCERTAIN_NO_RETRY')),650000);request.on('close',()=>clearTimeout(timeout));request.on('error',reject);if(payload)request.write(payload);request.end();});}
  await require('./tmv3-next-week-intake.cjs').prepare(a.access_token,target);
- const path='projects/'+SID+'/content',before=await api(path),beforeHash=hash(before);
- if(beforeHash!=='b03d1205bcaae2e2f3ca5dc8ce0a2ac3bb22c75acbec3cc807ee0d749bf807d1')throw Error('LIVE_SOURCE_DRIFT_NO_WRITE');
+ const path='projects/'+SID+'/content',live=await api(path);fs.writeFileSync(DIR+'/original-before-provenance.json',JSON.stringify(live),{mode:0o600});
+ const before=require('./prepare-tmv3-provenance-base.cjs').prepare(live,hash),beforeHash=hash(before);
+ for(const f of before.files)if(f.type==='SERVER_JS')new vm.Script(f.source,{filename:f.name});
+ if(hash(live)!==beforeHash){if(hash(await api(path))!==hash(live))throw Error('PROVENANCE_PRE_WRITE_DRIFT');await api(path,'PUT',{files:before.files});if(hash(await api(path))!==beforeHash)throw Error('PROVENANCE_DEPLOYMENT_READBACK_FAILED');}
  fs.writeFileSync(DIR+'/before.json',JSON.stringify(before),{mode:0o600});
  const work=JSON.parse(JSON.stringify(before)),file=work.files.find(f=>f.name==='20_Striven');if(!file)throw Error('MODULE_MISSING');file.source+='\n'+fs.readFileSync('tools/tmv3-next-week-e2e.gs','utf8');
  for(const f of work.files)if(f.type==='SERVER_JS')new vm.Script(f.source,{filename:f.name});

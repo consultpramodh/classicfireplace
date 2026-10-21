@@ -111,12 +111,14 @@ function tmv3_calendarEvent_(vertical, cfg, calCfg, event, options) {
     tmv3_clean_(titleMigration.preservedTitle) || title;
   const location = tmv3_clean_(event.getLocation());
 
-  const creator = tmv3_safeCalendar_(
+  let creator = tmv3_safeCalendar_(
     function() {
       return event.getCreators ? (event.getCreators() || []).join(',') : '';
     },
     ''
   );
+
+  creator=tmv3_preInspectionProvenanceCreator_(vertical,cfg,calCfg,event,creator);
 
   const guests = tmv3_safeCalendar_(
     function() {
@@ -878,3 +880,17 @@ function tmv3_safeCalendar_(fn, fallback) {
   }
 }
 
+
+// Preserve the verified original creator of an owner-confirmed imported copy.
+function tmv3_preInspectionProvenanceCreator_(vertical,cfg,calCfg,event,fallback) {
+  if(vertical!=='PreInspection'||calCfg.calendarId!==cfg.primaryCalendarId)return fallback;
+  const raw=PropertiesService.getScriptProperties().getProperty('TMV3_PI_ORIGIN_'+tmv3_hash_(event.getId()));
+  if(!raw)return fallback;
+  let origin;try{origin=JSON.parse(raw);}catch(e){throw new Error('PREINSPECTION_ORIGIN_METADATA_INVALID');}
+  if(origin.eventId!==event.getId()||(cfg.secondaryCalendarIds||[]).indexOf(origin.calendarId)<0)throw new Error('PREINSPECTION_ORIGIN_SCOPE_INVALID');
+  const calendar=CalendarApp.getCalendarById(origin.calendarId);
+  const source=calendar&&calendar.getEventById(origin.eventId);
+  const creators=source&&source.getCreators?source.getCreators().map(function(x){return String(x).toLowerCase();}):[];
+  if(!source||creators.length!==1||creators[0]!==origin.creator)throw new Error('PREINSPECTION_ORIGINAL_CREATOR_CHANGED_REVIEW');
+  return origin.creator;
+}

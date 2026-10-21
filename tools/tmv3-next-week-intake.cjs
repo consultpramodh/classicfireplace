@@ -24,8 +24,8 @@ async function prepare(token,target){
   found=await api(url+'?iCalUID='+encodeURIComponent(event.iCalUID));
  }
  if(found.items.length!==1)throw Error('CANONICAL_IMPORT_UNCERTAIN_NO_RETRY');
- const copy=found.items[0];if((imported&&(copy.summary!==event.summary||copy.description!==(event.description||'')))||copy.location!==(event.location||'')||new Date(copy.start.dateTime).getTime()!==new Date(event.start.dateTime).getTime()||new Date(copy.end.dateTime).getTime()!==new Date(event.end.dateTime).getTime())throw Error('CANONICAL_COPY_READBACK_MISMATCH');
- if(!copy.creator||String(copy.creator.email).toLowerCase()!==String(event.creator.email).toLowerCase())throw Error('CANONICAL_CREATOR_MISMATCH_NO_TASK_RUN');
+ const copy=found.items[0];if((imported&&(copy.summary!==event.summary||(copy.description||'')!==(event.description||'')))||(copy.location||'')!==(event.location||'')||new Date(copy.start.dateTime).getTime()!==new Date(event.start.dateTime).getTime()||new Date(copy.end.dateTime).getTime()!==new Date(event.end.dateTime).getTime())throw Error('CANONICAL_COPY_READBACK_MISMATCH');
+ if(!copy.creator||String(copy.creator.email).toLowerCase()!==String(event.creator.email).toLowerCase()){const provenance=copy.extendedProperties&&copy.extendedProperties.private;if(!provenance||provenance.tmv3OriginalCreator!==event.creator.email||provenance.tmv3SourceCalendarId!==sourceId||provenance.tmv3OwnerConfirmedPreinspection!=='2026-10-21')throw Error('CANONICAL_CREATOR_PROVENANCE_MISSING_NO_TASK_RUN');target.originVerified=true;target.sourceCalendarId=sourceId;}
  target.creatorEmail=event.creator.email;
  console.log(JSON.stringify({calendarIntake:'CANONICAL_COPY_VERIFIED',imported,eventId:copy.iCalUID,sourceCreator:event.creator,canonicalCreator:copy.creator}));
  return target;
