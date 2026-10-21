@@ -1555,6 +1555,14 @@ function tmv3_preInspectionAutomationCycle_(options) {
           if (plans.length !== 1) throw new Error('MULTIPLE_CANONICAL_PLANS_NO_WRITE');
           const plan = plans[0];
           one.plan=plan.plan;one.blocker=plan.blocker || '';one.taskId=plan.taskId || '';
+          // Preserve the single business-write transaction cap. Do not
+          // advance the durable sweep cursor past a record whose update has
+          // been deferred solely because this batch used its write allowance.
+          if (!plan.blocker && plan.actions.length && result.writes>=1) {
+            result.processed--;
+            result.deferredWriteBudget=true;
+            break;
+          }
           if (!plan.blocker && plan.actions.length && result.writes<1) {
             // One event transaction per run, using the existing fresh ownership,
             // lifecycle, durable create guards and field-level readbacks.
