@@ -1,0 +1,761 @@
+{
+  "scope": "Original 81 Service/Delivery Tasks",
+  "nativeCompletedAt": "2026-10-21T14:25:47.949Z",
+  "runId": 39613672208,
+  "attempt": 2,
+  "jobId": 119278112794,
+  "tally": {
+    "VERIFIED": 64,
+    "BLOCKED": 10,
+    "PRESENT": 7,
+    "PENDING": 0,
+    "UNCERTAIN": 0
+  },
+  "newPatchesByVertical": {
+    "Service": 50,
+    "Delivery": 14
+  },
+  "sourceHash": "0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b",
+  "sourceParityVerified": true,
+  "apiBudgetAtCompletion": {
+    "count": 1052,
+    "softLimit": 1200,
+    "remaining": 148
+  },
+  "evidenceJobIds": [
+    119264053712,
+    119268877579,
+    119278112794
+  ],
+  "results": [
+    {
+      "taskId": 18374,
+      "at": "2026-10-21T13:56:13.156Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "38672",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 18471,
+      "at": "2026-10-21T13:56:23.504Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56181",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 18733,
+      "at": "2026-10-21T13:56:32.109Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56551",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 18735,
+      "at": "2026-10-21T13:56:32.906Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 18754,
+      "at": "2026-10-21T13:56:33.921Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 18774,
+      "at": "2026-10-21T13:56:34.622Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 18801,
+      "at": "2026-10-21T13:56:35.343Z",
+      "state": "PRESENT",
+      "vertical": "Delivery",
+      "contactId": "56597",
+      "reason": "PRESERVED_EXISTING_REQUESTED_BY",
+      "writes": 0
+    },
+    {
+      "taskId": 18806,
+      "at": "2026-10-21T13:56:36.010Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 18831,
+      "at": "2026-10-21T13:56:36.682Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 18896,
+      "at": "2026-10-21T13:56:37.625Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 18897,
+      "at": "2026-10-21T13:56:38.253Z",
+      "state": "PRESENT",
+      "vertical": "Delivery",
+      "contactId": "56635",
+      "reason": "PRESERVED_EXISTING_REQUESTED_BY",
+      "writes": 0
+    },
+    {
+      "taskId": 18908,
+      "at": "2026-10-21T13:56:46.593Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56643",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 18913,
+      "at": "2026-10-21T13:56:47.312Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 18914,
+      "at": "2026-10-21T13:56:55.339Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56659",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 18979,
+      "at": "2026-10-21T13:57:20.808Z",
+      "state": "PRESENT",
+      "vertical": "Delivery",
+      "contactId": "56576",
+      "reason": "PRESERVED_EXISTING_REQUESTED_BY",
+      "writes": 0
+    },
+    {
+      "taskId": 19037,
+      "at": "2026-10-21T13:57:43.025Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56720",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19064,
+      "at": "2026-10-21T13:57:44.125Z",
+      "state": "PRESENT",
+      "vertical": "Service",
+      "contactId": "19",
+      "reason": "PRESERVED_EXISTING_REQUESTED_BY",
+      "writes": 0
+    },
+    {
+      "taskId": 19098,
+      "at": "2026-10-21T13:57:45.221Z",
+      "state": "PRESENT",
+      "vertical": "Service",
+      "contactId": "50483",
+      "reason": "PRESERVED_EXISTING_REQUESTED_BY",
+      "writes": 0
+    },
+    {
+      "taskId": 19109,
+      "at": "2026-10-21T13:57:53.245Z",
+      "state": "PRESENT",
+      "vertical": "Delivery",
+      "contactId": "52229",
+      "reason": "PRESERVED_EXISTING_REQUESTED_BY",
+      "writes": 0
+    },
+    {
+      "taskId": 19126,
+      "at": "2026-10-21T13:58:05.310Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56779",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19137,
+      "at": "2026-10-21T13:58:18.441Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "48235",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19190,
+      "at": "2026-10-21T13:58:31.423Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56677",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19195,
+      "at": "2026-10-21T13:58:43.968Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56823",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19198,
+      "at": "2026-10-21T13:59:07.954Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 19201,
+      "at": "2026-10-21T13:59:16.372Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "33194",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19203,
+      "at": "2026-10-21T13:59:25.479Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "42588",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19204,
+      "at": "2026-10-21T13:59:39.572Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56748",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19205,
+      "at": "2026-10-21T13:59:40.320Z",
+      "state": "PRESENT",
+      "vertical": "Delivery",
+      "contactId": "56815",
+      "reason": "PRESERVED_EXISTING_REQUESTED_BY",
+      "writes": 0
+    },
+    {
+      "taskId": 19214,
+      "at": "2026-10-21T13:59:50.263Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56842",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19218,
+      "at": "2026-10-21T13:59:58.817Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56851",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19221,
+      "at": "2026-10-21T14:00:40.420Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56855",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19222,
+      "at": "2026-10-21T14:00:54.794Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56567",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19223,
+      "at": "2026-10-21T14:01:10.133Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "35229",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19224,
+      "at": "2026-10-21T14:01:22.315Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "29313",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19225,
+      "at": "2026-10-21T14:01:34.436Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "47007",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19226,
+      "at": "2026-10-21T14:05:31.256Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56835",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19227,
+      "at": "2026-10-21T14:05:46.465Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56845",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19228,
+      "at": "2026-10-21T14:06:08.238Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "35621",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19229,
+      "at": "2026-10-21T14:06:22.013Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56853",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19230,
+      "at": "2026-10-21T14:06:52.297Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "48791",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19231,
+      "at": "2026-10-21T14:07:32.523Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56831",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19232,
+      "at": "2026-10-21T14:07:46.900Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56844",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19233,
+      "at": "2026-10-21T14:08:03.022Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "40286",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19234,
+      "at": "2026-10-21T14:08:18.023Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "43819",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19235,
+      "at": "2026-10-21T14:08:30.712Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56830",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19240,
+      "at": "2026-10-21T14:09:09.079Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56857",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19241,
+      "at": "2026-10-21T14:09:21.457Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "25089",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19242,
+      "at": "2026-10-21T14:09:36.072Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "43584",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19248,
+      "at": "2026-10-21T14:09:44.734Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "48415",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19249,
+      "at": "2026-10-21T14:09:53.621Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "53089",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19250,
+      "at": "2026-10-21T14:10:33.218Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56862",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19251,
+      "at": "2026-10-21T14:10:42.091Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "51665",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19252,
+      "at": "2026-10-21T14:10:51.917Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56861",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19253,
+      "at": "2026-10-21T14:11:01.540Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "38804",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19255,
+      "at": "2026-10-21T14:11:14.944Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56865",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19256,
+      "at": "2026-10-21T14:11:49.111Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "44332",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19257,
+      "at": "2026-10-21T14:12:00.375Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56858",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19258,
+      "at": "2026-10-21T14:12:10.379Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56856",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19259,
+      "at": "2026-10-21T14:12:21.218Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "24898",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19260,
+      "at": "2026-10-21T14:12:22.028Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "NO_EXISTING_ORDER_LINK",
+      "writes": 0
+    },
+    {
+      "taskId": 19261,
+      "at": "2026-10-21T14:12:33.000Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "50994",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19262,
+      "at": "2026-10-21T14:12:55.963Z",
+      "state": "BLOCKED",
+      "vertical": "",
+      "contactId": "",
+      "reason": "TASK_IDENTITY_STATUS_OR_CUSTOMER",
+      "writes": 0
+    },
+    {
+      "taskId": 19263,
+      "at": "2026-10-21T14:13:11.669Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "29182",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19264,
+      "at": "2026-10-21T14:13:22.481Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "36667",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19265,
+      "at": "2026-10-21T14:13:33.470Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "34483",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19266,
+      "at": "2026-10-21T14:13:43.380Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "31401",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19267,
+      "at": "2026-10-21T14:13:53.580Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "47718",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19268,
+      "at": "2026-10-21T14:14:34.806Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "40249",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19269,
+      "at": "2026-10-21T14:15:13.373Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "55029",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19270,
+      "at": "2026-10-21T14:15:29.608Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "28636",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19272,
+      "at": "2026-10-21T14:15:54.734Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56872",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19273,
+      "at": "2026-10-21T14:16:32.273Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56869",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19274,
+      "at": "2026-10-21T14:16:42.365Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "56870",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19275,
+      "at": "2026-10-21T14:16:55.799Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "26298",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19276,
+      "at": "2026-10-21T14:17:06.274Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "49674",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19279,
+      "at": "2026-10-21T14:17:16.492Z",
+      "state": "VERIFIED",
+      "vertical": "Delivery",
+      "contactId": "56876",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19280,
+      "at": "2026-10-21T14:25:06.167Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "53589",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19281,
+      "at": "2026-10-21T14:25:14.738Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "50341",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19282,
+      "at": "2026-10-21T14:25:23.431Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "36394",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19283,
+      "at": "2026-10-21T14:25:34.660Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "37655",
+      "reason": "",
+      "writes": 1
+    },
+    {
+      "taskId": 19284,
+      "at": "2026-10-21T14:25:47.949Z",
+      "state": "VERIFIED",
+      "vertical": "Service",
+      "contactId": "52832",
+      "reason": "",
+      "writes": 1
+    }
+  ]
+}

@@ -1,3 +1,12 @@
+## Requested By backlog complete — 2026-10-21 10:25 Toronto
+
+- Final native state REQUESTED_BY_COMPLETE:64 new Contact-only patches (50 Service,14 Delivery),7 existing Requested By values preserved,10 held; zero pending and zero uncertain outcomes. Reconciled all81 unique fixed target IDs across three job logs;64 result rows have writes=1 and readbackVerified=true in original native logs.
+- Recovery run39613672208 attempt2 job119278112794 succeeded. Four lock-busy slices performed no Task writes, followed by the five final Service patches19280–19284. Independent sparse writer checks and fresh Task readback were required for each patch.
+- Held IDs18735,18754,18774,18806,18831,18896,18913,19198,19260 have no existing Order link;19262 fails fresh Task identity/status/Customer eligibility. Existing employee Requested By19 on19064 was preserved, not represented as a verified Customer Contact.
+- Final source restoration/readback hash0881de3a4e112c7e2830785ba6464edb1af494c874ad08dee6c769a95ae2e74b, headRestoredVerified=true and sourceParityVerified=true. No versions/deployments/OAuth scopes changed. API budget1052/1200,148 remaining at completion.
+- GitHub API/Actions and Google API execution work. Browser recheck was rejected by automatic approval review for the policy-restricted GitHub origin; do not bypass. Browser access is not required for this completed repair.
+- Machine-readable per-Task evidence:ops/tmv3-service-delivery-requested-by-results-20261021.json. The report cache may omit Contact IDs; it is not the authoritative source for a missing live Requested By. No permanent source/automation change is claimed by this one-time backlog repair.
+
 ## Connection checks and Requested By execution — 2026-10-21
 
 - This supersedes the earlier prepared-only runtime assessment. Delayed Actions evidence now proves execution. GitHub repository reads/writes work; Google Sheets metadata read succeeds; Apps Script OAuth refresh/source capture and native Striven execution succeeded. No credential reset is indicated by the inspected evidence.
