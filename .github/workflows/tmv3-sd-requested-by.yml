@@ -1,0 +1,54 @@
+name: Repair Service Delivery Requested By
+on:
+  push:
+    branches: [task_mapping]
+    paths: [ops/tmv3-sd-requested-by-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TMV3_BACKFILL_LAUNCH_KIND: REQUESTED_BY
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify contact repair and launch isolation
+        run: |
+          node tools/test-tmv3-sd-requested-by.js
+          node tools/test-tmv3-service-delivery-backfill-launch.js
+      - name: Capture exact live source
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-service-delivery-backfill-launch.js prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: requested-by-PRE-${{ github.run_id }}
+          path: autopatch-output-sd-backfill-launch/
+          retention-days: 30
+      - name: Repair bounded slices and verify each source restoration
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          for slice in $(seq 1 24); do
+            node tools/tmv3-service-delivery-backfill-launch.js run
+            cp autopatch-output-sd-backfill-launch/result.json autopatch-output-sd-backfill-launch/result-$slice.json
+            state=$(node -p "require('./autopatch-output-sd-backfill-launch/result.json').native.status")
+            if [ "$state" = "REQUESTED_BY_COMPLETE" ]; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: requested-by-result-${{ github.run_id }}
+          path: autopatch-output-sd-backfill-launch/
+          retention-days: 30
