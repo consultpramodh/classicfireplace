@@ -2,7 +2,7 @@
 // Task mutations are limited to the user-supplied Service Task18983 relationships.
 function tmv3_openTasksRefresh_() {
   const lock=LockService.getScriptLock();
-  if(!lock.tryLock(1000))return {status:'LOCK_BUSY'};
+  if(!lock.tryLock(20000))return {status:'LOCK_BUSY'};
   try {
     const props=PropertiesService.getScriptProperties(),prefix='TMV3_OPEN_REFRESH_20261021_';
     const sh=tmv3_sheet_(TMV3.SHEETS.TASKS),headers=['Task ID','Task Number','Task Type ID','Task Type','Status','Name','Customer ID','Location ID','Contact ID','Order ID','Start','Due','Assignees','Pools','URL','Fingerprint'];
