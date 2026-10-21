@@ -10,6 +10,9 @@ function tmv3_dougConfirmedPreinspect20261023() {
   if(Utilities.formatDate(new Date(record.start),TMV3_TIMEZONE,'yyyy-MM-dd')!=='2026-10-23'||String(record.title).indexOf('29447')<0)throw new Error('FRIDAY_EVENT_IDENTITY_DATE_MISMATCH');
   var before={title:record.title,start:record.start,end:record.end,location:record.location,budget:tmv3_strivenApiBudgetStatus_()};
   tmv3_audit_('PreInspection',id,'','OWNER_CONFIRMED_PREINSPECTION','CONFIRMED','Doug Beatty Friday 5-6 PM explicitly confirmed by owner; use existing intake and duplicate guards.');
+  var intake;
+  try{intake=tmv3_preInspectionPromoteCandidate_(record);}catch(e){return {status:'INTAKE_BLOCKED',error:String(e),creator:tmv3_preInspectionCreatorEmail_(record),source:record.calendarRole,eventId:id};}
+  if(intake.status!=='PRIMARY')return {status:'INTAKE_PENDING',intake:intake.status,eventId:id,creator:tmv3_preInspectionCreatorEmail_(record)};
   var native=tmv3_preInspectionAutomationCycle_({force:true,eventId:id,reason:'OWNER_REQUESTED_FRIDAY_REAL_TEST'});
   for(var attempt=1;native.status==='LOCK_BUSY'&&attempt<4;attempt++){Utilities.sleep(15000);native=tmv3_preInspectionAutomationCycle_({force:true,eventId:id,reason:'OWNER_FRIDAY_TEST_LOCK_RETRY'});}
   if(native.results&&native.results.some(function(r){return r.intake==='WAITING_FOR_CF_COPY';})){Utilities.sleep(15000);native=tmv3_preInspectionAutomationCycle_({force:true,eventId:id,reason:'OWNER_CONFIRMED_INTAKE_PROPAGATION_RETRY'});}

@@ -1,1 +1,1 @@
-Owner confirms Doug Beatty 29447, event 4540pk2ej2ejl8uubeo2o4ova2@google.com, October 23 5-6 PM as PreInspection. Admit exact event via existing intake; production identity, task history, duplicate and readback gates remain active.
+Owner explicitly requests end-to-end Doug PreInspection. Verify and complete intake first; return exact intake blocker without masking it in post-checks. Then existing guarded production cycle.
