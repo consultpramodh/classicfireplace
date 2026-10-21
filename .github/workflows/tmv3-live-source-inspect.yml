@@ -1,0 +1,30 @@
+name: Inspect current V3 source without mutation
+on:
+  push:
+    branches: [task_mapping]
+    paths: [ops/tmv3-live-source-inspect-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capture current source and hashes without Task or source mutation
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-service-delivery-backfill-launch.js inspect
+      - uses: actions/upload-artifact@v4
+        with:
+          name: current-v3-source-${{ github.run_id }}
+          path: autopatch-output-sd-backfill-launch/
+          retention-days: 30
