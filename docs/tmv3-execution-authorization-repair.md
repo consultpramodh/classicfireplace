@@ -41,3 +41,15 @@ https://developers.google.com/apps-script/api/how-tos/execute
 The runner now compares granted scopes with the live manifest and reports GOOGLE_REAUTHORIZATION_REQUIRED before attempting execution when grants are incomplete.
 
 For clasp authorization, follow the first-party clasp run guide: https://github.com/google/clasp/blob/master/docs/run.md . Use project scopes and include the existing clasp management scopes so authorization repair does not break deployments. The downloaded OAuth client JSON alone is not an authorized clasp refresh-token profile.
+
+## Selected client — 2026-10-21
+
+Owner supplied Desktop OAuth client ID:
+
+`499373863884-qb6lcfr1886379383h4mff9gne3g3sko.apps.googleusercontent.com`
+
+Its project-number prefix matches the target project. This records the selected client; it does not prove consent, owner identity, or successful execution. The existing GitHub credential remains unchanged.
+
+The next required step is owner authorization using this client's downloaded JSON kept on the owner's computer. Follow the pinned clasp v3.3.0 run guide at https://github.com/google/clasp/blob/v3.3.0/docs/run.md and authorize all project scopes plus clasp management scopes. Supply only the newly authorized profile to CLASPRC_JSON; do not mix it with the old profile because existing deployment helpers can select the first profile. Never put the client secret, refresh token, or downloaded JSON into chat, repository files, issues, or logs.
+
+Google Cloud Console navigation is blocked by browser host policy in this session, and the GitHub connector cannot edit Actions secrets. These prevent completing consent and secret replacement here. No automation success is claimed until the read-only execution diagnostic succeeds with the replacement credential.

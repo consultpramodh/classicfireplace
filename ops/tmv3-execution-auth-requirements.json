@@ -12,5 +12,7 @@
   "oauthClientMustBelongToTargetProject": true,
   "authorizationActor": "Script owner; confirm during Google consent",
   "secretsDestination": "GitHub Actions secret CLASPRC_JSON; no credentials in repository or chat",
-  "verification": "Read-only tmv3_strivenApiBudgetStatus must execute successfully before any task automation"
+  "verification": "Read-only tmv3_strivenApiBudgetStatus must execute successfully before any task automation",
+  "oauthClientId": "499373863884-qb6lcfr1886379383h4mff9gne3g3sko.apps.googleusercontent.com",
+  "authorizationStatus": "CLIENT_ID_RECORDED_CONSENT_AND_REFRESH_TOKEN_PENDING"
 }
