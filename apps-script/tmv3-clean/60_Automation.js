@@ -873,7 +873,7 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
 }
 
 function tmv3_calendarReconciliationFallback() {
-  const preInspection = tmv3_preInspectionAutomationCycle_({reason:'HOURLY_FALLBACK'});
+  const preInspection = tmv3_preInspectionAutomaticRecovery_('HOURLY_FALLBACK');
   tmv3_reconcilePreInspectionSharedGuest_AUTO_({
     reason:'CALENDAR_RECONCILIATION_FALLBACK'
   });
@@ -1499,7 +1499,7 @@ function tmv3_taskFirstFindOrderByTitle_(number,customerId) {
 }
 
 function tmv3_scheduledOperations() {
-  const preInspection = tmv3_preInspectionAutomationCycle_({reason:'SCHEDULED_OPERATIONS'});
+  const preInspection = tmv3_preInspectionAutomaticRecovery_('SCHEDULED_OPERATIONS');
   // Relationship-first is independent from the Stage-7 Calendar gate.
   const taskFirst = tmv3_taskFirstProductionCycle_();
   tmv3_reconcilePreInspectionSharedGuest_AUTO_({
@@ -1776,7 +1776,7 @@ function tmv3_preInspectionNotificationDecision_(record,state,nowValue) {
 }
 function tmv3_preInspectionSendMissingDetails_(record) {
   const assessment=tmv3_preInspectionMissingDetailAssessment_(record);
-  if (!assessment.shouldNotify) return {status:'NO_MISSING_DETAILS',sent:0};
+  if (!assessment.shouldNotify || (assessment.missing||[]).every(function(item){return item.code==='SALES_ORDER';})) return {status:'NO_MISSING_DETAILS',sent:0};
   if (TMV3.MODE!=='PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled!==true) return {status:'DELIVERY_GATED',sent:0};
   const props=PropertiesService.getScriptProperties();
   const key='TMV3_PI_NOTIFICATION_'+tmv3_hash_(record.eventId);
@@ -1806,6 +1806,14 @@ function tmv3_preInspectionSendMissingDetails_(record) {
   return {status:'SENT',sent:1,to:email.recipient,followupNumber:decision.followupNumber,missing:assessment.missing};
 }
 
+// Stable key lets successive time-driven executions cover the complete eligible
+// calendar snapshot without holding a large list in Script Properties.
+function tmv3_preInspectionSweepKey_(record) {
+  const start = new Date(record.start);
+  if (!isFinite(start.getTime())) throw new Error('PREINSPECTION_SWEEP_INVALID_START');
+  return start.toISOString() + '|' + String(record.eventId || '');
+}
+
 function tmv3_preInspectionAutomationCycle_(options) {
   options = options || {};
   if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
@@ -1814,7 +1822,21 @@ function tmv3_preInspectionAutomationCycle_(options) {
   if (!lock.tryLock(options.force === true ? 30000 : 1000)) return {status:'LOCK_BUSY',writes:0};
   const props = PropertiesService.getScriptProperties();
   const result = {status:'COMPLETE',processed:0,writes:0,notifications:0,results:[]};
+  const previousApiContext=TMV3_PREINSPECTION_API_CONTEXT_ACTIVE;
+  TMV3_PREINSPECTION_API_CONTEXT_ACTIVE=true;
   try {
+    const budget=tmv3_strivenApiBudgetStatus_();
+    if(budget.exhausted||budget.remaining<30) {
+      result.status='API_BUDGET_WAIT';result.apiBudget=budget;
+      result.resume='NEXT_SCHEDULED_SLOT_AFTER_DAILY_RESET';
+      const pauseKey='TMV3_PI_BUDGET_PAUSE_DATE';
+      if(props.getProperty(pauseKey)!==budget.date) {
+        props.setProperty(pauseKey,budget.date);
+        tmv3_audit_('PreInspection','','','PREINSPECTION_API_BUDGET_WAIT','WAIT',JSON.stringify({date:budget.date,count:budget.count,softLimit:budget.softLimit,resume:result.resume,triggers:tmv3_listTriggers()}));
+      }
+      props.setProperty('TMV3_PI_LAST_RESULT',JSON.stringify(result));
+      return result;
+    }
     const now = Date.now();
     const last = Number(props.getProperty('TMV3_PI_LAST_CYCLE') || 0);
     if (options.force !== true && now-last < Math.max(1,Number(TMV3.OPERATIONS.preInspectionAutomationIntervalMinutes || 5))*60000) {
@@ -1824,7 +1846,6 @@ function tmv3_preInspectionAutomationCycle_(options) {
     // Reuse the cache-age gates and last-good source policy; refresh failure
     // stops this cycle before task creation or misleading missing-data emails.
     tmv3_refreshOperationalSourcesIfNeeded_(120,false);
-    result.classification=tmv3_preInspectionClassificationCycle_();
     const records = tmv3_preInspectionIntakeRecords_();
     let pending = JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
     pending.forEach(function(id) {
@@ -1833,14 +1854,43 @@ function tmv3_preInspectionAutomationCycle_(options) {
       catch(err) {tmv3_audit_('PreInspection',id,'','PREINSPECTION_RECOVERY','ATTENTION',String(err));}
     });
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
-    const selected = scopeEventId ? records.filter(function(r){return r.eventId===scopeEventId;}) : records;
-    // Check notification deadlines for every authoritative event each slot;
-    // the bounded task-write cursor must not delay due reminders.
-    selected.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){
+    let selected = scopeEventId ? records.filter(function(r){return r.eventId===scopeEventId;}) : records;
+    const sweepRequested = options.sweepStart === true || options.sweepContinue === true;
+    let sweep = null;
+    if (sweepRequested && scopeEventId) {
+      return {status:'SWEEP_BLOCKED_BY_CANARY_SCOPE',processed:0,writes:0,eligible:records.length};
+    }
+    if (sweepRequested) {
+      const raw = props.getProperty('TMV3_PI_SWEEP_STATE') || '';
+      let prior = null;
+      try {if (raw) prior=JSON.parse(raw);} catch (ignored) {}
+      const valid = prior && prior.status==='IN_PROGRESS' &&
+        isFinite(new Date(prior.startedAt).getTime()) &&
+        now-new Date(prior.startedAt).getTime() < 86400000;
+      if (options.sweepContinue === true && !valid) {
+        return {status:'NO_ACTIVE_PREINSPECTION_SWEEP',processed:0,writes:0};
+      }
+      sweep = valid ? prior : {status:'IN_PROGRESS',startedAt:new Date(now).toISOString(),
+        lastKey:'',processed:0};
+      // Deterministic position survives batch boundaries without a 9-KB
+      // Script Properties queue; new earlier events enter the next sweep.
+      selected.sort(function(a,b) {
+        const aa=tmv3_preInspectionSweepKey_(a),bb=tmv3_preInspectionSweepKey_(b);
+        return aa<bb?-1:aa>bb?1:0;
+      });
+      selected=selected.filter(function(r){return tmv3_preInspectionSweepKey_(r)>sweep.lastKey;});
+      result.eligible=records.length;
+    }
+    // Scheduled slots still evaluate notification deadlines for all
+    // authoritative events; continuations do not repeat the full mail scan.
+    const notificationRecords=options.sweepContinue===true ? [] :
+      (scopeEventId ? selected : records);
+    notificationRecords.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){
       try {const notice=tmv3_preInspectionSendMissingDetails_(r);result.notifications+=Number(notice.sent || 0);}
       catch(err) {result.status='ATTENTION';tmv3_preInspectionFailureAlert_(r.eventId,String(err));}
     });
-    let cursor = Number(props.getProperty('TMV3_PI_CURSOR') || 0);
+    let cursor = sweep ? 0 : Number(props.getProperty('TMV3_PI_CURSOR') || 0);
+    // Preserve the tested three-event and one-mutation safety budgets.
     const cap = Math.max(1,Math.min(3,Number(TMV3.OPERATIONS.preInspectionAutomationMaxEventsPerRun || 3)));
     if (selected.length) cursor = cursor % selected.length;
     for (let i=0;i<Math.min(cap,selected.length);i++) {
@@ -1864,6 +1914,10 @@ function tmv3_preInspectionAutomationCycle_(options) {
           one.notification = {status:'WAITING_FOR_INTAKE',sent:0};
         } else {
           let plans = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
+          if (plans.length===1 && plans[0].blocker) {
+            one.optionalOrderEvidence=tmv3_preInspectionOptionalOrderLocationEvidence_(record);
+            if (one.optionalOrderEvidence.status==='CACHE_REPAIRED') plans=tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
+          }
           if (plans.length === 1 && !plans[0].blocker && (plans[0].actions || []).some(function(a) {
             return a===TMV3_STEP7_ACTION.CREATE_TASK || a===TMV3_STEP7_ACTION.RECREATE_TASK;
           })) {
@@ -1872,10 +1926,18 @@ function tmv3_preInspectionAutomationCycle_(options) {
           if (plans.length !== 1) throw new Error('MULTIPLE_CANONICAL_PLANS_NO_WRITE');
           const plan = plans[0];
           one.plan=plan.plan;one.blocker=plan.blocker || '';one.taskId=plan.taskId || '';
+          // Preserve the single business-write transaction cap. Do not
+          // advance the durable sweep cursor past a record whose update has
+          // been deferred solely because this batch used its write allowance.
+          if (!plan.blocker && plan.actions.length && result.writes>=1) {
+            result.processed--;
+            result.deferredWriteBudget=true;
+            break;
+          }
           if (!plan.blocker && plan.actions.length && result.writes<1) {
             // One event transaction per run, using the existing fresh ownership,
             // lifecycle, durable create guards and field-level readbacks.
-            result.writes++;
+            if (plan.actions.some(function(action){return action!==TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS;})) result.writes++;
             one.execution = tmv3_executeFreshStep7Selection_({previousPlan:plan.plan,contract:plan},'PREINSPECTIONAUTO','ALL');
             if (!/VERIFIED|CONVERGED|NO_CHANGE/.test(String(one.execution.status || ''))) {
               throw new Error('PREINSPECTION_RECONCILIATION_NOT_VERIFIED: '+one.execution.status);
@@ -1889,12 +1951,16 @@ function tmv3_preInspectionAutomationCycle_(options) {
           }
           const after = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
           one.afterPlans=after.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};});
-          const complete = after.length===1 && !after[0].blocker && !after[0].actions.length;
+          const complete = tmv3_preInspectionCompletionVerified_(after,one.execution);
           if (complete) {
             pending=pending.filter(function(id){return id!==record.eventId;});
             props.setProperty(doneKey,JSON.stringify({fingerprint:fresh.fingerprint,at:Date.now()}));
           }
-          else if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
+          else {
+            one.status='ATTENTION';
+            result.status='ATTENTION';
+            if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
+          }
         }
         result.notifications += Number(one.notification && one.notification.sent || 0);
       } catch(err) {
@@ -1902,10 +1968,26 @@ function tmv3_preInspectionAutomationCycle_(options) {
         if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
         tmv3_audit_('PreInspection',record.eventId,'','PREINSPECTIONAUTO','ATTENTION',one.error);
         tmv3_preInspectionFailureAlert_(record.eventId,one.error);
+        if(/TMV3_STRIVEN_API_DAILY_GUARD|daily api usage limit/i.test(one.error)) {
+          // Preserve this event's cursor position for a fresh reconciliation after reset.
+          result.status='API_BUDGET_WAIT';result.processed--;
+          result.results.push(one);break;
+        }
       }
       result.results.push(one);
     }
-    if (!options.eventId && selected.length) props.setProperty('TMV3_PI_CURSOR',String((cursor+result.processed)%selected.length));
+    if (sweep) {
+      if (result.processed) sweep.lastKey=tmv3_preInspectionSweepKey_(selected[result.processed-1]);
+      sweep.processed=Number(sweep.processed || 0)+result.processed;
+      const remaining=Math.max(0,selected.length-result.processed);
+      sweep.status=remaining ? 'IN_PROGRESS' :
+        (pending.length ? 'SCANNED_WITH_PENDING_REVIEW' : 'COMPLETE');
+      props.setProperty('TMV3_PI_SWEEP_STATE',JSON.stringify(sweep));
+      result.sweep={status:sweep.status,eligible:result.eligible,attempted:sweep.processed,
+        remaining:remaining,pendingReview:pending.length,lastKey:sweep.lastKey};
+    } else if (!options.eventId && selected.length) {
+      props.setProperty('TMV3_PI_CURSOR',String((cursor+result.processed)%selected.length));
+    }
     props.setProperty('TMV3_PI_PENDING_EVENTS',JSON.stringify(pending));
     props.setProperty('TMV3_PI_LAST_RESULT',JSON.stringify({status:result.status,
       processed:result.processed,writes:result.writes,notifications:result.notifications,
@@ -1917,7 +1999,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
     tmv3_audit_('PreInspection','','','PREINSPECTION_CYCLE','ATTENTION',result.error);
     tmv3_preInspectionFailureAlert_('',result.error);
     return result;
-  } finally {lock.releaseLock();}
+  } finally {TMV3_PREINSPECTION_API_CONTEXT_ACTIVE=previousApiContext;lock.releaseLock();}
 }
 
 function tmv3_runPreInspectionAutomation() {
@@ -1955,9 +2037,75 @@ function tmv3_preInspectionScheduledCycle() {
 function tmv3_preInspectionCheck0800() { return tmv3_runPreInspectionDailySlot_('08:00'); }
 function tmv3_preInspectionCheck1300() { return tmv3_runPreInspectionDailySlot_('13:00'); }
 function tmv3_preInspectionCheck1700() { return tmv3_runPreInspectionDailySlot_('17:00'); }
+
+// Runs one bounded batch after the preceding batch finishes. Trigger
+// installation for the 08/13/17 slots remains unchanged.
+function tmv3_preInspectionScheduleNextSweep_() {
+  const handler='tmv3_preInspectionContinueEligibleSweep';
+  const exists=ScriptApp.getProjectTriggers().some(function(t){
+    return t.getHandlerFunction()===handler;
+  });
+  if (exists) return 'CONTINUATION_ALREADY_SCHEDULED';
+  ScriptApp.newTrigger(handler).timeBased().after(120000).create();
+  return 'CONTINUATION_SCHEDULED';
+}
+function tmv3_preInspectionClearContinuationTrigger_() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction()==='tmv3_preInspectionContinueEligibleSweep') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+}
+function tmv3_preInspectionLogSweep_(slot,result) {
+  const summary={
+    slot:slot,status:result.status,processed:result.processed,
+    writes:result.writes,notifications:result.notifications,
+    sweep:result.sweep || null,continuation:result.continuation || null,
+    error:result.error || '',
+    attentionEvents:(result.results || []).filter(function(r){
+      return r.status==='ATTENTION'||!!r.blocker||!!r.error;
+    }).map(function(r){return {eventId:r.eventId,status:r.status||'',blocker:r.blocker||'',error:r.error||''};})
+  };
+  Logger.log(JSON.stringify(summary));
+  tmv3_audit_('PreInspection','','','PREINSPECTION_SWEEP',result.status||'UNKNOWN',JSON.stringify(summary));
+}
+function tmv3_preInspectionMaybeContinueSweep_(result) {
+  const errors=[result.error||''].concat((result.results||[]).map(function(r){return r.error||'';})).join(' ');
+  if(result.status==='API_BUDGET_WAIT'||/TMV3_STRIVEN_API_DAILY_GUARD|daily api usage limit/i.test(errors)) {
+    result.continuation='WAIT_FOR_DAILY_API_BUDGET';
+    return result;
+  }
+  // A reviewed historical relationship is not an infrastructure failure.
+  const allTechnicalFailures=(result.results||[]).length>0 &&
+    result.results.every(function(r){return !!r.error;});
+  if(allTechnicalFailures) {
+    result.continuation='PAUSED_TECHNICAL_FAILURE_AUTOMATIC_RECOVERY';
+    return result;
+  }
+  if((result.sweep&&result.sweep.remaining>0)||result.status==='LOCK_BUSY') {
+    try {result.continuation=tmv3_preInspectionScheduleNextSweep_();}
+    catch(err) {
+      result.status='ATTENTION';result.continuation='SCHEDULING_FAILED';
+      result.error=String(err&&err.message||err);
+      tmv3_audit_('PreInspection','','','ELIGIBLE_SWEEP','ATTENTION',result.error);
+      tmv3_preInspectionFailureAlert_('',result.error);
+    }
+  }
+  return result;
+}
+
+function tmv3_preInspectionContinueEligibleSweep() {
+  tmv3_preInspectionClearContinuationTrigger_();
+  const result=tmv3_preInspectionAutomationCycle_({force:true,sweepContinue:true,reason:'ELIGIBLE_SWEEP_CONTINUATION'});
+  tmv3_preInspectionMaybeContinueSweep_(result);
+  tmv3_preInspectionLogSweep_('CONTINUATION',result);
+  return result;
+}
 function tmv3_runPreInspectionDailySlot_(slot) {
-  const result=tmv3_preInspectionAutomationCycle_({force:true,reason:'DAILY_SLOT_'+slot});
-  Logger.log(JSON.stringify(result));return result;
+  const result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
+  tmv3_preInspectionMaybeContinueSweep_(result);
+  tmv3_preInspectionLogSweep_(slot,result);
+  return result;
 }
 function tmv3_installPreInspectionAutomationTrigger() {
   const hours=TMV3.OPERATIONS.preInspectionAutomationScheduleHours || [8,13,17];
@@ -2080,154 +2228,34 @@ function tmv3_restoreRecordedPreInspectionLegacyTitles() {
   } finally {lock.releaseLock();}
 }
 
-// Google Apps Script: token-bound PreInspection classification confirmation.
-function tmv3_preInspectionPossibleCandidate_(record) {
-  if (!record || record.calendarRole!=='SECONDARY_STEPHEN' || record.isAllDay) return false;
-  if (tmv3_step2PreInspectionNonCustomer_(record) || tmv3_preInspectionExplicitCandidate_(record)) return false;
-  const text=[record.title,record.rawDescription,record.descriptionClean].join(' ');
-  if (/\b(installation|delivery|maintenance|warranty|service call|repair appointment)\b/i.test(text)) return false;
-  return /\b(fireplace|gas insert|gas stove|gas linear|gas line|valor|stuv\d*|dekko|wood burning)\b/i.test(text) &&
-    !!tmv3_preInspectionCreatorEmail_(record);
+// Google Apps Script: verification-only actions must not keep a converged event pending.
+function tmv3_preInspectionCompletionVerified_(plans, execution) {
+  if (!Array.isArray(plans) || plans.length !== 1) return false;
+  const plan = plans[0];
+  if (!plan || plan.blocker || !Array.isArray(plan.actions)) return false;
+  if (plan.actions.length === 0) return true;
+  if (plan.plan !== 'NO_CHANGE' || plan.actions.some(function(action) {
+    return action !== TMV3_STEP7_ACTION.VERIFY_CALENDAR_LINKS;
+  })) return false;
+  return !!(execution &&
+    ['VERIFIED_CONVERGENCE','CREATED_VERIFIED_AND_CONVERGED'].indexOf(execution.status) >= 0 &&
+    execution.calendarLinks &&
+    execution.calendarLinks.status === 'CALENDAR_LINKS_VERIFIED');
 }
-function tmv3_preInspectionClassificationKey_(eventId) {
-  return 'TMV3_PI_CLASSIFICATION_'+tmv3_hash_(eventId);
-}
-function tmv3_preInspectionClassificationCreate_(record,testMode) {
+
+function tmv3_preInspectionAutomaticRecovery_(reason) {
+  const hour=Number(Utilities.formatDate(new Date(),TMV3_TIMEZONE,'H'));
+  if(hour<8||hour>18) return {status:'OUTSIDE_PREINSPECTION_RECOVERY_HOURS',writes:0};
   const props=PropertiesService.getScriptProperties();
-  const token=Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'');
-  const key=testMode ? 'TMV3_PI_CLASSIFICATION_TEST_'+tmv3_hash_(token) : tmv3_preInspectionClassificationKey_(record.eventId);
-  const state={eventId:record.eventId,calendarId:record.calendarId,recipient:testMode ? 'pramodh@classicfireplace.ca' : tmv3_preInspectionCreatorEmail_(record),
-    token:token,status:'PENDING',testMode:testMode===true,createdAt:new Date().toISOString(),
-    expiresAt:new Date(Date.now()+30*86400000).toISOString(),sentCount:0,lastSentAt:'',
-    title:record.title,location:record.location,start:tmv3_iso_(record.start),end:tmv3_iso_(record.end),
-    notes:tmv3_calendarReadableDescription_(record.rawDescription || record.descriptionClean || ''),
-    customerNumber:tmv3_clean_(record.customerNumber),orderNumber:tmv3_clean_(record.orderNumber)};
-  props.setProperty(key,JSON.stringify(state));
-  props.setProperty('TMV3_PI_RESPONSE_'+tmv3_hash_(token),key);
-  return state;
-}
-function tmv3_preInspectionClassificationLoad_(token) {
-  if (!/^[a-f0-9]{64}$/i.test(String(token || ''))) throw new Error('Invalid response link.');
-  const props=PropertiesService.getScriptProperties();
-  const key=props.getProperty('TMV3_PI_RESPONSE_'+tmv3_hash_(token));
-  const state=key && JSON.parse(props.getProperty(key) || 'null');
-  if (!state || state.token!==token) throw new Error('Response link not found.');
-  if (Date.now()>new Date(state.expiresAt).getTime()) throw new Error('This response link has expired.');
-  if (Date.now()>=new Date(state.start).getTime()) throw new Error('This appointment has already started.');
-  return {key:key,state:state};
-}
-function tmv3_preInspectionClassificationEmail_(state,url) {
-  const escape=tmv3_preInspectionHtmlEscape_;
-  if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url || '')) throw new Error('Published confirmation endpoint is not configured.');
-  const when=Utilities.formatDate(new Date(state.start),'America/Toronto','MMM d, yyyy h:mm a');
-  const label=state.sentCount>0 ? 'FOLLOW-UP #'+state.sentCount+' | ' : '';
-  const yes=url+'?action=classify&choice=YES&token='+encodeURIComponent(state.token);
-  const no=url+'?action=classify&choice=NO&token='+encodeURIComponent(state.token);
-  return {to:state.recipient,subject:(state.testMode?'[TEST] ':'')+label+'CONFIRM PREINSPECTION: '+state.title+' | '+when,
-    htmlBody:'<!doctype html><html><body style="background:#f4f3f1;font-family:Arial;color:#222"><table width="100%"><tr><td align="center"><table width="760" style="width:100%;max-width:760px;background:white"><tr><td style="background:#202020;color:white;padding:20px;border-top:4px solid #b42b2f"><h2>'+escape(label)+'Is this a Preinspection?</h2></td></tr><tr><td style="padding:24px"><p><i>This is an automated email notification from Classic Fireplace &amp; BBQ Store.</i></p><p>Hi '+escape(tmv3_preInspectionCreatorFirstName_(state.recipient))+',</p>'+
-      (state.testMode ? '<p><strong>TEST MODE: Your response will not change a calendar event or create a task.</strong></p>' : '')+
-      '<h3>'+escape(state.title)+'</h3><p><strong>'+escape(when)+'</strong><br>'+escape(state.location || 'Location missing')+'</p><div style="white-space:pre-wrap;background:#f6f5f3;padding:14px">'+escape(state.notes)+'</div><p>This appointment may be a Preinspection. Please confirm its purpose.</p><p><a style="display:inline-block;background:#28632f;color:white;padding:12px 24px;text-decoration:none" href="'+escape(yes)+'">YES — Preinspection</a> &nbsp; <a style="display:inline-block;background:#b42b2f;color:white;padding:12px 24px;text-decoration:none" href="'+escape(no)+'">NO — Other appointment</a></p><p>YES opens a form for the Customer Number and optional Sales Order Number. Nothing changes until you submit. NO also requires confirmation.</p></td></tr></table></td></tr></table></body></html>'};
-}
-function tmv3_preInspectionClassificationForm_(state,choice) {
-  const escape=tmv3_preInspectionHtmlEscape_;
-  choice=choice==='NO'?'NO':'YES';
-  const fields=choice==='YES' ? '<label>Customer Number (required)<input name="customerNumber" inputmode="numeric" pattern="[0-9]+" required value="'+escape(state.customerNumber || '')+'"></label><label>Sales Order Number (optional)<input name="orderNumber" inputmode="numeric" pattern="[0-9]*" value="'+escape(state.orderNumber || '')+'"></label>' : '<p>Confirm that this appointment is not a Preinspection.</p>';
-  return '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_top"><style>body{font-family:Arial;background:#f4f3f1;color:#222;margin:0}main{max-width:650px;background:white;margin:30px auto;padding:24px;border-top:5px solid #b42b2f}label{display:block;margin:20px 0}input{display:block;padding:10px;width:90%;margin-top:6px}button{padding:12px 22px;background:#202020;color:white;border:0}#result{white-space:pre-wrap;margin-top:20px}</style></head><body><main><p><i>This is an automated email notification from Classic Fireplace &amp; BBQ Store.</i></p><h1>Confirm appointment purpose</h1>'+
-    (state.testMode?'<p><strong>TEST MODE — no live calendar or task changes.</strong></p>':'')+'<h2>'+escape(state.title)+'</h2><p>'+escape(state.start)+'<br>'+escape(state.location)+'</p><form id="response">'+fields+'<button type="submit">'+(choice==='YES'?'Confirm Preinspection':'Confirm NO')+'</button></form><div id="result" role="status"></div></main><script>const token='+JSON.stringify(state.token)+';const choice='+JSON.stringify(choice)+';document.getElementById("response").addEventListener("submit",function(e){e.preventDefault();const f=e.target;const button=f.querySelector("button");button.disabled=true;document.getElementById("result").textContent="Submitting…";google.script.run.withSuccessHandler(function(r){document.getElementById("result").textContent=r.message;f.hidden=true;}).withFailureHandler(function(e){document.getElementById("result").textContent=e.message;button.disabled=false;}).tmv3_submitPreInspectionClassification({token:token,choice:choice,customerNumber:f.elements.customerNumber?f.elements.customerNumber.value:"",orderNumber:f.elements.orderNumber?f.elements.orderNumber.value:""});});</script></body></html>';
-}
-function doGet(e) {
-  try {
-    const p=e && e.parameter || {};
-    if (p.action!=='classify') return HtmlService.createHtmlOutput('Classic Fireplace appointment confirmation. Use the link in your notification email.');
-    const response=tmv3_preInspectionClassificationLoad_(p.token);
-    if (['PENDING','SENT','EMAIL_SENDING'].indexOf(response.state.status)<0) return HtmlService.createHtmlOutput('This response has already been recorded.');
-    // GET never records a decision or mutates a calendar: scanner-safe.
-    return HtmlService.createHtmlOutput(tmv3_preInspectionClassificationForm_(response.state,p.choice)).setTitle('Classic Fireplace — Appointment confirmation');
-  } catch(err) {return HtmlService.createHtmlOutput(tmv3_preInspectionHtmlEscape_(String(err.message || err)));}
-}
-function tmv3_submitPreInspectionClassification(input) {
-  const lock=LockService.getScriptLock();
-  if (!lock.tryLock(30000)) throw new Error('The system is processing another request. Please try again shortly.');
-  try {
-    const response=tmv3_preInspectionClassificationLoad_(input && input.token);
-    const state=response.state;const props=PropertiesService.getScriptProperties();
-    if (['PENDING','SENT','EMAIL_SENDING'].indexOf(state.status)<0) return {message:'This response has already been recorded. No further changes were made.'};
-    if (input.choice!=='YES' && input.choice!=='NO') throw new Error('Choose YES or NO.');
-    if (input.choice==='NO') {
-      state.status='NO';state.respondedAt=new Date().toISOString();props.setProperty(response.key,JSON.stringify(state));
-      return {message:state.testMode ? 'TEST: NO recorded. No live event was changed.' : 'NO recorded. This event will not be enrolled in CF Preinspects.'};
-    }
-    const customerNumber=String(input.customerNumber || '').trim();const orderNumber=String(input.orderNumber || '').trim();
-    if (!/^\d{1,10}$/.test(customerNumber)) throw new Error('Enter a valid Customer Number.');
-    if (orderNumber && !/^\d{1,10}$/.test(orderNumber)) throw new Error('Enter a numeric Sales Order Number or leave it blank.');
-    const refs=tmv3_step4IdentityIndex_();const customer=refs.customerByNumber[customerNumber];
-    if (!customer) throw new Error('Customer Number could not be verified. Please check it; newly created customers may need the next source refresh.');
-    if (state.customerNumber && String(state.customerNumber)!==customerNumber) throw new Error('Customer Number conflicts with the current appointment. Please correct the event before confirming.');
-    if (orderNumber) {
-      const orders=(refs.orders || []).filter(function(o){return String(o['Order Number'])===orderNumber;});
-      if (orders.length!==1 || String(orders[0]['Customer ID'])!==String(customer['Customer ID'])) throw new Error('Sales Order could not be verified for this customer. Check the number or leave it blank.');
-    }
-    if (state.testMode) {
-      state.status='TEST_YES';state.customerNumber=customerNumber;state.orderNumber=orderNumber;props.setProperty(response.key,JSON.stringify(state));
-      return {message:'TEST: YES and numbers validated. No calendar event was changed and no task was created.'};
-    }
-    tmv3_assertOperationWrite_('PREINSPECTIONAUTO','PREINSPECTION_CONFIRMATION');
-    const found=tmv3_findCalendarEventById_(state.calendarId,state.eventId);
-    if (!found || !found.event) throw new Error('The original appointment is no longer available.');
-    const cfg=TMV3.VERTICALS.PreInspection;
-    const record=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:state.calendarId,role:'SECONDARY_STEPHEN'},found.event,{applyEligibility:false});
-    if (tmv3_preInspectionCreatorEmail_(record)!==state.recipient) throw new Error('The event creator changed. A new confirmation is required.');
-    if (record.customerNumber && String(record.customerNumber)!==customerNumber) throw new Error('Customer Number changed on the event. A new confirmation is required.');
-    const raw=String(found.event.getDescription() || '');
-    const body=tmv3_preInspectionEnsureLegacyTitle_(raw,found.event.getTitle());
-    const html=/<[a-z][^>]*>/i.test(body);const sep=html?'<br>':'\n';
-    const description=body+(html?'<br><br>':'\n\n')+'PRE-INSPECTION'+sep+'Customer Number: '+customerNumber+(orderNumber?sep+'Sales Order Number: '+orderNumber:'');
-    state.status='APPLYING';state.customerNumber=customerNumber;state.orderNumber=orderNumber;props.setProperty(response.key,JSON.stringify(state));
-    found.event.setDescription(description);
-    if (String(found.event.getDescription())!==description) throw new Error('Description verification failed; response held for review.');
-    const guests=found.event.getGuestList(true).map(function(g){return tmv3_normEmail_(g.getEmail());});
-    [cfg.primaryCalendarId,cfg.secondaryOwnerEmail].forEach(function(email){if(guests.indexOf(tmv3_normEmail_(email))<0) found.event.addGuest(email);});
-    const after=found.event.getGuestList(true).map(function(g){return tmv3_normEmail_(g.getEmail());});
-    if (after.indexOf(tmv3_normEmail_(cfg.primaryCalendarId))<0) throw new Error('Calendar enrollment verification failed; response held for review.');
-    state.status='YES';state.respondedAt=new Date().toISOString();props.setProperty(response.key,JSON.stringify(state));
-    return {message:'Preinspection confirmed and CF Preinspects added. The next 8 AM, 1 PM or 5 PM check will standardise the event and create or reuse its task.'};
-  } finally {lock.releaseLock();}
-}
-function tmv3_preInspectionClassificationCycle_() {
-  const props=PropertiesService.getScriptProperties();const url=props.getProperty('TMV3_PI_CONFIRMATION_WEBAPP_URL');
-  if (TMV3.OPERATIONS.preInspectionClassificationEmailsEnabled!==true || !url) return {status:'CLASSIFICATION_DELIVERY_GATED',sent:0};
-  const cfg=TMV3.VERTICALS.PreInspection;const records=[];
-  (cfg.secondaryCalendarIds || []).forEach(function(id){
-    const cal=CalendarApp.getCalendarById(id);if(!cal) return;
-    const start=new Date();const end=new Date(start.getTime()+Number(cfg.lookaheadDays || 365)*86400000);
-    cal.getEvents(start,end).forEach(function(event){
-      const r=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:id,role:'SECONDARY_STEPHEN'},event,{applyEligibility:false});
-      if(tmv3_preInspectionPossibleCandidate_(r) && !tmv3_findCalendarEventById_(cfg.primaryCalendarId,r.eventId)) records.push(r);
-    });
-  });
-  let sent=0;
-  records.forEach(function(r){
-    const key=tmv3_preInspectionClassificationKey_(r.eventId);let state=JSON.parse(props.getProperty(key) || 'null');
-    if (state && ['YES','NO','APPLYING','EMAIL_SENDING','TEST_YES'].indexOf(state.status)>=0) return;
-    const timing=tmv3_preInspectionNotificationDecision_(r,state && state.sentCount ? {status:'SENT',sentCount:state.sentCount,lastSentAt:state.lastSentAt} : null);
-    if(!timing.send) return;
-    if(!state) state=tmv3_preInspectionClassificationCreate_(r,false);
-    if(Date.now()>new Date(state.expiresAt).getTime()) return;
-    if(MailApp.getRemainingDailyQuota()<3) return;
-    const email=tmv3_preInspectionClassificationEmail_(state,url);
-    state.status='EMAIL_SENDING';props.setProperty(key,JSON.stringify(state));
-    MailApp.sendEmail({to:email.to,cc:tmv3_preInspectionNotificationCc_().join(','),subject:email.subject,htmlBody:email.htmlBody,body:'Please confirm whether this appointment is a Preinspection using the buttons in this email.',name:'Classic Fireplace & BBQ Store'});
-    state.status='SENT';state.sentCount++;state.lastSentAt=new Date().toISOString();props.setProperty(key,JSON.stringify(state));sent++;
-  });
-  return {status:'COMPLETE',sent:sent,candidates:records.length};
-}
-function tmv3_sendPreInspectionClassificationTest(eventId) {
-  const url=PropertiesService.getScriptProperties().getProperty('TMV3_PI_CONFIRMATION_WEBAPP_URL');
-  const cfg=TMV3.VERTICALS.PreInspection;let record=null;
-  (cfg.secondaryCalendarIds || []).some(function(id){const found=tmv3_findCalendarEventById_(id,eventId);if(!found) return false;record=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:id,role:'SECONDARY_STEPHEN'},found.event,{applyEligibility:false});return true;});
-  if(!record || !tmv3_preInspectionPossibleCandidate_(record)) throw new Error('Test requires a verified possible Preinspection appointment on Stephen.');
-  const state=tmv3_preInspectionClassificationCreate_(record,true);
-  const email=tmv3_preInspectionClassificationEmail_(state,url);
-  MailApp.sendEmail({to:'pramodh@classicfireplace.ca',subject:email.subject,htmlBody:email.htmlBody,body:'TEST: Confirm appointment purpose using the YES/NO buttons. No live calendar or task changes will be made.',name:'Classic Fireplace & BBQ Store'});
-  return {status:'TEST_SENT',to:'pramodh@classicfireplace.ca',eventId:eventId};
+  let state=null;
+  try {state=JSON.parse(props.getProperty('TMV3_PI_SWEEP_STATE')||'null');} catch(ignored) {}
+  if(!state||state.status!=='IN_PROGRESS') return {status:'NO_STALLED_PREINSPECTION_SWEEP',writes:0};
+  const last=Number(props.getProperty('TMV3_PI_LAST_CYCLE')||0);
+  if(Date.now()-last<20*60000) return {status:'RECENT_PREINSPECTION_BATCH',writes:0};
+  // Existing scheduled jobs provide recovery; no API executable or manual run needed.
+  tmv3_preInspectionClearContinuationTrigger_();
+  const result=tmv3_preInspectionAutomationCycle_({force:true,sweepContinue:true,reason:'AUTOMATIC_RECOVERY_'+reason});
+  tmv3_preInspectionMaybeContinueSweep_(result);
+  tmv3_preInspectionLogSweep_('RECOVERY',result);
+  return result;
 }

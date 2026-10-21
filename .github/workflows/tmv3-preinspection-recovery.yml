@@ -1,0 +1,45 @@
+name: Deploy PreInspection automatic recovery 3.11.97
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['.github/workflows/tmv3-preinspection-recovery.yml']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  guarded-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare exact live backup and guarded patch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/deploy-tmv3-preinspection-recovery.js prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preinspection-recovery-PRE-${{ github.run_id }}
+          path: preinspection-recovery-evidence/
+          retention-days: 30
+      - name: Test actual production-source patch before write
+        run: |
+          node tools/test-tmv3-preinspection-recovery.js preinspection-recovery-evidence/before.json
+          node tools/test-tmv3-preinspection-link-uniqueness.js
+          node tools/test-tmv3-task-cache-canonical-clock.js
+      - name: Apply in place and verify every source hash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/deploy-tmv3-preinspection-recovery.js deploy
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preinspection-recovery-result-${{ github.run_id }}
+          path: preinspection-recovery-evidence/
+          retention-days: 30

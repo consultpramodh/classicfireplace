@@ -1,4 +1,4 @@
-const TMV3_VERSION = '3.11.90-preinspection-confirmation-form-r1';
+const TMV3_VERSION = '3.11.97-preinspection-automatic-recovery-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
@@ -114,7 +114,6 @@ const TMV3 = Object.freeze({
     canaryApiExtraCalls: 50,
     installRemindersEnabled: true,
     preInspectionMissingDetailEmailsEnabled: true,
-    preInspectionClassificationEmailsEnabled: false,
     preInspectionFailureAlertsEnabled: true,
     preInspectionFailureAlertEmail: 'pramodh@classicfireplace.ca',
     preInspectionAutomationEnabled: true,
@@ -137,6 +136,7 @@ const TMV3 = Object.freeze({
   API_BUDGET: Object.freeze({
     planDailyLimit: 5000,
     v3DailySoftLimit: 1200,
+    preInspectionReservedCalls: 200,
     reserveForOtherWorkflows: 3800,
     propertyPrefix: 'TMV3_STRIVEN_API_BUDGET'
   }),

@@ -5,6 +5,7 @@ var TMV3_RUNTIME_METRICS = {
 };
 
 var TMV3_CANARY_API_ALLOWANCE_ACTIVE = false;
+var TMV3_PREINSPECTION_API_CONTEXT_ACTIVE = false;
 
 function tmv3_resetRuntimeMetrics_() {
   TMV3_RUNTIME_METRICS = {
@@ -71,7 +72,8 @@ function tmv3_strivenApiBudgetStatus_() {
     date: today,
     count: count,
     softLimit: softLimit,
-    remaining: Math.max(0, softLimit - count),
+    remaining: Math.max(0, tmv3_strivenApiEffectiveSoftLimit_({softLimit:softLimit},cfg) - count),
+    preInspectionReservedCalls: Number(cfg.preInspectionReservedCalls || 0),
     planDailyLimit: Number(cfg.planDailyLimit || 5000),
     reserveForOtherWorkflows: Number(cfg.reserveForOtherWorkflows || 0),
     exhausted: exhausted,
@@ -111,10 +113,11 @@ function tmv3_strivenApiEffectiveSoftLimit_(status, cfg, context) {
       ? Math.max(0, configuredExtra)
       : 0;
 
-  return Math.min(
-    planDailyLimit,
-    baseSoftLimit + extra
-  );
+  const ceiling=Math.min(planDailyLimit,baseSoftLimit+extra);
+  // Ring-fence within the existing 1,200-call V3 allowance, never above it.
+  const reserve=mode==='PRODUCTION_WRITE' && TMV3_PREINSPECTION_API_CONTEXT_ACTIVE!==true
+    ? Math.min(ceiling,Math.max(0,Number(cfg.preInspectionReservedCalls || 0))) : 0;
+  return ceiling-reserve;
 }
 
 function tmv3_reserveStrivenApiCall_(label) {
@@ -518,13 +521,7 @@ function tmv3_preInspectionTaskRefreshTargets_() {
       return {
         eventId:tmv3_clean_(record.eventId),
         existingTaskId:tmv3_clean_(record.existingTaskId),
-        customer:record.step4.customer,
-        locationId:tmv3_clean_(
-          record.step4.location && record.step4.location['Location ID']
-        ),
-        calendarRole:tmv3_clean_(record.calendarRole),
-        start:tmv3_clean_(record.start),
-        end:tmv3_clean_(record.end)
+        customer:record.step4.customer
       };
     });
 }
@@ -652,63 +649,6 @@ function tmv3_searchPreInspectionTaskIdsForCustomer_(customer) {
   }
 
   return tmv3_unique_(ids);
-}
-
-/**
- * Source-cache correction for Striven V2's documented PM-as-AM Task timestamp.
- * Require exactly one explicitly linked PRIMARY_SHARED PreInspection event,
- * verified Customer and Location ownership, and the same-day +12-hour
- * direction on BOTH timestamps. This uses existing Calendar/identity data:
- * no additional Striven API reads, and no Striven or Calendar writes.
- */
-function tmv3_preInspectionCorrectSourceTaskClock_(task, targets) {
-  const output = Object.assign({}, task || {});
-  const id = tmv3_clean_(output['Task ID']);
-  if (!id || Number(output['Task Type ID'] || 0) !== 105) return output;
-
-  const linked = (targets || []).filter(function(target) {
-    return (
-      target.calendarRole === 'PRIMARY_SHARED' &&
-      tmv3_clean_(target.existingTaskId) === id
-    );
-  });
-  if (linked.length !== 1) return output;
-
-  const target = linked[0];
-  const customerId = tmv3_clean_(target.customer && target.customer['Customer ID']);
-  const locationId = tmv3_clean_(target.locationId);
-  if (!customerId || !locationId ||
-      customerId !== tmv3_clean_(output['Customer ID']) ||
-      locationId !== tmv3_clean_(output['Location ID'])) return output;
-
-  const pairs = [
-    [output['Start'], target.start],
-    [output['Due'], target.end]
-  ];
-  const matchesKnownDefect = pairs.every(function(pair) {
-    const sourceDate = tmv3_parseDateTime_(pair[0]);
-    const calendarDate = tmv3_parseDateTime_(pair[1]);
-    return !!(
-      sourceDate && calendarDate &&
-      tmv3_date_(sourceDate) === tmv3_date_(calendarDate) &&
-      calendarDate.getTime() - sourceDate.getTime() === 12 * 60 * 60 * 1000 &&
-      Number(tmv3_time_(sourceDate).slice(0, 2)) < 12 &&
-      Number(tmv3_time_(calendarDate).slice(0, 2)) >= 12
-    );
-  });
-  if (!matchesKnownDefect) return output;
-
-  output['Start'] = tmv3_iso_(tmv3_parseDateTime_(target.start));
-  output['Due'] = tmv3_iso_(tmv3_parseDateTime_(target.end));
-  output.Fingerprint = tmv3_hash_([
-    output['Task ID'], output['Task Number'], output['Task Type ID'],
-    output['Task Type'], output['Status'], output['Name'],
-    output['Customer ID'], output['Location ID'], output['Contact ID'],
-    output['Order ID'], output['Start'], output['Due'],
-    output['Assignees'], output['Pools']
-  ].map(function(value) { return tmv3_clean_(value); }).join('|'));
-
-  return output;
 }
 
 function tmv3_preInspectionTaskSourceRows_(options) {
@@ -878,11 +818,9 @@ function tmv3_preInspectionTaskSourceRows_(options) {
   );
 
   return {
-    rows:hydrated.map(function(task) {
-      return tmv3_preInspectionTaskRowArray_(
-        tmv3_preInspectionCorrectSourceTaskClock_(task, targets)
-      );
-    }),
+    rows:hydrated.map(
+      tmv3_preInspectionTaskRowArray_
+    ),
     reused:false,
     targetCustomers:customerIds.length,
     searchedCustomers:customerIds.length,
