@@ -74,3 +74,13 @@ The helper uses a loopback listener with state validation and PKCE, requests off
 Validation performed here: Node syntax check and executed negative-case tests for client mismatch, callback state/path, denied consent, missing refresh token, required scopes and downstream single-profile compatibility. Live owner consent, token exchange, and secret replacement have not been executed here.
 
 OAuth basis: https://developers.google.com/identity/protocols/oauth2/native-app
+
+## Repair verified — October 21, 2026, 2:55–2:56 PM Toronto
+
+GitHub Actions independently verified the replacement secret: one matching-project profile, no missing live manifest scopes, source/deployment reads HTTP 200, and both owner/deployed read-only budget executions HTTP 200. Evidence: https://github.com/consultpramodh/classicfireplace/actions/runs/39657014572
+
+The existing guarded automation was then invoked once. Result: API_BUDGET_WAIT, processed 0, writes 0, notifications 0; daily V3 count 1200/1200, remaining 0. Resume reported NEXT_SCHEDULED_SLOT_AFTER_DAILY_RESET. No budget reset or override was performed. Evidence: https://github.com/consultpramodh/classicfireplace/actions/runs/39657116660
+
+Installed trigger inventory includes exactly one each of tmv3_preInspectionCheck0800, tmv3_preInspectionCheck1300 and tmv3_preInspectionCheck1700, plus scheduled operations, daily source refresh, calendar fallback and calendar-update handlers. The inventory API does not expose clock times or timezone, so this verifies handler presence, not their actual clock configuration. Friday task completion remains unverified.
+
+Earlier sections describing consent as pending are historical diagnosis; the verified results above supersede that status.

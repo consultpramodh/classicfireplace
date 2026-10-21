@@ -14,5 +14,8 @@
   "secretsDestination": "GitHub Actions secret CLASPRC_JSON; no credentials in repository or chat",
   "verification": "Read-only tmv3_strivenApiBudgetStatus must execute successfully before any task automation",
   "oauthClientId": "499373863884-qb6lcfr1886379383h4mff9gne3g3sko.apps.googleusercontent.com",
-  "authorizationStatus": "CLIENT_ID_RECORDED_CONSENT_AND_REFRESH_TOKEN_PENDING"
+  "authorizationStatus": "EXECUTION_ACCESS_VERIFIED_FROM_GITHUB_ACTIONS",
+  "verificationEvidence": "https://github.com/consultpramodh/classicfireplace/actions/runs/39657014572",
+  "automationEvidence": "https://github.com/consultpramodh/classicfireplace/actions/runs/39657116660",
+  "latestAutomationStatus": "API_BUDGET_WAIT; count=1200; remaining=0; writes=0; resume=NEXT_SCHEDULED_SLOT_AFTER_DAILY_RESET"
 }
