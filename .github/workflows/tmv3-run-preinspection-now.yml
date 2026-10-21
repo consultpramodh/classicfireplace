@@ -19,7 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check tools/tmv3-run-preinspection-now.js
+      - run: |
+          node --check tools/tmv3-run-preinspection-now.js
+          node tools/test-tmv3-run-execution-scopes.js
       - name: Invoke existing API executable without changing source or access
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
