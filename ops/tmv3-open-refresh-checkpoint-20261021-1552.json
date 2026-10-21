@@ -1,0 +1,43 @@
+{
+  "status": "INCOMPLETE_BLOCKED_BY_SHARED_LOCK_AND_GOOGLE_MANAGEMENT_503",
+  "at": "2026-10-21T15:52:35Z",
+  "source": {
+    "restored": true,
+    "verifiedHash": "2d0bdfa3a6612fb931c81e6e1bbf6e38e78ec78cea81bc7b369d83008572fe45",
+    "restorationRun": 39629599181,
+    "restorationJob": 119323920268,
+    "preinspectionUpdatePreserved": true,
+    "temporaryLauncherRemoved": true
+  },
+  "refresh": {
+    "originalCompleteOpenSnapshot": {
+      "at": "2026-10-21T14:57:23.469Z",
+      "count": 1600,
+      "newIds": 438
+    },
+    "detailedReadsRemainingAtLastSuccessfulSlice": 14,
+    "lastSuccessfulSliceRun": 39625216646,
+    "continuationRuns": [
+      39628211978,
+      39628486711,
+      39629049596
+    ],
+    "newTaskPatchesInTheseContinuationRuns": 0,
+    "finalCurrentOpenReconciliation": "NOT_RUN",
+    "operatorViewFinalRefresh": "NOT_RUN",
+    "observedSheet": {
+      "records": 5138,
+      "openStatuses": 1534,
+      "capturedDuringConcurrentScheduledRefresh": true,
+      "task18920": "Done",
+      "task19182": "absent from observed source cache; not freshly read"
+    }
+  },
+  "code": {
+    "finalOpenSearchReconciliationAdded": true,
+    "sharedLockWaitMs": 20000,
+    "uncertainIntentFreshReadNoWriterRetry": true,
+    "targetedTests": "11 inventory/merge, 1 rich-text, 11 launcher, 16 recovery gate, 3 uncertain-INTENT reconciliation cases passed locally and latest workflow"
+  },
+  "next": "Resume bounded native hydration only against verified current source; finish final full Open search and views, then independently verify Sheet and source restoration. Do not treat old imported count as current completeness proof."
+}
