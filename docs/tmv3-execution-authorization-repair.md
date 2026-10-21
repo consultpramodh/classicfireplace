@@ -53,3 +53,24 @@ Its project-number prefix matches the target project. This records the selected 
 The next required step is owner authorization using this client's downloaded JSON kept on the owner's computer. Follow the pinned clasp v3.3.0 run guide at https://github.com/google/clasp/blob/v3.3.0/docs/run.md and authorize all project scopes plus clasp management scopes. Supply only the newly authorized profile to CLASPRC_JSON; do not mix it with the old profile because existing deployment helpers can select the first profile. Never put the client secret, refresh token, or downloaded JSON into chat, repository files, issues, or logs.
 
 Google Cloud Console navigation is blocked by browser host policy in this session, and the GitHub connector cannot edit Actions secrets. These prevent completing consent and secret replacement here. No automation success is claimed until the read-only execution diagnostic succeeds with the replacement credential.
+
+## One-time local repair helper
+
+Requirements: Node.js 22 or newer, GitHub CLI authenticated as an account allowed to update this repository's Actions secrets, and the downloaded Desktop client JSON on the same computer. Never upload that JSON to the repository or chat.
+
+1. Download `tools/tmv3-authorize-owner.cjs` from branch `task_mapping`.
+2. In a local terminal run the following JavaScript / Node.js command, replacing the JSON path with your private downloaded file:
+
+~~~powershell
+node ./tmv3-authorize-owner.cjs "C:/Users/YOUR_USER/Downloads/client_secret.json"
+~~~
+
+3. Open the printed Google authorization URL on that same computer. Select the Apps Script owner and grant the requested scopes.
+4. Wait for PASS and DONE in the terminal. The helper verifies refresh, all scopes, live source reads, deployment inventory, and owner-mode execution of `tmv3_strivenApiBudgetStatus`. Only after those pass does it replace `CLASPRC_JSON` using GitHub CLI stdin.
+5. Report the terminal's non-secret result. No task automation is invoked by this helper; the guarded runner remains the next operational step.
+
+The helper uses a loopback listener with state validation and PKCE, requests offline access, and never writes the resulting token to disk or prints it. A failed verification leaves the existing GitHub secret unchanged. GitHub secret replacement errors are reported without credential output. It does not change source, deployment access, task data, or API limits.
+
+Validation performed here: Node syntax check and executed negative-case tests for client mismatch, callback state/path, denied consent, missing refresh token, required scopes and downstream single-profile compatibility. Live owner consent, token exchange, and secret replacement have not been executed here.
+
+OAuth basis: https://developers.google.com/identity/protocols/oauth2/native-app
