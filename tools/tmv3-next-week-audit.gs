@@ -15,7 +15,7 @@ function tmv3_nextWeekAudit20261026() {
     calendar.getEvents(start,end).forEach(function(event){
       if(event.getStartTime()>=end||event.getEndTime()<=start)return;
       var record=tmv3_calendarEvent_('PreInspection',cfg,source,event,{applyEligibility:false});
-      var creators=event.getCreators().map(function(x){return String(x).toLowerCase();});
+      var creators=(record&&record.sourceCreators&&record.sourceCreators.length?record.sourceCreators:event.getCreators()).map(function(x){return String(x).toLowerCase();});
       var creatorExcluded=creators.some(function(email){return ignoredEmails.indexOf(email)>=0;});
       var reason=creatorExcluded?'IGNORED_CREATOR':!record?'NO_RECORD':tmv3_step2PreInspectionNonCustomer_(record)?'NON_CUSTOMER':source.role==='SECONDARY_STEPHEN'&&!tmv3_preInspectionExplicitCandidate_(record)?'SECONDARY_NOT_EXPLICIT_PREINSPECTION':'ELIGIBLE';
       var entry={creators:creators,creatorNames:directory.filter(function(e){return creators.indexOf(String(e.email).toLowerCase())>=0;}).map(function(e){return e.name;}),eventId:event.getId(),title:event.getTitle(),start:event.getStartTime().toISOString(),end:event.getEndTime().toISOString(),allDay:event.isAllDayEvent(),calendarId:source.calendarId,role:source.role,eligibility:reason,location:event.getLocation(),description:event.getDescription()};
