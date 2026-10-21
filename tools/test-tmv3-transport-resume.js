@@ -13,6 +13,7 @@ console.log('PASS: '+cases+' cleanup, fixed-scope, authentication and no-blind-w
 const fs=require('fs'),vm=require('vm');
 for(const requested of [{id:'41127',type:'contact'},{id:'',type:''},{id:'41127',type:'employee'}]){
  const prefix='TMV3_OPEN_REFRESH_20261021_',state={};
+ state[prefix+'FINAL_IMPORT']='{}';
  state[prefix+'IMPORTED']='{}';state[prefix+'TASK_18983']='{}';state[prefix+'VIEWS']='true';state[prefix+'RICH_VIEWS']='true';state[prefix+'SAMUELS_INTENT']=JSON.stringify({contactId:'41127'});
  const headers=['Task ID','Task Number','Task Type ID','Task Type','Status','Name','Customer ID','Location ID','Contact ID','Order ID','Start','Due','Assignees','Pools','URL','Fingerprint'];
  const cells=[headers,[18983,18983,86,'Service','Open','SO#585765',46902,41517,'',27499,'','','','','','']];let patches=0;
