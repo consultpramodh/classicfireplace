@@ -1682,20 +1682,36 @@ function tmv3_preInspectionLogSweep_(slot,result) {
     }).map(function(r){return {eventId:r.eventId,status:r.status||'',blocker:r.blocker||'',error:r.error||''};})
   }));
 }
+function tmv3_preInspectionMaybeContinueSweep_(result) {
+  const allFailed=result.status==='ATTENTION' && (result.results || []).length>0 &&
+    result.results.every(function(r){return r.status==='ATTENTION';});
+  if (allFailed) {
+    result.continuation='PAUSED_ALL_EVENTS_FAILED';
+    return result; // No uncontrolled retry storm on API or authorization failures.
+  }
+  if ((result.sweep && result.sweep.remaining>0) || result.status==='LOCK_BUSY') {
+    try {
+      result.continuation=tmv3_preInspectionScheduleNextSweep_();
+    } catch(err) {
+      result.status='ATTENTION';
+      result.continuation='SCHEDULING_FAILED';
+      result.error=String(err && err.message || err);
+      tmv3_audit_('PreInspection','','','ELIGIBLE_SWEEP','ATTENTION',result.error);
+      tmv3_preInspectionFailureAlert_('',result.error);
+    }
+  }
+  return result;
+}
 function tmv3_preInspectionContinueEligibleSweep() {
   tmv3_preInspectionClearContinuationTrigger_();
   const result=tmv3_preInspectionAutomationCycle_({force:true,sweepContinue:true,reason:'ELIGIBLE_SWEEP_CONTINUATION'});
-  if ((result.sweep && result.sweep.remaining>0) || result.status==='LOCK_BUSY') {
-    result.continuation=tmv3_preInspectionScheduleNextSweep_();
-  }
+  tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_('CONTINUATION',result);
   return result;
 }
 function tmv3_runPreInspectionDailySlot_(slot) {
   const result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
-  if ((result.sweep && result.sweep.remaining>0) || result.status==='LOCK_BUSY') {
-    result.continuation=tmv3_preInspectionScheduleNextSweep_();
-  }
+  tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_(slot,result);
   return result;
 }
