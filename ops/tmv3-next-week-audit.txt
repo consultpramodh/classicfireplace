@@ -1,1 +1,1 @@
-Read-only audit October 26-November 1 Toronto inclusive; both sources, duplicate mirrors, eligibility exclusions, fresh canonical task schedules, field plans and link readbacks. No task/calendar mutations.
+Read-only next-week recheck applying owner-requested creator exclusions: Trevor Burke, Stephen Foley, Pramodh Kumar, Jay Scott, Thang Tran. Resolve exact names to emails in live employee directory; inspect actual Calendar creators; report unresolved identities; do not change tasks/calendars or installed automation rules.
