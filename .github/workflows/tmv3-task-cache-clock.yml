@@ -44,3 +44,5 @@ jobs:
           name: task-cache-clock-result-${{ github.run_id }}
           path: task-cache-clock-evidence/
           retention-days: 30
+
+# Retry read-only preflight with live cache-upsert drift evidence.
