@@ -1,0 +1,32 @@
+name: Verify next week PreInspection events
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['ops/tmv3-next-week-audit.txt']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  friday-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-next-week-audit.cjs
+      - name: Read both next-week calendars, deduplicate eligible events and verify task and links
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-next-week-audit.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-week-audit-${{ github.run_id }}
+          path: next-week-audit-evidence/
+          retention-days: 30
