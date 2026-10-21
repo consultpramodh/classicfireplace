@@ -1449,6 +1449,14 @@ function tmv3_preInspectionSendMissingDetails_(record) {
   return {status:'SENT',sent:1,to:email.recipient,followupNumber:decision.followupNumber,missing:assessment.missing};
 }
 
+// Stable key lets successive time-driven executions cover the complete eligible
+// calendar snapshot without holding a large list in Script Properties.
+function tmv3_preInspectionSweepKey_(record) {
+  const start = new Date(record.start);
+  if (!isFinite(start.getTime())) throw new Error('PREINSPECTION_SWEEP_INVALID_START');
+  return start.toISOString() + '|' + String(record.eventId || '');
+}
+
 function tmv3_preInspectionAutomationCycle_(options) {
   options = options || {};
   if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
@@ -1475,14 +1483,43 @@ function tmv3_preInspectionAutomationCycle_(options) {
       catch(err) {tmv3_audit_('PreInspection',id,'','PREINSPECTION_RECOVERY','ATTENTION',String(err));}
     });
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
-    const selected = scopeEventId ? records.filter(function(r){return r.eventId===scopeEventId;}) : records;
-    // Check notification deadlines for every authoritative event each slot;
-    // the bounded task-write cursor must not delay due reminders.
-    selected.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){
+    let selected = scopeEventId ? records.filter(function(r){return r.eventId===scopeEventId;}) : records;
+    const sweepRequested = options.sweepStart === true || options.sweepContinue === true;
+    let sweep = null;
+    if (sweepRequested && scopeEventId) {
+      return {status:'SWEEP_BLOCKED_BY_CANARY_SCOPE',processed:0,writes:0,eligible:records.length};
+    }
+    if (sweepRequested) {
+      const raw = props.getProperty('TMV3_PI_SWEEP_STATE') || '';
+      let prior = null;
+      try {if (raw) prior=JSON.parse(raw);} catch (ignored) {}
+      const valid = prior && prior.status==='IN_PROGRESS' &&
+        isFinite(new Date(prior.startedAt).getTime()) &&
+        now-new Date(prior.startedAt).getTime() < 86400000;
+      if (options.sweepContinue === true && !valid) {
+        return {status:'NO_ACTIVE_PREINSPECTION_SWEEP',processed:0,writes:0};
+      }
+      sweep = valid ? prior : {status:'IN_PROGRESS',startedAt:new Date(now).toISOString(),
+        lastKey:'',processed:0};
+      // Deterministic position survives batch boundaries without a 9-KB
+      // Script Properties queue; new earlier events enter the next sweep.
+      selected.sort(function(a,b) {
+        const aa=tmv3_preInspectionSweepKey_(a),bb=tmv3_preInspectionSweepKey_(b);
+        return aa<bb?-1:aa>bb?1:0;
+      });
+      selected=selected.filter(function(r){return tmv3_preInspectionSweepKey_(r)>sweep.lastKey;});
+      result.eligible=records.length;
+    }
+    // Scheduled slots still evaluate notification deadlines for all
+    // authoritative events; continuations do not repeat the full mail scan.
+    const notificationRecords=options.sweepContinue===true ? [] :
+      (scopeEventId ? selected : records);
+    notificationRecords.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){
       try {const notice=tmv3_preInspectionSendMissingDetails_(r);result.notifications+=Number(notice.sent || 0);}
       catch(err) {result.status='ATTENTION';tmv3_preInspectionFailureAlert_(r.eventId,String(err));}
     });
-    let cursor = Number(props.getProperty('TMV3_PI_CURSOR') || 0);
+    let cursor = sweep ? 0 : Number(props.getProperty('TMV3_PI_CURSOR') || 0);
+    // Preserve the tested three-event and one-mutation safety budgets.
     const cap = Math.max(1,Math.min(3,Number(TMV3.OPERATIONS.preInspectionAutomationMaxEventsPerRun || 3)));
     if (selected.length) cursor = cursor % selected.length;
     for (let i=0;i<Math.min(cap,selected.length);i++) {
@@ -1518,6 +1555,14 @@ function tmv3_preInspectionAutomationCycle_(options) {
           if (plans.length !== 1) throw new Error('MULTIPLE_CANONICAL_PLANS_NO_WRITE');
           const plan = plans[0];
           one.plan=plan.plan;one.blocker=plan.blocker || '';one.taskId=plan.taskId || '';
+          // Preserve the single business-write transaction cap. Do not
+          // advance the durable sweep cursor past a record whose update has
+          // been deferred solely because this batch used its write allowance.
+          if (!plan.blocker && plan.actions.length && result.writes>=1) {
+            result.processed--;
+            result.deferredWriteBudget=true;
+            break;
+          }
           if (!plan.blocker && plan.actions.length && result.writes<1) {
             // One event transaction per run, using the existing fresh ownership,
             // lifecycle, durable create guards and field-level readbacks.
@@ -1555,7 +1600,18 @@ function tmv3_preInspectionAutomationCycle_(options) {
       }
       result.results.push(one);
     }
-    if (!options.eventId && selected.length) props.setProperty('TMV3_PI_CURSOR',String((cursor+result.processed)%selected.length));
+    if (sweep) {
+      if (result.processed) sweep.lastKey=tmv3_preInspectionSweepKey_(selected[result.processed-1]);
+      sweep.processed=Number(sweep.processed || 0)+result.processed;
+      const remaining=Math.max(0,selected.length-result.processed);
+      sweep.status=remaining ? 'IN_PROGRESS' :
+        (pending.length ? 'SCANNED_WITH_PENDING_REVIEW' : 'COMPLETE');
+      props.setProperty('TMV3_PI_SWEEP_STATE',JSON.stringify(sweep));
+      result.sweep={status:sweep.status,eligible:result.eligible,attempted:sweep.processed,
+        remaining:remaining,pendingReview:pending.length,lastKey:sweep.lastKey};
+    } else if (!options.eventId && selected.length) {
+      props.setProperty('TMV3_PI_CURSOR',String((cursor+result.processed)%selected.length));
+    }
     props.setProperty('TMV3_PI_PENDING_EVENTS',JSON.stringify(pending));
     props.setProperty('TMV3_PI_LAST_RESULT',JSON.stringify({status:result.status,
       processed:result.processed,writes:result.writes,notifications:result.notifications,
@@ -1605,9 +1661,68 @@ function tmv3_preInspectionScheduledCycle() {
 function tmv3_preInspectionCheck0800() { return tmv3_runPreInspectionDailySlot_('08:00'); }
 function tmv3_preInspectionCheck1300() { return tmv3_runPreInspectionDailySlot_('13:00'); }
 function tmv3_preInspectionCheck1700() { return tmv3_runPreInspectionDailySlot_('17:00'); }
+
+// Runs one bounded batch after the preceding batch finishes. Trigger
+// installation for the 08/13/17 slots remains unchanged.
+function tmv3_preInspectionScheduleNextSweep_() {
+  const handler='tmv3_preInspectionContinueEligibleSweep';
+  const exists=ScriptApp.getProjectTriggers().some(function(t){
+    return t.getHandlerFunction()===handler;
+  });
+  if (exists) return 'CONTINUATION_ALREADY_SCHEDULED';
+  ScriptApp.newTrigger(handler).timeBased().after(120000).create();
+  return 'CONTINUATION_SCHEDULED';
+}
+function tmv3_preInspectionClearContinuationTrigger_() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction()==='tmv3_preInspectionContinueEligibleSweep') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+}
+function tmv3_preInspectionLogSweep_(slot,result) {
+  Logger.log(JSON.stringify({
+    slot:slot,status:result.status,processed:result.processed,
+    writes:result.writes,notifications:result.notifications,
+    sweep:result.sweep || null,continuation:result.continuation || null,
+    error:result.error || '',
+    attentionEvents:(result.results || []).filter(function(r){
+      return r.status==='ATTENTION'||!!r.blocker||!!r.error;
+    }).map(function(r){return {eventId:r.eventId,status:r.status||'',blocker:r.blocker||'',error:r.error||''};})
+  }));
+}
+function tmv3_preInspectionMaybeContinueSweep_(result) {
+  const allFailed=result.status==='ATTENTION' && (result.results || []).length>0 &&
+    result.results.every(function(r){return r.status==='ATTENTION';});
+  if (allFailed) {
+    result.continuation='PAUSED_ALL_EVENTS_FAILED';
+    return result; // No uncontrolled retry storm on API or authorization failures.
+  }
+  if ((result.sweep && result.sweep.remaining>0) || result.status==='LOCK_BUSY') {
+    try {
+      result.continuation=tmv3_preInspectionScheduleNextSweep_();
+    } catch(err) {
+      result.status='ATTENTION';
+      result.continuation='SCHEDULING_FAILED';
+      result.error=String(err && err.message || err);
+      tmv3_audit_('PreInspection','','','ELIGIBLE_SWEEP','ATTENTION',result.error);
+      tmv3_preInspectionFailureAlert_('',result.error);
+    }
+  }
+  return result;
+}
+function tmv3_preInspectionContinueEligibleSweep() {
+  tmv3_preInspectionClearContinuationTrigger_();
+  const result=tmv3_preInspectionAutomationCycle_({force:true,sweepContinue:true,reason:'ELIGIBLE_SWEEP_CONTINUATION'});
+  tmv3_preInspectionMaybeContinueSweep_(result);
+  tmv3_preInspectionLogSweep_('CONTINUATION',result);
+  return result;
+}
 function tmv3_runPreInspectionDailySlot_(slot) {
-  const result=tmv3_preInspectionAutomationCycle_({force:true,reason:'DAILY_SLOT_'+slot});
-  Logger.log(JSON.stringify(result));return result;
+  const result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
+  tmv3_preInspectionMaybeContinueSweep_(result);
+  tmv3_preInspectionLogSweep_(slot,result);
+  return result;
 }
 function tmv3_installPreInspectionAutomationTrigger() {
   const hours=TMV3.OPERATIONS.preInspectionAutomationScheduleHours || [8,13,17];
