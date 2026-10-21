@@ -1,0 +1,1 @@
+Read-only final check of eight authorized next-week events after mutation batch finishes; capture full Step2/3/4 blocker diagnostics, fresh task plans, budget and restored source hash. No task/calendar writes.
