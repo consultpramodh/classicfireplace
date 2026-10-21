@@ -59,6 +59,9 @@ assert.equal(c.sweep.status,'COMPLETE');assert.equal(triggers.length,0,'no orpha
 assert.equal(c.sweep.attempted,8);
 assert.equal(totalNotifications,8,'no full notification rescan in continuation');
 assert.ok(logs.every(s=>s.length<2000),'compact logging');
+properties.TMV3_PI_SWEEP_STATE=JSON.stringify({
+ status:'IN_PROGRESS',startedAt:new Date().toISOString(),lastKey:'',processed:0
+});
 locksBusy=true;
 const retry=api.daily('13:00');
 assert.equal(retry.status,'LOCK_BUSY');assert.equal(triggers.length,1,'lock contention is retried');
