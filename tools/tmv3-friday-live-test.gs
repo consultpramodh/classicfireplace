@@ -7,6 +7,7 @@ function tmv3_fridayLiveTest20261023() {
   if(Utilities.formatDate(new Date(record.start),TMV3_TIMEZONE,'yyyy-MM-dd')!=='2026-10-23'||String(record.title).indexOf('62971')<0)throw new Error('FRIDAY_EVENT_IDENTITY_DATE_MISMATCH');
   var before={title:record.title,start:record.start,end:record.end,location:record.location,budget:tmv3_strivenApiBudgetStatus_()};
   var native=tmv3_preInspectionAutomationCycle_({force:true,eventId:id,reason:'OWNER_REQUESTED_FRIDAY_REAL_TEST'});
+  for(var attempt=1;native.status==='LOCK_BUSY'&&attempt<4;attempt++){Utilities.sleep(15000);native=tmv3_preInspectionAutomationCycle_({force:true,eventId:id,reason:'OWNER_FRIDAY_TEST_LOCK_RETRY'});}
   var plans=tmv3_step7FreshPlansForEvent_('PreInspection',id);
   var taskIds=plans.map(function(p){return String(p.taskId||'');}).filter(function(x){return /^\d+$/.test(x);});
   var tasks=taskIds.map(function(taskId){return tmv3_getTaskById_(Number(taskId));});
