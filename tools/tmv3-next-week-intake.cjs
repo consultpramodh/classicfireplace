@@ -19,7 +19,7 @@ async function prepare(token,target){
  if(!found.items.length){
   const nearby=await api(url+'?timeMin='+encodeURIComponent(event.start.dateTime)+'&timeMax='+encodeURIComponent(event.end.dateTime)+'&singleEvents=true&maxResults=100');
   if(nearby.nextPageToken||nearby.items.some(e=>e.iCalUID!==event.iCalUID&&(norm(e.summary).includes(norm(target.name))||(event.location&&norm(e.location)===norm(event.location)))))throw Error('POSSIBLE_DUPLICATE_CANONICAL_EVENT_NO_IMPORT');
-  const body={iCalUID:event.iCalUID,start:event.start,end:event.end,summary:event.summary,location:event.location||'',description:event.description||'',organizer:event.organizer,attendees:event.attendees,visibility:event.visibility||'default',reminders:event.reminders,extendedProperties:{private:{tmv3OwnerConfirmedPreinspection:'2026-10-21',tmv3SourceCalendarId:sourceId,tmv3OriginalCreator:event.creator&&event.creator.email||''}}};
+  const body={iCalUID:event.iCalUID,start:event.start,end:event.end,summary:event.summary,location:event.location||'',description:event.description||'',organizer:event.organizer,attendees:[...(event.attendees||[]).filter(a=>String(a.email||'').toLowerCase()!==primary.toLowerCase()),{email:primary,responseStatus:'accepted'}],visibility:event.visibility||'default',reminders:event.reminders,extendedProperties:{private:{tmv3OwnerConfirmedPreinspection:'2026-10-21',tmv3SourceCalendarId:sourceId,tmv3OriginalCreator:event.creator&&event.creator.email||''}}};
   await api(url+'/import','POST',body);imported=true;
   found=await api(url+'?iCalUID='+encodeURIComponent(event.iCalUID));
  }
