@@ -18,6 +18,7 @@ const records = Array.from({length:8}, (_, i) => ({
 const properties = {}, triggers = [], logs = [];
 let totalNotifications = 0, alerts = 0, locksBusy = false, blocked = false;
 const mock = {
+ TMV3_STEP7_ACTION:{CREATE_TASK:'CREATE_TASK',RECREATE_TASK:'RECREATE_TASK',VERIFY_CALENDAR_LINKS:'VERIFY_CALENDAR_LINKS'},
  TMV3:{OPERATIONS:{preInspectionAutomationMaxEventsPerRun:3,preInspectionAutomationScheduleHours:[8,13,17],preInspectionAutomationCanaryEventId:''}},
  LockService:{getScriptLock:()=>({tryLock:()=>!locksBusy,releaseLock:()=>{}})},
  PropertiesService:{getScriptProperties:()=>({getProperty:k=>properties[k]||null,setProperty:(k,v)=>properties[k]=v})},
