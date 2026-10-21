@@ -28,6 +28,12 @@ function requestedByRunner(digest,expires) {
  if(ids.length!==81 || new Set(ids).size!==81)throw Error('FIXED_TARGET_DRIFT');
  return runner(digest,expires).replaceAll('FIXED_SD_ORDER_BACKFILL','FIXED_SD_REQUESTED_BY').replace('tmv3_serviceDeliveryOrderBackfill()','tmv3_sdRequestedByBackfill_()')+'\nconst TMV3_SD_REQUESTED_BY_IDS='+JSON.stringify(ids)+';\n'+fs.readFileSync('tools/tmv3-sd-requested-by-native.js','utf8');
 }
+function openRefreshRunner(digest,expires) {
+ const results=JSON.parse(fs.readFileSync('ops/tmv3-service-delivery-requested-by-results-20261021.json','utf8')).results;
+ const ids=results.filter(r=>['VERIFIED','PRESENT'].includes(r.state)).map(r=>r.taskId);
+ if(ids.length!==71 || new Set(ids).size!==71)throw Error('HYDRATION_TARGET_DRIFT');
+ return runner(digest,expires).replaceAll('FIXED_SD_ORDER_BACKFILL','FIXED_OPEN_TASK_REFRESH').replace('tmv3_serviceDeliveryOrderBackfill()','tmv3_openTasksRefresh_()')+'\nconst TMV3_OPEN_REFRESH_HYDRATE_IDS='+JSON.stringify(ids)+';\n'+fs.readFileSync('tools/tmv3-open-tasks-refresh-native.js','utf8');
+}
 async function main(mode){
  fs.mkdirSync(dir,{recursive:true,mode:0o700});
  const config=JSON.parse(process.env.CLASPRC_JSON||'{}');
@@ -44,7 +50,7 @@ async function main(mode){
   const before=await api('/content');if(canonical(before)!==expected)throw Error('LIVE_PROJECT_DRIFT_NO_WRITE');
   if(before.files.some(f=>/function\s+doPost\s*\(/.test(f.source||'')))throw Error('EXISTING_POST_HANDLER_NO_WRITE');
   fs.writeFileSync(dir+'/before.json',JSON.stringify(before),{mode:0o600});
-  fs.writeFileSync(dir+'/prepared.json',JSON.stringify({beforeHash:expected,scope:process.env.TMV3_BACKFILL_LAUNCH_KIND==='REQUESTED_BY'?'FIXED_81_REQUESTED_BY':'FIXED_81_ORDER_LINK_BACKFILL',runtimeWritesAuthorized:true}),{mode:0o600});
+  fs.writeFileSync(dir+'/prepared.json',JSON.stringify({beforeHash:expected,scope:process.env.TMV3_BACKFILL_LAUNCH_KIND==='OPEN_REFRESH'?'ALL_OPEN_TASK_CACHE_AND_SAMUELS_18983':process.env.TMV3_BACKFILL_LAUNCH_KIND==='REQUESTED_BY'?'FIXED_81_REQUESTED_BY':'FIXED_81_ORDER_LINK_BACKFILL',runtimeWritesAuthorized:true}),{mode:0o600});
   console.log('LAUNCH_PREPARED_DURABLE_BACKUP_REQUIRED');return;
  }
  if(mode!=='run')throw Error('UNKNOWN_MODE');
@@ -53,7 +59,8 @@ async function main(mode){
  const token=crypto.randomBytes(32).toString('hex'),digest=crypto.createHash('sha256').update(token).digest('hex');
  const cacheOnly=process.env.TMV3_BACKFILL_LAUNCH_KIND==='CACHE_REPAIR';
  const requestedBy=process.env.TMV3_BACKFILL_LAUNCH_KIND==='REQUESTED_BY';
- const source=(requestedBy?requestedByRunner:cacheOnly?cacheRunner:runner)(digest,Date.now()+5*60000);new vm.Script(source);
+ const openRefresh=process.env.TMV3_BACKFILL_LAUNCH_KIND==='OPEN_REFRESH';
+ const source=(openRefresh?openRefreshRunner:requestedBy?requestedByRunner:cacheOnly?cacheRunner:runner)(digest,Date.now()+5*60000);new vm.Script(source);
  const temporary={files:before.files.map(f=>{
   if(f.name!=='appsscript')return f;
   const manifest=JSON.parse(f.source);manifest.webapp={access:'ANYONE_ANONYMOUS',executeAs:'USER_DEPLOYING'};
@@ -63,7 +70,7 @@ async function main(mode){
  const head=(inventory.deployments||[]).filter(d=>!(d.deploymentConfig && d.deploymentConfig.versionNumber) && (d.entryPoints||[]).some(e=>e.webApp));
  if(head.length!==1 || !head[0].deploymentId)throw Error('EXACTLY_ONE_EXISTING_HEAD_WEB_APP_REQUIRED');
  const tempHash=canonical(temporary);let sourceAttempted=false,headRestored=false;
- const result={status:'NOT_STARTED',beforeHash:expected,scope:process.env.TMV3_BACKFILL_LAUNCH_KIND==='REQUESTED_BY'?'FIXED_81_REQUESTED_BY':'FIXED_81_ORDER_LINK_BACKFILL',existingDeploymentsChanged:false,oauthScopesChanged:false,usingExistingHead:true,versionsCreated:0};
+ const result={status:'NOT_STARTED',beforeHash:expected,scope:process.env.TMV3_BACKFILL_LAUNCH_KIND==='OPEN_REFRESH'?'ALL_OPEN_TASK_CACHE_AND_SAMUELS_18983':process.env.TMV3_BACKFILL_LAUNCH_KIND==='REQUESTED_BY'?'FIXED_81_REQUESTED_BY':'FIXED_81_ORDER_LINK_BACKFILL',existingDeploymentsChanged:false,oauthScopesChanged:false,usingExistingHead:true,versionsCreated:0};
  try {
   sourceAttempted=true;await api('/content','PUT',temporary);
   if(canonical(await api('/content'))!==tempHash)throw Error('TEMPORARY_SOURCE_READBACK_MISMATCH');
@@ -71,7 +78,7 @@ async function main(mode){
   // Existing authorized HEAD deployment avoids the full 200-version inventory.
   const url='https://script.google.com/macros/s/'+encodeURIComponent(head[0].deploymentId)+'/dev';
   // Exactly one launch request; a timeout is an uncertain outcome, never an HTTP retry.
-  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+auth.access_token},body:JSON.stringify({token,action:requestedBy?'FIXED_SD_REQUESTED_BY':cacheOnly?'FIXED_SD_CACHE_REPAIR':'FIXED_SD_ORDER_BACKFILL'}),redirect:'follow',signal:AbortSignal.timeout(150000)});
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+auth.access_token},body:JSON.stringify({token,action:openRefresh?'FIXED_OPEN_TASK_REFRESH':requestedBy?'FIXED_SD_REQUESTED_BY':cacheOnly?'FIXED_SD_CACHE_REPAIR':'FIXED_SD_ORDER_BACKFILL'}),redirect:'follow',signal:AbortSignal.timeout(150000)});
   if(!response.ok)throw Error('LAUNCH_HTTP_'+response.status);
   const body=await response.json();
   if(!body.ok)throw Error('NATIVE_LAUNCH_REJECTED_'+String(body.error||'UNKNOWN'));
@@ -86,6 +93,6 @@ async function main(mode){
  }
  if(result.status!=='NATIVE_BACKFILL_LAUNCHED'||!result.sourceParityVerified||!result.headRestoredVerified)throw Error('LAUNCH_OR_CLEANUP_NOT_VERIFIED');
 }
-module.exports={runner,cacheRunner,requestedByRunner};
+module.exports={runner,cacheRunner,requestedByRunner,openRefreshRunner};
 if(require.main===module)main(process.argv[2]).catch(err=>{console.error(err.message);process.exitCode=1;});
 

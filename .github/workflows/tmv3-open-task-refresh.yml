@@ -1,0 +1,54 @@
+name: Refresh all Open Tasks and Samuels Task18983
+on:
+  push:
+    branches: [task_mapping]
+    paths: [ops/tmv3-open-task-refresh-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TMV3_BACKFILL_LAUNCH_KIND: OPEN_REFRESH
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify contact repair and launch isolation
+        run: |
+          node tools/test-tmv3-open-tasks-refresh.js
+          node tools/test-tmv3-service-delivery-backfill-launch.js
+      - name: Capture exact live source
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-service-delivery-backfill-launch.js prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: open-task-refresh-PRE-${{ github.run_id }}
+          path: autopatch-output-sd-backfill-launch/
+          retention-days: 30
+      - name: Repair bounded slices and verify each source restoration
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          for slice in $(seq 1 24); do
+            node tools/tmv3-service-delivery-backfill-launch.js run
+            cp autopatch-output-sd-backfill-launch/result.json autopatch-output-sd-backfill-launch/result-$slice.json
+            state=$(node -p "require('./autopatch-output-sd-backfill-launch/result.json').native.status")
+            if [ "$state" = "OPEN_REFRESH_COMPLETE" ]; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: open-task-refresh-result-${{ github.run_id }}
+          path: autopatch-output-sd-backfill-launch/
+          retention-days: 30

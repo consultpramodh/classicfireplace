@@ -1,0 +1,1 @@
+2026-10-21: Refresh full authoritative Open Task identity set; refresh71 existing Requested By records and Task18983; patch only eligible Task18983 relationships; rebuild operator views.
