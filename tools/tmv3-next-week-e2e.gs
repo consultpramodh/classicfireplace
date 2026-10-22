@@ -7,6 +7,14 @@ function tmv3_nextWeekConfirmedRun(target) {
   if(target.originVerified){var original=CalendarApp.getCalendarById(target.sourceCalendarId).getEventById(id);var creators=original&&original.getCreators?original.getCreators():[];if(creators.length!==1||creators[0]!==target.creatorEmail)throw new Error('ORIGINAL_CREATOR_VERIFICATION_FAILED');PropertiesService.getScriptProperties().setProperty('TMV3_PI_ORIGIN_'+tmv3_hash_(id),JSON.stringify({eventId:id,calendarId:target.sourceCalendarId,creator:target.creatorEmail,at:new Date().toISOString(),reason:'OWNER_CONFIRMED_PREINSPECTION'}));}
   var record=tmv3_findFreshEventRecord_('PreInspection',id);
   if(new Date(record.start).getTime()!==new Date(target.start).getTime()||new Date(record.end).getTime()!==new Date(target.end).getTime()||tmv3_preInspectionCreatorEmail_(record)!==target.creatorEmail)throw new Error('IDENTITY_SCHEDULE_CREATOR_READBACK_MISMATCH');
+  if(target.key==='frances') {
+    if(String(record.location).trim()!=='207 Eastwood Rd, Toronto, ON M4L 2E2, Canada')throw new Error('FRANCES_CALENDAR_ADDRESS_CHANGED');
+    var freshLocations=tmv3_preInspectionCustomerLocationsFresh_(36935);
+    var exactLocations=freshLocations.filter(function(l){return String(l['Customer ID'])==='36935'&&tmv3_step4WrittenAddressKey_(tmv3_locationFullAddress_(l))===tmv3_step4WrittenAddressKey_(record.location);});
+    if(exactLocations.length!==1||String(exactLocations[0]['Location ID'])!=='46531')throw new Error('FRANCES_EXACT_OWNED_LOCATION_NOT_UNIQUE');
+    freshLocations.forEach(tmv3_upsertLocationCacheObject_);
+    tmv3_audit_('PreInspection',id,'','CALENDAR_WRITTEN_ADDRESS_VERIFIED','PASS',JSON.stringify({address:record.location,customerId:36935,locationId:46531,businessWrites:0}));
+  }
   if(target.key==='alexandra') {
     var rows=tmv3_reportRows_(TMV3.PROPERTIES.CUSTOMERS).map(tmv3_normalizeCustomer_).filter(function(r){return String(r[0])==='62996'&&tmv3_phone10_(r[3])==='6474446352'&&String(r[2]).toLowerCase()==='alexandra alousis';});
     if(rows.length!==1||tmv3_phone10_(record.phone||tmv3_extractPhone_(record.title))!=='6474446352')throw new Error('ALEXANDRA_CUSTOMER_PROOF_FAILED');

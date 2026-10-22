@@ -1342,6 +1342,24 @@ function tmv3_step4ResolveLocation_(record, refs, customer, preferredLocationId)
     };
   }
 
+  // Prefer the unique address as written on the Calendar before resolving a
+  // broad street-abbreviation tie. Never choose by label, ID or primary flag.
+  if (record.vertical === 'PreInspection' &&
+      /^AMBIGUOUS_(EXACT|STRONG)_LOCATION$/.test(owned.errorCode || '')) {
+    const writtenKey = tmv3_step4WrittenAddressKey_(record.location);
+    const written = (refs.locationsByCustomer[customerId] || []).filter(function(location) {
+      return tmv3_clean_(location['Customer ID']) === customerId &&
+        writtenKey &&
+        tmv3_step4WrittenAddressKey_(tmv3_locationFullAddress_(location)) === writtenKey &&
+        tmv3_addressStrongMatch_(tmv3_addressParts_(record.location),
+          tmv3_addressParts_(tmv3_locationFullAddress_(location)));
+    });
+    if (written.length === 1) {
+      return {status: 'MATCHED', location: written[0],
+        evidence: fallbackEvidence.concat(['CUSTOMER_LOCATION_CALENDAR_WRITTEN_ADDRESS'])};
+    }
+  }
+
   // An explicit Calendar Task link is strong relationship evidence, but it is
   // only allowed to break an address tie when the linked Task is consistent
   // with the verified Order, the Task Location belongs to the same Customer,
@@ -1974,4 +1992,14 @@ function tmv3_step4Verify_(records, step3Records) {
     expectedRows: expectedRows,
     actualRows: actualRows
   };
+}
+
+
+// Preserve street words and unit information; ignore only formatting and a
+// trailing country spelling absent from the location-cache schema.
+function tmv3_step4WrittenAddressKey_(address) {
+  return String(address || '').toLowerCase().trim()
+    .replace(/(?:[,\s]+)(?:canada|ca)\.?\s*$/, '')
+    .replace(/[.,]/g, '').replace(/\b([a-z]\d[a-z])\s+(\d[a-z]\d)\b/g, '$1$2')
+    .replace(/\s+/g, ' ').trim();
 }
