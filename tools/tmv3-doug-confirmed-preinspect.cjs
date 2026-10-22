@@ -11,7 +11,7 @@ async function main(){
  async function api(path,method='GET',body){return new Promise((resolve,reject)=>{const payload=body?JSON.stringify(body):null;const request=https.request('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+a.access_token,...(payload?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(payload)}:{})}},response=>{let text='';response.setEncoding('utf8');response.on('data',chunk=>text+=chunk);response.on('error',reject);response.on('end',()=>{if(response.statusCode<200||response.statusCode>=300)return reject(Error('GOOGLE_HTTP_'+response.statusCode));try{resolve(JSON.parse(text));}catch(e){reject(Error('GOOGLE_RESPONSE_INVALID'));}});});const timeout=setTimeout(()=>request.destroy(Error('EXECUTION_TIMEOUT_UNCERTAIN_NO_RETRY')),650000);request.on('close',()=>clearTimeout(timeout));request.on('error',reject);if(payload)request.write(payload);request.end();});}
  await require('./tmv3-doug-calendar-intake.cjs').prepare(a.access_token);
  const path='projects/'+SID+'/content',before=await api(path),beforeHash=hash(before);
- if(beforeHash!=='22d531949fa3e99467ec7a0c7bf73261d4c622f513a9a1c8a1d19acf9effcac7')throw Error('LIVE_SOURCE_DRIFT_NO_WRITE');
+ if(beforeHash!=='64a37d2cf96b9e9b51ad95e362f4a05b58424c061bc6c6daedf1028fbd089ac1')throw Error('LIVE_SOURCE_DRIFT_NO_WRITE');
  fs.writeFileSync(DIR+'/before.json',JSON.stringify(before),{mode:0o600});
  const work=JSON.parse(JSON.stringify(before)),file=work.files.find(f=>f.name==='20_Striven');if(!file)throw Error('MODULE_MISSING');file.source+='\n'+fs.readFileSync('tools/tmv3-doug-confirmed-preinspect.gs','utf8');
  for(const f of work.files)if(f.type==='SERVER_JS')new vm.Script(f.source,{filename:f.name});
