@@ -37,9 +37,9 @@ Required shared flow: refresh due sources → ingest eligible Calendar changes �
 
 | Vertical | Required ownership and execution |
 |---|---|
-| Install | Exact SO and current In Progress prerequisite → verified Customer/job Location/contact → discover Striven-created Task → schedule and title-only installer evidence → guarded details and Task link → read-back/status |
-| Delivery | Required SO and verified Customer-owned job Location → exact Delivery Task → dates/title-only assignment evidence → guarded details and SO/Task links → read-back/status |
-| Service | ServiceOps owns request/customer/contact/location/SO/WO; Striven WO workflow creates the Service Task → Task Mapping discovers exact task(s) → technician-Calendar assignment and schedule → WO/Task links → read-back/status; never create substitute Service Tasks |
+| Install | Exact SO and current Approved prerequisite → verified Customer/job Location/contact → discover Striven-created Task → schedule and title-only installer evidence → guarded details and Task link → read-back/status |
+| Delivery | Required Approved SO and verified Customer-owned job Location → exact Delivery Task → dates/title-only assignment evidence → guarded details and SO/Task links → read-back/status |
+| Service | ServiceOps owns request/customer/contact/location/SO/WO; Service SO uses In Progress; Striven WO workflow creates the Service Task → Task Mapping discovers exact task(s) → technician-Calendar assignment and schedule → WO/Task links → read-back/status; never create substitute Service Tasks |
 | PreInspection | CF Preinspects → eligibility/creator exclusions → verified Customer and Calendar job-site Location → safe Location-first action if needed → Type 105 history/duplicate decision → existing Task reconcile or guarded create → dates/Requested By Employee/Pool 8/name → managed links and required mirror parity → read-back/status; SO optional, Description blank at create, Field 854 unmanaged |
 
 ## Remaining execution blockers — not cured by reinstalling schedules
@@ -52,3 +52,7 @@ Required shared flow: refresh due sources → ingest eligible Calendar changes �
 6. No natural post-install scheduled business outcome is verified by installation/read-back alone.
 
 Next implementation must close these scoped execution gaps and test affected fresh Step 7 contracts before production source changes. Do not use installation as justification to bypass ownership, lifecycle, duplicate, API-budget or read-back checks.
+
+## User correction — Sales Order status, 2026-10-23
+
+Service: In Progress. Install/Delivery: Approved. PreInspection: SO optional. Earlier Install In Progress wording was incorrect and has been replaced. Current shared task-first source accepts either Approved or In Progress; vertical-specific runtime enforcement remains to be repaired and tested. Trigger installation did not change that logic.
