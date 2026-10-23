@@ -1,0 +1,1 @@
+2026-10-23: repeat exact two-file release after verified rollback; retry only explicit LOCK_BUSY before any metadata work.
