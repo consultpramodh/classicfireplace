@@ -1,0 +1,29 @@
+name: Diagnose duplicate PreInspection link writers
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-link-writer-diagnostic.yml, ops/tmv3-link-writer-diagnostic-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read current production sources and one event
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-link-writer-diagnostic.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: duplicate-link-diagnostic-${{ github.run_id }}
+          path: link-diagnostic-evidence/
+          retention-days: 7
