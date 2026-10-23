@@ -1,3 +1,11 @@
+## Native trigger installation and legacy parity — 2026-10-23
+
+- Inspected actual live V3, legacy Task Mapping and separate ServiceOps sources. Source hash64a37d2cf96b9e9b51ad95e362f4a05b58424c061bc6c6daedf1028fbd089ac1; existing project/source/deployment preserved.
+- Both existing native installers executed in40006186933. Initial external acceptance expected the old seven Calendar watchers and failed; current canonical installer correctly excludes Stephen's mirror, leaving six authoritative Calendar watchers. Corrected verification only; did not reinstall or restore mirror intake.
+- Independent owner-mode acceptance40006405467 succeeded twice: NATIVE_TRIGGER_INSTALL_READBACK_VERIFIED.17 recurring triggers:6 Calendar watchers,5 operational slots,3 PreInspection slots,1 source refresh,1 reminder,1 hourly fallback. Full source hash unchanged. No business writes or scope expansion performed by installer tooling. No immutable version or web deployment change needed for trigger installation.
+- Legacy flow comparison and exact Toronto schedule: ops/tmv3-trigger-legacy-parity-20261023.md. General Stage7 automatic writes, automatic links and scheduled Install reminder remain gated. Dedicated PreInspection and existing Service/Delivery scopes are independent. Installed triggers do NOT prove full four-vertical action execution; no natural post-install business outcome is claimed.
+- Critical next work: close/test scoped execution gaps against canonical Step7 contracts; do not flip global AUTO because existing dedicated lanes require it false. Preserve lifecycle/ownership/API/read-back checks.
+
 ## Full Open Task import and Sheet refresh — 2026-10-21
 
 - User requested current Sheet data and all Open Tasks for patching, highlighting Service Task18983 / Samuels / SO585765. Official Striven swagger/v1/swagger.json documents /v2/tasks/search, TaskSearchParams.Status integer array and maximum PageSize1000. Derive the Open status ID from fresh Task18983; do not hard-code it.
