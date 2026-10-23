@@ -1,0 +1,28 @@
+name: Verify repaired PreInspection link ownership
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-link-writer-postcheck.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read-only independent source and Calendar verification
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-link-writer-postcheck.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: link-postcheck-${{ github.run_id }}
+          path: link-postcheck-evidence/
+          retention-days: 14
