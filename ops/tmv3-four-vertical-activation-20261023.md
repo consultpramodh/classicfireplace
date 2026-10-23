@@ -10,4 +10,12 @@ Validation: 378 passing local cases (185 core, 60 completed history, 86 activati
 
 Expected source SHA-256: `8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef`.
 
-Native activation evidence pending completion of run 40012614518. Do not treat this document alone as proof of successful activation. Existing immutable deployment versions and access permissions are preserved. General AUTO and MANUAL writes remain disabled; dedicated scopes authorize the automatic work.
+Native activation completed in resumed run 40012950442; see verified outcome below. Existing immutable deployment versions and access permissions are preserved. General AUTO and MANUAL writes remain disabled; dedicated scopes authorize the automatic work.
+
+## Verified production outcome
+
+Release run [40012950442](https://github.com/consultpramodh/classicfireplace/actions/runs/40012950442) succeeded. Independent read-only audit [40013417638](https://github.com/consultpramodh/classicfireplace/actions/runs/40013417638) succeeded. All four scopes enabled; 18 triggers; exactly one new hourly vertical handler; all installed handlers exist; no missing configuration or sheets; source unchanged during independent audit. API count 591, ordinary remaining 409, PreInspection reserve 200; no budget reset.
+
+Service Task 18962: name update and Calendar links verified. Install Task 18745: assignments, Calendar title, Task name and links verified. Delivery first event `0pau8qi27tv3sp9vve5p90ch53@google.com`: existing persisted Task 18704 blocked CREATE, no duplicate created; event marked for reconciliation and no blind retry. Delivery automation is active but this record is held; no Delivery live mutation convergence is claimed. PreInspection remains active with its previously documented Goldcon/SO583967 identity exception.
+
+Two verified event transactions occurred. Original release runner top-level businessWrites erroneously stayed zero; corrected durable evidence includes native results and explicit reporting correction. All-four activation is verified; full successful live mutation coverage across all four is not claimed. Overview value-only status cells updated and read back. Existing immutable deployments and permissions unchanged.
