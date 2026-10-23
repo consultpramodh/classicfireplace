@@ -1,35 +1,31 @@
 {
   "project": "CF Tasks — V3 ACTIVE — Clean Rebuild",
-  "version": "3.12.0-four-vertical-scoped-activation-r1",
+  "version": "3.12.1-automatic-sheet-refresh-r1",
   "sourceReleaseDate": "2026-10-23",
   "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
   "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
   "branch": "task_mapping",
   "sourceDirectory": "apps-script/tmv3-clean",
-  "sourceCommit": "22ac64588eda15234c4e96ecce2edc1bd926cc7d",
-  "appsScriptStatus": "FOUR_VERTICALS_ACTIVE_NATIVE_VERIFIED",
+  "sourceCommit": "f1c3497503d3578b1d7708e59a552da5b87b75cd",
+  "appsScriptStatus": "AUTOMATIC_SHEET_REFRESH_DEPLOYED_AND_VERIFIED",
   "sourceVerification": {
     "fileCount": 22,
     "changedFiles": [
       "00_Config",
-      "36_Step3_Business_Anchor",
-      "46_Step7_Reconciliation",
-      "58_Operations",
-      "60_Automation",
-      "70_Regression"
+      "60_Automation"
     ],
-    "beforeHash": "1dcab7e18cf736c6f1b786c4a0969278382b987c913a10867056a3014ba0ef41",
-    "afterHash": "8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef",
-    "deploymentRun": 40012950442,
-    "independentRun": 40013417638,
-    "sourceParityScope": "Full live candidate readback verified; only six changed deployed files synced to repository; other live/repository drift not resolved"
+    "beforeHash": "8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef",
+    "afterHash": "b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e",
+    "deploymentRun": 40021982118,
+    "independentRun": 40022223511,
+    "sourceParityScope": "Full live candidate readback verified; only two changed deployed files synced in this release; other live/repository drift preserved"
   },
   "mode": "PRODUCTION_WRITE",
   "writeScope": "DEDICATED_PREINSPECTION_AND_SCOPED_SERVICE_DELIVERY_INSTALL",
   "manualWritesEnabled": false,
   "generalAutomationWritesEnabled": false,
   "preInspectionAutomationEnabled": true,
-  "installedTriggerCount": 18,
+  "installedTriggerCount": 19,
   "preInspectionHoursToronto": [
     8,
     13,
@@ -37,7 +33,7 @@
   ],
   "tests": {
     "status": "PASS",
-    "cases": 378,
+    "cases": 411,
     "againstActualLiveCandidate": true
   },
   "runtimeVerificationScope": "All four enabled and triggers verified. Service Task 18962 and Install Task 18745 changed and read back. Delivery first record blocked duplicate CREATE against persisted Task 18704; no Delivery mutation convergence claimed.",
@@ -45,14 +41,16 @@
   "existingDeploymentsChanged": false,
   "fullFourVerticalProductionVerified": false,
   "nextVertical": null,
-  "nextAction": "Reconcile Delivery event 0pau8qi27tv3sp9vve5p90ch53 against persisted Task 18704 without creating a duplicate; retain PreInspection Goldcon identity review.",
+  "nextAction": "Monitor natural post-run Sheet refresh and hourly fallback; Delivery persisted Task 18704 relationship and PreInspection identity holds remain separate data reviews.",
   "rollback": {
     "previousAttempt": "40012614518 explicit LOCK_BUSY_EXHAUSTED; source rollback verified",
     "finalRelease": "No rollback; exact candidate active"
   },
   "evidence": [
     "executions/20261023-four-vertical-activation.json",
-    "ops/tmv3-four-vertical-activation-20261023.md"
+    "ops/tmv3-four-vertical-activation-20261023.md",
+    "executions/20261023-automatic-sheet-refresh.json",
+    "ops/tmv3-automatic-sheet-refresh-20261023.md"
   ],
   "allFourVerticalsActive": true,
   "nativeActivation": {
@@ -119,5 +117,70 @@
       "status": "VERIFIED_CONVERGENCE",
       "transactionsVerified": 1
     }
+  },
+  "sheetRefresh": {
+    "active": true,
+    "hourlyBusinessHoursToronto": [
+      8,
+      18
+    ],
+    "afterVerticalBatch": true,
+    "afterPreInspectionWrappers": true,
+    "longRunDefersToHourly": true,
+    "lastNativeVerification": {
+      "strivenWrites": 0,
+      "startedAt": "2026-10-23T20:49:36.201Z",
+      "projectionVerified": true,
+      "sourceMode": "CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE",
+      "calendarWrites": 0,
+      "morningOps": {
+        "attention": 2,
+        "verticals": [
+          {
+            "attention": 0,
+            "mapped": 3,
+            "vertical": "Install",
+            "appointments": 3
+          },
+          {
+            "mapped": 0,
+            "vertical": "Delivery",
+            "appointments": 0,
+            "attention": 0
+          },
+          {
+            "mapped": 8,
+            "vertical": "Service",
+            "attention": 2,
+            "appointments": 8
+          },
+          {
+            "vertical": "PreInspection",
+            "mapped": 2,
+            "appointments": 2,
+            "attention": 0
+          }
+        ],
+        "appointments": 13,
+        "noTask": 0,
+        "mapped": 13,
+        "mode": "PRODUCTION_WRITE",
+        "date": "2026-10-23",
+        "status": "TODAY_SNAPSHOT"
+      },
+      "version": "3.12.1-automatic-sheet-refresh-r1",
+      "completedAt": "2026-10-23T20:50:39.255Z",
+      "timezone": "America/Toronto",
+      "status": "AUTOMATION_SHEETS_REFRESHED",
+      "timestampReadbackVerified": true,
+      "rows": {
+        "Service": 197,
+        "PreInspection": 14,
+        "Delivery": 11,
+        "Install": 50
+      }
+    },
+    "sourceMode": "CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE",
+    "noAdditionalFullStrivenPull": true
   }
 }
