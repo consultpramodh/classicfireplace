@@ -1,3 +1,15 @@
+# Latest checkpoint — 2026-10-23: all four scoped automations active
+
+## Verified production outcome
+
+Release run [40012950442](https://github.com/consultpramodh/classicfireplace/actions/runs/40012950442) succeeded. Independent read-only audit [40013417638](https://github.com/consultpramodh/classicfireplace/actions/runs/40013417638) succeeded. All four scopes enabled; 18 triggers; exactly one new hourly vertical handler; all installed handlers exist; no missing configuration or sheets; source unchanged during independent audit. API count 591, ordinary remaining 409, PreInspection reserve 200; no budget reset.
+
+Service Task 18962: name update and Calendar links verified. Install Task 18745: assignments, Calendar title, Task name and links verified. Delivery first event `0pau8qi27tv3sp9vve5p90ch53@google.com`: existing persisted Task 18704 blocked CREATE, no duplicate created; event marked for reconciliation and no blind retry. Delivery automation is active but this record is held; no Delivery live mutation convergence is claimed. PreInspection remains active with its previously documented Goldcon/SO583967 identity exception.
+
+Two verified event transactions occurred. Original release runner top-level businessWrites erroneously stayed zero; corrected durable evidence includes native results and explicit reporting correction. All-four activation is verified; full successful live mutation coverage across all four is not claimed. Overview value-only status cells updated and read back. Existing immutable deployments and permissions unchanged.
+
+---
+
 ## PreInspection first cutover completed — 2026-10-23
 
 - User-approved order: PreInspection → Service → Delivery → Install. Start with the closest vertical, not broad four-vertical activation.
