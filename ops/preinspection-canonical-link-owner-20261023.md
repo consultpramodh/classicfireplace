@@ -1,0 +1,15 @@
+# PreInspection duplicate footer — corrected 2026-10-23
+
+The intended presentation remains one canonical Striven Links section with the Customer Sales Orders page and a single deterministically known Task link. An extra Pre-Inspection Task Link footer is invalid; two different links inside the canonical section are intentional.
+
+Read-only live-source diagnostic confirmed V3 3.12.1 already rebuilds one canonical block and checks uniqueness. The separate legacy PreInspection project still had six real footer writer entrypoints across four existing files. Multiple helpers always appended a legacy block; another used literal URL matching that did not recognize Google-wrapped/encoded targets. This establishes a competing-writer path. It does not establish which historical invocation wrote the observed footer.
+
+Compatibility release `2026-10-23-canonical-link-owner-r1` adds an entry guard to those six writers: events with a V3 canonical section are left to V3; missing/conflicting/nonunique links are deferred for V3 review; events without a V3 section keep the original path. Task targets are host/path/ID checked, with Google wrapper and percent-encoding handling. No function or module is removed.
+
+Legacy project `1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m`; before hash 488fb7d52dd9e78fa25e0d6824ccf7fc6d8f35c40ae4c08a7c147d48df9935d1; after beb5a03f3e004c55664c6d865e8f22fde5ce2f1f4c9ca70cea7b96d02a2e603c. V3 source remains b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e. Main legacy project source was inspected and preserved.
+
+Release [40025850821](https://github.com/consultpramodh/classicfireplace/actions/runs/40025850821) passed: full live-source capture, backup, four-file patch, compile all source, 40 guard/real-entrypoint cases, 185 V3 core cases, existing uniqueness regression, exact full-source read-back. The legacy project has no Execution API deployment; no native legacy function execution is claimed. Tests execute actual candidate function entrypoints with boundary stubs. Existing deployments, permissions, and triggers were preserved.
+
+The reported Calendar event was freshly verified by V3 against its existing Task: exact Customer/Location/Task relationship; no Task mutation needed. Only the erroneous CF Preinspects description was repaired. Stephen's correct description was preserved. Both copies were re-read: one canonical heading, one Task link, no legacy footer, notes and schedule retained. An initial connector update escaped HTML; the immediate corrective update supplied the connector's Markdown input and returned real HTML anchors. Final read-backs confirmed the correction. No Task was created or changed, and no emails were sent by this repair.
+
+Reproduction and rollback materials: `tools/preinspect-v3-link-owner.gs`, `tools/patch-preinspect-v3-link-owner.cjs`, `tools/test-preinspect-v3-link-owner.cjs`, `tools/preinspect-v3-link-owner-release.cjs`; exact pre-source retained in release artifacts. The public repository stores the patch and hashes, not a new full legacy source dump.
