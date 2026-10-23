@@ -130,3 +130,9 @@ All81 targets processed automatically. Final link outcomes68 patched/2 already l
 ## Sales Order status correction — 2026-10-23
 
 Latest explicit user rule: Service requires In Progress; Install and Delivery require Approved. PreInspection does not require a Sales Order. This supersedes generalized In Progress or either-active-status prerequisites. Fresh ownership and status must be verified by vertical. Existing shared task-first source accepts Approved OR In Progress without vertical discrimination; that is a recorded implementation gap, not the intended policy. No runtime status-gate correction is claimed by this decision update.
+
+## 2026-10-23 — All four verticals authorized
+
+Latest user instruction: continue execution until PreInspection, Service, Delivery and Install are all active. This supersedes earlier PreInspection-only activation limits. Service requires Sales Order status **In Progress**; Install and Delivery require **Approved**; PreInspection retains its optional-SO policy. Service still requires proven Work Order evidence and must never automatically create/recreate a Service Task.
+
+The scoped VERTICALAUTO worker uses the existing Stage 7 executor, fresh identity/ownership/status checks, exact per-event contracts, durable uncertain-write markers, read-back verification and review holds. Targeted Order/Contact/Location evidence refresh must preserve cache schema and reject conflicting ownership. Dedicated hourly trigger plus existing scheduled slots process bounded batches; at most one verified event transaction per vertical per hour. General automation/manual write flags stay false; dedicated PreInspection authorization remains active. Install reminders go only to the verified internal event creator, with durable uncertain-send suppression.
