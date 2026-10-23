@@ -1,0 +1,46 @@
+name: Deploy PreInspection canonical link ownership guard
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/preinspect-v3-link-owner-release.yml, ops/preinspect-v3-link-owner-release-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Capture exact live legacy source and four-file candidate
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/preinspect-v3-link-owner-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canonical-owner-PRE-${{ github.run_id }}
+          path: canonical-owner-evidence/
+          retention-days: 14
+      - name: Regress actual legacy writer entries and existing V3 contracts
+        env:
+          PREINSPECT_TEST_SOURCE_DIR: canonical-owner-evidence/work
+          TMV3_TEST_SOURCE_DIR: canonical-owner-evidence/v3work
+        run: |
+          node tools/test-preinspect-v3-link-owner.cjs
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-preinspection-link-uniqueness.js
+      - name: Guarded apply and read-only native ownership check
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/preinspect-v3-link-owner-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canonical-owner-result-${{ github.run_id }}
+          path: canonical-owner-evidence/
+          retention-days: 14
