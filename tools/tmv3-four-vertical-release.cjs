@@ -32,12 +32,12 @@ async function main(mode){
   report.sourceVerified=true;
   const inv=await api('projects/'+m.scriptId+'/deployments'),ds=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXPECTED_ONE_EXECUTABLE');
   async function native(fn){
-   for(let attempt=1;attempt<=5;attempt++){
+   for(let attempt=1;attempt<=30;attempt++){
     const response=await api('scripts/'+encodeURIComponent(ds[0].deploymentId)+':run','POST',{function:fn,devMode:true});
     if(response.error||response.done!==true)throw Error('RUNTIME_UNCERTAIN_NO_MUTATION_RETRY:'+JSON.stringify(response.error||{}));
     const result=response.response.result;
     if(result.status!=='LOCK_BUSY')return result;
-    if(attempt<5)await new Promise(resolve=>setTimeout(resolve,15000));
+    if(attempt<30)await new Promise(resolve=>setTimeout(resolve,15000));
    }throw Error('LOCK_BUSY_EXHAUSTED');
   }
   report.triggerInstall=await native('tmv3_installVerticalProductionTrigger');
