@@ -1,11 +1,11 @@
-const TMV3_VERSION = '3.11.98-preinspection-history-classification-r1';
+const TMV3_VERSION = '3.12.0-four-vertical-scoped-activation-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'PRODUCTION_WRITE';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-08-r13',
+  version:'2026-10-23-r14',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
@@ -27,6 +27,7 @@ const TMV3_HARD_RULES = Object.freeze({
     missingLinkedTaskCacheDecision:'REVIEW_FAIL_CLOSED'
   }),
   Install:Object.freeze({
+    requiredSalesOrderStatus:'Approved',
     orderRequired:true,
     orderLabel:'Sales Order',
     assignmentEvidence:'CALENDAR_TITLE_ONLY',
@@ -34,6 +35,7 @@ const TMV3_HARD_RULES = Object.freeze({
     preserveUnrelatedManualEmployees:true
   }),
   Delivery:Object.freeze({
+    requiredSalesOrderStatus:'Approved',
     orderRequired:true,
     orderLabel:'Sales Order',
     assignmentEvidence:'CALENDAR_TITLE_ONLY',
@@ -41,6 +43,7 @@ const TMV3_HARD_RULES = Object.freeze({
     preserveUnrelatedManualEmployees:true
   }),
   Service:Object.freeze({
+    requiredSalesOrderStatus:'In Progress',
     orderRequired:true,
     orderLabel:'Work Order',
     technicianEvidence:'TECHNICIAN_CALENDAR',
@@ -92,6 +95,12 @@ const TMV3 = Object.freeze({
   PAGE_SIZE: 10000,
   MAX_PAGES: 50,
   OPERATIONS: Object.freeze({
+    verticalFailureAlertEmail: 'pramodh@classicfireplace.ca',
+    verticalProductionEnabled: true,
+    verticalProductionVerticals: ['Service','Delivery','Install'],
+    verticalProductionIntervalMinutes: 60,
+    verticalProductionMaxCandidates: 4,
+    verticalProductionMinApiRemaining: 60,
     manualWritesEnabled: false,
     // Independent relationship-only production lane. Other V3 writers remain gated.
     taskFirstProductionEnabled: true,
