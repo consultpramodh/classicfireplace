@@ -1,1 +1,1 @@
-2026-10-23: independently verify live source, policies and trigger inventory after PreInspection history classification release; no workers or installers.
+2026-10-23: fresh baseline audit before guarded all-four activation. No business worker or source mutation.
