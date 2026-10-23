@@ -1,3 +1,11 @@
+# 2026-10-23 — PreInspection duplicate footer repaired
+
+Legacy compatibility `2026-10-23-canonical-link-owner-r1` deployed to the existing legacy PreInspection project; six footer writers now defer on V3 canonical blocks. Four files changed; exact full-source read-back verified. V3 remains 3.12.1, all automation scopes and Sheet refresh unchanged. Release 40025850821; independent read-only postcheck 40026083311. 40 legacy guard/actual-entry tests, 185 core cases and uniqueness regression passed. No legacy Execution API deployment exists; do not claim native legacy entrypoint invocation.
+
+Reported event's CF Preinspects description repaired; Stephen's correct copy preserved. Both copies verified with one canonical heading, one Task #19320 link, notes/time/location preserved. See `ops/preinspection-canonical-link-owner-20261023.md` and `executions/20261023-preinspection-link-owner.json`. Next: observe the next natural legacy/V3 run for reappearance; retain other documented data-review holds.
+
+---
+
 # 2026-10-23 — Automatic Google Sheet refresh live
 
 ## Native verification completed
