@@ -1,3 +1,17 @@
+# 2026-10-23 — Automatic Google Sheet refresh live
+
+## Native verification completed
+
+Run [40021982118](https://github.com/consultpramodh/classicfireplace/actions/runs/40021982118) passed. Full post-source hash `b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e`; only 00_Config and 60_Automation changed; all other production source preserved. All 411 cases passed against the actual live-source candidate. Native Sheet publication completed 2026-10-23 16:50 Toronto with row-count verification: Install 50, Delivery 11, Service 197, PreInspection 14 (272 total). Morning Ops refreshed. Timestamp read back through native runtime and independent Sheets connector. Existing operator headings/wrap formatting remain present; visual validation was limited to native cell metadata.
+
+19 triggers installed; exactly one hourly Sheet refresh; every prior stable handler retained. All four business scopes remain enabled; general AUTO/MANUAL remain false. Refresh pending=false and lastError=null. No Striven or Calendar business mutations were invoked by this release. Current Calendar is reread; Striven data comes from the local cache, including automation read-backs. Existing full-source refresh cadence remains unchanged.
+
+Evidence: `executions/20261023-automatic-sheet-refresh.json`. Immutable deployment versions/access permissions unchanged. PRE backup artifact retained; rollback target is 3.12.0 source hash 8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef. An initial prepare-only attempt stopped on a byte-hash transport mismatch before source writes; corrected release succeeded.
+
+Independent read-only audit [40022223511](https://github.com/consultpramodh/classicfireplace/actions/runs/40022223511) passed: exact source hash, all handlers exist, health ready, source unchanged. Existing data review holds remain; this release only adds Sheet publication.
+
+---
+
 # Latest checkpoint — 2026-10-23: all four scoped automations active
 
 ## Verified production outcome
