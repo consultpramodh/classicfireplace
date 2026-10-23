@@ -110,8 +110,8 @@
 
 ## Automatic Service / Delivery Task details — 2026-10-20
 
-- Striven creates these Tasks after the Order enters In Progress. Automatically link each existing Service/Delivery Task to the unique SO# in its title; Calendar presence is not required for Order linking.
-- The title identifies the Order number only. Fresh Task Customer, exact Order ID/number/owner/status and Contact ownership remain write-critical evidence. Recheck present status; creation-time In Progress is not proof against later cancellation.
+- Service uses Sales Order status In Progress. Install and Delivery use Sales Order status Approved. Do not apply the Service-only In Progress prerequisite to Install or Delivery. Automatically link each existing Service/Delivery Task to the unique SO# in its title; Calendar presence is not required for Order linking.
+- The title identifies the Order number only. Fresh Task Customer, exact Order ID/number/owner/status and Contact ownership remain write-critical evidence. Recheck present status; a previously eligible status is not proof against later cancellation.
 - Existing native triggers perform routine patches. Do not make the operator run editor/menu functions for normal Task-detail synchronization.
 - Calendar-backed dates, customer-owned Location and intended employee/pool assignments use fresh canonical Step 7 evidence under the dedicated existing-Task detail context. Do not enable general manual/automation flags or permit Task creation, Calendar/title edits, technician-note/custom-field changes through this path.
 - Preserve manual employees; remove only Pool 4 after intended employees are independently read back. Preserve the shared one-candidate/hour limit until a separately verified capacity change.
@@ -126,3 +126,7 @@ User requested all55 Service and26 Delivery Tasks be patched without the hourly 
 ## Fixed backlog execution completed — 2026-10-20
 
 All81 targets processed automatically. Final link outcomes68 patched/2 already linked/11 held; no pending or uncertain writes. Hold9 Orders that fail the active condition, Task19064 without SO# and canceled Task19262. Existing19098→27661 is preserved even though that Order is outside new-link eligibility. Fresh cache reconciliation and68 unique native Order-only readbacks agree; the cause of the separately observed cache discrepancy remains unconfirmed. Do not infer a permanent cache-sync fix or broader vertical acceptance from this backfill.
+
+## Sales Order status correction — 2026-10-23
+
+Latest explicit user rule: Service requires In Progress; Install and Delivery require Approved. PreInspection does not require a Sales Order. This supersedes generalized In Progress or either-active-status prerequisites. Fresh ownership and status must be verified by vertical. Existing shared task-first source accepts Approved OR In Progress without vertical discrimination; that is a recorded implementation gap, not the intended policy. No runtime status-gate correction is claimed by this decision update.
