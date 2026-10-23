@@ -45,6 +45,9 @@ async function main(mode){
   if(Object.values(report.initialStatus.verticals).some(v=>v.enabled!==true)||report.initialStatus.generalAutomationWritesEnabled!==false||report.initialStatus.manualWritesEnabled!==false)throw Error('ACTIVATION_FLAGS_MISMATCH');
   report.canaries={};
   for(const v of ['Service','Delivery','Install'])report.canaries[v]=await native('tmv3_run'+v+'Automation');
+  report.verifiedEventTransactions=Object.values(report.canaries).reduce((n,r)=>n+(r.transactionsVerified||0),0);
+  report.businessWrites=Object.values(report.canaries).reduce((n,r)=>n+(r.writes||0),0);
+  report.businessWritesUnit='event transactions with Task or Calendar actions; not HTTP request count';
   report.finalStatus=await native('tmv3_fourVerticalAutomationStatus');
   if(Object.values(report.finalStatus.verticals).some(v=>v.enabled!==true))throw Error('FINAL_ACTIVATION_MISMATCH');
   report.finalHash=canonical(await api(path));if(report.finalHash!==m.afterHash)throw Error('FINAL_SOURCE_DRIFT');
