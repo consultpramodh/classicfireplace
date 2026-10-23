@@ -1,0 +1,726 @@
+{
+  "releaseRun": 40021982118,
+  "independentAuditRun": 40022223511,
+  "release": {
+    "status": "AUTOMATIC_SHEET_REFRESH_DEPLOYED_AND_VERIFIED",
+    "version": "3.12.1-automatic-sheet-refresh-r1",
+    "beforeHash": "8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef",
+    "afterHash": "b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e",
+    "changedFiles": [
+      "00_Config",
+      "60_Automation"
+    ],
+    "businessWrites": 0,
+    "permissionsChanged": false,
+    "versionsCreated": 0,
+    "existingDeploymentsChanged": false,
+    "sourceVerified": true,
+    "initialStatus": {
+      "manualWritesEnabled": false,
+      "version": "3.12.1-automatic-sheet-refresh-r1",
+      "generalAutomationWritesEnabled": false,
+      "mode": "PRODUCTION_WRITE",
+      "verticals": {
+        "Delivery": {
+          "recent": {
+            "writes": 0,
+            "vertical": "Delivery",
+            "status": "THROTTLED",
+            "results": [],
+            "scanned": 0
+          },
+          "enabled": true,
+          "requiredSalesOrderStatus": "Approved"
+        },
+        "Install": {
+          "enabled": true,
+          "requiredSalesOrderStatus": "Approved",
+          "recent": {
+            "writes": 0,
+            "vertical": "Install",
+            "status": "THROTTLED",
+            "results": [],
+            "scanned": 0
+          }
+        },
+        "PreInspection": {
+          "enabled": true,
+          "hours": [
+            8,
+            13,
+            17
+          ]
+        },
+        "Service": {
+          "enabled": true,
+          "recent": {
+            "scanned": 0,
+            "results": [],
+            "status": "THROTTLED",
+            "vertical": "Service",
+            "writes": 0
+          },
+          "requiredSalesOrderStatus": "In Progress"
+        }
+      },
+      "triggers": [
+        {
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated"
+        },
+        {
+          "eventType": "ON_EVENT_UPDATED",
+          "handler": "tmv3_calendarEventUpdated",
+          "sourceId": "classicfireplace.ca_4thp5g3v2anva65u487enscrmo@group.calendar.google.com",
+          "source": "CALENDAR"
+        },
+        {
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "handler": "tmv3_preInspectionCheck1700",
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "source": "CLOCK"
+        },
+        {
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "eventType": "CLOCK",
+          "source": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_preInspectionCheck0800"
+        },
+        {
+          "sourceId": null,
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "handler": "tmv3_allVerticalAutomationTick"
+        },
+        {
+          "eventType": "CLOCK",
+          "source": "CLOCK",
+          "handler": "tmv3_installReminderCheck",
+          "sourceId": null
+        },
+        {
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "source": "CALENDAR",
+          "sourceId": "classicfireplace.ca_rdff13tf563csmi15is11u09q8@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated",
+          "eventType": "ON_EVENT_UPDATED"
+        },
+        {
+          "handler": "tmv3_calendarReconciliationFallback",
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "source": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK",
+          "sourceId": null
+        },
+        {
+          "eventType": "ON_EVENT_UPDATED",
+          "handler": "tmv3_calendarEventUpdated",
+          "sourceId": "classicfireplace.ca_vpg05s56lp9f7kaegsiqask34o@group.calendar.google.com",
+          "source": "CALENDAR"
+        },
+        {
+          "sourceId": null,
+          "handler": "tmv3_preInspectionCheck1300",
+          "eventType": "CLOCK",
+          "source": "CLOCK"
+        },
+        {
+          "sourceId": null,
+          "handler": "tmv3_dailySourceRefresh",
+          "eventType": "CLOCK",
+          "source": "CLOCK"
+        },
+        {
+          "handler": "tmv3_scheduledOperations",
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "sourceId": null
+        },
+        {
+          "handler": "tmv3_calendarEventUpdated",
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_a7v0u8dna3egshtknhqofp5at0@group.calendar.google.com"
+        },
+        {
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_2h90kflud3re121hga9bvsi33o@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated"
+        }
+      ],
+      "installReminderEnabled": true,
+      "apiBudget": {
+        "preInspectionReservedCalls": 200,
+        "reserveForOtherWorkflows": 3800,
+        "date": "2026-10-23",
+        "exhausted": false,
+        "remaining": 402,
+        "count": 598,
+        "exhaustedReason": "",
+        "planDailyLimit": 5000,
+        "softLimit": 1200
+      }
+    },
+    "triggerInstall": {
+      "status": "SHEET_REFRESH_TRIGGER_VERIFIED",
+      "triggers": [
+        {
+          "sourceId": "c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated",
+          "eventType": "ON_EVENT_UPDATED",
+          "source": "CALENDAR"
+        },
+        {
+          "sourceId": "classicfireplace.ca_4thp5g3v2anva65u487enscrmo@group.calendar.google.com",
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "handler": "tmv3_calendarEventUpdated"
+        },
+        {
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK"
+        },
+        {
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_preInspectionCheck1700",
+          "eventType": "CLOCK"
+        },
+        {
+          "eventType": "CLOCK",
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledSheetRefresh",
+          "sourceId": null
+        },
+        {
+          "sourceId": null,
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "sourceId": null,
+          "handler": "tmv3_preInspectionCheck0800",
+          "source": "CLOCK",
+          "eventType": "CLOCK"
+        },
+        {
+          "sourceId": null,
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "handler": "tmv3_allVerticalAutomationTick"
+        },
+        {
+          "eventType": "CLOCK",
+          "source": "CLOCK",
+          "handler": "tmv3_installReminderCheck",
+          "sourceId": null
+        },
+        {
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "handler": "tmv3_calendarEventUpdated",
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_rdff13tf563csmi15is11u09q8@group.calendar.google.com"
+        },
+        {
+          "handler": "tmv3_calendarReconciliationFallback",
+          "eventType": "CLOCK",
+          "source": "CLOCK",
+          "sourceId": null
+        },
+        {
+          "handler": "tmv3_scheduledOperations",
+          "source": "CLOCK",
+          "sourceId": null,
+          "eventType": "CLOCK"
+        },
+        {
+          "handler": "tmv3_calendarEventUpdated",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_vpg05s56lp9f7kaegsiqask34o@group.calendar.google.com",
+          "source": "CALENDAR"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_preInspectionCheck1300",
+          "eventType": "CLOCK"
+        },
+        {
+          "handler": "tmv3_dailySourceRefresh",
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "source": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK"
+        },
+        {
+          "sourceId": "classicfireplace.ca_a7v0u8dna3egshtknhqofp5at0@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated",
+          "eventType": "ON_EVENT_UPDATED",
+          "source": "CALENDAR"
+        },
+        {
+          "eventType": "ON_EVENT_UPDATED",
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated",
+          "sourceId": "classicfireplace.ca_2h90kflud3re121hga9bvsi33o@group.calendar.google.com"
+        }
+      ]
+    },
+    "refresh": {
+      "strivenWrites": 0,
+      "startedAt": "2026-10-23T20:49:36.201Z",
+      "projectionVerified": true,
+      "sourceMode": "CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE",
+      "calendarWrites": 0,
+      "morningOps": {
+        "attention": 2,
+        "verticals": [
+          {
+            "attention": 0,
+            "mapped": 3,
+            "vertical": "Install",
+            "appointments": 3
+          },
+          {
+            "mapped": 0,
+            "vertical": "Delivery",
+            "appointments": 0,
+            "attention": 0
+          },
+          {
+            "mapped": 8,
+            "vertical": "Service",
+            "attention": 2,
+            "appointments": 8
+          },
+          {
+            "vertical": "PreInspection",
+            "mapped": 2,
+            "appointments": 2,
+            "attention": 0
+          }
+        ],
+        "appointments": 13,
+        "noTask": 0,
+        "mapped": 13,
+        "mode": "PRODUCTION_WRITE",
+        "date": "2026-10-23",
+        "status": "TODAY_SNAPSHOT"
+      },
+      "version": "3.12.1-automatic-sheet-refresh-r1",
+      "completedAt": "2026-10-23T20:50:39.255Z",
+      "timezone": "America/Toronto",
+      "status": "AUTOMATION_SHEETS_REFRESHED",
+      "timestampReadbackVerified": true,
+      "rows": {
+        "Service": 197,
+        "PreInspection": 14,
+        "Delivery": 11,
+        "Install": 50
+      }
+    },
+    "refreshStatus": {
+      "version": "3.12.1-automatic-sheet-refresh-r1",
+      "triggers": [
+        {
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com",
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated"
+        },
+        {
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_4thp5g3v2anva65u487enscrmo@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated"
+        },
+        {
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "handler": "tmv3_preInspectionCheck1700"
+        },
+        {
+          "handler": "tmv3_scheduledSheetRefresh",
+          "sourceId": null,
+          "source": "CLOCK",
+          "eventType": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "handler": "tmv3_preInspectionCheck0800",
+          "eventType": "CLOCK",
+          "sourceId": null
+        },
+        {
+          "handler": "tmv3_allVerticalAutomationTick",
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "source": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_installReminderCheck",
+          "eventType": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK",
+          "sourceId": null
+        },
+        {
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_rdff13tf563csmi15is11u09q8@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated"
+        },
+        {
+          "handler": "tmv3_calendarReconciliationFallback",
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "source": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "sourceId": "classicfireplace.ca_vpg05s56lp9f7kaegsiqask34o@group.calendar.google.com",
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated",
+          "eventType": "ON_EVENT_UPDATED"
+        },
+        {
+          "sourceId": null,
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "handler": "tmv3_preInspectionCheck1300"
+        },
+        {
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_dailySourceRefresh"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_a7v0u8dna3egshtknhqofp5at0@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated"
+        },
+        {
+          "source": "CALENDAR",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_2h90kflud3re121hga9bvsi33o@group.calendar.google.com",
+          "handler": "tmv3_calendarEventUpdated"
+        }
+      ],
+      "pending": false,
+      "lastSuccess": {
+        "completedAt": "2026-10-23T20:50:39.255Z",
+        "startedAt": "2026-10-23T20:49:36.201Z",
+        "calendarWrites": 0,
+        "timestampReadbackVerified": true,
+        "timezone": "America/Toronto",
+        "sourceMode": "CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE",
+        "version": "3.12.1-automatic-sheet-refresh-r1",
+        "rows": {
+          "Service": 197,
+          "Install": 50,
+          "PreInspection": 14,
+          "Delivery": 11
+        },
+        "projectionVerified": true,
+        "morningOps": {
+          "date": "2026-10-23",
+          "verticals": [
+            {
+              "attention": 0,
+              "appointments": 3,
+              "mapped": 3,
+              "vertical": "Install"
+            },
+            {
+              "vertical": "Delivery",
+              "appointments": 0,
+              "mapped": 0,
+              "attention": 0
+            },
+            {
+              "vertical": "Service",
+              "mapped": 8,
+              "attention": 2,
+              "appointments": 8
+            },
+            {
+              "appointments": 2,
+              "vertical": "PreInspection",
+              "mapped": 2,
+              "attention": 0
+            }
+          ],
+          "attention": 2,
+          "mapped": 13,
+          "appointments": 13,
+          "status": "TODAY_SNAPSHOT",
+          "noTask": 0,
+          "mode": "PRODUCTION_WRITE"
+        },
+        "strivenWrites": 0,
+        "status": "AUTOMATION_SHEETS_REFRESHED"
+      },
+      "lastError": null
+    },
+    "finalStatus": {
+      "manualWritesEnabled": false,
+      "mode": "PRODUCTION_WRITE",
+      "version": "3.12.1-automatic-sheet-refresh-r1",
+      "apiBudget": {
+        "preInspectionReservedCalls": 200,
+        "date": "2026-10-23",
+        "exhausted": false,
+        "remaining": 392,
+        "planDailyLimit": 5000,
+        "reserveForOtherWorkflows": 3800,
+        "count": 608,
+        "softLimit": 1200,
+        "exhaustedReason": ""
+      },
+      "generalAutomationWritesEnabled": false,
+      "verticals": {
+        "Install": {
+          "requiredSalesOrderStatus": "Approved",
+          "enabled": true,
+          "recent": {
+            "status": "THROTTLED",
+            "writes": 0,
+            "scanned": 0,
+            "results": [],
+            "vertical": "Install"
+          }
+        },
+        "Service": {
+          "enabled": true,
+          "requiredSalesOrderStatus": "In Progress",
+          "recent": {
+            "results": [],
+            "scanned": 0,
+            "vertical": "Service",
+            "status": "THROTTLED",
+            "writes": 0
+          }
+        },
+        "PreInspection": {
+          "enabled": true,
+          "hours": [
+            8,
+            13,
+            17
+          ]
+        },
+        "Delivery": {
+          "enabled": true,
+          "recent": {
+            "scanned": 0,
+            "status": "THROTTLED",
+            "vertical": "Delivery",
+            "writes": 0,
+            "results": []
+          },
+          "requiredSalesOrderStatus": "Approved"
+        }
+      },
+      "installReminderEnabled": true,
+      "triggers": [
+        {
+          "eventType": "ON_EVENT_UPDATED",
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated",
+          "sourceId": "c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com"
+        },
+        {
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated",
+          "sourceId": "classicfireplace.ca_4thp5g3v2anva65u487enscrmo@group.calendar.google.com",
+          "eventType": "ON_EVENT_UPDATED"
+        },
+        {
+          "sourceId": null,
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK",
+          "source": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "handler": "tmv3_preInspectionCheck1700",
+          "sourceId": null
+        },
+        {
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_scheduledSheetRefresh"
+        },
+        {
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_scheduledOperations",
+          "source": "CLOCK"
+        },
+        {
+          "eventType": "CLOCK",
+          "handler": "tmv3_preInspectionCheck0800",
+          "sourceId": null,
+          "source": "CLOCK"
+        },
+        {
+          "source": "CLOCK",
+          "eventType": "CLOCK",
+          "handler": "tmv3_allVerticalAutomationTick",
+          "sourceId": null
+        },
+        {
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_installReminderCheck"
+        },
+        {
+          "sourceId": null,
+          "handler": "tmv3_scheduledOperations",
+          "source": "CLOCK",
+          "eventType": "CLOCK"
+        },
+        {
+          "eventType": "ON_EVENT_UPDATED",
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated",
+          "sourceId": "classicfireplace.ca_rdff13tf563csmi15is11u09q8@group.calendar.google.com"
+        },
+        {
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "source": "CLOCK",
+          "handler": "tmv3_calendarReconciliationFallback"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "handler": "tmv3_scheduledOperations",
+          "eventType": "CLOCK"
+        },
+        {
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated",
+          "sourceId": "classicfireplace.ca_vpg05s56lp9f7kaegsiqask34o@group.calendar.google.com",
+          "eventType": "ON_EVENT_UPDATED"
+        },
+        {
+          "source": "CLOCK",
+          "sourceId": null,
+          "eventType": "CLOCK",
+          "handler": "tmv3_preInspectionCheck1300"
+        },
+        {
+          "sourceId": null,
+          "handler": "tmv3_dailySourceRefresh",
+          "eventType": "CLOCK",
+          "source": "CLOCK"
+        },
+        {
+          "eventType": "CLOCK",
+          "sourceId": null,
+          "source": "CLOCK",
+          "handler": "tmv3_scheduledOperations"
+        },
+        {
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated",
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_a7v0u8dna3egshtknhqofp5at0@group.calendar.google.com"
+        },
+        {
+          "eventType": "ON_EVENT_UPDATED",
+          "sourceId": "classicfireplace.ca_2h90kflud3re121hga9bvsi33o@group.calendar.google.com",
+          "source": "CALENDAR",
+          "handler": "tmv3_calendarEventUpdated"
+        }
+      ]
+    },
+    "finalHash": "b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e",
+    "runtimeVerified": true
+  },
+  "tests": {
+    "cases": 411,
+    "status": "PASS",
+    "againstActualLiveCandidate": true
+  },
+  "connectorReadback": {
+    "overviewTimestamp": "2026-10-23 4:50 PM Toronto",
+    "operatorHeadersPresent": true,
+    "existingWrapFormattingPreserved": true,
+    "visualCheck": "Bounded native cell metadata; no rendered browser inspection"
+  }
+}
