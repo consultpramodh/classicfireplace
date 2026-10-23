@@ -34,7 +34,10 @@ jobs:
           TMV3_TEST_SOURCE_DIR: four-vertical-release-evidence/work
         run: |
           node tools/test-tmv3-core-hardening.cjs
-          node tools/test-tmv3-four-vertical-completion.js
+          node tools/test-tmv3-pi-history-completion.js
+          node tools/test-tmv3-four-vertical-activation.cjs
+          node tools/test-tmv3-vertical-evidence.cjs
+          node tools/test-tmv3-install-reminder-activation.cjs
       - name: Apply guarded two-file update and verify each vertical automation
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
