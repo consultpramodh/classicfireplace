@@ -64,6 +64,7 @@ function tmv3_managedTriggerHandlers_() {
   return [
     'tmv3_allVerticalAutomationTick',
     'tmv3_dailySourceRefresh',
+    'tmv3_scheduledSheetRefresh',
     'tmv3_scheduledOperations',
     'tmv3_refreshLinksSlot_0800',
     'tmv3_refreshLinksSlot_1000',
@@ -2010,7 +2011,9 @@ function tmv3_preInspectionAutomationCycle_(options) {
 }
 
 function tmv3_runPreInspectionAutomation() {
+  const sheetRefreshStarted=Date.now();
   const result=tmv3_preInspectionAutomationCycle_({force:true,reason:'MANUAL_KICK'});
+  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
   Logger.log(JSON.stringify(result));return result;
 }
 
@@ -2102,16 +2105,20 @@ function tmv3_preInspectionMaybeContinueSweep_(result) {
 }
 
 function tmv3_preInspectionContinueEligibleSweep() {
+  const sheetRefreshStarted=Date.now();
   tmv3_preInspectionClearContinuationTrigger_();
   const result=tmv3_preInspectionAutomationCycle_({force:true,sweepContinue:true,reason:'ELIGIBLE_SWEEP_CONTINUATION'});
   tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_('CONTINUATION',result);
+  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
   return result;
 }
 function tmv3_runPreInspectionDailySlot_(slot) {
+  const sheetRefreshStarted=Date.now();
   const result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
   tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_(slot,result);
+  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
   return result;
 }
 function tmv3_installPreInspectionAutomationTrigger() {
@@ -2460,6 +2467,7 @@ function tmv3_allVerticalAutomationTick() {
     try{result.results.push(tmv3_verticalProductionCycle_(all[(start+i)%all.length]));}
     catch(err){result.results.push({vertical:all[(start+i)%all.length],status:'ATTENTION',error:String(err)});}
   }
+  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(began);
   Logger.log(JSON.stringify(result));return result;
 }
 
@@ -2476,6 +2484,7 @@ function tmv3_installVerticalProductionTrigger() {
     ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
   }
   existing.slice(1).forEach(function(t){ScriptApp.deleteTrigger(t);});
+  tmv3_installAutomationSheetRefreshTrigger();
   const triggers=tmv3_listTriggers();
   if(triggers.filter(function(t){return t.handler===handler;}).length!==1)throw new Error('VERTICAL_TRIGGER_READBACK_FAILED');
   return {status:'VERTICAL_TRIGGER_VERIFIED',triggers:triggers,verticals:TMV3.OPERATIONS.verticalProductionVerticals};
@@ -2508,4 +2517,80 @@ function tmv3_fourVerticalAutomationStatus() {
     generalAutomationWritesEnabled:policy.automationWritesEnabled,manualWritesEnabled:policy.manualWritesEnabled,
     installReminderEnabled:TMV3.MODE==='PRODUCTION_WRITE'&&policy.installRemindersEnabled===true,
     apiBudget:tmv3_strivenApiBudgetStatus_()};
+}
+
+
+// Google Apps Script: cache-backed operator publication, with no Striven/Calendar writes.
+function tmv3_refreshAutomationSheetsAfter_(startedAt) {
+  try {
+    PropertiesService.getScriptProperties().setProperty('TMV3_SHEET_REFRESH_PENDING','true');
+    if(Date.now()-Number(startedAt)>240000) return {status:'DEFERRED_TO_HOURLY_SHEET_REFRESH'};
+    return tmv3_refreshAutomationSheets();
+  } catch(err) {
+    // A view-publication failure must not replay or relabel a completed business transaction.
+    return {status:'SHEET_REFRESH_ATTENTION',error:String(err && err.message || err)};
+  }
+}
+function tmv3_scheduledSheetRefresh() {
+  const hour=Number(Utilities.formatDate(new Date(),TMV3_TIMEZONE,'H'));
+  if(hour<8||hour>18)return {status:'OUTSIDE_BUSINESS_HOURS'};
+  return tmv3_refreshAutomationSheets();
+}
+function tmv3_refreshAutomationSheets() {
+  const lock=LockService.getScriptLock(),props=PropertiesService.getScriptProperties();
+  props.setProperty('TMV3_SHEET_REFRESH_PENDING','true');
+  if(!lock.tryLock(1000))return {status:'LOCK_BUSY'};
+  const startedAt=new Date().toISOString();
+  try {
+    const mapped=tmv3_step6TaskDecisionRunCached('AUTOMATIC_SHEET_REFRESH');
+    if(!mapped.verification || mapped.verification.pass!==true)throw Error('SHEET_PROJECTION_VERIFICATION_FAILED');
+    const counts={};
+    Object.keys(TMV3.VERTICALS).forEach(function(v){
+      const rows=tmv3_rows_(TMV3.VERTICALS[v].sheet);
+      counts[v]=rows.filter(function(r){return !!tmv3_clean_(r['Event ID']);}).length;
+      if(counts[v]!==Number(mapped.write[v]))throw Error('SHEET_ROW_READBACK_MISMATCH:'+v);
+    });
+    const morning=tmv3_refreshMorningOps();
+    const stamp=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd h:mm a');
+    const overview=tmv3_sheet_(TMV3.SHEETS.OVERVIEW);
+    const title='V3 '+TMV3.VERSION+' — Sheet refreshed '+stamp+' Toronto';
+    overview.getRange('B2').setValue(title);
+    overview.getRange('B4').setValue(TMV3.MODE+' — dedicated four-vertical automation; general AUTO/MANUAL remain gated.');
+    overview.getRange('B5').setValue('Current Calendar intake + latest local Striven cache; fresh write verification stays in TM Audit.');
+    overview.getRange('B6').setValue('Mapping Status shows the current cached decision; refresh does not certify business writes.');
+    overview.getRange('B16').setValue('Automatic Sheet refresh: '+stamp+' Toronto. Operator tabs and Morning Ops refreshed.');
+    SpreadsheetApp.flush();
+    if(overview.getRange('B2').getValue()!==title)throw Error('SHEET_TIMESTAMP_READBACK_MISMATCH');
+    const result={status:'AUTOMATION_SHEETS_REFRESHED',version:TMV3.VERSION,startedAt:startedAt,
+      completedAt:new Date().toISOString(),timezone:TMV3_TIMEZONE,rows:counts,
+      projectionVerified:true,timestampReadbackVerified:true,sourceMode:'CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE',
+      strivenWrites:0,calendarWrites:0,morningOps:morning};
+    props.setProperty('TMV3_SHEET_REFRESH_LAST_SUCCESS',JSON.stringify(result));
+    props.deleteProperty('TMV3_SHEET_REFRESH_PENDING');props.deleteProperty('TMV3_SHEET_REFRESH_LAST_ERROR');
+    tmv3_audit_('SYSTEM','','','AUTOMATIC_SHEET_REFRESH','PASS',JSON.stringify(result));
+    Logger.log(JSON.stringify(result));return result;
+  } catch(err) {
+    props.setProperty('TMV3_SHEET_REFRESH_LAST_ERROR',JSON.stringify({at:new Date().toISOString(),error:String(err && err.message || err)}));
+    tmv3_audit_('SYSTEM','','','AUTOMATIC_SHEET_REFRESH','ATTENTION',String(err && err.message || err));
+    throw err;
+  } finally {lock.releaseLock();}
+}
+function tmv3_installAutomationSheetRefreshTrigger() {
+  const handler='tmv3_scheduledSheetRefresh';
+  const existing=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;});
+  if(!existing.length){
+    if(ScriptApp.getProjectTriggers().length>=20)throw Error('SHEET_REFRESH_TRIGGER_CAPACITY');
+    ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
+  }
+  existing.slice(1).forEach(function(t){ScriptApp.deleteTrigger(t);});
+  const triggers=tmv3_listTriggers();
+  if(triggers.filter(function(t){return t.handler===handler;}).length!==1)throw Error('SHEET_REFRESH_TRIGGER_READBACK_FAILED');
+  return {status:'SHEET_REFRESH_TRIGGER_VERIFIED',triggers:triggers};
+}
+function tmv3_automationSheetRefreshStatus() {
+  const p=PropertiesService.getScriptProperties();
+  function json(key){const value=p.getProperty(key);return value?JSON.parse(value):null;}
+  return {version:TMV3.VERSION,lastSuccess:json('TMV3_SHEET_REFRESH_LAST_SUCCESS'),
+    lastError:json('TMV3_SHEET_REFRESH_LAST_ERROR'),pending:p.getProperty('TMV3_SHEET_REFRESH_PENDING')==='true',
+    triggers:tmv3_listTriggers()};
 }
