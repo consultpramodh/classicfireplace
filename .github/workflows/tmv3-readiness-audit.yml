@@ -1,0 +1,32 @@
+name: Audit native V3 automation readiness
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-readiness-audit.yml, ops/tmv3-readiness-audit-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-readiness-audit.cjs
+      - name: Read live readiness without business execution
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-readiness-audit.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: readiness-${{ github.run_id }}
+          path: readiness-evidence/
+          retention-days: 30
