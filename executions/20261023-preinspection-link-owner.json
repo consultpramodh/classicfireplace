@@ -1,0 +1,103 @@
+{
+  "releaseRun": 40025850821,
+  "independentRun": 40026083311,
+  "release": {
+    "status": "LEGACY_CANONICAL_OWNER_GUARDS_DEPLOYED",
+    "version": "2026-10-23-canonical-link-owner-r1",
+    "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+    "beforeHash": "488fb7d52dd9e78fa25e0d6824ccf7fc6d8f35c40ae4c08a7c147d48df9935d1",
+    "afterHash": "beb5a03f3e004c55664c6d865e8f22fde5ce2f1f4c9ca70cea7b96d02a2e603c",
+    "files": [
+      {
+        "name": "35_PreInspect_Task_Review",
+        "before": "61a12e548f8b63a12a97c7df659dea1e19007ec074686dbf399bab23b50b793d",
+        "after": "e5881405aaf5f0d9b3a9632c7df1272e1c6619d023284976760cccb124874208"
+      },
+      {
+        "name": "36_PreInspect_Task_Create",
+        "before": "49ecf333c489c0603edcac25f377fa77f5dfd7e9e03a32131ccebaa272a14c5d",
+        "after": "33643afea181612331a9b0ffee1692c632ae48fc162dfa407dfcef1faa063bd8"
+      },
+      {
+        "name": "98_12_PreInspect_Dual_Calendar_Task_Link_R1",
+        "before": "c37c8f1f70796858c7c4c6d86fcd9bac7ce257121e923fa8e533dcea25d6a27b",
+        "after": "d9450e2877b90aa12f011b23c093fdbcc84e06956076399a1d49895b39b42974"
+      },
+      {
+        "name": "98_7_Systemic_Repair_R1",
+        "before": "de1fb42d6fe1f22498640c5436e346b9af51aa8441850623f4597d462a559666",
+        "after": "83b801ffe27776e340f771b22ab6a0edffe69423aea71b185aee7b4d30b70030"
+      }
+    ],
+    "v3Hash": "b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e",
+    "calendarWrites": 0,
+    "strivenWrites": 0,
+    "permissionsChanged": false,
+    "immutableVersionsCreated": 0,
+    "sourceVerified": true,
+    "nativeExecutionAvailable": false,
+    "finalHash": "beb5a03f3e004c55664c6d865e8f22fde5ce2f1f4c9ca70cea7b96d02a2e603c",
+    "v3Unchanged": true
+  },
+  "independent": {
+    "legacySourceVerified": true,
+    "v3Unchanged": true,
+    "sourceWrites": 0,
+    "calendarWrites": 0,
+    "strivenWrites": 0,
+    "legacyHash": "beb5a03f3e004c55664c6d865e8f22fde5ce2f1f4c9ca70cea7b96d02a2e603c",
+    "v3Hash": "b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e",
+    "liveCalendarGuard": {
+      "mode": "2026-10-23-canonical-link-owner-r1",
+      "status": "V3_CANONICAL_LINK_PRESERVED",
+      "eventId": "62odlrnni7nid3ckesp8eua4co@google.com",
+      "taskId": 19320,
+      "taskUrl": "https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=19320",
+      "writesPerformed": false,
+      "writePerformed": false,
+      "calendarWritesPerformed": false,
+      "strivenWritesPerformed": false,
+      "linkReturned": true,
+      "readBackVerified": true,
+      "existingDescriptionPreserved": true,
+      "authoredDescriptionPreserved": true,
+      "calendarCopiesFound": 2,
+      "calendarCopiesVerified": 2,
+      "calendars": [
+        {
+          "calendarId": "c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com",
+          "found": true,
+          "canonical": true,
+          "verified": true
+        },
+        {
+          "calendarId": "classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com",
+          "found": true,
+          "canonical": true,
+          "verified": true
+        }
+      ]
+    },
+    "liveNotesVerified": true
+  },
+  "tests": {
+    "legacyGuardCases": 40,
+    "v3CoreCases": 185,
+    "uniquenessRegression": "PASS"
+  },
+  "calendarRepair": {
+    "eventId": "62odlrnni7nid3ckesp8eua4co@google.com",
+    "taskId": 19320,
+    "descriptionCopiesChanged": 1,
+    "descriptionConnectorUpdates": 2,
+    "correction": "First update escaped HTML; immediate corrected input produced actual anchors",
+    "copiesVerified": 2,
+    "canonicalHeadingCountPerCopy": 1,
+    "taskLinkCountPerCopy": 1,
+    "legacyFooterCountPerCopy": 0,
+    "notesPreserved": true,
+    "timeAndLocationPreserved": true,
+    "strivenWrites": 0,
+    "emailsSent": 0
+  }
+}
