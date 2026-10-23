@@ -21,6 +21,7 @@ async function main(){
    if(pos>=0){let a=s.lastIndexOf('\nfunction ',pos);if(a<0)a=Math.max(0,pos-700);let b=s.indexOf('\nfunction ',pos);if(b<0)b=pos+4000;matches.push({name:f.name,snippet:s.slice(a,Math.min(b,a+9500)),matchingFunctions:[...s.matchAll(/function\s+(\w+)\s*\(/g)].map(m=>m[1]).filter(n=>/trigger|calendar.*link|task.*link/i.test(n)).slice(0,60)});}
   }
   report.projects[kind]={scriptId:id,sourceHash:hash(source),fileCount:source.files.length,matches};
+  if(kind==='pre')report.projects[kind].writers=source.files.flatMap(f=>{const s=f.source||'';return ['preinspectAppendTaskLinkToCalendarEvent_','preinspectR3412RefreshExistingManagedCalendarLink_','preinspectR3418fSyncHandledTaskLinkToCalendar_','preinspectR3420SyncCalendarLink_','preinspectWorkflowR1WriteCalendarTaskLink_','tmSystemicWritePreInspectCalendarTaskLink_'].flatMap(name=>{const out=[];let at=0;while((at=s.indexOf('function '+name+'(',at))>=0){let end=s.indexOf('\nfunction ',at+10);if(end<0)end=s.length;out.push({file:f.name,name,body:s.slice(at,Math.min(end,at+13000))});at+=10;}return out;});});
   if(kind==='v3')report.projects[kind].linkSource=source.files.find(f=>f.name==='35_CalendarLinks').source;
  }
  const inv=await api('projects/'+SID+'/deployments'),ds=inv.deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));
