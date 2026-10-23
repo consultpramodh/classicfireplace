@@ -50,7 +50,9 @@
     "executions/20261023-four-vertical-activation.json",
     "ops/tmv3-four-vertical-activation-20261023.md",
     "executions/20261023-automatic-sheet-refresh.json",
-    "ops/tmv3-automatic-sheet-refresh-20261023.md"
+    "ops/tmv3-automatic-sheet-refresh-20261023.md",
+    "executions/20261023-preinspection-link-owner.json",
+    "ops/preinspection-canonical-link-owner-20261023.md"
   ],
   "allFourVerticalsActive": true,
   "nativeActivation": {
@@ -182,5 +184,46 @@
     },
     "sourceMode": "CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE",
     "noAdditionalFullStrivenPull": true
+  },
+  "legacyPreinspectionLinkOwnerCompatibility": {
+    "version": "2026-10-23-canonical-link-owner-r1",
+    "sourceHash": "beb5a03f3e004c55664c6d865e8f22fde5ce2f1f4c9ca70cea7b96d02a2e603c",
+    "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+    "releaseRun": 40025850821,
+    "independentRun": 40026083311,
+    "status": "DEPLOYED_SOURCE_AND_EVENT_REPAIR_VERIFIED",
+    "nativeLegacyExecutionAvailable": false,
+    "liveGuardVerification": {
+      "mode": "2026-10-23-canonical-link-owner-r1",
+      "status": "V3_CANONICAL_LINK_PRESERVED",
+      "eventId": "62odlrnni7nid3ckesp8eua4co@google.com",
+      "taskId": 19320,
+      "taskUrl": "https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=19320",
+      "writesPerformed": false,
+      "writePerformed": false,
+      "calendarWritesPerformed": false,
+      "strivenWritesPerformed": false,
+      "linkReturned": true,
+      "readBackVerified": true,
+      "existingDescriptionPreserved": true,
+      "authoredDescriptionPreserved": true,
+      "calendarCopiesFound": 2,
+      "calendarCopiesVerified": 2,
+      "calendars": [
+        {
+          "calendarId": "c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com",
+          "found": true,
+          "canonical": true,
+          "verified": true
+        },
+        {
+          "calendarId": "classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com",
+          "found": true,
+          "canonical": true,
+          "verified": true
+        }
+      ]
+    },
+    "notes": "V3 source/version/automation scopes unchanged; legacy footer writers defer on V3 canonical blocks."
   }
 }
