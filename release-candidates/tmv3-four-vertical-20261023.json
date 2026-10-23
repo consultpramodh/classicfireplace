@@ -1,0 +1,44 @@
+{
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "version": "3.12.0-four-vertical-scoped-activation-r1",
+  "beforeHash": "1dcab7e18cf736c6f1b786c4a0969278382b987c913a10867056a3014ba0ef41",
+  "afterHash": "8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef",
+  "files": [
+    {
+      "name": "00_Config",
+      "path": "apps-script/tmv3-clean/00_Config.js",
+      "before": "012bfc8648c6ca820a642b76d5c4a668eebba29b93985c9aca47246dda2033ea",
+      "after": "82bbf973b453a19f58b445a0b275aff05a58bf8536cc90eb1977547ce9ac467c"
+    },
+    {
+      "name": "36_Step3_Business_Anchor",
+      "path": "apps-script/tmv3-clean/36_Step3_Business_Anchor.js",
+      "before": "11de89d34ae0650f9aadfad992da0187652a7aa945fa7d6e3a59f736a67930cd",
+      "after": "342edaf3957e5380819d4cf7591012ed5bab6af534f6b0d6759574a55e7c5868"
+    },
+    {
+      "name": "46_Step7_Reconciliation",
+      "path": "apps-script/tmv3-clean/46_Step7_Reconciliation.js",
+      "before": "81f56649a013d19156a9b3bacf95fb98fe1b8d7e3907e493601ebc18d99cf85b",
+      "after": "f961b88b88ab2eb1c8e140797fb5e725c42e9735cdf3b9d2ca245eabf549305e"
+    },
+    {
+      "name": "58_Operations",
+      "path": "apps-script/tmv3-clean/58_Operations.js",
+      "before": "8f6e990e643977f85113c7ece31258a8745593ed014738472d650e26b43ab948",
+      "after": "f0c989c5df20cdb4308c8c2ada55702e0ebdfbc0fa9b7c2f3555181d1efd8956"
+    },
+    {
+      "name": "60_Automation",
+      "path": "apps-script/tmv3-clean/60_Automation.js",
+      "before": "3b6a02862c2577bbc5458605f2648360687835c0ff1196ae6c1e474e39b50252",
+      "after": "39bc23fdb1bdc044ccc0bf29aa8a24ee2bea0fdf15c360e61224ff91668aa42d"
+    },
+    {
+      "name": "70_Regression",
+      "path": "apps-script/tmv3-clean/70_Regression.js",
+      "before": "6d970a579aac194a2097906231b1a0c07d7e8e75f29233cf35b591eff14b6ec7",
+      "after": "6ed9db3be00de330a80dd16819287fdd2a4e0785b2df1138d1200cf874ec7c1d"
+    }
+  ]
+}
