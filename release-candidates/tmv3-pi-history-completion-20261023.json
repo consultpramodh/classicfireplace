@@ -1,0 +1,20 @@
+{
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "version": "3.11.98-preinspection-history-classification-r1",
+  "beforeHash": "64a37d2cf96b9e9b51ad95e362f4a05b58424c061bc6c6daedf1028fbd089ac1",
+  "afterHash": "1dcab7e18cf736c6f1b786c4a0969278382b987c913a10867056a3014ba0ef41",
+  "files": [
+    {
+      "name": "00_Config",
+      "path": "apps-script/tmv3-clean/00_Config.js",
+      "before": "033f1414b190ed9c68ed7e78aa5f75fd3ba7cbfaeeba8372c2067b3bd2c7ea17",
+      "after": "012bfc8648c6ca820a642b76d5c4a668eebba29b93985c9aca47246dda2033ea"
+    },
+    {
+      "name": "60_Automation",
+      "path": "apps-script/tmv3-clean/60_Automation.js",
+      "before": "d0b4d75198ba74eab6203fdaf858bf98bdaac204dd2bdea18ff8349f1cec4e41",
+      "after": "3b6a02862c2577bbc5458605f2648360687835c0ff1196ae6c1e474e39b50252"
+    }
+  ]
+}
