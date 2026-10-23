@@ -1914,7 +1914,8 @@ function tmv3_preInspectionAutomationCycle_(options) {
           one.notification = {status:'WAITING_FOR_INTAKE',sent:0};
         } else {
           let plans = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
-          if (plans.length===1 && plans[0].blocker) {
+          if (plans.length===1 && plans[0].blocker &&
+              !tmv3_preInspectionHistoricalCoverageVerified_(plans[0])) {
             one.optionalOrderEvidence=tmv3_preInspectionOptionalOrderLocationEvidence_(record);
             if (one.optionalOrderEvidence.status==='CACHE_REPAIRED') plans=tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
           }
@@ -1953,6 +1954,9 @@ function tmv3_preInspectionAutomationCycle_(options) {
           one.afterPlans=after.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};});
           const complete = tmv3_preInspectionCompletionVerified_(after,one.execution);
           if (complete) {
+            if (tmv3_preInspectionHistoricalCoverageVerified_(after[0])) {
+              one.status='FULFILLED_NO_RECREATE';one.historicalEvidence=one.blocker;one.blocker='';
+            }
             pending=pending.filter(function(id){return id!==record.eventId;});
             props.setProperty(doneKey,JSON.stringify({fingerprint:fresh.fingerprint,at:Date.now()}));
           }
@@ -2232,6 +2236,7 @@ function tmv3_restoreRecordedPreInspectionLegacyTitles() {
 function tmv3_preInspectionCompletionVerified_(plans, execution) {
   if (!Array.isArray(plans) || plans.length !== 1) return false;
   const plan = plans[0];
+  if (tmv3_preInspectionHistoricalCoverageVerified_(plan)) return true;
   if (!plan || plan.blocker || !Array.isArray(plan.actions)) return false;
   if (plan.actions.length === 0) return true;
   if (plan.plan !== 'NO_CHANGE' || plan.actions.some(function(action) {
@@ -2258,4 +2263,59 @@ function tmv3_preInspectionAutomaticRecovery_(reason) {
   tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_('RECOVERY',result);
   return result;
+}
+
+// Google Apps Script: classify fresh same-day completed coverage without changing history.
+function tmv3_preInspectionHistoricalCoverageVerified_(plan) {
+  if (!plan || plan.vertical !== 'PreInspection' ||
+      plan.disposition !== 'FULFILLED_NO_RECREATE' ||
+      plan.plan !== 'VERIFY_ONLY_HISTORY_NO_WRITE' ||
+      plan.readStatus !== 'FRESH_TASK_GET' ||
+      !/^[1-9]\d*$/.test(String(plan.taskId || '')) ||
+      !Array.isArray(plan.actions) || plan.actions.length !== 0 ||
+      !tmv3_step6IsFulfilledStatus_(plan.taskStatus) ||
+      plan.customerCheck !== 'MATCH' ||
+      !/^[1-9]\d*$/.test(String(plan.expectedCustomerId || '')) ||
+      String(plan.expectedCustomerId) !== String(plan.actualCustomerId)) return false;
+  return tmv3_step6TaskTouchesEventDay_({start:plan.calendarStart},
+    {Start:plan.taskStart,Due:plan.taskDue});
+}
+
+// Metadata-only reconciliation. Every removal requires a new canonical Task read.
+function tmv3_reconcilePreInspectionPendingReview() {
+  const lock=LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return {status:'LOCK_BUSY',businessWrites:0};
+  try {
+    const props=PropertiesService.getScriptProperties();
+    const stored=JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
+    if (!Array.isArray(stored) || stored.some(function(id){return typeof id!=='string' || !id;})) {
+      throw new Error('INVALID_PENDING_QUEUE_NO_CHANGE');
+    }
+    let pending=stored.slice();
+    const results=[];
+    const ids=stored.filter(function(id,index){return stored.indexOf(id)===index;}).slice(0,5);
+    ids.forEach(function(id) {
+      try {
+        const plans=tmv3_step7FreshPlansForEvent_('PreInspection',id);
+        if (plans.length===1 && tmv3_preInspectionHistoricalCoverageVerified_(plans[0])) {
+          pending=pending.filter(function(candidate){return candidate!==id;});
+          results.push({eventId:id,taskId:plans[0].taskId,status:'FULFILLED_NO_RECREATE',
+            readbackVerified:true,businessWrites:0});
+        } else {
+          results.push({eventId:id,status:'REVIEW_RETAINED',plans:plans.map(function(p){
+            return {plan:p.plan,blocker:p.blocker,taskId:p.taskId};
+          }),businessWrites:0});
+        }
+      } catch(err) {results.push({eventId:id,status:'READ_FAILED_REVIEW_RETAINED',error:String(err),businessWrites:0});}
+    });
+    props.setProperty('TMV3_PI_PENDING_EVENTS',JSON.stringify(pending));
+    const readback=JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
+    if (JSON.stringify(readback)!==JSON.stringify(pending)) throw new Error('PENDING_QUEUE_READBACK_FAILED');
+    const result={status:pending.length?'REVIEW_REMAINS':'COMPLETE',
+      before:stored.length,remaining:pending.length,cleared:stored.length-pending.length,
+      results:results,businessWrites:0};
+    props.setProperty('TMV3_PI_LAST_PENDING_RECONCILIATION',JSON.stringify(result));
+    tmv3_audit_('PreInspection','','','PENDING_HISTORY_RECONCILE',result.status,JSON.stringify(result));
+    Logger.log(JSON.stringify(result));return result;
+  } finally {lock.releaseLock();}
 }
