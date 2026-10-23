@@ -6,13 +6,13 @@
     {
       "name": "00_Config",
       "path": "apps-script/tmv3-clean/00_Config.js",
-      "before": "d79d4d749d56d61a80b815e848e58f0459ddf06ecf1435e5ba1ca8525e96c79f",
+      "before": "82bbf973b453a19f58b445a0b275aff05a58bf8536cc90eb1977547ce9ac467c",
       "after": "66c5eccd9d0088ef14d3d09c7383d952bbc4bf8a0614ae77988dae8a0e1bf182"
     },
     {
       "name": "60_Automation",
       "path": "apps-script/tmv3-clean/60_Automation.js",
-      "before": "6a12ccd10197870255037941b212fbe4293d5fc5a7f173e1bf32ef842d76e550",
+      "before": "39bc23fdb1bdc044ccc0bf29aa8a24ee2bea0fdf15c360e61224ff91668aa42d",
       "after": "ac93824861d232e25fba5f7a401e5954fa089af84144675f1d541576f3892b1d"
     }
   ]
