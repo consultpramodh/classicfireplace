@@ -142,7 +142,7 @@ function tmv3_step3AllowedOrderTypes_(vertical) {
   const v = tmv3_clean_(vertical);
 
   if (v === 'Install') return ['SALES_ORDER'];
-  if (v === 'Delivery') return ['DELIVERY_APPROVED'];
+  if (v === 'Delivery') return ['SALES_ORDER', 'DELIVERY_APPROVED'];
   if (v === 'Service') return ['WORK_ORDER'];
   if (v === 'PreInspection') {
     return ['SALES_ORDER', 'DELIVERY_APPROVED'];
