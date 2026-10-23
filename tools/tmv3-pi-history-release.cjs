@@ -31,9 +31,14 @@ async function main(mode){
   attempted=true;await api(path,'PUT',{files:work.files});if(canonical(await api(path))!==m.afterHash)throw Error('SOURCE_READBACK_MISMATCH');
   report.sourceVerified=true;
   const inv=await api('projects/'+m.scriptId+'/deployments'),ds=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXPECTED_ONE_EXECUTABLE');
-  const response=await api('scripts/'+encodeURIComponent(ds[0].deploymentId)+':run','POST',{function:'tmv3_reconcilePreInspectionPendingReview',devMode:true});
-  if(response.error||response.done!==true)throw Error('RUNTIME_UNCERTAIN_NO_MUTATION_RETRY:'+JSON.stringify(response.error||{}));
-  report.native=response.response.result;
+  for(let attempt=1;attempt<=5;attempt++){
+   const response=await api('scripts/'+encodeURIComponent(ds[0].deploymentId)+':run','POST',{function:'tmv3_reconcilePreInspectionPendingReview',devMode:true});
+   if(response.error||response.done!==true)throw Error('RUNTIME_UNCERTAIN_NO_MUTATION_RETRY:'+JSON.stringify(response.error||{}));
+   report.native=response.response.result;report.nativeAttempts=attempt;
+   if(report.native.status!=='LOCK_BUSY')break;
+   // Explicit LOCK_BUSY is returned before reads or metadata writes; never retry an uncertain response.
+   if(attempt<5)await new Promise(resolve=>setTimeout(resolve,15000));
+  }
   if(report.native.businessWrites!==0||report.native.before!==5||report.native.cleared!==4||report.native.remaining!==1||report.native.results.filter(r=>r.status==='FULFILLED_NO_RECREATE'&&r.readbackVerified===true).length!==4||report.native.results.some(r=>r.status==='READ_FAILED_REVIEW_RETAINED'))throw Error('NATIVE_ACCEPTANCE_MISMATCH');
   report.finalHash=canonical(await api(path));if(report.finalHash!==m.afterHash)throw Error('FINAL_SOURCE_DRIFT');
   report.status='DEPLOYED_SOURCE_AND_NATIVE_CLASSIFICATION_VERIFIED';report.runtimeVerified=true;
