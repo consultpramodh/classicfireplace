@@ -24,6 +24,14 @@ function tmv3_operationWritesEnabled_(scope) {
   // elevate SHADOW_READ_ONLY into a write-capable mode.
   if (!externalWriteMode) return false;
 
+  if (mode === 'verticalauto') {
+    const context = typeof tmv3_verticalProductionCycle_ === 'function' && tmv3_verticalProductionCycle_.context;
+    return TMV3.MODE === 'PRODUCTION_WRITE' && policy.verticalProductionEnabled === true &&
+      policy.manualWritesEnabled === false && policy.automationWritesEnabled === false &&
+      !!context && ['Install','Delivery','Service'].indexOf(context.vertical)>=0 &&
+      (policy.verticalProductionVerticals || []).indexOf(context.vertical)>=0;
+  }
+
   if (mode === 'preinspectionauto') {
     return TMV3.MODE === 'PRODUCTION_WRITE' &&
       policy.preInspectionAutomationEnabled === true &&
@@ -459,63 +467,15 @@ function tmv3_step7FreshLocationOwnership_(contract) {
   };
 }
 
-function tmv3_step7FreshOrderOwnership_(contract) {
-  const orderId = tmv3_clean_(contract.expectedOrderId);
-  const customerId = tmv3_clean_(contract.expectedCustomerId);
-  if (!orderId || contract.vertical === 'PreInspection') {
-    return { status:'N/A' };
-  }
-
-  let rows = [];
-  if (contract.vertical === 'Service') {
-    rows = tmv3_reportRows_(TMV3.PROPERTIES.SERVICE_WORK_ORDERS)
-      .map(function(row) {
-        return tmv3_normalizeOrder_(row, 'WORK_ORDER');
-      });
-  } else if (contract.vertical === 'Delivery') {
-    rows = tmv3_reportRows_(TMV3.PROPERTIES.APPROVED_ORDERS)
-      .map(function(row) {
-        return tmv3_normalizeOrder_(row, 'SALES_ORDER');
-      })
-      .concat(
-        tmv3_reportRows_(TMV3.PROPERTIES.DELIVERY_APPROVED_ORDERS)
-          .map(function(row) {
-            return tmv3_normalizeOrder_(row, 'DELIVERY_APPROVED');
-          })
-      );
-  } else {
-    rows = tmv3_reportRows_(TMV3.PROPERTIES.APPROVED_ORDERS)
-      .map(function(row) {
-        return tmv3_normalizeOrder_(row, 'SALES_ORDER');
-      });
-  }
-
-  const matches = rows.filter(function(row) {
-    return tmv3_clean_(row[0]) === orderId;
-  });
-
-  if (!matches.length) {
-    throw new Error(
-      'Fresh Order / Work Order ownership verification could not find ID ' +
-      orderId + '.'
-    );
-  }
-
-  if (!matches.some(function(row) {
-    return tmv3_clean_(row[2]) === customerId;
-  })) {
-    throw new Error(
-      'Fresh Order / Work Order ownership mismatch for ID ' +
-      orderId + ' and Customer ' + customerId + '.'
-    );
-  }
-
-  return {
-    status:'VERIFIED',
-    orderId:orderId,
-    customerId:customerId
-  };
+function tmv3_step7FreshOrderOwnership_(contract, eventRecord) {
+  if (contract.vertical === 'PreInspection') return {status:'N/A'};
+  const number=tmv3_clean_(eventRecord && eventRecord.orderNumber);
+  if (!/^\d+$/.test(number)) throw new Error('FRESH_CALENDAR_ORDER_NUMBER_REQUIRED');
+  const proof=tmv3_taskFirstFreshOrderOwnershipById_(contract.expectedOrderId,
+    contract.expectedCustomerId,'SO#'+number,contract.vertical);
+  return {status:'VERIFIED',orderId:proof.orderId,customerId:proof.customerId,orderStatus:proof.status};
 }
+
 
 function tmv3_step7FreshCriticalOwnership_(contract, eventRecord) {
   contract = tmv3_step7ValidateExecutionContract_(contract);
@@ -561,7 +521,7 @@ function tmv3_step7FreshCriticalOwnership_(contract, eventRecord) {
   }
 
   const location = tmv3_step7FreshLocationOwnership_(contract);
-  const order = tmv3_step7FreshOrderOwnership_(contract);
+  const order = tmv3_step7FreshOrderOwnership_(contract, eventRecord);
 
   let requestedBy = { status:'N/A' };
 
@@ -697,6 +657,13 @@ function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
   if (tmv3_norm_(scope) === 'preinspectionauto' &&
       (!selection || !selection.contract || selection.contract.vertical !== 'PreInspection')) {
     throw new Error('PREINSPECTION_ONLY_SCOPE: other verticals cannot execute.');
+  }
+  if (tmv3_norm_(scope)==='verticalauto') {
+    const c=tmv3_verticalProductionCycle_.context,p=selection && selection.contract;
+    if (!c || !p || p.vertical!==c.vertical || p.eventId!==c.eventId ||
+        JSON.stringify(p)!==c.contractJson ||
+        (p.vertical==='Service' && (p.actions||[]).some(function(a){return /CREATE|RECREATE/.test(a);})) ||
+        p.vertical==='PreInspection') throw new Error('VERTICAL_AUTO_OUTSIDE_FRESH_CONTRACT');
   }
   const changed = tmv3_step7PlanChangedResult_(selection);
   if (changed) {
@@ -3606,7 +3573,7 @@ function tmv3_persistCreatedTaskIdState_(bundle, taskId) {
 function tmv3_createOrRecreateFromBundle_(bundle, scope, contract) {
   // The dedicated lane holds this same script lock across the entire event
   // transaction. Reacquiring/releasing it here would invalidate that guard.
-  if (tmv3_norm_(scope) === 'preinspectionauto') {
+  if (['preinspectionauto','verticalauto'].indexOf(tmv3_norm_(scope))>=0) {
     return tmv3_createOrRecreateFromBundleUnlocked_(bundle, scope, contract);
   }
   const lock = LockService.getScriptLock();
@@ -5258,7 +5225,8 @@ function tmv3_sendInstallMissingSoReminders_(scope) {
       return;
     }
 
-    const recipients = tmv3_emailListFromEvent_(record);
+    const creator=tmv3_preInspectionCreatorEmail_(record);
+    const recipients=creator?[creator]:[];
     if (!recipients.length) {
       skipped++;
       tmv3_audit_('Install',record.eventId,'','MISSING_SO_REMINDER','ATTENTION','No valid recipient found.');
@@ -5276,11 +5244,23 @@ function tmv3_sendInstallMissingSoReminders_(scope) {
       'Where: ' + (record.location || 'n/a') + '\n\n' +
       'Next step: Add the correct Sales Order # to the Calendar Event.';
 
+    if(MailApp.getRemainingDailyQuota()<1){errors++;return;}
+    const reminderKey='TMV3_INSTALL_SO_REMINDER_'+tmv3_hash_([record.eventId,tmv3_date_(new Date())].join('|'));
+    // A timeout is an uncertain send; the durable intent prevents same-day replay.
+    PropertiesService.getScriptProperties().setProperty(reminderKey,'SENDING');
     try {
+      const greeting=tmv3_preInspectionCreatorFirstName_(creator);
+      const esc=tmv3_preInspectionHtmlEscape_;
       MailApp.sendEmail({
         to: recipients.join(','),
         subject: subject,
-        body: textBody
+        body:'This is an automated email notification from Classic Fireplace & BBQ Store.\n\nHi '+greeting+',\n\n'+textBody,
+        htmlBody:'<p><em>This is an automated email notification from Classic Fireplace &amp; BBQ Store.</em></p>'+
+          '<p>Hi '+esc(greeting)+',</p><p style="color:#B42318;font-weight:700;">Sales Order Number missing</p>'+
+          '<p>'+esc(record.title || '(no title)')+'<br>'+esc(when)+'<br>'+esc(record.location || '')+'</p>'+
+          '<p>Please add the correct Sales Order number to the appointment.</p>'+
+          '<p><a href="'+esc(tmv3_calendarEventUrl_(record.eventId,record.calendarId || cfg.calendarIds[0]))+'">Open calendar appointment</a></p>',
+        name:'Classic Fireplace & BBQ Store'
       });
       tmv3_markInstallReminderSent_(record.eventId);
       sent++;
@@ -5763,7 +5743,7 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
     try {
       if (field.label === 'ORDER') {
         tmv3_taskFirstFreshOrderOwnershipById_(
-          field.id,customerId,tmv3_clean_(before['Name'])
+          field.id,customerId,tmv3_clean_(before['Name']),kind
         );
       } else if (field.label === 'LOCATION') {
         tmv3_step7FreshLocationOwnership_({
@@ -5867,7 +5847,9 @@ function tmv3_repairExistingTaskRelationships(taskId, vertical, expected, permis
 /** One authoritative GET instead of downloading the entire Work Order report.
  * The order ID, customer ownership and SO number must all agree.
  */
-function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
+function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName, vertical) {
+  if (['Install','Delivery','Service'].indexOf(vertical)<0) throw new Error('ORDER_NOT_VERIFIED_ACTIVE: vertical status policy required.');
+  const requiredStatus=vertical==='Service'?'in progress':'approved';
   const id = Number(orderId);
   const cid = tmv3_clean_(customerId);
   if (!Number.isSafeInteger(id) || id <= 0 || !/^[1-9]\d*$/.test(cid)) {
@@ -5898,7 +5880,7 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
   const statusFromId = known[statusId] || '';
   if ((statusId && !statusFromId) ||
       (statusFromId && normalizedName && statusFromId !== normalizedName) ||
-      ['approved','in progress'].indexOf(statusFromId || normalizedName) < 0) {
+      (statusFromId || normalizedName) !== requiredStatus) {
     throw new Error('ORDER_NOT_VERIFIED_ACTIVE: canceled, closed, unapproved, unknown or conflicting Order status.');
   }
   const titleOrder = tmv3_taskFirstTitleOrderNumber_(taskName);
@@ -5909,7 +5891,8 @@ function tmv3_taskFirstFreshOrderOwnershipById_(orderId, customerId, taskName) {
   const contact = order.contact || order.Contact || {};
   const contactId = tmv3_clean_(tmv3_first_(contact,['id','Id']));
   return {verified:true,orderId:String(id),orderNumber:orderNumber,customerId:cid,
-    status:statusFromId || normalizedName,contactId:/^[1-9]\d*$/.test(contactId) ? contactId : ''};
+    status:statusFromId || normalizedName,contactId:/^[1-9]\d*$/.test(contactId) ? contactId : '',
+    locationId:tmv3_clean_((order.ShipToLocation || order.shipToLocation || {}).Id || (order.ShipToLocation || order.shipToLocation || {}).id)};
 }
 
 
