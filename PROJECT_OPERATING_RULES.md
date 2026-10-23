@@ -43,7 +43,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 
 ### Install
 
-- Sales Order is required.
+- Sales Order is required; eligible Sales Order status is **Approved**. In Progress is not the Install prerequisite.
 - Task link must return to Calendar.
 - Installer assignment evidence comes from the Calendar **title only**; narrative description text is not assignment evidence.
 - Aiden is ignored for assignment.
@@ -51,7 +51,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 
 ### Delivery
 
-- Sales Order is required.
+- Sales Order is required; eligible Sales Order status is **Approved**. In Progress is not the Delivery prerequisite.
 - Sales Order and Task links return to Calendar.
 - Assignment evidence comes from the Calendar **title only**.
 - Default pool is Pool 4 `To Be Assigned` when applicable.
@@ -59,6 +59,7 @@ These rules are **authoritative and non-negotiable unless the user explicitly ch
 
 ### Service
 
+- Service Sales Order status prerequisite is **In Progress**, exclusive to this vertical; this does not replace the Service Work Order ownership/lifecycle rules below.
 - The operational order is the **Work Order**.
 - **ServiceOps owns Request → Customer → Contact → Location → Sales Order → Service Work Order → certification.**
 - **Service Task creation/recreation is owned by the Striven Work Order workflow, not Task Mapping.**
