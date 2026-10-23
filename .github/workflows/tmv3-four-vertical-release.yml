@@ -1,0 +1,47 @@
+name: Activate all four scoped vertical automations
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-four-vertical-release.yml, ops/tmv3-four-vertical-release-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-four-vertical-release.cjs
+      - name: Capture exact live source and six-file candidate
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-four-vertical-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: four-vertical-PRE-${{ github.run_id }}
+          path: four-vertical-release-evidence/
+          retention-days: 30
+      - name: Pre-push regressions against actual live-source candidate
+        env:
+          TMV3_TEST_SOURCE_DIR: four-vertical-release-evidence/work
+        run: |
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-four-vertical-completion.js
+      - name: Apply guarded two-file update and verify each vertical automation
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-four-vertical-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: four-vertical-result-${{ github.run_id }}
+          path: four-vertical-release-evidence/
+          retention-days: 30
