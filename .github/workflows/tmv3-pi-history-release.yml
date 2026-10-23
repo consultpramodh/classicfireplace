@@ -1,0 +1,47 @@
+name: Release PreInspection completed-history classification
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi-history-release.yml, ops/tmv3-pi-history-release-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-pi-history-release.cjs
+      - name: Capture exact live source and two-file candidate
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-history-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-history-PRE-${{ github.run_id }}
+          path: pi-history-release-evidence/
+          retention-days: 30
+      - name: Pre-push regressions against actual live-source candidate
+        env:
+          TMV3_TEST_SOURCE_DIR: pi-history-release-evidence/work
+        run: |
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-pi-history-completion.js
+      - name: Apply guarded two-file update and reconcile completed review flags
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-history-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pi-history-result-${{ github.run_id }}
+          path: pi-history-release-evidence/
+          retention-days: 30
