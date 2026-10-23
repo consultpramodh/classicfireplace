@@ -594,7 +594,8 @@ function tmv3_step7Expected_(record, runtime, verifyContactOwnership) {
     step4.location && step4.location['Location ID']
   );
   const identityContactId = tmv3_clean_(
-    step4.contact && step4.contact['Contact ID']
+    (step4.contact && step4.contact['Contact ID']) ||
+    (record.vertical !== 'PreInspection' && anchor.orderContactIdEvidence) || ''
   );
   const orderId = cfg.orderRequired
     ? tmv3_clean_(anchor.orderId)
