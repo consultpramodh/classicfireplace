@@ -1,3 +1,13 @@
+## PreInspection first cutover completed — 2026-10-23
+
+- User-approved order: PreInspection → Service → Delivery → Install. Start with the closest vertical, not broad four-vertical activation.
+- Live3.11.98-preinspection-history-classification-r1; exact two-file00_Config/60_Automation release40009353614. Source hash1dcab7e18cf736c6f1b786c4a0969278382b987c913a10867056a3014ba0ef41 independently confirmed in40009508257.17 triggers preserved; general flags/other verticals unchanged.
+- Fresh completed history now terminates safely as FULFILLED_NO_RECREATE rather than false pending attention. Native canary:5 pending →4 cleared →1 identity review retained; zero Task/Calendar business writes. Core185 plus targeted60 cases PASS; all21 server files parse. Older standalone notification/production-lane fixtures fail identically on unchanged source and are not claimed passing.
+- Initial release40009171138 hit explicit LOCK_BUSY; exact previous source restored/hash verified. Retry waits only on explicit no-work LOCK_BUSY; four attempts before successful metadata-only reconciliation. No immutable version or existing deployment access change.
+- Remaining PreInspection identity event is correctly held; do not force-create from address-only identity. Notifications remain configured/live but a new email-delivery canary was not run. PreInspection8/13/17 Toronto schedule continues.
+- Corrected six stale Overview status cells with value-only updates and independent readback. Full-repository/live-source parity remains outside this two-file patch.
+- Evidence:ops/tmv3-preinspection-first-cutover-20261023.md; executions/latest.json refreshed. Next vertical:Service—strict In Progress status, Location resolution, guarded full-field readback. Delivery/Install require Approved; no blind global AUTO activation.
+
 ## Native trigger installation and legacy parity — 2026-10-23
 
 - Inspected actual live V3, legacy Task Mapping and separate ServiceOps sources. Source hash64a37d2cf96b9e9b51ad95e362f4a05b58424c061bc6c6daedf1028fbd089ac1; existing project/source/deployment preserved.
