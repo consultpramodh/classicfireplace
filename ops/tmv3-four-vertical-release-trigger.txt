@@ -1,0 +1,1 @@
+Resume activation after explicit pre-work LOCK_BUSY; previous source rollback verified. 2026-10-23T19:40Z
