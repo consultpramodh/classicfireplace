@@ -1,0 +1,51 @@
+name: Enable automatic operator Sheet refresh
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-sheet-refresh-release.yml, ops/tmv3-sheet-refresh-release-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tools/tmv3-sheet-refresh-release.cjs
+      - name: Capture exact live source and two-file candidate
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-sheet-refresh-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sheet-refresh-PRE-${{ github.run_id }}
+          path: sheet-refresh-release-evidence/
+          retention-days: 30
+      - name: Pre-push regressions against actual live-source candidate
+        env:
+          TMV3_TEST_SOURCE_DIR: sheet-refresh-release-evidence/work
+        run: |
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-pi-history-completion.js
+          node tools/test-tmv3-four-vertical-activation.cjs
+          node tools/test-tmv3-automatic-sheet-refresh.cjs
+          node tools/test-tmv3-vertical-evidence.cjs
+          node tools/test-tmv3-install-reminder-activation.cjs
+      - name: Apply guarded two-file update and verify each vertical automation
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-sheet-refresh-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sheet-refresh-result-${{ github.run_id }}
+          path: sheet-refresh-release-evidence/
+          retention-days: 30
