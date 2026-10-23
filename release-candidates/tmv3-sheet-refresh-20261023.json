@@ -1,0 +1,19 @@
+{
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "version": "3.12.1-automatic-sheet-refresh-r1",
+  "beforeHash": "8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef",
+  "files": [
+    {
+      "name": "00_Config",
+      "path": "apps-script/tmv3-clean/00_Config.js",
+      "before": "d79d4d749d56d61a80b815e848e58f0459ddf06ecf1435e5ba1ca8525e96c79f",
+      "after": "66c5eccd9d0088ef14d3d09c7383d952bbc4bf8a0614ae77988dae8a0e1bf182"
+    },
+    {
+      "name": "60_Automation",
+      "path": "apps-script/tmv3-clean/60_Automation.js",
+      "before": "6a12ccd10197870255037941b212fbe4293d5fc5a7f173e1bf32ef842d76e550",
+      "after": "ac93824861d232e25fba5f7a401e5954fa089af84144675f1d541576f3892b1d"
+    }
+  ]
+}
