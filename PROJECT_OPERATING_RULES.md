@@ -220,3 +220,9 @@ Then identify the active objective, bottleneck, risk level, and fastest safe pat
 ## Non-negotiable summary
 
 Current authoritative source before assumptions. Evidence before conclusions. One active objective. Critical path first. Minimum safe change. Preserve working functionality. **Verify before production push.** Never push incomplete or pre-push-failing source. Read back consequential writes. Reconcile before completion. Test according to blast radius. Preserve rollback. Fix root causes. Every verified code change gets a GitHub connector sync and GitHub read-back. Every checkpoint has one exact next action. Never claim verification that did not occur.
+
+## 2026-10-23 — All four verticals authorized
+
+Latest user instruction: continue execution until PreInspection, Service, Delivery and Install are all active. This supersedes earlier PreInspection-only activation limits. Service requires Sales Order status **In Progress**; Install and Delivery require **Approved**; PreInspection retains its optional-SO policy. Service still requires proven Work Order evidence and must never automatically create/recreate a Service Task.
+
+The scoped VERTICALAUTO worker uses the existing Stage 7 executor, fresh identity/ownership/status checks, exact per-event contracts, durable uncertain-write markers, read-back verification and review holds. Targeted Order/Contact/Location evidence refresh must preserve cache schema and reject conflicting ownership. Dedicated hourly trigger plus existing scheduled slots process bounded batches; at most one verified event transaction per vertical per hour. General automation/manual write flags stay false; dedicated PreInspection authorization remains active. Install reminders go only to the verified internal event creator, with durable uncertain-send suppression.
