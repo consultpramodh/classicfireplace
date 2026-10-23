@@ -43,7 +43,7 @@ values.TMV3_PI_PENDING_EVENTS='not-json';assert.throws(()=>ctx.tmv3_reconcilePre
 const cycle=fs.readFileSync(sourceDir+'/60_Automation.js','utf8');
 assert(cycle.includes("one.status='FULFILLED_NO_RECREATE';one.historicalEvidence=one.blocker;one.blocker='';"));cases++;
 assert(cycle.includes("!tmv3_preInspectionHistoricalCoverageVerified_(plans[0])"));cases++;
-assert(!cycle.slice(cycle.indexOf('function tmv3_reconcilePreInspectionPendingReview()')).includes('tmv3_executeFreshStep7Selection_'));cases++;
+assert(!ctx.tmv3_reconcilePreInspectionPendingReview.toString().includes('tmv3_executeFreshStep7Selection_'));cases++;
 // Execute the real cycle: historical coverage clears review without a business write or alert.
 const record={vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'cycle-history',fingerprint:'current',start:historical.calendarStart};
 ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_strivenApiBudgetStatus_=()=>({remaining:100,exhausted:false});
