@@ -7,10 +7,10 @@ const EXPECTED='64a37d2cf96b9e9b51ad95e362f4a05b58424c061bc6c6daedf1028fbd089ac1
 const hash=o=>crypto.createHash('sha256').update(JSON.stringify(o.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
 function verify(triggers){
  const counts={};for(const t of triggers)counts[t.handler]=(counts[t.handler]||0)+1;
- const expected={tmv3_dailySourceRefresh:1,tmv3_scheduledOperations:5,tmv3_installReminderCheck:1,tmv3_calendarReconciliationFallback:1,tmv3_preInspectionCheck0800:1,tmv3_preInspectionCheck1300:1,tmv3_preInspectionCheck1700:1,tmv3_calendarEventUpdated:7};
+ const expected={tmv3_dailySourceRefresh:1,tmv3_scheduledOperations:5,tmv3_installReminderCheck:1,tmv3_calendarReconciliationFallback:1,tmv3_preInspectionCheck0800:1,tmv3_preInspectionCheck1300:1,tmv3_preInspectionCheck1700:1,tmv3_calendarEventUpdated:6};
  for(const [h,n]of Object.entries(expected))if(counts[h]!==n)throw Error('TRIGGER_COUNT_MISMATCH_'+h);
  const calendars=triggers.filter(t=>t.handler==='tmv3_calendarEventUpdated').map(t=>t.sourceId);
- if(new Set(calendars).size!==7)throw Error('DUPLICATE_CALENDAR_TRIGGER');
+ if(new Set(calendars).size!==6)throw Error('DUPLICATE_CALENDAR_TRIGGER');
  if(triggers.length>19)throw Error('CONTINUATION_HEADROOM_MISSING');
  return counts;
 }
@@ -26,6 +26,14 @@ async function main(mode){
  const manifest=JSON.parse(source.files.find(f=>f.name==='appsscript').source);if(manifest.timeZone!=='America/Toronto')throw Error('TIMEZONE_MISMATCH');
  const inv=await api('projects/'+SID+'/deployments'),ds=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXPECTED_ONE_EXECUTABLE');
  async function run(fn){if(!['tmv3_listTriggers','tmv3_installTriggers','tmv3_installPreInspectionAutomationTrigger'].includes(fn))throw Error('FUNCTION_OUTSIDE_SCOPE');const o=await api('scripts/'+encodeURIComponent(ds[0].deploymentId)+':run','POST',{function:fn,devMode:true});if(o.error||o.done!==true)throw Error('EXECUTION_UNCERTAIN_NO_AUTOMATIC_RETRY:'+JSON.stringify(o.error||{}));return o.response.result;}
+ if(mode==='verify'){
+  const after=await run('tmv3_listTriggers');const counts=verify(after);
+  const mirror='classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com';
+  if(after.some(t=>t.handler==='tmv3_calendarEventUpdated'&&t.sourceId===mirror))throw Error('MIRROR_MUST_NOT_BE_BUSINESS_INTAKE');
+  const result={status:'NATIVE_TRIGGER_INSTALL_READBACK_VERIFIED',at:new Date().toISOString(),counts,triggers:after,sourceHashAfter:hash(await api('projects/'+SID+'/content')),sourceWrites:0,taskWrites:0,verificationOnly:true};
+  if(result.sourceHashAfter!==EXPECTED)throw Error('SOURCE_DRIFT');
+  fs.writeFileSync(DIR+'/result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));return;
+ }
  if(mode==='prepare'){
   const before=await run('tmv3_listTriggers');verify(before);
   fs.writeFileSync(DIR+'/before-source.json',JSON.stringify(source),{mode:0o600});
@@ -39,7 +47,7 @@ async function main(mode){
   report.results.push({handler:'tmv3_installTriggers',result:await run('tmv3_installTriggers')});
   report.results.push({handler:'tmv3_installPreInspectionAutomationTrigger',result:await run('tmv3_installPreInspectionAutomationTrigger')});
   report.after=await run('tmv3_listTriggers');report.counts=verify(report.after);
-  const before=JSON.parse(fs.readFileSync(DIR+'/before-triggers.json'));const previous=before.filter(t=>t.handler==='tmv3_calendarEventUpdated').map(t=>t.sourceId).sort();const after=report.after.filter(t=>t.handler==='tmv3_calendarEventUpdated').map(t=>t.sourceId).sort();if(JSON.stringify(previous)!==JSON.stringify(after))throw Error('WATCHED_CALENDARS_CHANGED');
+  const before=JSON.parse(fs.readFileSync(DIR+'/before-triggers.json'));const previous=before.filter(t=>t.handler==='tmv3_calendarEventUpdated').map(t=>t.sourceId).sort();const after=report.after.filter(t=>t.handler==='tmv3_calendarEventUpdated').map(t=>t.sourceId).sort();if(JSON.stringify(previous.filter(id=>id!=='classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'))!==JSON.stringify(after))throw Error('WATCHED_CALENDARS_CHANGED');
   report.sourceHashAfter=hash(await api('projects/'+SID+'/content'));if(report.sourceHashAfter!==EXPECTED)throw Error('SOURCE_CHANGED_DURING_INSTALL');
   report.status='NATIVE_TRIGGER_INSTALL_READBACK_VERIFIED';
  }catch(e){report.status='INSTALL_INCOMPLETE_RECONCILE';report.error=String(e.message);try{report.after=await run('tmv3_listTriggers');}catch(x){report.inventoryError=String(x.message);}process.exitCode=1;}
