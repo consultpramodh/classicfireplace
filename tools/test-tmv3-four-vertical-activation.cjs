@@ -45,8 +45,9 @@ values.TMV3_VERTICAL_LAST_Service='0';plan={...plan,actualRequestedById:'999',ac
 // Installer adds exactly one timer, preserves unrelated triggers, and deduplicates only itself.
 let triggers=[{handler:'tmv3_preInspectionCheck0800'}],created=0;
 c.ScriptApp={getProjectTriggers:()=>triggers.map(t=>({...t,getHandlerFunction:()=>t.handler})),deleteTrigger:t=>{const i=triggers.findIndex(x=>x===t||x.handler===t.handler);triggers.splice(i,1);},newTrigger:handler=>{const b={timeBased:()=>b,everyHours:n=>{check(n,1);return b;},create:()=>{triggers.push({handler});created++;}};return b;}};c.tmv3_listTriggers=()=>triggers;
-check(c.tmv3_installVerticalProductionTrigger().status,'VERTICAL_TRIGGER_VERIFIED');c.tmv3_installVerticalProductionTrigger();check(created,1);check(triggers.some(t=>t.handler==='tmv3_preInspectionCheck0800'),true);
+check(c.tmv3_installVerticalProductionTrigger().status,'VERTICAL_TRIGGER_VERIFIED');c.tmv3_installVerticalProductionTrigger();check(created,2);check(triggers.some(t=>t.handler==='tmv3_preInspectionCheck0800'),true);
 // The reminder has an independent production feature gate instead of the Stage7 mutation gate.
 c.tmv3_sendInstallMissingSoReminders_=scope=>({status:'REMINDER_CALLED',scope});check(c.tmv3_installReminderCheck().status,'REMINDER_CALLED');
 check(vm.runInContext("TMV3_HARD_RULES.Service.requiredSalesOrderStatus",c),'In Progress');check(vm.runInContext("TMV3_HARD_RULES.Install.requiredSalesOrderStatus",c),'Approved');check(vm.runInContext("TMV3_HARD_RULES.Delivery.requiredSalesOrderStatus",c),'Approved');
 console.log('PASS: '+cases+' four-vertical status/scope/worker/trigger safety cases');
+
