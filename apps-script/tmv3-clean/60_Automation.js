@@ -2300,7 +2300,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
     if(events.length!==state.total)throw Error('SWEEP_SNAPSHOT_INCOMPLETE_NO_WRITE');
     for(let i=state.cursor;i<events.length;i++) {
       const budget=tmv3_strivenApiBudgetStatus_();
-      if(Date.now()-now>210000){result.status='RUNTIME_CONTINUATION_REQUIRED';break;}
+      if(Date.now()-now>120000){result.status='RUNTIME_CONTINUATION_REQUIRED';break;}
       if(budget.exhausted||budget.remaining<Number(policy.verticalProductionMinApiRemaining||60)){result.status='API_BUDGET_WAIT';break;}
       const id=events[i];result.scanned++;
       const key='TMV3_VERTICAL_EVENT_'+tmv3_hash_(vertical+'|'+id);
@@ -2555,15 +2555,21 @@ function tmv3_installStandardDailyTriggers() {
 // Google Apps Script: resume the same daily sweep; no additional recurring window.
 function tmv3_runFullVerticalSweep_(vertical) {
   const handler='tmv3_'+vertical.toLowerCase()+'SweepContinue';
-  ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;}).forEach(function(t){ScriptApp.deleteTrigger(t);});
-  const result=tmv3_verticalProductionCycle_(vertical);
+  function clear(){ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;}).forEach(function(t){ScriptApp.deleteTrigger(t);});}
+  clear();
+  // Pre-arm recovery before business execution: survives a native hard timeout.
+  if(ScriptApp.getProjectTriggers().length>=20)throw Error('SWEEP_CONTINUATION_CAPACITY');
+  ScriptApp.newTrigger(handler).timeBased().after(420000).create();
+  const began=Date.now(),result=tmv3_verticalProductionCycle_(vertical);
+  clear();
   if(result.status==='LOCK_BUSY'||result.pending>0&&result.status!=='API_BUDGET_WAIT') {
-    if(ScriptApp.getProjectTriggers().length>=20)throw Error('SWEEP_CONTINUATION_CAPACITY');
     ScriptApp.newTrigger(handler).timeBased().after(60000).create();
     result.continuation='SCHEDULED';
   }
+  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(began);
   Logger.log(JSON.stringify(result));return result;
 }
+
 function tmv3_installSweepContinue(){return tmv3_runFullVerticalSweep_('Install');}
 function tmv3_deliverySweepContinue(){return tmv3_runFullVerticalSweep_('Delivery');}
 function tmv3_serviceSweepContinue(){return tmv3_runFullVerticalSweep_('Service');}
@@ -2572,5 +2578,32 @@ function tmv3_verticalPatchDiagnostics(vertical,eventIds) {
   return (eventIds||[]).map(function(id){try{
     const plans=tmv3_step7FreshPlansForEvent_(vertical,id);
     return {eventId:id,plans:plans.map(function(p){return {taskId:p.taskId,plan:p.plan,blocker:p.blocker,actions:p.actions,requestedBy:p.expectedRequestedById,actualRequestedBy:p.actualRequestedById,order:p.expectedOrderId,location:p.expectedLocationId};})};
+  }catch(e){return {eventId:id,error:String(e)};}});
+}
+
+function tmv3_fullVerticalSweepStatus() {
+  const p=PropertiesService.getScriptProperties(),out={version:TMV3.VERSION,budget:tmv3_strivenApiBudgetStatus_(),verticals:{},triggers:tmv3_listTriggers()};
+  ['Install','Delivery','Service'].forEach(function(v){
+    const state=JSON.parse(p.getProperty('TMV3_VERTICAL_SWEEP_'+v)||'null');
+    const recent=JSON.parse(p.getProperty('TMV3_VERTICAL_RESULT_'+v)||'null');
+    out.verticals[v]={sweep:state,recent:recent};
+  });return out;
+}
+function tmv3_resumeFullVerticalQueues() {
+  ['Delivery','Service','Install'].forEach(function(v){
+    const handler='tmv3_'+v.toLowerCase()+'SweepContinue';
+    const existing=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;});
+    existing.forEach(function(t){ScriptApp.deleteTrigger(t);});
+    if(ScriptApp.getProjectTriggers().length>=20)throw Error('SWEEP_CONTINUATION_CAPACITY');
+    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
+  });return tmv3_fullVerticalSweepStatus();
+}
+function tmv3_verticalLinkedTaskDiagnostics(vertical,eventIds) {
+  return (eventIds||[]).map(function(id){try{
+    const record=tmv3_findFreshEventRecord_(vertical,id);
+    const records=tmv3_step4IdentityRecords_(tmv3_step3BusinessAnchorRecords_(tmv3_step2CalendarRecords_([record]),tmv3_step3AnchorIndex_()),tmv3_step4IdentityIndex_());
+    const identity=records[0].step4||{},linkedId=record.existingTaskId;
+    const fresh=linkedId?tmv3_step7FreshTask_(linkedId,{taskById:{}}):null;
+    return {eventId:id,linkedId:linkedId,identity:identity.disposition,expectedCustomer:identity.customer&&identity.customer['Customer ID'],expectedLocation:identity.location&&identity.location['Location ID'],locationStatus:identity.locationStatus,fresh:fresh&&{ok:fresh.ok,error:fresh.error,task:fresh.task}};
   }catch(e){return {eventId:id,error:String(e)};}});
 }

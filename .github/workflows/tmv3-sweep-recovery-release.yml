@@ -1,0 +1,40 @@
+name: Recover full queue execution after response loss
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-sweep-recovery-release.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/test-tmv3-full-vertical-sweep.cjs
+      - run: node tools/test-tmv3-full-sweep.cjs
+      - name: Pull live source and prepare exact two-file patch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-sweep-recovery-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sweep-recovery-PRE-${{ github.run_id }}
+          path: sweep-recovery-evidence/
+      - name: Push same project and verify live schedule
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-sweep-recovery-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sweep-recovery-result-${{ github.run_id }}
+          path: sweep-recovery-evidence/
