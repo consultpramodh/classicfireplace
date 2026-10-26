@@ -1690,6 +1690,8 @@ var TMV3_PI_LIKELY_DECISIONS = {};
 function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
   const base=tmv3_preInspectionDiscoveryDecision_(record,cfg);
   if(base.status!=='REVIEW_VISIT_TYPE')return base;
+  if(/\b(?:service|delivery|repair|maintenance|troubleshoot(?:ing)?)\b/i.test(record.title || '') ||
+      /^\s*(?:service|delivery|repair|maintenance)\b/i.test(record.descriptionClean || record.rawDescription || ''))return {status:'REVIEW_VISIT_TYPE',reason:'OTHER_VERTICAL_INTENT_REQUIRES_REVIEW'};
   const key=record.eventId+'|'+record.fingerprint;
   if(!fresh && TMV3_PI_LIKELY_DECISIONS[key])return TMV3_PI_LIKELY_DECISIONS[key];
   let result=base;
@@ -1728,7 +1730,7 @@ function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
     if(installations.length)result={status:'INSTALLATION',reason:'APPROVED_OR_IN_PROGRESS_ORDER_AT_JOB_SITE',orders:installations};
     else if(relevant.length===1 && relevant[0].orderStatus==='quoted') {
       // Measuring return visits already booked for install are not initial inspections.
-      if(/\b(?:return|go back)\b/i.test(text) && /\binstall(?:ation)?\b/i.test(text))result={status:'REVIEW_VISIT_TYPE',reason:'INSTALLATION_RETURN_VISIT_ORDER_NOT_APPROVED'};
+      if(/\binstall(?:ation)?\b/i.test(record.title || '') || (/\b(?:return|go back)\b/i.test(text) && /\binstall(?:ation)?\b/i.test(text)))result={status:'REVIEW_VISIT_TYPE',reason:'INSTALLATION_RETURN_VISIT_ORDER_NOT_APPROVED'};
       else result={status:'EXPLICIT_PREINSPECTION',reason:'VERIFIED_QUOTED_ORDER_LIKELY_PREINSPECTION',orders:relevant};
     } else result={status:'REVIEW_VISIT_TYPE',reason:'NO_UNIQUE_ACTIVE_ORDER_AT_JOB_SITE'};
   }catch(error){result={status:'REVIEW_VISIT_TYPE',reason:'LIVE_ORDER_CLASSIFICATION_FAILED',error:String(error).slice(0,240)};}
