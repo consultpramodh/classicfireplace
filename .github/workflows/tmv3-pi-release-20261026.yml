@@ -40,6 +40,7 @@ jobs:
           node tools/test-tmv3-vertical-evidence.cjs
           node tools/test-tmv3-install-reminder-activation.cjs
           node tools/test-tmv3-pi-discovery.cjs
+          node tools/test-tmv3-pi-order-classification.cjs
       - name: Retire superseded PreInspection entrypoints, update V3 and reconcile exact events
         run: node tools/tmv3-pi-release-20261026.cjs apply
         env:
