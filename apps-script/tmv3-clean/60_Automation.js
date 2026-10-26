@@ -1671,7 +1671,58 @@ function tmv3_preInspectionExplicitCandidate_(record) {
       record.descriptionClean || record.rawDescription || ''].join(' '));
 }
 
-function tmv3_preInspectionIntakeRecords_() {
+// Google Apps Script: discovery is metadata-only. Identity evidence never proves visit type.
+function tmv3_preInspectionDiscoveryDecision_(record,cfg) {
+  if (!record || tmv3_step2PreInspectionNonCustomer_(record) || record.status==='cancelled') return {status:'IGNORE',reason:'NON_CUSTOMER_OR_CANCELLED'};
+  const creator=tmv3_preInspectionCreatorEmail_(record);
+  const excluded=(cfg.secondaryIgnoredCreatorEmails || []).map(tmv3_normEmail_);
+  if (!creator || excluded.indexOf(creator)>=0) return {status:'IGNORE',reason:creator?'EXCLUDED_CREATOR':'CREATOR_UNVERIFIED'};
+  const text=[record.title || '',record.descriptionClean || record.rawDescription || ''].join(' ');
+  if (/\b(?:not|no)\s+(?:a\s+)?pre[\s-]*inspect(?:ion)?\b/i.test(text)) return {status:'IGNORE',reason:'EXPLICIT_NOT_PREINSPECTION'};
+  if (/\bpre[\s-]*inspect(?:ion)?\s+(?:(?:is|was)\s+)?(?:not\b|required later|already completed)/i.test(text)) return {status:'IGNORE',reason:'EXPLICIT_NOT_PREINSPECTION'};
+  const instruction=/\bpre[\s-]*inspect(?:ion)?\b/i.test(record.title || '') ||
+    /^\s*(?:(?:this is (?:a )?|appointment(?: type)?[: -]+))?pre[\s-]*inspect(?:ion)?\b/i.test(record.descriptionClean || record.rawDescription || '');
+  if (instruction) return {status:'EXPLICIT_PREINSPECTION',reason:'EXPLICIT_SOURCE_INSTRUCTION'};
+  if (!tmv3_phone10_(record.phone) || !tmv3_clean_(record.location)) return {status:'IGNORE',reason:'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE'};
+  return {status:'REVIEW_VISIT_TYPE',reason:/\b(?:return|go back|measure|filler|trim)\b/i.test(text)?'RETURN_OR_MEASURING_VISIT_UNCONFIRMED':'CUSTOMER_VISIT_TYPE_UNCONFIRMED'};
+}
+function tmv3_preInspectionStoreDiscovery_(records) {
+  const sorted=records.slice().sort(function(a,b){return new Date(a.start)-new Date(b.start);});
+  const state={checkedAt:new Date().toISOString(),total:sorted.length,
+    review:sorted.filter(function(r){return r.status==='REVIEW_VISIT_TYPE';}).length,
+    explicit:sorted.filter(function(r){return r.status==='EXPLICIT_PREINSPECTION';}).length,
+    records:sorted.slice(0,15),truncated:sorted.length>15};
+  // A bounded property is only the operator projection; every sweep rescans the source.
+  while(JSON.stringify(state).length>2000 && state.records.length){state.records.pop();state.truncated=true;}
+  const props=PropertiesService.getScriptProperties();
+  const previous=tmv3_preInspectionDiscoveryStatus();
+  props.setProperty('TMV3_PI_DISCOVERY',JSON.stringify(state));
+  if(JSON.stringify(previous.records)!==JSON.stringify(state.records) || previous.total!==state.total) {
+    tmv3_audit_('PreInspection','','','PREINSPECTION_DISCOVERY','REVIEW',JSON.stringify({total:state.total,review:state.review,explicit:state.explicit,truncated:state.truncated}));
+  }
+  return state;
+}
+function tmv3_preInspectionDiscoveryStatus() {
+  const raw=PropertiesService.getScriptProperties().getProperty('TMV3_PI_DISCOVERY');
+  if(!raw)return {status:'NOT_SCANNED',total:0,records:[]};
+  try{return JSON.parse(raw);}catch(error){return {status:'INVALID_DISCOVERY_STATE',total:0,records:[]};}
+}
+function tmv3_refreshPreInspectionDiscovery() {
+  const lock=LockService.getScriptLock();if(!lock.tryLock(30000))return {status:'LOCK_BUSY',writes:0};
+  try{tmv3_preInspectionIntakeRecords_({recordDiscovery:true});return tmv3_preInspectionDiscoveryStatus();}
+  finally{lock.releaseLock();}
+}
+// Same executor as the scheduled slots; no second repair implementation.
+function tmv3_reconcilePreInspectionEvent(eventId) {
+  if(!/^[a-z0-9_]+@google\.com$/.test(String(eventId || '')))throw new Error('INVALID_PREINSPECTION_EVENT_ID');
+  const started=Date.now();
+  const result=tmv3_preInspectionAutomationCycle_({force:true,eventId:eventId,reason:'TARGETED_RECONCILIATION'});
+  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(started);
+  return result;
+}
+
+function tmv3_preInspectionIntakeRecords_(options) {
+  options=options || {};
   const cfg = TMV3.VERTICALS.PreInspection;
   const calendars = tmv3_verticalCalendars_('PreInspection',cfg).concat(
     (cfg.secondaryCalendarIds || []).map(function(id) {
@@ -1680,7 +1731,7 @@ function tmv3_preInspectionIntakeRecords_() {
   );
   const start = new Date(); start.setHours(0,0,0,0);
   const end = new Date(start); end.setDate(end.getDate() + Number(cfg.lookaheadDays || 365));
-  const records = [];
+  const records = [], discovery = [];
   calendars.forEach(function(source) {
     const cal = CalendarApp.getCalendarById(source.calendarId);
     if (!cal) throw new Error('PreInspection source calendar unavailable: ' + source.calendarId);
@@ -1688,10 +1739,20 @@ function tmv3_preInspectionIntakeRecords_() {
       const record = tmv3_calendarEvent_('PreInspection',cfg,source,event,
         {applyEligibility:false});
       if (!record || tmv3_step2PreInspectionNonCustomer_(record)) return;
-      if (source.role === 'SECONDARY_STEPHEN' && !tmv3_preInspectionExplicitCandidate_(record)) return;
+      if (source.role === 'SECONDARY_STEPHEN') {
+        const decision=tmv3_preInspectionDiscoveryDecision_(record,cfg);
+        if (decision.status==='IGNORE') return;
+        discovery.push({eventId:record.eventId,calendarId:record.calendarId,
+          title:String(record.title || '').slice(0,100),start:tmv3_iso_(record.start),
+          reason:decision.reason,status:decision.status});
+        if (decision.status!=='EXPLICIT_PREINSPECTION') return;
+      }
       records.push(record);
     });
   });
+  const primaryKeys={};
+  records.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){primaryKeys[r.eventId+'|'+tmv3_iso_(r.start)]=true;});
+  if(options.recordDiscovery===true) tmv3_preInspectionStoreDiscovery_(discovery.filter(function(r){return !primaryKeys[r.eventId+'|'+r.start];}));
   const seen = {};
   return records.filter(function(record) {
     // CF source is visited first. Guest mirrors keep the same iCal UID.
@@ -1723,6 +1784,9 @@ function tmv3_preInspectionPromoteCandidate_(record) {
   if (duplicates.length) throw new Error('POSSIBLE_DUPLICATE_CF_EVENT_NO_INTAKE_WRITE');
   const source = tmv3_findCalendarEventById_(record.calendarId,record.eventId);
   if (!source || !source.event) throw new Error('Stephen source event disappeared.');
+  const freshSource=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:record.calendarId,calendarName:'Stephen',role:'SECONDARY_STEPHEN'},source.event,{applyEligibility:false});
+  if(tmv3_preInspectionDiscoveryDecision_(freshSource,cfg).status!=='EXPLICIT_PREINSPECTION') throw new Error('SOURCE_INTENT_OR_CREATOR_NOT_AUTHORIZED_NO_INTAKE_WRITE');
+  if(freshSource.fingerprint!==record.fingerprint) throw new Error('SOURCE_CHANGED_NO_INTAKE_WRITE');
   const guests = source.event.getGuestList(true).map(function(g) {return tmv3_normEmail_(g.getEmail());});
   [cfg.primaryCalendarId,cfg.secondaryOwnerEmail].forEach(function(email) {
     if (guests.indexOf(tmv3_normEmail_(email)) < 0) source.event.addGuest(email);
@@ -1829,6 +1893,8 @@ function tmv3_preInspectionAutomationCycle_(options) {
   const previousApiContext=TMV3_PREINSPECTION_API_CONTEXT_ACTIVE;
   TMV3_PREINSPECTION_API_CONTEXT_ACTIVE=true;
   try {
+    const records=tmv3_preInspectionIntakeRecords_({recordDiscovery:true});
+    result.discovery=tmv3_preInspectionDiscoveryStatus();
     const budget=tmv3_strivenApiBudgetStatus_();
     if(budget.exhausted||budget.remaining<30) {
       result.status='API_BUDGET_WAIT';result.apiBudget=budget;
@@ -1850,11 +1916,14 @@ function tmv3_preInspectionAutomationCycle_(options) {
     // Reuse the cache-age gates and last-good source policy; refresh failure
     // stops this cycle before task creation or misleading missing-data emails.
     tmv3_refreshOperationalSourcesIfNeeded_(120,false);
-    const records = tmv3_preInspectionIntakeRecords_();
     let pending = JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
     pending.forEach(function(id) {
       if (records.some(function(r) {return r.eventId===id;})) return;
-      try {records.push(tmv3_preInspectionRecoveryRecord_(id));}
+      try {
+        const recovered=tmv3_preInspectionRecoveryRecord_(id);
+        if(recovered.calendarRole==='PRIMARY_SHARED' || tmv3_preInspectionDiscoveryDecision_(recovered,TMV3.VERTICALS.PreInspection).status==='EXPLICIT_PREINSPECTION') records.push(recovered);
+        else pending=pending.filter(function(pendingId){return pendingId!==id;});
+      }
       catch(err) {tmv3_audit_('PreInspection',id,'','PREINSPECTION_RECOVERY','ATTENTION',String(err));}
     });
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
@@ -2202,13 +2271,22 @@ function tmv3_restorePreInspectionLegacyTitle_(record) {
   if (!record || record.vertical!=='PreInspection') throw new Error('PreInspection event required.');
   const cfg=TMV3.VERTICALS.PreInspection;
   const state=tmv3_titleMigrationStateForEvent_('PreInspection',record.eventId,cfg.primaryCalendarId);
-  const legacy=state.preservedTitle;
-  if (!legacy) return {status:'NO_RECORDED_LEGACY_TITLE',eventId:record.eventId,writes:0};
+  let legacy=state.preservedTitle;
   const copies=tmv3_requiredCalendarCopiesForEvent_(record).map(function(id){
     const found=tmv3_findEventCopyRobust_(id,record.eventId);
     if (!found || !found.event) throw new Error('LEGACY_TITLE_REPAIR_MISSING_COPY: '+id);
     return {calendarId:id,event:found.event};
   });
+  if (!legacy) {
+    const primary=copies.filter(function(copy){return copy.calendarId===cfg.primaryCalendarId;})[0];
+    const canonical=primary && String(primary.event.getTitle() || '');
+    const oldTitles=tmv3_unique_(copies.map(function(copy){return String(copy.event.getTitle() || '');}).filter(function(title){return title && title!==canonical;}));
+    if (/^\d+ - .+ - \(\d{3}\) \d{3}-\d{4}$/.test(canonical) && oldTitles.length===1) {
+      legacy=oldTitles[0];
+      tmv3_recordTitleMigrationState_('PreInspection',record.eventId,cfg.primaryCalendarId,legacy,canonical);
+    } else if (oldTitles.length>1) throw new Error('AMBIGUOUS_PREVIOUS_COPY_TITLES_NO_OVERWRITE');
+    else return {status:'NO_RECORDED_LEGACY_TITLE',eventId:record.eventId,writes:0};
+  }
   let writes=0;
   copies.forEach(function(copy){
     const before=String(copy.event.getDescription() || '');

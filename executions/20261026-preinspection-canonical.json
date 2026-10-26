@@ -1,0 +1,95 @@
+{
+  "status": "SOURCE_TRIGGER_DISCOVERY_AND_EVENTS_VERIFIED",
+  "version": "3.12.3-preinspection-intake-revalidation-r1",
+  "releaseRun": "https://github.com/consultpramodh/classicfireplace/actions/runs/40349322963",
+  "repairRun": "https://github.com/consultpramodh/classicfireplace/actions/runs/40347508602",
+  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+  "sourceHash": "2fd9cb8c04f41678ae35a8f27d4db7c06201619c0c83b73da2c753baec345334",
+  "legacyRetirement": {
+    "sourceHash": "299542cec9df73618675ff2d11b3179e18e725954f7c1bcbc892d18cada4b144",
+    "guardCases": 12,
+    "modules": [
+      "35_PreInspect_Task_Review",
+      "36_PreInspect_Task_Create",
+      "92_Striven_Task_Patch_Helper"
+    ],
+    "scope": "SUPERSEDED_PREINSPECTION_MUTATION_ENTRYPOINTS_ONLY"
+  },
+  "prePushRegressionCases": 461,
+  "scheduledHandlers": [
+    "tmv3_preInspectionCheck1700",
+    "tmv3_preInspectionCheck0800",
+    "tmv3_preInspectionCheck1300"
+  ],
+  "retiredFiveMinuteTriggerInstalled": false,
+  "discovery": {
+    "checkedAt": "2026-10-26T15:27:07.773Z",
+    "total": 5,
+    "review": 5,
+    "explicit": 0,
+    "truncated": false
+  },
+  "sheetProjectionVerified": true,
+  "sheetTimestampReadbackVerified": true,
+  "morningOpsTodayAttention": 2,
+  "followupBusinessWrites": 0,
+  "eventVerification": [
+    {
+      "eventId": "72ve6bam2kgpvq4tiiuc3mitht@google.com",
+      "taskId": "19409",
+      "plan": "NO_CHANGE",
+      "blocker": "",
+      "actions": [
+        "VERIFY_CALENDAR_LINKS"
+      ],
+      "checks": {
+        "customerCheck": "MATCH",
+        "locationCheck": "MATCH",
+        "requestedByCheck": "MATCH",
+        "assignmentCheck": "MATCH",
+        "startCheck": "MATCH",
+        "endCheck": "MATCH",
+        "calendarTitleCheck": "MATCH",
+        "taskNameCheck": "MATCH",
+        "orderCheck": "MATCH_NOT_ATTACHED"
+      },
+      "scheduleSource": "V1_DESIRED_START_END",
+      "calendarCopyParity": "FULL_BUSINESS_VISIBLE_PARITY_VERIFIED"
+    },
+    {
+      "eventId": "50cdk50ursqtdg5me1dleu4u1j@google.com",
+      "taskId": "19396",
+      "plan": "NO_CHANGE",
+      "blocker": "",
+      "actions": [
+        "VERIFY_CALENDAR_LINKS"
+      ],
+      "checks": {
+        "customerCheck": "MATCH",
+        "locationCheck": "MATCH",
+        "requestedByCheck": "MATCH",
+        "assignmentCheck": "MATCH",
+        "startCheck": "MATCH",
+        "endCheck": "MATCH",
+        "calendarTitleCheck": "MATCH",
+        "taskNameCheck": "MATCH",
+        "orderCheck": "MATCH_NOT_ATTACHED"
+      },
+      "scheduleSource": "V1_DESIRED_START_END",
+      "calendarCopyParity": "FULL_BUSINESS_VISIBLE_PARITY_VERIFIED"
+    }
+  ],
+  "apiBudget": {
+    "date": "2026-10-26",
+    "count": 300,
+    "softLimit": 1200,
+    "exhausted": false
+  },
+  "limitations": [
+    "Natural next scheduled execution was not observed during this repair session.",
+    "Five customer visits lack explicit PreInspection intent and remain review, with no discovery-driven Task creation.",
+    "The earlier repair run stopped on a later source-read HTTP 503; event mutations were already verified. Followup did not replay them."
+  ],
+  "immutableDeploymentAccessChanged": false,
+  "unrelatedSourceFilesPreserved": true
+}

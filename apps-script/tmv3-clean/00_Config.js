@@ -1,11 +1,11 @@
-const TMV3_VERSION = '3.12.1-automatic-sheet-refresh-r1';
+const TMV3_VERSION = '3.12.3-preinspection-intake-revalidation-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'PRODUCTION_WRITE';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-23-r14',
+  version:'2026-10-26-r15',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
@@ -54,6 +54,9 @@ const TMV3_HARD_RULES = Object.freeze({
     removeOnlyConflictingKnownServiceTechnicians:true
   }),
   PreInspection:Object.freeze({
+    discoveryPolicy:'EXPLICIT_INSTRUCTION_OR_REVIEW_NO_GUESS',
+    taskBusinessSource:'CF_PREINSPECTS_ONLY',
+    supersededLegacyMutations:'RETIRED_TO_V3',
     orderRequired:false,
     attachOrderToTask:false,
     taskTypeId:105,
@@ -262,7 +265,9 @@ const TMV3 = Object.freeze({
       secondaryCalendarIds: ['classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'],
       secondaryOwnerEmail: 'stephen@classicfireplace.ca',
       secondaryIgnoredCreatorEmails: [
-        'stephen@classicfireplace.ca'
+        'stephen@classicfireplace.ca', 'jay@classicfireplace.ca',
+        'trevor@classicfireplace.ca', 'pramodh@classicfireplace.ca',
+        'thang@classicfireplace.ca'
       ],
       secondaryGuestExcludedCreatorEmails: [
         'stephen@classicfireplace.ca',

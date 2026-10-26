@@ -155,6 +155,15 @@ function tmv3_refreshMorningOps() {
     });
   });
 
+  const discovery=tmv3_preInspectionDiscoveryStatus();
+  (discovery.records || []).filter(function(record){return record.status==='REVIEW_VISIT_TYPE';}).forEach(function(record){
+    attentionRows.push({values:['CHECK',tmv3_compactDateTime_(record.start),'PreInspection?',record.title,
+      record.reason,'Confirm visit type: add Preinspect for Yes or Not preinspect for No to the source title.'],
+      url:tmv3_calendarEventUrl_(record.eventId,record.calendarId),calendarUrl:tmv3_calendarEventUrl_(record.eventId,record.calendarId),
+      taskUrl:'',eventId:record.eventId,note:'Detected on Stephen calendar; no Striven Task or Calendar mutation authorized by discovery.'});
+  });
+  if(discovery.truncated)attentionRows.push({values:['CHECK','','PreInspection?','Additional candidates',
+    'Discovery has '+discovery.total+' candidates; compact display is limited.','Use tmv3_refreshPreInspectionDiscovery / audit source calendars.'],url:'',note:'',taskUrl:'',calendarUrl:'',eventId:''});
   const values = [];
   values.push(['MORNING OPS — TODAY','','','','','']);
   values.push([
@@ -165,7 +174,7 @@ function tmv3_refreshMorningOps() {
   values.push(['TODAY',totalAppointments,'MAPPED',totalMapped,'ATTENTION',totalAttention]);
   values.push(['NO TASK',totalNoTask,'INSTALL',(summaries[0] || {}).appointments || 0,'DELIVERY',(summaries[1] || {}).appointments || 0]);
   values.push(['SERVICE',(summaries[2] || {}).appointments || 0,'PREINSPECTION',(summaries[3] || {}).appointments || 0,'','']);
-  values.push(['','','','','','']);
+  values.push(['DISCOVERY',discovery.total || 0,'VISIT TYPE REVIEW',discovery.review || 0,'','']);
   values.push(["TODAY'S SCHEDULE",'','','','','']);
   values.push(['Time','Install','Delivery','Service','PreInspection','Flag']);
 
