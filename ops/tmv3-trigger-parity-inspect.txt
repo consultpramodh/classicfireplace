@@ -1,0 +1,1 @@
+2026-10-26: User-authorized PreInspection audit. Capture live source and installed handlers before Goldcon/Henry repairs and missed-candidate automation. Read-only inspection; no business mutations.
