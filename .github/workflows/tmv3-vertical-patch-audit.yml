@@ -24,3 +24,5 @@ jobs:
         run: node tools/tmv3-vertical-patch-audit.cjs
 
 # Read durable sweep progress and actual trigger execution statuses.
+
+# Inspect read-only process denial reason and Cloud Logging fallback.
