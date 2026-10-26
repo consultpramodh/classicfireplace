@@ -66,16 +66,19 @@ function tmv3_strivenApiBudgetStatus_() {
     : 0;
   const exhausted =
     String(props.getProperty(keys.exhaustedDate) || '') === today;
-  const softLimit = Number(cfg.v3DailySoftLimit || 1200);
+  const internalLimitEnabled = cfg.enabled !== false;
+  const softLimit = internalLimitEnabled ? Number(cfg.v3DailySoftLimit || 1200) : null;
 
   return {
     date: today,
     count: count,
+    enabled: internalLimitEnabled,
+    limitMode: internalLimitEnabled ? 'ENFORCED' : 'TRACKING_ONLY',
     softLimit: softLimit,
-    remaining: Math.max(0, tmv3_strivenApiEffectiveSoftLimit_({softLimit:softLimit},cfg) - count),
-    preInspectionReservedCalls: Number(cfg.preInspectionReservedCalls || 0),
+    remaining: exhausted ? 0 : Math.max(0, tmv3_strivenApiEffectiveSoftLimit_({softLimit:softLimit},cfg) - count),
+    preInspectionReservedCalls: internalLimitEnabled ? Number(cfg.preInspectionReservedCalls || 0) : 0,
     planDailyLimit: Number(cfg.planDailyLimit || 5000),
-    reserveForOtherWorkflows: Number(cfg.reserveForOtherWorkflows || 0),
+    reserveForOtherWorkflows: internalLimitEnabled ? Number(cfg.reserveForOtherWorkflows || 0) : 0,
     exhausted: exhausted,
     exhaustedReason: exhausted
       ? String(props.getProperty(keys.exhaustedReason) || '')
@@ -86,6 +89,8 @@ function tmv3_strivenApiBudgetStatus_() {
 function tmv3_strivenApiEffectiveSoftLimit_(status, cfg, context) {
   status = status || {};
   cfg = cfg || tmv3_strivenApiBudgetConfig_();
+  // Finite sentinel preserves existing numeric queue checks and JSON serialization.
+  if (cfg.enabled === false) return Number.MAX_SAFE_INTEGER;
   context = context || {};
 
   const baseSoftLimit = Number(
@@ -128,7 +133,7 @@ function tmv3_reserveStrivenApiCall_(label) {
   const effectiveSoftLimit =
     tmv3_strivenApiEffectiveSoftLimit_(status, cfg);
 
-  if (status.exhausted || status.count >= effectiveSoftLimit) {
+  if (status.exhausted || (cfg.enabled !== false && status.count >= effectiveSoftLimit)) {
     TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks =
       Number(TMV3_RUNTIME_METRICS.strivenApiBudgetBlocks || 0) + 1;
 
@@ -157,7 +162,8 @@ function tmv3_reserveStrivenApiCall_(label) {
   return {
     date: status.date,
     count: nextCount,
-    softLimit: effectiveSoftLimit,
+    enabled: cfg.enabled !== false,
+    softLimit: cfg.enabled === false ? null : effectiveSoftLimit,
     baseSoftLimit: status.softLimit
   };
 }

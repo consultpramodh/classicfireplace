@@ -1237,7 +1237,7 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
   for (let n=0;n<pending.length && processed<8;n++) {
     const budget=tmv3_strivenApiBudgetStatus_();
     if (budget.exhausted || budget.remaining<12) {paused='API_DAILY_BUDGET';break;}
-    if (budget.count-initialBudget.count>=32 || Date.now()-started>=120000) {paused='SLICE_BUDGET';break;}
+    if ((budget.enabled !== false && budget.count-initialBudget.count>=32) || Date.now()-started>=120000) {paused='SLICE_BUDGET';break;}
     const id=pending[n];
     processed++;
     let intent=false,vertical='',expectedOrderId='',customerId='',soNumber='',searchAttempted=false;
