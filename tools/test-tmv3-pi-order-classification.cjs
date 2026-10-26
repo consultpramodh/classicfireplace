@@ -21,4 +21,23 @@ check('REVIEW_VISIT_TYPE',{descriptionClean:'SO#586242 / SO#586243'});
 const before=calls;check('IGNORE',{creator:'jay@classicfireplace.ca'});check('IGNORE',{title:'Not preinspect customer'});assert.equal(calls,before);
 statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION');statusId=22;statusName='Approved';check('INSTALLATION');
 // Same fingerprint must still re-read status at the final pre-invite check.
-assert(calls>before);console.log(JSON.stringify({status:'PASS',cases,apiMockCalls:calls}));
+assert(calls>before);
+// Execute the actual canonical cycle: a missing primary copy must be promoted
+// before any operation requiring both calendar copies. Asynchronous propagation
+// must leave the event pending without running preservation or task resolution.
+const props={};ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>props[k]||null,setProperty:(k,v)=>{props[k]=v;}})};
+ctx.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})};
+ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};
+ctx.tmv3_strivenApiBudgetStatus_=()=>({remaining:1000,count:0,exhausted:false});
+ctx.tmv3_preInspectionIntakeRecords_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionDiscoveryStatus=()=>({total:1});
+ctx.tmv3_hash_=v=>String(v);
+const sequence=[];let wait=false;
+ctx.tmv3_preInspectionPromoteCandidate_=r=>{sequence.push('promote');return {status:wait?'WAITING_FOR_CF_COPY':'PRIMARY',record:{...r,calendarRole:wait?'SECONDARY_STEPHEN':'PRIMARY_SHARED'}};};
+ctx.tmv3_restorePreInspectionLegacyTitle_=r=>{assert.equal(r.calendarRole,'PRIMARY_SHARED');sequence.push('preserve');return {writes:0};};
+ctx.tmv3_step7FreshPlansForEvent_=()=>[{plan:'NO_CHANGE',actions:[],blocker:'',taskId:'19410'}];
+ctx.tmv3_findFreshEventRecord_=()=>base;ctx.tmv3_preInspectionSendMissingDetails_=()=>({sent:0});
+ctx.tmv3_preInspectionCompletionVerified_=()=>true;ctx.tmv3_preInspectionHistoricalCoverageVerified_=()=>false;
+ctx.tmv3_preInspectionFailureAlert_=()=>{};ctx.tmv3_audit_=()=>{};
+let cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId});assert.equal(cycle.status,'COMPLETE',JSON.stringify(cycle));assert.deepEqual(sequence,['promote','preserve']);cases++;
+sequence.length=0;wait=true;cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId});assert.equal(cycle.status,'COMPLETE',JSON.stringify(cycle));assert.deepEqual(sequence,['promote']);assert(JSON.parse(props.TMV3_PI_PENDING_EVENTS).includes(base.eventId));cases++;
+console.log(JSON.stringify({status:'PASS',cases,apiMockCalls:calls}));
