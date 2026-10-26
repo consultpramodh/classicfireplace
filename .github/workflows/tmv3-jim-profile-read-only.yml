@@ -1,0 +1,46 @@
+name: Read one Install customer profile using existing connection
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-jim-profile-read-only.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fresh profile check, no Striven writes, restore temporary helper
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const crypto=require('node:crypto');
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+          const ps=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(ps.length!==1)throw Error('ONE_PROFILE_REQUIRED');const p=ps[0];
+          const ar=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p.client,client_secret:p.secret,refresh_token:p.refresh})});if(!ar.ok)throw Error('AUTH_FAILED');const auth=await ar.json();
+          async function api(path,method='GET',body){const r=await fetch('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+auth.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(120000)});if(!r.ok)throw Error('GOOGLE_HTTP_'+r.status);return r.json();}
+          const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+          const hash=x=>crypto.createHash('sha256').update(JSON.stringify(x.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
+          const before=await api('projects/'+sid+'/content');
+          const helper="function tmv3_jimProfileReadOnly20261026() {\n var events=CalendarApp.getCalendarById('classicfireplace.ca_vpg05s56lp9f7kaegsiqask34o@group.calendar.google.com').getEvents(new Date('2026-10-27T00:00:00-04:00'),new Date('2026-10-28T00:00:00-04:00'));\n var matched=events.filter(function(e){return /Jim Farquhar/i.test(e.getTitle()) && /585742/.test(e.getTitle());});\n if(matched.length!==1)throw Error('EVENT_NOT_UNIQUE');\n var phone=tmv3_phone10_(tmv3_extractPhone_(matched[0].getTitle()));\n if(phone.length!==10)throw Error('CALENDAR_PHONE_UNRESOLVED');\n var task=tmv3_getTaskById_(18978),cid=String(task['Customer ID']||''),oid=String(task['Order ID']||'');\n if(!/^[1-9][0-9]*$/.test(cid)||!/^[1-9][0-9]*$/.test(oid)||!/Farquhar/i.test(task.Name||''))throw Error('TASK_IDENTITY_UNPROVEN');\n var order=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+oid,{method:'get'});\n var oc=order.Customer||order.customer||{};\n if(String(oc.Id||oc.id||order.CustomerId||'')!==cid||String(order.Number||order.number||'')!=='585742')throw Error('ORDER_OWNERSHIP_UNPROVEN');\n var customer=tmv3_fetchJson_(TMV3.API_BASE+'/v1/customers/'+cid,{method:'get'});\n var contacts=tmv3_getCustomerContacts_(cid,{forceFresh:true,requireComplete:true});\n function phones(obj){var out=[];function walk(v,k){if(v&&typeof v==='object'){Object.keys(v).forEach(function(key){walk(v[key],key);});}else if(/phone|mobile|cell/i.test(k||'')){tmv3_allPhones_(String(v||'')).forEach(function(p){out.push(tmv3_phone10_(p));});}}walk(obj,'');return out.filter(function(p,i){return p.length===10&&out.indexOf(p)===i;});}\n var cp=phones(customer);\n var same=contacts.filter(function(c){return /\\bJim\\b/i.test(c.Name)&&/Farquhar/i.test(c.Name);});\n return {status:'LIVE_READ_ONLY_COMPLETE',profileRead:true,orderOwnershipVerified:true,calendarPhoneValid:true,customerHasCalendarPhone:cp.indexOf(phone)>=0,customerOtherPhoneCount:cp.filter(function(p){return p!==phone;}).length,contactsRead:contacts.length,contactsWithCalendarPhone:contacts.filter(function(c){return (c.Phones||[]).some(function(p){return tmv3_phone10_(p)===phone;});}).length,sameNameContacts:same.length,sameNameContactHasCalendarPhone:same.some(function(c){return(c.Phones||[]).some(function(p){return tmv3_phone10_(p)===phone;});}),taskNameHasCalendarPhone:tmv3_allPhones_(task.Name||'').some(function(p){return tmv3_phone10_(p)===phone;}),strivenWrites:0,calendarWrites:0};\n}";
+          const candidate={files:before.files.concat([{name:'99_JimReadOnly20261026',type:'SERVER_JS',source:helper}])};
+          if(before.files.some(f=>f.name==='99_JimReadOnly20261026'))throw Error('HELPER_ALREADY_EXISTS');
+          const inv=await api('projects/'+sid+'/deployments');const ds=inv.deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXECUTABLE_AMBIGUOUS');
+          let added=false;
+          try{
+          if(hash(await api('projects/'+sid+'/content'))!==hash(before))throw Error('SOURCE_DRIFT');
+          await api('projects/'+sid+'/content','PUT',candidate);added=true;
+          const result=await api('scripts/'+encodeURIComponent(ds[0].deploymentId)+':run','POST',{function:'tmv3_jimProfileReadOnly20261026',devMode:true});
+          if(result.error){console.log(JSON.stringify({status:'READ_FAILED',errorType:result.error.details&&result.error.details[0]&&result.error.details[0].errorType||'EXECUTION_ERROR'}));process.exitCode=1;}else console.log(JSON.stringify(result.response.result));
+          }finally{if(added){const current=await api('projects/'+sid+'/content');if(hash(current)!==hash(candidate))throw Error('SOURCE_DRIFT_RESTORE_BLOCKED');await api('projects/'+sid+'/content','PUT',{files:before.files});if(hash(await api('projects/'+sid+'/content'))!==hash(before))throw Error('RESTORE_FAILED');console.log('ORIGINAL_SOURCE_RESTORED_AND_HASH_VERIFIED');}}
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          NODE
