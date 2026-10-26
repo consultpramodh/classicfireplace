@@ -5,6 +5,7 @@ const dir=process.env.TMV3_TEST_SOURCE_DIR||path.join(__dirname,'../apps-script/
 const props={};let calls=0,stored=0;
 const ctx={console,PropertiesService:{getScriptProperties:()=>({getProperty:k=>props[k]||null,setProperty:(k,v)=>{props[k]=v;stored++;}})}};
 vm.createContext(ctx);for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.js')).sort())vm.runInContext(fs.readFileSync(path.join(dir,f),'utf8'),ctx,{filename:f});
+const actualCycle=ctx.tmv3_preInspectionAutomationCycle_;
 ctx.tmv3_audit_=()=>{};ctx.tmv3_iso_=v=>new Date(v).toISOString();
 const base={vertical:'PreInspection',calendarRole:'SECONDARY_STEPHEN',eventId:'fixture@google.com',calendarId:'secondary',title:'Customer 416-555-0100',phone:'416-555-0100',location:'1 Test St, Toronto',start:'2026-11-02T18:00:00Z',creator:'sales@classicfireplace.ca',descriptionClean:''};
 const cfg=vm.runInContext('TMV3.VERTICALS.PreInspection',ctx);
@@ -53,4 +54,26 @@ ctx.tmv3_findEventCopyRobust_=id=>({event:id===primaryId?primary:secondary});
 let migration;ctx.tmv3_recordTitleMigrationState_=(...args)=>{migration=args;};
 const restored=ctx.tmv3_restorePreInspectionLegacyTitle_(base);
 assert.equal(restored.writes,2);assert.equal(migration[3],secondary.title);assert(primary.description.startsWith(secondary.title));assert.equal(primary.description,secondary.description);calls+=4;
+// A changed source cannot be invited based on stale scan evidence.
+let freshSource,guestWrites=0;
+ctx.CalendarApp={getCalendarById:()=>({getEvents:()=>[]})};
+ctx.tmv3_findCalendarEventById_=(id)=>id===primaryId?null:{event:{getGuestList(){guestWrites++;return [];}}};
+ctx.tmv3_calendarEvent_=()=>freshSource;
+const explicit={...base,title:'Preinspect Fixture',fingerprint:'same'};
+for(const change of [{creator:'jay@classicfireplace.ca'},{title:'Not preinspect Fixture'},{fingerprint:'changed'}]){
+ freshSource={...explicit,...change};assert.throws(()=>ctx.tmv3_preInspectionPromoteCandidate_(explicit),/SOURCE_(?:INTENT_OR_CREATOR_NOT_AUTHORIZED|CHANGED)_NO_INTAKE_WRITE/);calls++;
+}
+assert.equal(guestWrites,0);calls++;
+// Pending recovery must reapply the same intent/creator gate as new discovery.
+ctx.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})};
+ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};
+ctx.tmv3_strivenApiBudgetStatus_=()=>({exhausted:false,remaining:1000,count:0});
+ctx.tmv3_preInspectionIntakeRecords_=()=>[];
+for(const recovered of [{...explicit,creator:'jay@classicfireplace.ca'},{...explicit,title:'Not preinspect Fixture'}]){
+ props.TMV3_PI_PENDING_EVENTS=JSON.stringify([recovered.eventId]);ctx.tmv3_preInspectionRecoveryRecord_=()=>recovered;
+ const result=actualCycle({force:true,eventId:recovered.eventId});assert.equal(result.processed,0);assert.equal(result.status,'COMPLETE');assert.equal(props.TMV3_PI_PENDING_EVENTS,'[]');calls++;
+}
+const morning=fs.readFileSync(path.join(dir,'80_MorningOps.js'),'utf8');
+assert(morning.includes("['DISCOVERY',discovery.total || 0,'VISIT TYPE REVIEW',discovery.review || 0"));
+assert(!/totalAttention\+\+/.test(morning.slice(morning.indexOf('const discovery='),morning.indexOf('const values = []'))));calls+=2;
 console.log(JSON.stringify({status:'PASS',cases:calls,metadataWrites:stored,businessWrites:0}));

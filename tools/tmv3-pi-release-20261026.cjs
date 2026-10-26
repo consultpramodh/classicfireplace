@@ -9,10 +9,11 @@ const canonical=o=>hash(JSON.stringify(o.files.map(f=>({name:f.name,type:f.type,
  const m=JSON.parse(fs.readFileSync(MANIFEST));fs.mkdirSync(DIR,{recursive:true,mode:0o700});
  const ps=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(ps.length!==1)throw Error('EXPECTED_ONE_PROFILE');const p=ps[0];
  const ar=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p.client,client_secret:p.secret,refresh_token:p.refresh}),redirect:'error'});if(!ar.ok)throw Error('AUTH_FAILED');const auth=await ar.json();
- async function api(path,method='GET',body){const r=await fetch('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+auth.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(650000)});if(!r.ok)throw Error('GOOGLE_HTTP_'+r.status);return r.json();}
+ async function api(path,method='GET',body,retry=0){const r=await fetch('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+auth.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(650000)});if(r.status===503 && method==='GET' && retry<2){await new Promise(resolve=>setTimeout(resolve,3000));return api(path,method,body,retry+1);}if(!r.ok)throw Error('GOOGLE_HTTP_'+r.status);return r.json();}
  const mode=process.argv[2];
  if(mode==='prepare'){
   const prepared={projects:[]};
+  for(const spec of m.auditProjects || [])if(canonical(await api('projects/'+spec.scriptId+'/content'))!==spec.hash)throw Error('AUDIT_SOURCE_DRIFT:'+spec.key);
   for(const spec of m.projects){
    const before=await api('projects/'+spec.scriptId+'/content');if(canonical(before)!==spec.beforeHash)throw Error('LIVE_SOURCE_DRIFT:'+spec.key);
    if(before.files.some(f=>/(?:api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token)\s*[:=]\s*['"][A-Za-z0-9_./+-]{20,}['"]/i.test(f.source||'')))throw Error('POSSIBLE_LITERAL_SECRET_NO_EXPORT');
@@ -39,15 +40,17 @@ const canonical=o=>hash(JSON.stringify(o.files.map(f=>({name:f.name,type:f.type,
   report.health=await run('tmv3_healthCheck');if(!report.health.ready||report.health.version!==m.version)throw Error('HEALTH_FAILED');
   report.triggers=await run('tmv3_listTriggers');for(const handler of ['tmv3_preInspectionCheck0800','tmv3_preInspectionCheck1300','tmv3_preInspectionCheck1700'])if(report.triggers.filter(t=>t.handler===handler).length!==1)throw Error('TRIGGER_MISMATCH');if(report.triggers.some(t=>t.handler==='tmv3_preInspectionScheduledCycle'))throw Error('RETIRED_TRIGGER_INSTALLED');
   report.discovery=await run('tmv3_refreshPreInspectionDiscovery');checkpoint();
+  if(!m.eventIds.length){report.sheetRefresh=await run('tmv3_refreshAutomationSheets');checkpoint();if(!report.sheetRefresh.projectionVerified||!report.sheetRefresh.timestampReadbackVerified||report.sheetRefresh.strivenWrites!==0||report.sheetRefresh.calendarWrites!==0)throw Error('SHEET_REFRESH_NOT_VERIFIED');}
   for(const eventId of m.eventIds){
    businessAttempted=true;const result=await run('tmv3_reconcilePreInspectionEvent',[eventId]);report.repairs.push({eventId,result});checkpoint();
    console.log(JSON.stringify({eventId,status:result.status,processed:result.processed,writes:result.writes,results:result.results.map(r=>({taskId:r.taskId,status:r.status,plan:r.plan,error:r.error,executionStatus:r.execution&&r.execution.status}))}));
    if(result.processed!==1||result.results.length!==1||result.results[0].error||result.status!=='COMPLETE')throw Error('EVENT_RECONCILIATION_INCOMPLETE_NO_BLIND_RETRY');
   }
-  for(const eventId of m.eventIds){const result=await run('tmv3_verifyPreInspectionAutomation',[eventId]);report.verification.push({eventId,result});checkpoint();const r=result.records.find(x=>x.source==='PRIMARY_SHARED');if(!r||r.plans.length!==1||r.plans[0].blocker||r.plans[0].actions.some(a=>a!=='VERIFY_CALENDAR_LINKS'))throw Error('INDEPENDENT_PLAN_NOT_CONVERGED');}
+  for(const eventId of (m.verifyEventIds || m.eventIds)){const result=await run('tmv3_verifyPreInspectionAutomation',[eventId]);report.verification.push({eventId,result});checkpoint();const r=result.records.find(x=>x.source==='PRIMARY_SHARED');if(!r||r.plans.length!==1||r.plans[0].blocker||r.plans[0].actions.some(a=>a!=='VERIFY_CALENDAR_LINKS'))throw Error('INDEPENDENT_PLAN_NOT_CONVERGED');}
   report.budget=await run('tmv3_strivenApiBudgetStatus');
   for(const spec of m.projects)if(canonical(await api('projects/'+spec.scriptId+'/content'))!==spec.afterHash)throw Error('FINAL_SOURCE_DRIFT:'+spec.key);
-  report.status='SOURCE_TRIGGER_DISCOVERY_AND_TWO_EVENTS_VERIFIED';checkpoint();console.log(JSON.stringify({status:report.status,version:m.version,projects:report.projects,discoveryTotal:report.discovery.total,discoveryReview:report.discovery.review,verifiedEvents:report.verification.length,apiCount:report.budget.count}));
+  report.sourceAudits=[];for(const spec of m.auditProjects || []){const actual=canonical(await api('projects/'+spec.scriptId+'/content'));if(actual!==spec.hash)throw Error('FINAL_AUDIT_SOURCE_DRIFT:'+spec.key);report.sourceAudits.push({key:spec.key,hash:actual,verified:true});}
+  report.status='SOURCE_TRIGGER_DISCOVERY_AND_EVENTS_VERIFIED';checkpoint();console.log(JSON.stringify({status:report.status,version:m.version,projects:report.projects,discoveryTotal:report.discovery.total,discoveryReview:report.discovery.review,verifiedEvents:report.verification.length,apiCount:report.budget.count}));
  }catch(error){report.status='STOPPED_RECONCILE';report.error=error.message;
   if(!businessAttempted){report.rollback=[];for(const spec of touched.reverse()){const current=canonical(await api('projects/'+spec.scriptId+'/content'));if(current===spec.afterHash){const before=JSON.parse(fs.readFileSync(DIR+'/'+spec.key+'-before.json'));await api('projects/'+spec.scriptId+'/content','PUT',{files:before.files});}report.rollback.push({key:spec.key,verified:canonical(await api('projects/'+spec.scriptId+'/content'))===spec.beforeHash});}}
   checkpoint();console.error(JSON.stringify({status:report.status,error:report.error,businessAttempted,rollback:report.rollback}));process.exitCode=1;

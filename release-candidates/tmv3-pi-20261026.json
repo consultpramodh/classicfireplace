@@ -1,52 +1,43 @@
 {
-  "version": "3.12.2-preinspection-discovery-and-single-event-r1",
-  "eventIds": [
-    "72ve6bam2kgpvq4tiiuc3mitht@google.com",
-    "50cdk50ursqtdg5me1dleu4u1j@google.com"
-  ],
+  "version": "3.12.3-preinspection-intake-revalidation-r1",
+  "eventIds": [],
   "projects": [
-    {
-      "key": "legacy",
-      "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-      "beforeHash": "beb5a03f3e004c55664c6d865e8f22fde5ce2f1f4c9ca70cea7b96d02a2e603c",
-      "afterHash": "299542cec9df73618675ff2d11b3179e18e725954f7c1bcbc892d18cada4b144",
-      "files": [
-        {
-          "name": "35_PreInspect_Task_Review"
-        },
-        {
-          "name": "36_PreInspect_Task_Create"
-        },
-        {
-          "name": "92_Striven_Task_Patch_Helper"
-        }
-      ]
-    },
     {
       "key": "v3",
       "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-      "beforeHash": "b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e",
-      "afterHash": "a177dbb75040c0485801950285d9597f78c3ae05f335eec66e26fa7cb5827fb0",
+      "beforeHash": "a177dbb75040c0485801950285d9597f78c3ae05f335eec66e26fa7cb5827fb0",
+      "afterHash": "2fd9cb8c04f41678ae35a8f27d4db7c06201619c0c83b73da2c753baec345334",
       "files": [
         {
           "name": "00_Config",
           "path": "release-candidates/pi-20261026/00_Config.js",
-          "before": "66c5eccd9d0088ef14d3d09c7383d952bbc4bf8a0614ae77988dae8a0e1bf182",
-          "after": "1c653214d4a798be79b414ab52d1e559abb43f20b492721c4526a66c9e36dc40"
+          "before": "1c653214d4a798be79b414ab52d1e559abb43f20b492721c4526a66c9e36dc40",
+          "after": "8093421bb3c838ae363f0bd7297d7c74d56c7121a3b043a1890ec0d924c8103c"
         },
         {
           "name": "60_Automation",
           "path": "release-candidates/pi-20261026/60_Automation.js",
-          "before": "ac93824861d232e25fba5f7a401e5954fa089af84144675f1d541576f3892b1d",
-          "after": "cbae9377ad793be9e79fee782f3b9da4d4651a8276093d324e59e098c1271987"
+          "before": "cbae9377ad793be9e79fee782f3b9da4d4651a8276093d324e59e098c1271987",
+          "after": "db6fbf675998826574333056a2167853459df92fc36cbbc7454ba281fdaed62b"
         },
         {
           "name": "80_MorningOps",
           "path": "release-candidates/pi-20261026/80_MorningOps.js",
-          "before": "200cb1e6d71d8380e632d6756628677b70e01ecb0ad9856210d9e794106add11",
-          "after": "05dfb6e4de3fbf9ecbcb0a53f710dbb95dedb9430cce5d1907bbb5863772132b"
+          "before": "05dfb6e4de3fbf9ecbcb0a53f710dbb95dedb9430cce5d1907bbb5863772132b",
+          "after": "8e7b0c722b4829ed7a20b5f1b6205ee51d1acc10961fd2ed0ed62019372ef284"
         }
       ]
     }
+  ],
+  "auditProjects": [
+    {
+      "key": "legacy",
+      "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
+      "hash": "299542cec9df73618675ff2d11b3179e18e725954f7c1bcbc892d18cada4b144"
+    }
+  ],
+  "verifyEventIds": [
+    "72ve6bam2kgpvq4tiiuc3mitht@google.com",
+    "50cdk50ursqtdg5me1dleu4u1j@google.com"
   ]
 }

@@ -1784,6 +1784,9 @@ function tmv3_preInspectionPromoteCandidate_(record) {
   if (duplicates.length) throw new Error('POSSIBLE_DUPLICATE_CF_EVENT_NO_INTAKE_WRITE');
   const source = tmv3_findCalendarEventById_(record.calendarId,record.eventId);
   if (!source || !source.event) throw new Error('Stephen source event disappeared.');
+  const freshSource=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:record.calendarId,calendarName:'Stephen',role:'SECONDARY_STEPHEN'},source.event,{applyEligibility:false});
+  if(tmv3_preInspectionDiscoveryDecision_(freshSource,cfg).status!=='EXPLICIT_PREINSPECTION') throw new Error('SOURCE_INTENT_OR_CREATOR_NOT_AUTHORIZED_NO_INTAKE_WRITE');
+  if(freshSource.fingerprint!==record.fingerprint) throw new Error('SOURCE_CHANGED_NO_INTAKE_WRITE');
   const guests = source.event.getGuestList(true).map(function(g) {return tmv3_normEmail_(g.getEmail());});
   [cfg.primaryCalendarId,cfg.secondaryOwnerEmail].forEach(function(email) {
     if (guests.indexOf(tmv3_normEmail_(email)) < 0) source.event.addGuest(email);
@@ -1916,7 +1919,11 @@ function tmv3_preInspectionAutomationCycle_(options) {
     let pending = JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
     pending.forEach(function(id) {
       if (records.some(function(r) {return r.eventId===id;})) return;
-      try {records.push(tmv3_preInspectionRecoveryRecord_(id));}
+      try {
+        const recovered=tmv3_preInspectionRecoveryRecord_(id);
+        if(recovered.calendarRole==='PRIMARY_SHARED' || tmv3_preInspectionDiscoveryDecision_(recovered,TMV3.VERTICALS.PreInspection).status==='EXPLICIT_PREINSPECTION') records.push(recovered);
+        else pending=pending.filter(function(pendingId){return pendingId!==id;});
+      }
       catch(err) {tmv3_audit_('PreInspection',id,'','PREINSPECTION_RECOVERY','ATTENTION',String(err));}
     });
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);

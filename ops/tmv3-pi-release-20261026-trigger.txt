@@ -1,0 +1,1 @@
+2026-10-26: Apply 3.12.3 intake revalidation and discovery metric correction. The two event repairs are already independently NO_CHANGE; this release performs metadata refresh and read-only re-verification only, without replaying Task mutations.
