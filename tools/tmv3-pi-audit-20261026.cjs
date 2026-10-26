@@ -6,9 +6,10 @@ const {profiles}=require('./tmv3-execution-access-diagnostic.js');
  const ps=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(ps.length!==1)throw Error('EXPECTED_ONE_PROFILE');const p=ps[0];
  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p.client,client_secret:p.secret,refresh_token:p.refresh}),redirect:'error'});if(!r.ok)throw Error('AUTH_FAILED');const a=await r.json();
  async function api(url,body){const r=await fetch(url,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+a.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(650000)});if(!r.ok)throw Error('GOOGLE_HTTP_'+r.status);return r.json();}
- const base='https://script.googleapis.com/v1/',sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+ const base='https://script.googleapis.com/v1/',sid=process.argv[2]==='legacy'?'1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m':'1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
  const inv=await api(base+'projects/'+sid+'/deployments'),ds=inv.deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXECUTABLE_AMBIGUOUS');
  async function run(fn,parameters=[]){const r=await api(base+'scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{function:fn,parameters,devMode:true});if(r.error||r.done!==true)throw Error('NATIVE_FAILED:'+JSON.stringify(r.error||{}));return r.response.result;}
+ if(process.argv[2]==='legacy'){console.log(JSON.stringify({status:'LEGACY_TRIGGER_READ_ONLY',triggers:await run('listTaskMappingTriggers')}));return;}
  const out={at:new Date().toISOString(),budgetBefore:await run('tmv3_strivenApiBudgetStatus'),events:[],candidates:[]};
  for(const id of ['72ve6bam2kgpvq4tiiuc3mitht','50cdk50ursqtdg5me1dleu4u1j'])out.events.push({id,result:await run('tmv3_verifyPreInspectionAutomation',[id+'@google.com'])});
  const calendar='classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com';
