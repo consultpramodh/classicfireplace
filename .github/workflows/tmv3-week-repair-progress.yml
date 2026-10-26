@@ -1,0 +1,21 @@
+name: Read weekly repair progress
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-week-repair-progress.yml]
+permissions:
+  contents: read
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/tmv3-week-repair-progress.cjs
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
