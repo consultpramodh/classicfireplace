@@ -22,3 +22,5 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-vertical-patch-audit.cjs
+
+# Reconcile live state after transport response loss, 2026-10-26.
