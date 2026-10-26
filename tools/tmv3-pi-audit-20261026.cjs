@@ -1,4 +1,4 @@
-// JavaScript / Node.js: guarded completion after verified Calendar intake; canonical Task worker only.
+// JavaScript / Node.js: read-only Striven/Calendar verification and operator-sheet refresh; no Task writes.
 'use strict';
 const fs=require('node:fs');
 const {profiles}=require('./tmv3-execution-access-diagnostic.js');
@@ -13,33 +13,14 @@ const {profiles}=require('./tmv3-execution-access-diagnostic.js');
 
 
 
+
  const crypto=require('node:crypto');
- const hash=o=>crypto.createHash('sha256').update(JSON.stringify(o.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
- const expected='98663ec336d03567bdbbc35b06f54120a36b42cacf81e484be8f1975b716baec';
- const out={at:new Date().toISOString(),status:'VERIFYING_INTAKE',events:[]};
- fs.mkdirSync('pi-audit-evidence',{recursive:true});const checkpoint=()=>fs.writeFileSync('pi-audit-evidence/result.json',JSON.stringify(out,null,2));
- out.sourceHash=hash(await api(base+'projects/'+sid+'/content'));if(out.sourceHash!==expected)throw Error('LIVE_SOURCE_DRIFT');
- out.health=await run('tmv3_healthCheck');if(!out.health.ready||out.health.version!=='3.12.5-likely-preinspection-intake-sequence-r1')throw Error('HEALTH_FAILED');
- out.budgetBefore=await run('tmv3_strivenApiBudgetStatus');checkpoint();
- for(const id of ['45i1sm9ogfbuck1eu760tetin4','7k61omkf38ffetovqsglehhbg4']) {
-  const eventId=id+'@google.com',one={eventId};out.events.push(one);
-  one.before=await run('tmv3_verifyPreInspectionAutomation',[eventId]);checkpoint();
-  const primary=one.before.records.find(r=>r.source==='PRIMARY_SHARED');
-  if(!primary||primary.plans.length!==1||primary.plans[0].blocker)throw Error('INTAKE_OR_PLAN_NOT_READY');
-  console.log(JSON.stringify({eventId,before:primary.plans.map(p=>({taskId:p.taskId,plan:p.plan,blocker:p.blocker,actions:p.actions}))}));
-  if(primary.plans[0].actions.some(a=>a!=='VERIFY_CALENDAR_LINKS')){
-   one.execution=await run('tmv3_reconcilePreInspectionEvent',[eventId]);checkpoint();
-   console.log(JSON.stringify({eventId,execution:one.execution}));
-   if(one.execution.status!=='COMPLETE'||one.execution.processed!==1||one.execution.results.some(r=>r.error))throw Error('RECONCILIATION_UNCERTAIN_NO_RETRY');
-  }
-  one.after=await run('tmv3_verifyPreInspectionAutomation',[eventId]);checkpoint();
-  const after=one.after.records.find(r=>r.source==='PRIMARY_SHARED');
-  console.log(JSON.stringify({eventId,after:after&&after.plans}));
-  if(!after||after.plans.length!==1||after.plans[0].blocker||!after.plans[0].taskId||after.plans[0].actions.some(a=>a!=='VERIFY_CALENDAR_LINKS'))throw Error('FINAL_PLAN_NOT_CONVERGED');
- }
- out.discovery=await run('tmv3_refreshPreInspectionDiscovery');checkpoint();
- out.sheetRefresh=await run('tmv3_refreshAutomationSheets');checkpoint();
- if(!out.sheetRefresh.projectionVerified||!out.sheetRefresh.timestampReadbackVerified)throw Error('SHEET_REFRESH_NOT_VERIFIED');
- out.budgetAfter=await run('tmv3_strivenApiBudgetStatus');out.finalSourceHash=hash(await api(base+'projects/'+sid+'/content'));if(out.finalSourceHash!==expected)throw Error('FINAL_SOURCE_DRIFT');
- out.status='BOTH_PREINSPECTIONS_VERIFIED';checkpoint();console.log(JSON.stringify({status:out.status,sourceHash:out.finalSourceHash,version:out.health.version,discovery:out.discovery,sheetRefresh:out.sheetRefresh,budget:out.budgetAfter}));
+ const source=await api(base+'projects/'+sid+'/content');
+ const sourceHash=crypto.createHash('sha256').update(JSON.stringify(source.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
+ const out={at:new Date().toISOString(),sourceHash,health:await run('tmv3_healthCheck'),discovery:await run('tmv3_refreshPreInspectionDiscovery'),sheetRefresh:await run('tmv3_refreshAutomationSheets'),events:[],taskWrites:0,calendarWrites:0};
+ for(const [id,taskId] of [['45i1sm9ogfbuck1eu760tetin4','19410'],['7k61omkf38ffetovqsglehhbg4','19411']])out.events.push({eventId:id+'@google.com',expectedTaskId:taskId,verification:await run('tmv3_verifyPreInspectionAutomation',[id+'@google.com'])});
+ out.status=out.events.every(e=>{const r=e.verification.records.find(r=>r.source==='PRIMARY_SHARED');return r&&r.plans.length===1&&!r.plans[0].blocker&&String(r.plans[0].taskId)===e.expectedTaskId&&r.plans[0].actions.every(a=>a==='VERIFY_CALENDAR_LINKS');})?'BOTH_PREINSPECTIONS_VERIFIED':'ATTENTION';
+ out.budget=await run('tmv3_strivenApiBudgetStatus');
+ fs.mkdirSync('pi-audit-evidence',{recursive:true});fs.writeFileSync('pi-audit-evidence/result.json',JSON.stringify(out,null,2));console.log(JSON.stringify(out));
+ if(out.status!=='BOTH_PREINSPECTIONS_VERIFIED'||!out.sheetRefresh.projectionVerified||!out.sheetRefresh.timestampReadbackVerified)throw Error('AUDIT_NOT_CONVERGED');
 })().catch(e=>{console.error(e.message);process.exitCode=1;});
