@@ -11,53 +11,13 @@ const {profiles}=require('./tmv3-execution-access-diagnostic.js');
  async function run(fn,parameters=[]){const r=await api(base+'scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{function:fn,parameters,devMode:true});if(r.error||r.done!==true)throw Error('NATIVE_FAILED:'+JSON.stringify(r.error||{}));return r.response.result;}
  if(process.argv[2]==='legacy'){console.log(JSON.stringify({status:'LEGACY_TRIGGER_READ_ONLY',triggers:await run('listTaskMappingTriggers')}));return;}
 
- const sidContent=await api(base+'projects/'+sid+'/content');
- fs.mkdirSync('pi-audit-evidence',{recursive:true});
- fs.writeFileSync('pi-audit-evidence/source-before.json',JSON.stringify(sidContent));
- const helper=`
-function tmv3_candidateOrderAudit20261026() {
- const cfg=TMV3.VERTICALS.PreInspection, records=[];
- const start=new Date();start.setHours(0,0,0,0);const end=new Date(start);end.setDate(end.getDate()+365);
- const orders=tmv3_rows_(TMV3.SHEETS.ORDERS);
- const cal=CalendarApp.getCalendarById(cfg.secondaryCalendarIds[0]);
- cal.getEvents(start,end).forEach(function(event){
-  const r=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:cfg.secondaryCalendarIds[0],calendarName:'Stephen',role:'SECONDARY_STEPHEN'},event,{applyEligibility:false});
-  const decision=tmv3_preInspectionDiscoveryDecision_(r,cfg);
-  if(decision.status!=='REVIEW_VISIT_TYPE'||r.existingTaskId)return;
-  const matches=orders.filter(function(o){return r.orderNumber&&String(o['Order Number'])===String(r.orderNumber)&&o['Type']==='SALES_ORDER';});
-  const identity=tmv3_step4ResolveCustomerFromCalendarEvidence_(r,tmv3_step4IdentityIndex_());
-  let customerOrders=null;
-  if(identity.customer)customerOrders=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',payload:JSON.stringify({PageIndex:0,PageSize:20,CustomerId:Number(identity.customer['Customer ID'])})});
-  let live=null;
-  if(r.orderNumber){
-   const found=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',payload:JSON.stringify({PageIndex:0,PageSize:2,Number:String(r.orderNumber)})});
-   const data=found&&(found.Data||found.data);
-   if(data&&data.length===1&&String(data[0].Number||data[0].number)===String(r.orderNumber)){
-    const o=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+(data[0].Id||data[0].id),{method:'get'});
-    live={id:o.Id||o.id,number:o.OrderNumber||o.orderNumber,status:o.Status||o.status,customer:o.Customer||o.customer,location:o.ShipToLocation||o.shipToLocation,name:o.OrderName||o.orderName};
-   }else live={status:'ORDER_NOT_UNIQUE',search:found};
-  }
-  records.push({record:r,decision:decision,cachedOrders:matches,liveOrder:live,identity:identity,customerOrders:customerOrders});
- });
- return {at:new Date().toISOString(),candidates:records,budget:tmv3_strivenApiBudgetStatus_()};
-}
-`;
- const work={files:sidContent.files.map(f=>f.name==='90_Admin'?{...f,source:f.source+'\n'+helper}:f)};
- const crypto=require('node:crypto'); const hash=o=>crypto.createHash('sha256').update(JSON.stringify(o.files.map(f=>({name:f.name,type:f.type,source:f.source})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
- async function put(content){const r=await fetch(base+'projects/'+sid+'/content',{method:'PUT',headers:{Authorization:'Bearer '+a.access_token,'Content-Type':'application/json'},body:JSON.stringify({files:content.files}),redirect:'error'});if(!r.ok)throw Error('SOURCE_PUT_'+r.status);return r.json();}
- let attempted=false;
- try {
-  if(hash(await api(base+'projects/'+sid+'/content'))!==hash(sidContent))throw Error('PRE_SOURCE_DRIFT');
-  attempted=true;await put(work);
-  if(hash(await api(base+'projects/'+sid+'/content'))!==hash(work))throw Error('HELPER_READBACK_FAILED');
-  const out=await run('tmv3_candidateOrderAudit20261026');
-  fs.writeFileSync('pi-audit-evidence/result.json',JSON.stringify(out,null,2));
-  console.log(JSON.stringify(out));
- }finally{
-  if(attempted){const current=await api(base+'projects/'+sid+'/content');
-   if(hash(current)===hash(work))await put(sidContent);
-   if(hash(await api(base+'projects/'+sid+'/content'))!==hash(sidContent))throw Error('SOURCE_RESTORE_NOT_VERIFIED');
-   console.log('ORIGINAL_SOURCE_RESTORED_VERIFIED');
-  }
- }
+
+ const crypto=require('node:crypto');
+ const source=await api(base+'projects/'+sid+'/content');
+ const sourceHash=crypto.createHash('sha256').update(JSON.stringify(source.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
+ const out={at:new Date().toISOString(),sourceHash,health:await run('tmv3_healthCheck'),budgetBefore:await run('tmv3_strivenApiBudgetStatus'),discovery:await run('tmv3_refreshPreInspectionDiscovery'),sheetRefresh:await run('tmv3_refreshAutomationSheets'),events:[]};
+ for(const id of ['45i1sm9ogfbuck1eu760tetin4','7k61omkf38ffetovqsglehhbg4'])out.events.push({eventId:id+'@google.com',verification:await run('tmv3_verifyPreInspectionAutomation',[id+'@google.com'])});
+ out.budgetAfter=await run('tmv3_strivenApiBudgetStatus');
+ out.status=out.events.every(e=>{const r=e.verification.records.find(r=>r.source==='PRIMARY_SHARED');return r&&r.plans.length===1&&!r.plans[0].blocker&&r.plans[0].taskId&&r.plans[0].actions.every(a=>a==='VERIFY_CALENDAR_LINKS');})?'BOTH_PREINSPECTIONS_VERIFIED':'ATTENTION';
+ fs.mkdirSync('pi-audit-evidence',{recursive:true});fs.writeFileSync('pi-audit-evidence/result.json',JSON.stringify(out,null,2));console.log(JSON.stringify(out));
 })().catch(e=>{console.error(e.message);process.exitCode=1;});
