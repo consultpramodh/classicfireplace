@@ -1,0 +1,77 @@
+{
+  "status": "SOURCE_TRIGGER_DISCOVERY_AND_EVENTS_VERIFIED",
+  "version": "3.12.7-preinspection-precreate-order-status-r1",
+  "projects": [
+    {
+      "key": "v3",
+      "hash": "7409a4005742525b44be1a16cce03dc97e20ef0e3df097fb0a0acf6012bc76c3",
+      "verified": true
+    }
+  ],
+  "discoveryTotal": 3,
+  "discoveryReview": 0,
+  "verifiedEvents": 2,
+  "apiCount": 551,
+  "releaseRun": "https://github.com/consultpramodh/classicfireplace/actions/runs/40360497465",
+  "regressionCases": 489,
+  "taskVerification": [
+    {
+      "eventId": "45i1sm9ogfbuck1eu760tetin4@google.com",
+      "taskId": "19410",
+      "plan": "NO_CHANGE",
+      "blocker": "",
+      "checks": {
+        "orderCheck": "MATCH_NOT_ATTACHED",
+        "calendarTitleCheck": "MATCH",
+        "assignmentCheck": "MATCH",
+        "customerCheck": "MATCH",
+        "requestedByCheck": "MATCH",
+        "endCheck": "MATCH",
+        "locationCheck": "MATCH",
+        "startCheck": "MATCH",
+        "taskNameCheck": "MATCH"
+      }
+    },
+    {
+      "eventId": "7k61omkf38ffetovqsglehhbg4@google.com",
+      "taskId": "19411",
+      "plan": "NO_CHANGE",
+      "blocker": "",
+      "checks": {
+        "requestedByCheck": "MATCH",
+        "locationCheck": "MATCH",
+        "customerCheck": "MATCH",
+        "startCheck": "MATCH",
+        "calendarTitleCheck": "MATCH",
+        "taskNameCheck": "MATCH",
+        "assignmentCheck": "MATCH",
+        "endCheck": "MATCH",
+        "orderCheck": "MATCH_NOT_ATTACHED"
+      }
+    }
+  ],
+  "installClassifications": [
+    {
+      "name": "Helix Developments",
+      "orderNumber": "585733",
+      "status": "Approved"
+    },
+    {
+      "name": "Lara Hubernann",
+      "orderNumber": "584843",
+      "status": "Approved"
+    },
+    {
+      "name": "Gregory Reece",
+      "orderNumber": "586226",
+      "status": "Approved"
+    }
+  ],
+  "installTaskWrites": 0,
+  "scheduledHoursToronto": [
+    "08:00",
+    "13:00",
+    "17:00"
+  ],
+  "naturalScheduledRunObserved": false
+}
