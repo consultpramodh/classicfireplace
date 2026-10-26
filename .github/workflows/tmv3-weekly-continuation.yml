@@ -1,0 +1,45 @@
+name: Verify restored links before completing weekly repairs
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-weekly-continuation.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  continue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Wait for restoration outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node - <<'JS'
+          (async()=>{
+          for(;;){
+            const r=await fetch('https://api.github.com/repos/consultpramodh/classicfireplace/actions/runs/40399614654',{headers:{Authorization:'Bearer '+process.env.GH_TOKEN,'X-GitHub-Api-Version':'2022-11-28'}});
+            if(!r.ok)throw Error('RESTORATION_STATUS_HTTP_'+r.status);
+            const run=await r.json();
+            if(run.status==='completed'){if(run.conclusion!=='success')throw Error('RESTORATION_DID_NOT_PASS_NO_RESUME');console.log('Restoration passed; independent verification is required next.');return;}
+            await new Promise(resolve=>setTimeout(resolve,30000));
+          }
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          JS
+      - run: node --check tools/tmv3-weekly-continuation.cjs
+      - name: Independently verify Calendar formats then resume remaining weekly queues
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-weekly-continuation.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-continuation-${{ github.run_id }}
+          path: weekly-continuation-evidence/
+          retention-days: 30
