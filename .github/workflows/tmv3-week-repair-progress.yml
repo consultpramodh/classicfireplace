@@ -19,3 +19,5 @@ jobs:
       - run: node tools/tmv3-week-repair-progress.cjs
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+
+# Check native audit outcomes during the authorized weekly repair.
