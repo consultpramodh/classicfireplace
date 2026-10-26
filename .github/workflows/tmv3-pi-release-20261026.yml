@@ -1,0 +1,52 @@
+name: Release canonical PreInspection execution and discovery
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi-release-20261026.yml, ops/tmv3-pi-release-20261026-trigger.txt]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check tools/tmv3-pi-release-20261026.cjs
+      - name: Capture exact live projects and prepare guarded candidates
+        run: node tools/tmv3-pi-release-20261026.cjs prepare
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-release-PRE-${{ github.run_id }}
+          path: pi-release-evidence/
+          retention-days: 30
+      - name: Pre-push regression on actual live-source candidate
+        env:
+          TMV3_TEST_SOURCE_DIR: pi-release-evidence/work
+        run: |
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-pi-history-completion.js
+          node tools/test-tmv3-four-vertical-activation.cjs
+          node tools/test-tmv3-automatic-sheet-refresh.cjs
+          node tools/test-tmv3-vertical-evidence.cjs
+          node tools/test-tmv3-install-reminder-activation.cjs
+          node tools/test-tmv3-pi-discovery.cjs
+      - name: Retire superseded PreInspection entrypoints, update V3 and reconcile exact events
+        run: node tools/tmv3-pi-release-20261026.cjs apply
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pi-release-result-${{ github.run_id }}
+          path: pi-release-evidence/
+          retention-days: 30
