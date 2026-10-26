@@ -2275,6 +2275,7 @@ function tmv3_verticalEnrichEvidence_(vertical, record, plans) {
 
 function tmv3_verticalProductionCycle_(vertical, options) {
   options=options || {};
+  const weekScope=tmv3_verticalRepairScope_(vertical,options);
   const policy=TMV3.OPERATIONS;
   if (TMV3.MODE!=='PRODUCTION_WRITE' || policy.verticalProductionEnabled!==true ||
       (policy.verticalProductionVerticals||[]).indexOf(vertical)<0) return {status:'VERTICAL_DISABLED',vertical:vertical,writes:0};
@@ -2283,7 +2284,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
   const result={status:'ACTIVE_NO_READY_RECORD',vertical:vertical,writes:0,scanned:0,results:[]};
   try {
     const props=PropertiesService.getScriptProperties(),now=Date.now();
-    const stateKey='TMV3_VERTICAL_SWEEP_'+vertical;
+    const stateKey='TMV3_VERTICAL_SWEEP_'+vertical+(weekScope ? '_RANGE_'+weekScope.fromDay+'_'+weekScope.toDay : '');
     let state=JSON.parse(props.getProperty(stateKey)||'null');
     if(!state || state.complete) {
       if(vertical==='Install') {
@@ -2297,7 +2298,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
       const today=tmv3_step6LocalDay_(new Date()),seen={};
       const events=tmv3_rows_(TMV3.VERTICALS[vertical].sheet).filter(function(row){
         const id=tmv3_clean_(row['Event ID']),day=tmv3_step6LocalDay_(row['Calendar Start']);
-        if(!id||seen[id]||!day||day<today)return false;seen[id]=true;return true;
+        if(!id||seen[id]||!day||day<(weekScope ? weekScope.fromDay : today)||weekScope && day>=weekScope.toDay)return false;seen[id]=true;return true;
       }).sort(function(a,b){return new Date(a['Calendar Start'])-new Date(b['Calendar Start']);});
       const ids=events.map(function(row){return tmv3_clean_(row['Event ID']);});
       const chunks=Math.ceil(ids.length/50);
@@ -2317,6 +2318,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
       let writeStarted=false;
       try {
         const record=tmv3_findFreshEventRecord_(vertical,id);
+        if(weekScope){const freshDay=tmv3_step6LocalDay_(record.start);if(!freshDay||freshDay<weekScope.fromDay||freshDay>=weekScope.toDay){result.results.push({eventId:id,status:'SKIPPED_MOVED_OUTSIDE_REPAIR_RANGE'});continue;}}
         if(vertical==='Install' && !tmv3_installCreatorAllowed_(record)){result.results.push({eventId:id,status:'SKIPPED_CREATOR_UNVERIFIED'});continue;}
         let plans=tmv3_step7FreshPlansForEvent_(vertical,id);
         const alreadyFulfilled=plans.length>0 && plans.every(function(p){return p.disposition==='FULFILLED_NO_RECREATE' && p.plan==='VERIFY_ONLY_HISTORY_NO_WRITE' && p.readStatus==='FRESH_TASK_GET' && p.actions.length===0 && p.customerCheck==='MATCH' && tmv3_step6IsFulfilledStatus_(p.taskStatus) && tmv3_step6TaskTouchesEventDay_({start:p.calendarStart},{Start:p.taskStart,Due:p.taskDue});});
@@ -2738,3 +2740,19 @@ function tmv3_installReadiness() {
 }
 
 function tmv3_installCreatorAllowed_(record){return /@classicfireplace\.ca$/i.test(tmv3_normEmail_(record && record.creator || ''));}
+
+// Google Apps Script: date-scoped owner repair through the unchanged canonical worker.
+function tmv3_verticalRepairScope_(vertical,options) {
+  if(!options || !options.fromDay && !options.toDay)return null;
+  if(['Install','Delivery','Service'].indexOf(vertical)<0)throw Error('REPAIR_VERTICAL_INVALID');
+  const valid=function(s){return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s+'T12:00:00Z').getTime()) && new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s;};
+  if(!valid(options.fromDay)||!valid(options.toDay)||options.fromDay>=options.toDay||new Date(options.toDay)-new Date(options.fromDay)>7*86400000)throw Error('REPAIR_RANGE_INVALID_MAX_SEVEN_DAYS');
+  return {fromDay:options.fromDay,toDay:options.toDay};
+}
+function tmv3_runWeeklyVerticalRepair(vertical,fromDay,toDay) {
+  const scope=tmv3_verticalRepairScope_(vertical,{fromDay:fromDay,toDay:toDay});
+  if(!scope)throw Error('REPAIR_RANGE_REQUIRED');
+  const result=tmv3_verticalProductionCycle_(vertical,scope);
+  PropertiesService.getScriptProperties().setProperty('TMV3_SHEET_REFRESH_PENDING','true');
+  return result;
+}
