@@ -1,24 +1,24 @@
 {
-  "version": "3.12.6-other-vertical-visit-guard-r1",
+  "version": "3.12.7-preinspection-precreate-order-status-r1",
   "eventIds": [],
   "projects": [
     {
       "key": "v3",
       "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-      "beforeHash": "98663ec336d03567bdbbc35b06f54120a36b42cacf81e484be8f1975b716baec",
-      "afterHash": "41131a303016f4138a1d0059bab42a8c33f7caaf2043c86683376cb1e56015da",
+      "beforeHash": "41131a303016f4138a1d0059bab42a8c33f7caaf2043c86683376cb1e56015da",
+      "afterHash": "7409a4005742525b44be1a16cce03dc97e20ef0e3df097fb0a0acf6012bc76c3",
       "files": [
         {
           "name": "00_Config",
           "path": "release-candidates/pi-20261026/00_Config.js",
-          "before": "7934c07505688d2db4c65a68bd16c994a60ba1d37bc68e70c6bc890f5dc3d15b",
-          "after": "79e231004a789aafc8efd3b42748f3e90297acd4fda1dfcc116e0f0793060a39"
+          "before": "79e231004a789aafc8efd3b42748f3e90297acd4fda1dfcc116e0f0793060a39",
+          "after": "d97d5946e891b66e7b53e38bf89fa8a7c714aa7e7ace51002e0538c712374aaf"
         },
         {
           "name": "60_Automation",
           "path": "release-candidates/pi-20261026/60_Automation.js",
-          "before": "359afb7602d7fe889c027c08ff119a87d5fc821897f51d7d81180cfcf3241395",
-          "after": "63255f0165ea4d3870e3418555be50b221b16ec515a95ff741c7af8c7fc232f6"
+          "before": "63255f0165ea4d3870e3418555be50b221b16ec515a95ff741c7af8c7fc232f6",
+          "after": "e9211e2d48466d5f7b8d512d1da43cbd65961841e3850502e20d4265d10b192e"
         }
       ]
     }
