@@ -156,11 +156,11 @@ function tmv3_refreshMorningOps() {
   });
 
   const discovery=tmv3_preInspectionDiscoveryStatus();
-  (discovery.records || []).filter(function(record){return record.status==='REVIEW_VISIT_TYPE';}).forEach(function(record){
-    attentionRows.push({values:['CHECK',tmv3_compactDateTime_(record.start),'PreInspection?',record.title,
-      record.reason,'Confirm visit type: add Preinspect for Yes or Not preinspect for No to the source title.'],
+  (discovery.records || []).filter(function(record){return record.status==='REVIEW_VISIT_TYPE' || record.status==='INSTALLATION';}).forEach(function(record){
+    attentionRows.push({values:['CHECK',tmv3_compactDateTime_(record.start),record.status==='INSTALLATION'?'Install':'PreInspection?',record.title,
+      record.reason,record.status==='INSTALLATION'?'Route to Installation workflow; no PreInspection Task.':'Review customer, site and current Sales Order evidence.'],
       url:tmv3_calendarEventUrl_(record.eventId,record.calendarId),calendarUrl:tmv3_calendarEventUrl_(record.eventId,record.calendarId),
-      taskUrl:'',eventId:record.eventId,note:'Detected on Stephen calendar; no Striven Task or Calendar mutation authorized by discovery.'});
+      taskUrl:'',eventId:record.eventId,note:record.status==='INSTALLATION' ? 'Verified approved/in-progress Order at this job site. Route to Install; no PreInspection Task.' : 'Likely visit awaiting verified customer, job site and current Order classification.'});
   });
   if(discovery.truncated)attentionRows.push({values:['CHECK','','PreInspection?','Additional candidates',
     'Discovery has '+discovery.total+' candidates; compact display is limited.','Use tmv3_refreshPreInspectionDiscovery / audit source calendars.'],url:'',note:'',taskUrl:'',calendarUrl:'',eventId:''});
