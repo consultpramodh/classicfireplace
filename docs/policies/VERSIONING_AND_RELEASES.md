@@ -60,3 +60,24 @@ A local `git commit` or generated handoff artifact is not a successful GitHub sy
 ## Public-repository security
 
 This repository is public. Never commit credentials, tokens, Script Properties values, customer PII, private logs, or source snapshots containing those items. Historical raw archives should be sanitized before publication or stored in an appropriate private repository instead.
+
+## Mandatory Apps Script retention rule
+
+Effective 2026-10-26. Applies to CF Tasks V3 releases in this repository and supersedes the earlier keep-one-version convention.
+
+- Retain at most five saved numbered Apps Script versions per project. Keep the current deployed release and the newest rollback versions within those five slots.
+- On every new numbered version, inventory all saved versions and all deployment references, archive every not-yet-backed-up superseded version, verify the durable backup by read-back and source hashes, and remove eligible versions outside the retained set.
+- Preserve complete restorable source, manifest, script ID, version number, creation time, hashes, and deployment mapping. Store sensitive source only in an approved private backup destination; a public repository may contain only sanitized material.
+- Never delete an unverified backup candidate or a version referenced by any deployment. An older deployment-pinned version takes one of the five slots; do not silently move or remove deployments to make room.
+- If more than five deployment-pinned versions exist, or backup/deletion access fails, stop further numbered-version creation and report the exact blocker. Preserve the running system.
+- Do not create numbered versions for read-only audits, ordinary checks, individual-event runs, retries, or unchanged source. Use the existing execution mechanism when appropriate.
+- Verify the complete post-cleanup inventory. A release is not retention-complete until the saved-version count is at most five and each deleted version has a verified recoverable backup.
+- Record the before/after inventory, backup locations and hashes, retained/deleted version numbers, protected deployments, timestamp, and any blocker. Never report cleanup as completed from backup success alone.
+- Run this check at each controlled release. A version created outside the controlled release path must be reconciled on the next check; do not claim continuous monitoring unless an actual monitor has been installed and verified.
+
+### Enforcement capability
+
+Google's documented Apps Script Versions REST resource currently exposes create, get, and list, but no delete method:
+https://developers.google.com/apps-script/api/reference/rest/v1/projects.versions
+
+Automatic version deletion is not established by this policy file. Use only an authorized supported deletion surface, and report pending cleanup honestly when that surface is unavailable. Do not fabricate a REST delete endpoint or bypass browser access restrictions. The initial 200-version backlog remains pending until independently verified as removed.
