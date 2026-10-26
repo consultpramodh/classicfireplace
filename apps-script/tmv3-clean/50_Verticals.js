@@ -216,6 +216,23 @@ function tmv3_desiredTaskName_(record, options) {
     };
   }
 
+  if(record.vertical!=='PreInspection') {
+    if(!/^\d+$/.test(String(context.orderNumber||'')))return {status:'BLOCKED',value:'',reason:'Verified Sales Order number required for standard Task naming.'};
+    const source=tmv3_clean_(options.sourceTaskTitle);
+    const numbers=[];let match;const pattern=/\bSO\s*#?\s*(\d{4,9})\b/gi;
+    while((match=pattern.exec(source))!==null)if(numbers.indexOf(match[1])<0)numbers.push(match[1]);
+    if(numbers.length>1)return {status:'BLOCKED',value:'',reason:'Existing Task title carries multiple SO numbers; review before renaming.'};
+    let standard;
+    if(source && numbers.length===1)standard=source.replace(/\bSO\s*#?\s*\d{4,9}\b/gi,'SO#'+context.orderNumber);
+    else if(source){
+      const level=source.match(/^(Level\s+\d+)\s*-\s*(.*)$/i);
+      standard=level ? level[1]+' - SO#'+context.orderNumber+' - '+level[2] : 'SO#'+context.orderNumber+' - '+source;
+    } else standard='SO#'+context.orderNumber+' - '+context.customerName+' - '+context.phone;
+    const fireplaceNumber=Number(record.serviceFireplaceNumber||0);
+    if(record.vertical==='Service' && fireplaceNumber>0 && !new RegExp('\\bFP#'+fireplaceNumber+'\\b','i').test(standard))standard+=' - FP#'+fireplaceNumber;
+    return {status:'READY',value:standard,reason:'',source:'VERIFIED_ORDER_PRESERVE_EXISTING_STANDARD_TASK_NAME'};
+  }
+
   let value = [
     context.customerName,
     context.address,

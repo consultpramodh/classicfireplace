@@ -1246,7 +1246,7 @@ function tmv3_titleNormalizationRegression() {
     'INSTALL_CANONICAL_TASK_NAME',
     installTask.status === 'READY' &&
       installTask.value ===
-        'John Smith - 123 Main St, Toronto - (416) 555-1212',
+        'SO#585275 - John Smith - (416) 555-1212',
     JSON.stringify(installTask)
   );
   check(
