@@ -2,7 +2,7 @@ name: Correct vertical link formats and restore touched events
 on:
   push:
     branches: [task_mapping]
-    paths: [.github/workflows/tmv3-link-format-release.yml]
+    paths: [ops/tmv3-link-format-release-trigger.txt]
 permissions:
   contents: read
 concurrency:
