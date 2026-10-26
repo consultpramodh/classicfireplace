@@ -1,8 +1,8 @@
-name: Targeted PreInspection audit 20261026
+name: Audit PreInspection classification and completed tasks
 on:
   push:
     branches: [task_mapping]
-    paths: [.github/workflows/tmv3-pi-audit-20261026.yml, tools/tmv3-pi-audit-20261026.cjs]
+    paths: [ops/tmv3-pi-classification-audit-trigger.txt]
 permissions:
   contents: read
 concurrency:
