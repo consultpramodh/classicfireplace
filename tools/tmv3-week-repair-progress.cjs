@@ -12,4 +12,5 @@ console.log(JSON.stringify({health:await run('tmv3_healthCheck'),sweeps:await ru
 
 const crypto=require('crypto'),source=await api(base+'projects/'+sid+'/content');
 console.log(JSON.stringify({sourceHash:crypto.createHash('sha256').update(JSON.stringify(source.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex'),hasWeeklyScope:source.files.find(f=>f.name==='60_Automation').source.includes('function tmv3_runWeeklyVerticalRepair(')}));
+const audit=await api('https://sheets.googleapis.com/v4/spreadsheets/1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E/values/'+encodeURIComponent("'TM Audit'!A4923:I5100"));console.log(JSON.stringify({audit:(audit.values||[]).map(row=>({at:row[0],vertical:row[1],eventId:row[2],taskId:row[3],action:row[4],status:row[5],detail:row[4]==='STEP7_ALL'||row[4]==='VERTICAL_SWEEP_EVENT'?row[6]:undefined}))}));
 })().catch(e=>{console.error(e.message);process.exitCode=1;});
