@@ -1,2 +1,3 @@
-Release 3.12.6 after the in-flight two-event reconciliation completes.
-Add other-vertical intent guards, preserve the canonical intake sequence, and independently verify Evan and Wells without replaying Task writes.
+Release 3.12.7: final fresh Order status gate immediately before CREATE/RECREATE.
+Keep inferred Order evidence across asynchronous intake; Approved or In Progress blocks Preinspection creation.
+Verify existing Tasks 19410 and 19411 without replaying their writes; refresh operator sheets.
