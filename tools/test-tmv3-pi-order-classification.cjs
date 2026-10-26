@@ -11,7 +11,10 @@ ctx.tmv3_preInspectionCustomerLocationsFresh_=()=>[{'Customer ID':63005,'Locatio
 ctx.tmv3_addressStrongMatch_=()=>true;ctx.tmv3_locationFullAddress_=()=>base.location;
 ctx.tmv3_fetchJson_=(url,opts)=>{calls++;if(fail)throw Error('HTTP 503');if(url.endsWith('/search'))return {data:Array.from({length:searchCount},()=>({id:27976,number:'586242'})),totalCount:searchTotal};return {id:27976,orderNumber:'586242',customer:{id:63005},shipToLocation:{id:site},status:{id:statusId,name:statusName}};};
 let cases=0;function check(expected,change={}){const r=ctx.tmv3_preInspectionClassifyLikely_({...base,...change},cfg,true);assert.equal(r.status,expected,JSON.stringify(r));cases++;return r;}
-check('EXPLICIT_PREINSPECTION');statusId=22;statusName='Approved';check('INSTALLATION');statusId=25;statusName='In Progress';check('INSTALLATION');
+check('EXPLICIT_PREINSPECTION');
+for(const title of ['Service Customer 416-555-0100','Delivery Customer 416-555-0100','Install Customer 416-555-0100'])check('REVIEW_VISIT_TYPE',{title});
+check('REVIEW_VISIT_TYPE',{descriptionClean:'Maintenance visit'});
+statusId=22;statusName='Approved';check('INSTALLATION');statusId=25;statusName='In Progress';check('INSTALLATION');
 statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION',{orderNumber:''});
 check('REVIEW_VISIT_TYPE',{descriptionClean:'Return to measure filler. Install booked Nov 16.'});
 statusId=22;statusName='Quoted';check('REVIEW_VISIT_TYPE');statusName='Approved';site=999;check('REVIEW_VISIT_TYPE');site=58625;
