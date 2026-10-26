@@ -14,7 +14,7 @@ for(const v of ['Install','Delivery','Service']){
 const r=await api('https://sheets.googleapis.com/v4/spreadsheets/1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E/values/'+v+'!A1:AZ');
 const [headers,...rows]=r.values||[];console.log(JSON.stringify({vertical:v,headers,total:rows.length}));
 const selected=rows.map(row=>Object.fromEntries(headers.map((h,i)=>[h,row[i]||'']))).filter(row=>{const s=row['Calendar Start'];return s>='2026-10-26'&&s<'2026-11-02';});
-console.log(JSON.stringify({vertical:v,weekly: selected.map(row=>Object.fromEntries(Object.entries(row).filter(([h])=>!/name|phone|address|description|notes|title|email|customer|requested by/i.test(h))))}));
+console.log(JSON.stringify({vertical:v,weekly: selected.map(row=>Object.fromEntries(Object.entries(row).filter(([h])=>['Event ID','Calendar Start','Calendar End','Mapping Status','Issue / Next Action','Task Status','Order / Work Order (Calendar)','Existing Task Link','Existing Order Link'].includes(h))))}));
 for(let i=0;i<selected.length;i+=4){const ids=selected.slice(i,i+4).map(row=>row['Event ID']);console.log(JSON.stringify({vertical:v,diagnostics:await run('tmv3_verticalPatchDiagnostics',[v,ids])}));}
 }
 })().catch(e=>{console.error(e.message);process.exitCode=1;});
