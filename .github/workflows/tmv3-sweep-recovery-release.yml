@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '22'
       - run: node tools/test-tmv3-full-vertical-sweep.cjs
-      - run: node tools/test-tmv3-full-sweep.cjs
+      - run: node tools/test-tmv3-standard-schedule.cjs
       - name: Pull live source and prepare exact two-file patch
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}

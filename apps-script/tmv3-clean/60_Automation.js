@@ -2283,7 +2283,8 @@ function tmv3_verticalProductionCycle_(vertical, options) {
     const stateKey='TMV3_VERTICAL_SWEEP_'+vertical;
     let state=JSON.parse(props.getProperty(stateKey)||'null');
     if(!state || state.complete) {
-      tmv3_step6TaskDecisionRunCached('FULL_VERTICAL_SWEEP_'+vertical);
+      // Consume the existing intake queue; each event is freshly verified below.
+      // Rebuilding every operator sheet here can consume the entire execution.
       const today=tmv3_step6LocalDay_(new Date()),seen={};
       const events=tmv3_rows_(TMV3.VERTICALS[vertical].sheet).filter(function(row){
         const id=tmv3_clean_(row['Event ID']),day=tmv3_step6LocalDay_(row['Calendar Start']);
