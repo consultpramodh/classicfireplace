@@ -5,6 +5,9 @@ on:
     paths: [.github/workflows/tmv3-week-repair-progress.yml]
 permissions:
   contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: true
 jobs:
   status:
     runs-on: ubuntu-latest
