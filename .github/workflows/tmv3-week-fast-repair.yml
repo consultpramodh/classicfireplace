@@ -2,12 +2,12 @@ name: Resume weekly repair with read-only checks
 on:
   push:
     branches: [task_mapping]
-    paths: [.github/workflows/tmv3-week-fast-repair.yml]
+    paths: [ops/tmv3-week-fast-repair-trigger.txt]
 permissions:
   contents: read
 concurrency:
   group: task-mapping-v3-clean-bootstrap
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   repair:
     runs-on: ubuntu-latest
