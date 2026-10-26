@@ -1,30 +1,33 @@
 {
-  "version": "3.12.3-preinspection-intake-revalidation-r1",
-  "eventIds": [],
+  "version": "3.12.4-order-aware-likely-preinspection-r1",
+  "eventIds": [
+    "45i1sm9ogfbuck1eu760tetin4@google.com",
+    "7k61omkf38ffetovqsglehhbg4@google.com"
+  ],
   "projects": [
     {
       "key": "v3",
       "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-      "beforeHash": "a177dbb75040c0485801950285d9597f78c3ae05f335eec66e26fa7cb5827fb0",
-      "afterHash": "2fd9cb8c04f41678ae35a8f27d4db7c06201619c0c83b73da2c753baec345334",
+      "beforeHash": "2fd9cb8c04f41678ae35a8f27d4db7c06201619c0c83b73da2c753baec345334",
+      "afterHash": "1302b9f75a39bdff17c79f673654c8138f494e6f202d93693eb3f15e637e9b78",
       "files": [
         {
           "name": "00_Config",
           "path": "release-candidates/pi-20261026/00_Config.js",
-          "before": "1c653214d4a798be79b414ab52d1e559abb43f20b492721c4526a66c9e36dc40",
-          "after": "8093421bb3c838ae363f0bd7297d7c74d56c7121a3b043a1890ec0d924c8103c"
+          "before": "8093421bb3c838ae363f0bd7297d7c74d56c7121a3b043a1890ec0d924c8103c",
+          "after": "8020ebfd6202d90686bc6517f8b5eee3d2e924ac485bd88354f38bdb4b8d0091"
         },
         {
           "name": "60_Automation",
           "path": "release-candidates/pi-20261026/60_Automation.js",
-          "before": "cbae9377ad793be9e79fee782f3b9da4d4651a8276093d324e59e098c1271987",
-          "after": "db6fbf675998826574333056a2167853459df92fc36cbbc7454ba281fdaed62b"
+          "before": "db6fbf675998826574333056a2167853459df92fc36cbbc7454ba281fdaed62b",
+          "after": "370475362804d4d0c8d747f9d9ad75ea3915c61a23a656be7c3dc515ac0f815c"
         },
         {
           "name": "80_MorningOps",
           "path": "release-candidates/pi-20261026/80_MorningOps.js",
-          "before": "05dfb6e4de3fbf9ecbcb0a53f710dbb95dedb9430cce5d1907bbb5863772132b",
-          "after": "8e7b0c722b4829ed7a20b5f1b6205ee51d1acc10961fd2ed0ed62019372ef284"
+          "before": "8e7b0c722b4829ed7a20b5f1b6205ee51d1acc10961fd2ed0ed62019372ef284",
+          "after": "b9e72bdeccb85f630ae1509ca5779e9cdb62af84359f3053e3dd695e04b33d06"
         }
       ]
     }
@@ -37,7 +40,7 @@
     }
   ],
   "verifyEventIds": [
-    "72ve6bam2kgpvq4tiiuc3mitht@google.com",
-    "50cdk50ursqtdg5me1dleu4u1j@google.com"
+    "45i1sm9ogfbuck1eu760tetin4@google.com",
+    "7k61omkf38ffetovqsglehhbg4@google.com"
   ]
 }
