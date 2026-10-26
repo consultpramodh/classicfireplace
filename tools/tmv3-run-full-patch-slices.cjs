@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('node:fs');const {profiles}=require('./tmv3-execution-access-diagnostic.js');
+(async()=>{const ps=profiles(JSON.parse(process.env.CLASPRC_JSON));if(ps.length!==1)throw Error('ONE_PROFILE');const p=ps[0];const ar=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p.client,client_secret:p.secret,refresh_token:p.refresh})});if(!ar.ok)throw Error('AUTH');const a=await ar.json();
+async function api(url,body){const r=await fetch(url,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+a.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(650000)});if(!r.ok)throw Error('HTTP_'+r.status);return r.json();}
+const base='https://script.googleapis.com/v1/',sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt',inv=await api(base+'projects/'+sid+'/deployments'),d=inv.deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(d.length!==1)throw Error('DEPLOYMENT');
+for(const vertical of ['Service','Delivery','Install']){const r=await api(base+'scripts/'+encodeURIComponent(d[0].deploymentId)+':run',{function:'tmv3_run'+vertical+'Automation',devMode:true});if(r.error)throw Error(JSON.stringify(r.error));console.log(JSON.stringify({vertical,result:r.response.result}));}
+const status=await api(base+'scripts/'+encodeURIComponent(d[0].deploymentId)+':run',{function:'tmv3_fullVerticalSweepStatus',devMode:true});console.log(JSON.stringify({status:status.response&&status.response.result,error:status.error}));
+
+for(const v of ['Install','Delivery','Service']){const r=await api('https://sheets.googleapis.com/v4/spreadsheets/1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E/values/'+v+'!A1:AO');const rows=r.values||[],headers=rows.shift()||[];const counts={};for(const row of rows){const key=row[9]+' | '+row[10];counts[key]=(counts[key]||0)+1;}console.log(JSON.stringify({vertical:v,headers,total:rows.length,counts,examples:rows.slice(0,12)}));}
+})().catch(e=>{console.error(e.message);process.exitCode=1;});

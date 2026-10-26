@@ -1,0 +1,26 @@
+name: Run and verify full patch queue slices
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-run-full-patch-slices.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read current patch status and sheet evidence
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-run-full-patch-slices.cjs
+
+# Read durable sweep progress and actual trigger execution statuses.
