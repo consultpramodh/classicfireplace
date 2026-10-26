@@ -1,5 +1,5 @@
 {
-  "version": "3.12.4-order-aware-likely-preinspection-r1",
+  "version": "3.12.5-likely-preinspection-intake-sequence-r1",
   "eventIds": [
     "45i1sm9ogfbuck1eu760tetin4@google.com",
     "7k61omkf38ffetovqsglehhbg4@google.com"
@@ -8,26 +8,20 @@
     {
       "key": "v3",
       "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-      "beforeHash": "2fd9cb8c04f41678ae35a8f27d4db7c06201619c0c83b73da2c753baec345334",
-      "afterHash": "1302b9f75a39bdff17c79f673654c8138f494e6f202d93693eb3f15e637e9b78",
+      "beforeHash": "1302b9f75a39bdff17c79f673654c8138f494e6f202d93693eb3f15e637e9b78",
+      "afterHash": "98663ec336d03567bdbbc35b06f54120a36b42cacf81e484be8f1975b716baec",
       "files": [
         {
           "name": "00_Config",
           "path": "release-candidates/pi-20261026/00_Config.js",
-          "before": "8093421bb3c838ae363f0bd7297d7c74d56c7121a3b043a1890ec0d924c8103c",
-          "after": "8020ebfd6202d90686bc6517f8b5eee3d2e924ac485bd88354f38bdb4b8d0091"
+          "before": "8020ebfd6202d90686bc6517f8b5eee3d2e924ac485bd88354f38bdb4b8d0091",
+          "after": "7934c07505688d2db4c65a68bd16c994a60ba1d37bc68e70c6bc890f5dc3d15b"
         },
         {
           "name": "60_Automation",
           "path": "release-candidates/pi-20261026/60_Automation.js",
-          "before": "db6fbf675998826574333056a2167853459df92fc36cbbc7454ba281fdaed62b",
-          "after": "370475362804d4d0c8d747f9d9ad75ea3915c61a23a656be7c3dc515ac0f815c"
-        },
-        {
-          "name": "80_MorningOps",
-          "path": "release-candidates/pi-20261026/80_MorningOps.js",
-          "before": "8e7b0c722b4829ed7a20b5f1b6205ee51d1acc10961fd2ed0ed62019372ef284",
-          "after": "b9e72bdeccb85f630ae1509ca5779e9cdb62af84359f3053e3dd695e04b33d06"
+          "before": "370475362804d4d0c8d747f9d9ad75ea3915c61a23a656be7c3dc515ac0f815c",
+          "after": "359afb7602d7fe889c027c08ff119a87d5fc821897f51d7d81180cfcf3241395"
         }
       ]
     }
