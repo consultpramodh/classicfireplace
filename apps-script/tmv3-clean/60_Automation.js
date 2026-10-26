@@ -2322,7 +2322,16 @@ function tmv3_verticalProductionCycle_(vertical, options) {
         if(plans.some(function(p){return p.actualRequestedById && p.expectedRequestedById && (String(p.actualRequestedById)!==String(p.expectedRequestedById) || p.actualRequestedByType!==p.expectedRequestedByType);})) {
           result.results.push({eventId:id,status:'REVIEW_EXISTING_REQUESTED_BY_CONFLICT'});continue;
         }
-        const prior=JSON.parse(props.getProperty(key)||'null');
+        let prior=JSON.parse(props.getProperty(key)||'null');
+        // This exact local validation error occurs before any business mutation
+        // in tmv3_step7FreshCriticalOwnership_. It is a proven rejection, not
+        // an unknown network/write outcome. Other uncertain writes stay held.
+        if(prior && prior.state==='UNCERTAIN' &&
+          /^Fresh Customer existence verification expected one Customer \d+; found \d+\.$/.test(prior.error||'') &&
+          Number((prior.error.match(/found (\d+)/)||[])[1])>1) {
+          props.deleteProperty(key);prior=null;
+          tmv3_audit_(vertical,id,'','KNOWN_PREWRITE_REJECTION_RECOVERED','PASS','Duplicate report rows for one Customer ID; canonical ownership checks remain required.');
+        }
         const noTaskActions=plans.every(function(p){return p.plan==='NO_CHANGE' && (p.actions||[]).every(function(a){return a==='VERIFY_CALENDAR_LINKS';});});
         if(prior && ['INTENT','UNCERTAIN'].indexOf(prior.state)>=0 && !noTaskActions) {
           result.results.push({eventId:id,status:'UNCERTAIN_RECONCILIATION_REQUIRED'});continue;

@@ -1,0 +1,6 @@
+'use strict';const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');const c={};vm.createContext(c);vm.runInContext(fs.readFileSync('apps-script/tmv3-clean/58_Operations.js','utf8'),c);
+c.tmv3_step7ValidateExecutionContract_=x=>x;c.tmv3_clean_=x=>String(x||'');c.tmv3_norm_=x=>String(x||'').toLowerCase();c.TMV3={PROPERTIES:{CUSTOMERS:['REPORT']}};c.tmv3_normalizeCustomer_=x=>x;let rows,orderChecked=0,locationChecked=0;c.tmv3_reportRows_=()=>rows;c.tmv3_step7FreshLocationOwnership_=()=>{locationChecked++;return {status:'VERIFIED'};};c.tmv3_step7FreshOrderOwnership_=()=>{orderChecked++;return {status:'VERIFIED'};};const contract={vertical:'Delivery',expectedCustomerId:'33468'};
+for(const r of [[['33468']],[['33468'],['33468']],[['33468'],['999'],['33468']]]){rows=r;assert.doesNotThrow(()=>c.tmv3_step7FreshCriticalOwnership_(contract,{}));}
+assert.equal(orderChecked,3);assert.equal(locationChecked,3);rows=[['999']];assert.throws(()=>c.tmv3_step7FreshCriticalOwnership_(contract,{}));assert.equal(orderChecked,3);
+rows=[['33468'],['33468']];c.tmv3_step7FreshOrderOwnership_=()=>{throw Error('WRONG_ORDER_OWNER');};assert.throws(()=>c.tmv3_step7FreshCriticalOwnership_(contract,{}),/WRONG_ORDER_OWNER/);
+console.log('PASS: duplicate rows for same Customer ID accepted; absent Customer and conflicting fresh Order ownership blocked');

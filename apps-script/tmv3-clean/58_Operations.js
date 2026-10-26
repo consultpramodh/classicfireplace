@@ -511,7 +511,9 @@ function tmv3_step7FreshCriticalOwnership_(contract, eventRecord) {
           tmv3_clean_(contract.expectedCustomerId);
       });
 
-    if (customers.length !== 1) {
+    // A joined report may repeat the same primary Customer ID. This check
+    // establishes existence only; fresh Order/Location ownership still gates writes.
+    if (customers.length === 0) {
       throw new Error(
         'Fresh Customer existence verification expected one Customer ' +
         contract.expectedCustomerId + '; found ' +

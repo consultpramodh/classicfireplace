@@ -1,0 +1,41 @@
+name: Repair false customer duplicate blocker and resume queues
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-identity-repair-release.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/test-tmv3-full-vertical-sweep.cjs
+      - run: node tools/test-tmv3-standard-schedule.cjs
+      - run: node tools/test-tmv3-customer-existence-duplicates.cjs
+      - name: Pull live source and prepare exact two-file patch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-identity-repair-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: identity-repair-PRE-${{ github.run_id }}
+          path: identity-repair-evidence/
+      - name: Push same project and verify live schedule
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-identity-repair-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: identity-repair-result-${{ github.run_id }}
+          path: identity-repair-evidence/
