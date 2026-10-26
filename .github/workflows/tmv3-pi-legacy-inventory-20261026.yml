@@ -1,0 +1,22 @@
+name: Inspect legacy PreInspection trigger ownership
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi-legacy-inventory-20261026.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/tmv3-pi-audit-20261026.cjs legacy
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
