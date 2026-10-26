@@ -1,1 +1,3 @@
-2026-10-26: Apply 3.12.3 intake revalidation and discovery metric correction. The two event repairs are already independently NO_CHANGE; this release performs metadata refresh and read-only re-verification only, without replaying Task mutations.
+Release 3.12.5: intake before copy-preservation; current source 1302b9f75a39bdff17c79f673654c8138f494e6f202d93693eb3f15e637e9b78.
+Evan and Wells remain unprocessed; prior run stopped before intake and Task writes.
+Reconcile both using the canonical worker, then independently verify both Tasks and calendar links.
