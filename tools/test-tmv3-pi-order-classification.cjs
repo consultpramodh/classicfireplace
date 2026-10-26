@@ -25,10 +25,26 @@ const before=calls;check('IGNORE',{creator:'jay@classicfireplace.ca'});check('IG
 statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION');statusId=22;statusName='Approved';check('INSTALLATION');
 // Same fingerprint must still re-read status at the final pre-invite check.
 assert(calls>before);
+
+// A quote approved between intake and Task creation must be reclassified, including
+// visits whose SO was inferred rather than authored in Calendar.
+{
+ const metadata={};ctx.tmv3_hash_=v=>String(v);ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>metadata[k]||null})};
+ const plan={expectedCustomerId:'63005',expectedLocationId:'58625'};
+ statusId=19;statusName='Quoted';assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan).status,'FRESH_PREAPPROVAL_ORDER_VERIFIED');cases++;
+ statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/REQUIRES_INSTALLATION/);cases++;
+ statusId=25;statusName='In Progress';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/REQUIRES_INSTALLATION/);cases++;
+ assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan).status,'OPTIONAL_ORDER_NOT_ATTACHED');cases++;
+ metadata['TMV3_PI_INFERRED_'+base.eventId]=JSON.stringify({orderId:27976,orderNumber:'586242',customerId:63005,locationId:58625});
+ statusId=19;statusName='Quoted';assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan).status,'FRESH_PREAPPROVAL_ORDER_VERIFIED');cases++;
+ statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan),/REQUIRES_INSTALLATION/);cases++;
+ assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},{...plan,expectedCustomerId:'999'}),/EVIDENCE_CONFLICT/);cases++;
+}
+
 // Execute the actual canonical cycle: a missing primary copy must be promoted
 // before any operation requiring both calendar copies. Asynchronous propagation
 // must leave the event pending without running preservation or task resolution.
-const props={};ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>props[k]||null,setProperty:(k,v)=>{props[k]=v;}})};
+const props={};ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>props[k]||null,setProperty:(k,v)=>{props[k]=v;},deleteProperty:k=>{delete props[k];}})};
 ctx.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})};
 ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};
 ctx.tmv3_strivenApiBudgetStatus_=()=>({remaining:1000,count:0,exhausted:false});
