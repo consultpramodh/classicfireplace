@@ -7,7 +7,7 @@ permissions:
   contents: read
 concurrency:
   group: task-mapping-v3-clean-bootstrap
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event.head_commit.message == 'task-mapping: start authorized weekly repairs after read-only preflight' }}
 jobs:
   repair:
     runs-on: ubuntu-latest
