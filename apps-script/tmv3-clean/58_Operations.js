@@ -375,7 +375,8 @@ function tmv3_step7BundleFromContract_(contract) {
 
   const resolved = {
     taskId:Number(contract.taskId || 0) || '',
-    task:contract.taskId ? String(contract.taskId) : '',
+    task:contract.taskId ? (tmv3_clean_(contract.desiredTaskName || contract.actualTaskName) || String(contract.taskId)) : '',
+    order:tmv3_clean_(eventRecord.orderNumber),
     customerId:tmv3_clean_(contract.expectedCustomerId),
     locationId:tmv3_clean_(contract.expectedLocationId),
     contactId:
