@@ -2,12 +2,12 @@ name: Repair this week Install Delivery Service
 on:
   push:
     branches: [task_mapping]
-    paths: [.github/workflows/tmv3-week-repair-20261026.yml]
+    paths: [ops/tmv3-week-repair-run-trigger.txt]
 permissions:
   contents: read
 concurrency:
   group: task-mapping-v3-clean-bootstrap
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   repair:
     runs-on: ubuntu-latest
