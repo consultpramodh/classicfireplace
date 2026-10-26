@@ -23,18 +23,21 @@ function tmv3_candidateOrderAudit20261026() {
  cal.getEvents(start,end).forEach(function(event){
   const r=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:cfg.secondaryCalendarIds[0],calendarName:'Stephen',role:'SECONDARY_STEPHEN'},event,{applyEligibility:false});
   const decision=tmv3_preInspectionDiscoveryDecision_(r,cfg);
-  if(decision.status!=='REVIEW_VISIT_TYPE')return;
+  if(decision.status!=='REVIEW_VISIT_TYPE'||r.existingTaskId)return;
   const matches=orders.filter(function(o){return r.orderNumber&&String(o['Order Number'])===String(r.orderNumber)&&o['Type']==='SALES_ORDER';});
+  const identity=tmv3_step4ResolveCustomerFromCalendarEvidence_(r,tmv3_step4IdentityIndex_());
+  let customerOrders=null;
+  if(identity.customer)customerOrders=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',payload:JSON.stringify({PageIndex:0,PageSize:20,CustomerId:Number(identity.customer['Customer ID'])})});
   let live=null;
   if(r.orderNumber){
    const found=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',payload:JSON.stringify({PageIndex:0,PageSize:2,Number:String(r.orderNumber)})});
    const data=found&&(found.Data||found.data);
-   if(data&&data.length===1&&String(data[0].Number)===String(r.orderNumber)){
-    const o=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+data[0].Id,{method:'get'});
-    live={id:o.Id,number:o.OrderNumber,status:o.Status,customer:o.Customer,location:o.ShipToLocation,name:o.OrderName};
+   if(data&&data.length===1&&String(data[0].Number||data[0].number)===String(r.orderNumber)){
+    const o=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+(data[0].Id||data[0].id),{method:'get'});
+    live={id:o.Id||o.id,number:o.OrderNumber||o.orderNumber,status:o.Status||o.status,customer:o.Customer||o.customer,location:o.ShipToLocation||o.shipToLocation,name:o.OrderName||o.orderName};
    }else live={status:'ORDER_NOT_UNIQUE',search:found};
   }
-  records.push({record:r,decision:decision,cachedOrders:matches,liveOrder:live});
+  records.push({record:r,decision:decision,cachedOrders:matches,liveOrder:live,identity:identity,customerOrders:customerOrders});
  });
  return {at:new Date().toISOString(),candidates:records,budget:tmv3_strivenApiBudgetStatus_()};
 }
