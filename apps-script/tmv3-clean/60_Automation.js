@@ -2452,6 +2452,7 @@ function tmv3_scheduledSheetRefresh() {
   return tmv3_refreshAutomationSheets();
 }
 function tmv3_refreshAutomationSheets() {
+  if(tmv3_verticalBusinessQueuePending_())return {status:'DEFERRED_ACTIVE_BUSINESS_SWEEP',strivenWrites:0,calendarWrites:0};
   const lock=LockService.getScriptLock(),props=PropertiesService.getScriptProperties();
   props.setProperty('TMV3_SHEET_REFRESH_PENDING','true');
   if(!lock.tryLock(1000))return {status:'LOCK_BUSY'};
@@ -2576,7 +2577,8 @@ function tmv3_runFullVerticalSweep_(vertical) {
     ScriptApp.newTrigger(handler).timeBased().after(60000).create();
     result.continuation='SCHEDULED';
   }
-  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(began);
+  PropertiesService.getScriptProperties().setProperty('TMV3_SHEET_REFRESH_PENDING','true');
+  result.sheetRefresh={status:'DEFERRED_TO_HOURLY_SHEET_REFRESH'};
   Logger.log(JSON.stringify(result));return result;
 }
 
@@ -2616,4 +2618,15 @@ function tmv3_verticalLinkedTaskDiagnostics(vertical,eventIds) {
     const fresh=linkedId?tmv3_step7FreshTask_(linkedId,{taskById:{}}):null;
     return {eventId:id,linkedId:linkedId,identity:identity.disposition,expectedCustomer:identity.customer&&identity.customer['Customer ID'],expectedLocation:identity.location&&identity.location['Location ID'],locationStatus:identity.locationStatus,fresh:fresh&&{ok:fresh.ok,error:fresh.error,task:fresh.task}};
   }catch(e){return {eventId:id,error:String(e)};}});
+}
+
+// Publication yields while runnable business work remains; budget-paused queues
+// can still publish their latest verified results.
+function tmv3_verticalBusinessQueuePending_() {
+  const props=PropertiesService.getScriptProperties();
+  if(tmv3_strivenApiBudgetStatus_().remaining<Number(TMV3.OPERATIONS.verticalProductionMinApiRemaining||60))return false;
+  return ['Install','Delivery','Service'].some(function(v){
+    const state=JSON.parse(props.getProperty('TMV3_VERTICAL_SWEEP_'+v)||'null');
+    return state && !state.complete && state.cursor<state.total;
+  });
 }
