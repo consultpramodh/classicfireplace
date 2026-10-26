@@ -2,12 +2,12 @@ name: Read weekly repair progress
 on:
   push:
     branches: [task_mapping]
-    paths: [.github/workflows/tmv3-week-repair-progress.yml]
+    paths: [ops/tmv3-week-repair-progress-trigger.txt]
 permissions:
   contents: read
 concurrency:
   group: task-mapping-v3-clean-bootstrap
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   status:
     runs-on: ubuntu-latest
