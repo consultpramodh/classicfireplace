@@ -2252,6 +2252,9 @@ function tmv3_verticalEnrichEvidence_(vertical, record, plans) {
   const current=matches.length?matches[0].row.slice(0,10):[id,number,customerId,'','','','','SALES_ORDER',TMV3.ORDER_URL_BASE+id,''];
   // In Progress alone does not establish a Service Work Order classification.
   if (vertical==='Service' && String(current[7]).split('|').indexOf('WORK_ORDER')<0) return {status:'WORK_ORDER_SOURCE_REQUIRED'};
+  if(vertical==='Install') {
+    proof.contactId=tmv3_installResolveContactFresh_(record,customerId,proof.contactId || current[4],one);
+  }
   if (proof.contactId) {
     const contact=tmv3_getContactById_(proof.contactId,customerId);
     if (!contact || contact.__ownershipVerified!==true) throw new Error('ORDER_CONTACT_OWNERSHIP_UNPROVEN');
@@ -2283,6 +2286,12 @@ function tmv3_verticalProductionCycle_(vertical, options) {
     const stateKey='TMV3_VERTICAL_SWEEP_'+vertical;
     let state=JSON.parse(props.getProperty(stateKey)||'null');
     if(!state || state.complete) {
+      if(vertical==='Install') {
+        const budget=tmv3_strivenApiBudgetStatus_();
+        if(budget.exhausted || budget.remaining<Number(policy.verticalProductionMinApiRemaining||60))return Object.assign(result,{status:'API_BUDGET_WAIT'});
+        result.sources=tmv3_refreshOperationalSourcesIfNeeded_(120,false);
+        result.intake=tmv3_installRefreshView_('INSTALL_SWEEP_START');
+      }
       // Consume the existing intake queue; each event is freshly verified below.
       // Rebuilding every operator sheet here can consume the entire execution.
       const today=tmv3_step6LocalDay_(new Date()),seen={};
@@ -2308,6 +2317,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
       let writeStarted=false;
       try {
         const record=tmv3_findFreshEventRecord_(vertical,id);
+        if(vertical==='Install' && !tmv3_installCreatorAllowed_(record)){result.results.push({eventId:id,status:'SKIPPED_CREATOR_UNVERIFIED'});continue;}
         let plans=tmv3_step7FreshPlansForEvent_(vertical,id);
         const alreadyFulfilled=plans.length>0 && plans.every(function(p){return p.disposition==='FULFILLED_NO_RECREATE' && p.plan==='VERIFY_ONLY_HISTORY_NO_WRITE' && p.readStatus==='FRESH_TASK_GET' && p.actions.length===0 && p.customerCheck==='MATCH' && tmv3_step6IsFulfilledStatus_(p.taskStatus) && tmv3_step6TaskTouchesEventDay_({start:p.calendarStart},{Start:p.taskStart,Due:p.taskDue});});
         if(alreadyFulfilled){result.results.push({eventId:id,status:'FULFILLED_NO_RECREATE'});continue;}
@@ -2315,6 +2325,9 @@ function tmv3_verticalProductionCycle_(vertical, options) {
         if(enriched.status==='EVIDENCE_REFRESHED') plans=tmv3_step7FreshPlansForEvent_(vertical,id);
         const historical=plans.length>0 && plans.every(function(p){return p.disposition==='FULFILLED_NO_RECREATE' && p.plan==='VERIFY_ONLY_HISTORY_NO_WRITE' && p.readStatus==='FRESH_TASK_GET' && p.actions.length===0 && p.customerCheck==='MATCH' && tmv3_step6IsFulfilledStatus_(p.taskStatus);});
         if(historical){result.results.push({eventId:id,status:'FULFILLED_NO_RECREATE'});continue;}
+        if(vertical==='Install' && plans.some(function(p){return !p.expectedRequestedById || p.expectedRequestedByType!=='contact';})) {
+          result.results.push({eventId:id,status:'REVIEW',error:'INSTALL_REQUESTED_BY_UNRESOLVED'});continue;
+        }
         if (!plans.length || plans.some(function(p){return !!p.blocker;}) ||
             (plans.length>1 && (vertical!=='Service' || !plans.every(function(p){return p.disposition==='MATCH_EXISTING_MULTI' && p.taskId;})))) {
           result.results.push({eventId:id,status:'REVIEW',plans:plans.map(function(p){return {taskId:p.taskId,plan:p.plan,blocker:p.blocker};})});continue;
@@ -2519,7 +2532,6 @@ function tmv3_standardDailySchedule_() {
 function tmv3_standardVerticalSlot_(vertical,slot) {
   const result=tmv3_runFullVerticalSweep_(vertical);
   if(vertical==='Install') {
-    result.relationships=tmv3_taskFirstProductionCycle_();
     result.reminders=tmv3_installReminderCheck();
   }
   tmv3_audit_(vertical,'','','STANDARD_DAILY_SLOT',result.status,JSON.stringify({slot:slot,result:result}));
@@ -2579,6 +2591,7 @@ function tmv3_runFullVerticalSweep_(vertical) {
   }
   PropertiesService.getScriptProperties().setProperty('TMV3_SHEET_REFRESH_PENDING','true');
   result.sheetRefresh={status:'DEFERRED_TO_HOURLY_SHEET_REFRESH'};
+  if(vertical==='Install' && result.sweep && result.sweep.complete)result.sheetRefresh=tmv3_installSchedulePublication_();
   Logger.log(JSON.stringify(result));return result;
 }
 
@@ -2630,3 +2643,98 @@ function tmv3_verticalBusinessQueuePending_() {
     return state && !state.complete && state.cursor<state.total;
   });
 }
+
+// Google Apps Script: Install-only contact resolution; no external writes.
+function tmv3_installResolveContactFresh_(record,customerId,preferredContactId,plan) {
+  const cid=tmv3_clean_(customerId);
+  if(!/^[1-9]\d*$/.test(cid))throw Error('INSTALL_CONTACT_CUSTOMER_REQUIRED');
+  const existing=plan && plan.actualRequestedByType==='contact' ? plan.actualRequestedById : '';
+  const known=tmv3_clean_(preferredContactId || existing);
+  if(known) {
+    const proof=tmv3_getContactById_(known,cid);
+    if(!proof || proof.__ownershipVerified!==true)throw Error('INSTALL_CONTACT_OWNERSHIP_UNPROVEN');
+    return known;
+  }
+  const authored=typeof tmv3_identityDescriptionForRecord_==='function'?tmv3_identityDescriptionForRecord_(record):'';
+  const phone=tmv3_phone10_(record.phone || '');
+  const emails=tmv3_extractEmails_(authored);
+  if(!phone && !emails.length)throw Error('INSTALL_CONTACT_EVIDENCE_MISSING');
+  const contacts=tmv3_getCustomerContacts_(cid,{forceFresh:true,requireComplete:true});
+  const owned=contacts.filter(function(c){return tmv3_clean_(c['Customer ID'])===cid;});
+  const phoneIds=[],emailIds=[];
+  owned.forEach(function(c){
+    const id=tmv3_clean_(c['Contact ID']);
+    if(!/^[1-9]\d*$/.test(id))return;
+    const phones=(c.Phones||[c.Phone||'']).map(tmv3_phone10_);
+    const addresses=(c.Emails||[c.Email||'']).map(tmv3_normEmail_);
+    if(phone && phones.indexOf(phone)>=0 && phoneIds.indexOf(id)<0)phoneIds.push(id);
+    if(emails.some(function(e){return addresses.indexOf(tmv3_normEmail_(e))>=0;}) && emailIds.indexOf(id)<0)emailIds.push(id);
+  });
+  const matches=phoneIds.length && emailIds.length ? phoneIds.filter(function(id){return emailIds.indexOf(id)>=0;}) : (phoneIds.length?phoneIds:emailIds);
+  if(matches.length!==1)throw Error(matches.length?'INSTALL_CONTACT_AMBIGUOUS':'INSTALL_CONTACT_NO_CORROBORATED_MATCH');
+  const proof=tmv3_getContactById_(matches[0],cid);
+  if(!proof || proof.__ownershipVerified!==true)throw Error('INSTALL_CONTACT_OWNERSHIP_UNPROVEN');
+  return matches[0];
+}
+// Caller owns the script lock. Rebuild only Install, never another vertical.
+function tmv3_installRefreshView_(reason) {
+  const cfg=TMV3.VERTICALS.Install,start=new Date(),end=new Date();
+  start.setDate(start.getDate()-Number(cfg.lookbackDays||0));start.setHours(0,0,0,0);
+  end.setDate(end.getDate()+Number(cfg.lookaheadDays||365));end.setHours(23,59,59,999);
+  const input=[];
+  tmv3_verticalCalendars_('Install',cfg).forEach(function(calCfg){
+    const calendar=CalendarApp.getCalendarById(calCfg.calendarId);if(!calendar)throw Error('INSTALL_CALENDAR_UNAVAILABLE');
+    const resolved=Object.assign({},calCfg,{calendarName:calendar.getName()});
+    calendar.getEvents(start,end).forEach(function(event){const record=tmv3_calendarEvent_('Install',cfg,resolved,event,{applyEligibility:false});if(record)input.push(record);});
+  });
+  const records=tmv3_mergeLogicalCalendarRecords_(input);
+  const stage2=tmv3_step2CalendarRecords_(records);
+  stage2.forEach(function(r){if(!tmv3_installCreatorAllowed_(r))r.step2=tmv3_step2Decision_('SKIP','INSTALL_CREATOR_UNVERIFIED','Internal Calendar creator could not be verified.',false);});
+  const stage3=tmv3_step3BusinessAnchorRecords_(stage2,tmv3_step3AnchorIndex_());
+  const stage4=tmv3_step4IdentityRecords_(stage3,tmv3_step4IdentityIndex_());
+  const stage5=tmv3_step5TaskRecords_(stage4,tmv3_step5TaskIndex_());
+  const decisions=tmv3_step6DecisionRecords_(stage5).sort(function(a,b){return new Date(a.start)-new Date(b.start);});
+  const prior=tmv3_sheet_(cfg.sheet).getLastRow();
+  tmv3_replaceRows_(cfg.sheet,TMV3_STEP1_HEADERS.slice(),decisions.map(tmv3_step6OperatorRow_));
+  tmv3_step1FormatOperatorView_(cfg.sheet,'Install',decisions,prior);
+  const count=tmv3_rows_(cfg.sheet).filter(function(r){return !!tmv3_clean_(r['Event ID']);}).length;
+  if(count!==decisions.length)throw Error('INSTALL_VIEW_ROW_READBACK_FAILED');
+  const result={status:'INSTALL_VIEW_REFRESHED',at:new Date().toISOString(),reason:reason,rows:count,strivenWrites:0,calendarWrites:0};
+  PropertiesService.getScriptProperties().setProperty('TMV3_INSTALL_VIEW_LAST_SUCCESS',JSON.stringify(result));return result;
+}
+function tmv3_installSchedulePublication_() {
+  const handler='tmv3_installPublishView';
+  if(!ScriptApp.getProjectTriggers().some(function(t){return t.getHandlerFunction()===handler;})) {
+    if(ScriptApp.getProjectTriggers().length>=20)return {status:'DEFERRED_TRIGGER_CAPACITY'};
+    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
+  }
+  return {status:'INSTALL_PUBLICATION_SCHEDULED'};
+}
+function tmv3_installPublishView() {
+  const handler='tmv3_installPublishView';
+  ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;}).forEach(function(t){ScriptApp.deleteTrigger(t);});
+  const lock=LockService.getScriptLock();if(!lock.tryLock(1000))return tmv3_installSchedulePublication_();
+  try{return tmv3_installRefreshView_('INSTALL_SWEEP_COMPLETE');}finally{lock.releaseLock();}
+}
+// Read-only readiness inspection. It never installs triggers or executes tasks.
+function tmv3_installReadiness() {
+  const triggers=tmv3_listTriggers(),handlers=['tmv3_installCheck0800','tmv3_installCheck1300','tmv3_installCheck1700'];
+  const rows=tmv3_rows_(TMV3.VERTICALS.Install.sheet),today=tmv3_step6LocalDay_(new Date());
+  const upcoming=rows.filter(function(r){return tmv3_clean_(r['Event ID']) && tmv3_step6LocalDay_(r['Calendar Start'])>=today;});
+  const issues={};upcoming.forEach(function(r){const status=tmv3_clean_(r['Mapping Status']);issues[status]=(issues[status]||0)+1;});
+  let calendarAccessible=false,calendarError='';
+  try{calendarAccessible=!!CalendarApp.getCalendarById(TMV3.VERTICALS.Install.calendarIds[0]);}catch(e){calendarError=String(e);}
+  const policy=TMV3.MODE==='PRODUCTION_WRITE' && TMV3.OPERATIONS.verticalProductionEnabled===true && (TMV3.OPERATIONS.verticalProductionVerticals||[]).indexOf('Install')>=0;
+  const approved=TMV3_HARD_RULES.Install.requiredSalesOrderStatus==='Approved';
+  const exact=handlers.every(function(h){return triggers.filter(function(t){return t.handler===h;}).length===1;});
+  return {version:TMV3.VERSION,status:approved&&exact&&calendarAccessible&&policy?'CONFIGURED_PENDING_QUEUE_VERIFICATION':'CONFIGURATION_REVIEW',
+    readyForTriggerInstallation:approved&&calendarAccessible&&policy,calendarAccessible:calendarAccessible,calendarError:calendarError,productionPolicyEnabled:policy,
+    approvedSalesOrderRequired:approved,triggerHours:[8,13,17],timezone:TMV3_TIMEZONE,
+    installedInstallTriggers:triggers.filter(function(t){return handlers.indexOf(t.handler)>=0;}),
+    installOnlyWorker:true,requestedByRequired:true,contactFallback:'CUSTOMER_OWNED_EXACT_PHONE_OR_EMAIL',
+    upcomingAppointments:upcoming.length,cachedMapping:issues,
+    queue:JSON.parse(PropertiesService.getScriptProperties().getProperty('TMV3_VERTICAL_SWEEP_Install')||'null'),
+    budget:tmv3_strivenApiBudgetStatus_(),businessWrites:0,triggerWrites:0};
+}
+
+function tmv3_installCreatorAllowed_(record){return /@classicfireplace\.ca$/i.test(tmv3_normEmail_(record && record.creator || ''));}

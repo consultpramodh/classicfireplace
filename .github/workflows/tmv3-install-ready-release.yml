@@ -1,0 +1,49 @@
+name: Prepare isolated Install flow and verify existing trigger readiness
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-install-ready-release.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/test-tmv3-full-vertical-sweep.cjs
+      - run: node tools/test-tmv3-standard-schedule.cjs
+      - run: node tools/test-tmv3-standard-task-names.cjs
+      - run: node tools/test-tmv3-install-flow-ready.cjs
+      - run: node tools/test-tmv3-customer-existence-duplicates.cjs
+      - name: Pull live source and prepare exact two-file patch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-install-ready-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: install-ready-PRE-${{ github.run_id }}
+          path: install-ready-evidence/
+      - name: Regression on exact live-source candidate
+        env:
+          TMV3_TEST_SOURCE_DIR: install-ready-evidence/work
+        run: |
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-vertical-evidence.cjs
+      - name: Push same project and verify live schedule
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-install-ready-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: install-ready-result-${{ github.run_id }}
+          path: install-ready-evidence/

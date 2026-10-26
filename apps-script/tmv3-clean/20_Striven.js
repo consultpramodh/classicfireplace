@@ -1920,6 +1920,10 @@ function tmv3_getCustomerContacts_(customerId, options) {
   );
 
   const rows = tmv3_arrayFromApiResponse_(raw);
+  if(options.requireComplete===true && !Array.isArray(raw)) {
+    const total=raw && (raw.TotalCount!==undefined?raw.TotalCount:raw.totalCount);
+    if(!Number.isInteger(total)||total!==rows.length)throw Error('CONTACT_COLLECTION_INCOMPLETE');
+  }
   const contacts = rows
     .map(function(item) {
       return tmv3_normalizeApiContact_(item, id);
