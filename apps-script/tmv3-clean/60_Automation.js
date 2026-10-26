@@ -116,104 +116,7 @@ function tmv3_assertCalendarTriggerAuthorization_(calendarIds) {
   return true;
 }
 
-function tmv3_installTriggers() {
-  // V3 watches every configured Calendar through the staged pipeline.
-  // Authorization is proved BEFORE any existing managed trigger is removed.
-  const watchedCalendars =
-    typeof tmv3_step1CalendarIds_ === 'function'
-      ? tmv3_step1CalendarIds_()
-      : [];
-
-  tmv3_assertCalendarTriggerAuthorization_(watchedCalendars);
-  tmv3_removeTriggers();
-
-  const created = [];
-  const calendarFailures = [];
-
-  created.push(
-    ScriptApp.newTrigger('tmv3_dailySourceRefresh')
-      .timeBased().atHour(7).nearMinute(0).everyDays(1).create()
-  );
-
-  [8,11,13,15,17].forEach(function(hour) {
-    created.push(
-      ScriptApp.newTrigger('tmv3_scheduledOperations')
-        .timeBased().atHour(hour).nearMinute(30).everyDays(1).create()
-    );
-  });
-
-  created.push(
-    ScriptApp.newTrigger('tmv3_installReminderCheck')
-      .timeBased().atHour(11).nearMinute(0).everyDays(1).create()
-  );
-
-  created.push(
-    ScriptApp.newTrigger('tmv3_calendarReconciliationFallback')
-      .timeBased().everyHours(1).create()
-  );
-
-  watchedCalendars.forEach(function(calendarId) {
-    try {
-      created.push(
-        ScriptApp.newTrigger('tmv3_calendarEventUpdated')
-          .forUserCalendar(calendarId)
-          .onEventUpdated()
-          .create()
-      );
-    } catch (err) {
-      const failure = {
-        calendarId:calendarId,
-        error:String(err && err.message || err)
-      };
-      calendarFailures.push(failure);
-      tmv3_audit_(
-        'SYSTEM','','','INSTALL_CALENDAR_TRIGGER','FAIL',
-        calendarId + ': ' + failure.error
-      );
-    }
-  });
-
-  if (TMV3.OPERATIONS.verticalProductionEnabled===true) tmv3_installVerticalProductionTrigger();
-  const result = tmv3_listTriggers();
-  const installedCalendarIds = {};
-  result.forEach(function(trigger) {
-    if (
-      tmv3_clean_(trigger.handler) === 'tmv3_calendarEventUpdated' &&
-      tmv3_clean_(trigger.sourceId)
-    ) {
-      installedCalendarIds[tmv3_clean_(trigger.sourceId)] = true;
-    }
-  });
-
-  const missingCalendarIds = watchedCalendars.filter(function(calendarId) {
-    return !installedCalendarIds[tmv3_clean_(calendarId)];
-  });
-
-  if (calendarFailures.length || missingCalendarIds.length) {
-    const detail = JSON.stringify({
-      calendarFailures:calendarFailures,
-      missingCalendarIds:missingCalendarIds,
-      createdCount:created.length
-    });
-
-    tmv3_audit_(
-      'SYSTEM','','','INSTALL_MANAGED_TRIGGERS','FAIL',
-      detail
-    );
-
-    throw new Error(
-      'Managed trigger install incomplete. ' + detail
-    );
-  }
-
-  tmv3_audit_(
-    'SYSTEM','','','INSTALL_MANAGED_TRIGGERS','PASS',
-    'Created ' + created.length + ' managed trigger(s), including ' +
-      watchedCalendars.length + ' Calendar update trigger(s).'
-  );
-
-  return result;
-}
+function tmv3_installTriggers() { return tmv3_installStandardDailyTriggers(); }
 
 function tmv3_removeTriggers() {
   const managed = tmv3_managedTriggerHandlers_();
@@ -875,48 +778,7 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
   }
 }
 
-function tmv3_calendarReconciliationFallback() {
-  const preInspection = tmv3_preInspectionAutomaticRecovery_('HOURLY_FALLBACK');
-  tmv3_reconcilePreInspectionSharedGuest_AUTO_({
-    reason:'CALENDAR_RECONCILIATION_FALLBACK'
-  });
-
-  const hour = Number(
-    Utilities.formatDate(
-      new Date(),
-      TMV3_TIMEZONE,
-      'H'
-    )
-  );
-
-  if (hour < 8 || hour > 18) {
-    return { status:'OUTSIDE_BUSINESS_HOURS' };
-  }
-
-  // Reuse the verified hourly trigger. The independent relationship lane
-  // remains throttled and cannot authorize Calendar, schedule or CREATE writes.
-  const taskFirst = tmv3_taskFirstProductionCycle_();
-
-  if (tmv3_executionStage_() < 7) {
-    return {taskFirst:taskFirst,preInspection:preInspection,mapped:tmv3_calendarStageRefresh_(
-      'CALENDAR_RECONCILIATION_FALLBACK'
-    )};
-  }
-
-  if (tmv3_executionStage_() === 7) {
-    return Object.assign({taskFirst:taskFirst,preInspection:preInspection},tmv3_stage7AutomaticCanaryCycle_(
-      'CALENDAR_RECONCILIATION_FALLBACK'
-    ));
-  }
-
-  return Object.assign({taskFirst:taskFirst,preInspection:preInspection},tmv3_runProductionAutomationCycle_(
-    'CALENDAR_RECONCILIATION_FALLBACK',
-    {
-      maxSourceAgeMinutes:60,
-      forceSourceRefresh:false
-    }
-  ));
-}
+function tmv3_calendarReconciliationFallback() { return {status:'RETIRED_USE_STANDARD_DAILY_SLOTS',businessWrites:0}; }
 
 function tmv3_dailySourceRefresh() {
   tmv3_assertShadow_();
@@ -1501,40 +1363,7 @@ function tmv3_taskFirstFindOrderByTitle_(number,customerId) {
   return ids[0]; // The caller must still freshly GET this Order to prove ownership and active status.
 }
 
-function tmv3_scheduledOperations() {
-  const verticals=tmv3_allVerticalAutomationTick();
-  const preInspection = tmv3_preInspectionAutomaticRecovery_('SCHEDULED_OPERATIONS');
-  // Relationship-first is independent from the Stage-7 Calendar gate.
-  const taskFirst = tmv3_taskFirstProductionCycle_();
-  tmv3_reconcilePreInspectionSharedGuest_AUTO_({
-    reason:'SCHEDULED_OPERATIONS'
-  });
-
-  if (tmv3_executionStage_() < 7) {
-    return {
-      taskFirst:taskFirst,preInspection:preInspection,
-      stage:tmv3_executionStage_(),
-      mapped:tmv3_calendarStageRefresh_(
-        'SCHEDULED_CALENDAR_STAGE_REFRESH'
-      ),
-      writes:{ status:'CALENDAR_STAGE_GATED', writes:0 }
-    };
-  }
-
-  if (tmv3_executionStage_() === 7) {
-    return Object.assign(
-      {taskFirst:taskFirst,preInspection:preInspection,verticals:verticals},
-      tmv3_stage7AutomaticCanaryCycle_('SCHEDULED_CALENDAR_STAGE_REFRESH')
-    );
-  }
-
-  return Object.assign(
-    {taskFirst:taskFirst,preInspection:preInspection,verticals:verticals},
-    tmv3_runProductionAutomationCycle_('SCHEDULED_OPERATIONS',{
-      maxSourceAgeMinutes:30,forceSourceRefresh:false
-    })
-  );
-}
+function tmv3_scheduledOperations() { return {status:'RETIRED_USE_STANDARD_DAILY_SLOTS',businessWrites:0}; }
 
 function tmv3_refreshLinksSlot_(label) {
   if (tmv3_executionStage_() <= 7) {
@@ -1568,83 +1397,7 @@ function tmv3_installReminderCheck() {
   return tmv3_sendInstallMissingSoReminders_('AUTO');
 }
 
-function tmv3_calendarEventUpdated() {
-  const preInspection = tmv3_preInspectionAutomationCycle_({reason:'CALENDAR_EVENT_UPDATED'});
-  const guestSync =
-    tmv3_reconcilePreInspectionSharedGuest_AUTO_({
-      reason:'CALENDAR_EVENT_UPDATED'
-    });
-
-  const lock = LockService.getScriptLock();
-  const cache = CacheService.getScriptCache();
-  const dirtyKey = 'TMV3_CALENDAR_EVENT_UPDATE_DIRTY';
-
-  if (!lock.tryLock(1000)) {
-    try { cache.put(dirtyKey, '1', 300); } catch (ignored) {}
-    return { status:'QUEUED_BEHIND_ACTIVE_REFRESH' };
-  }
-
-  try {
-    try { cache.remove(dirtyKey); } catch (ignored) {}
-
-    const currentStage = tmv3_executionStage_();
-    const first =
-      currentStage < 7
-        ? tmv3_calendarStageRefresh_('CALENDAR_EVENT_UPDATED')
-        : (
-            currentStage === 7
-              ? tmv3_stage7AutomaticCanaryCycle_(
-                  'CALENDAR_EVENT_UPDATED'
-                )
-              : tmv3_runProductionAutomationCycle_(
-                  'CALENDAR_EVENT_UPDATED',
-                  {
-                    maxSourceAgeMinutes:15,
-                    forceSourceRefresh:false
-                  }
-                )
-          );
-
-    let rerun = null;
-
-    if (cache.get(dirtyKey)) {
-      try { cache.remove(dirtyKey); } catch (ignored) {}
-
-      rerun =
-        currentStage < 7
-          ? tmv3_calendarStageRefresh_(
-              'CALENDAR_EVENT_UPDATED_RERUN'
-            )
-          : (
-              currentStage === 7
-                ? tmv3_stage7AutomaticCanaryCycle_(
-                    'CALENDAR_EVENT_UPDATED_RERUN'
-                  )
-                : tmv3_runProductionAutomationCycle_(
-                    'CALENDAR_EVENT_UPDATED_RERUN',
-                    {
-                      maxSourceAgeMinutes:15,
-                      forceSourceRefresh:false
-                    }
-                  )
-            );
-    }
-
-    return {
-      status:rerun ? 'REFRESHED_AND_RERUN' : 'REFRESHED',
-      first:first,
-      rerun:rerun,
-      guestSync:guestSync,
-      preInspection:preInspection,
-      writes:
-        (rerun && rerun.writes) ||
-        (first && first.writes) ||
-        { status:'NO_WRITE_RESULT', writes:0 }
-    };
-  } finally {
-    lock.releaseLock();
-  }
-}
+function tmv3_calendarEventUpdated() { return {status:'RETIRED_USE_STANDARD_DAILY_SLOTS',businessWrites:0}; }
 
 function tmv3_listTriggers() {
   return ScriptApp.getProjectTriggers().map(function(t) {
@@ -2279,24 +2032,7 @@ function tmv3_runPreInspectionDailySlot_(slot) {
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
   return result;
 }
-function tmv3_installPreInspectionAutomationTrigger() {
-  const hours=TMV3.OPERATIONS.preInspectionAutomationScheduleHours || [8,13,17];
-  const timezone=TMV3.OPERATIONS.preInspectionAutomationScheduleTimezone || 'America/Toronto';
-  const handlers=['tmv3_preInspectionCheck0800','tmv3_preInspectionCheck1300','tmv3_preInspectionCheck1700'];
-  const retired=['tmv3_preInspectionScheduledCycle'].concat(handlers);
-  ScriptApp.getProjectTriggers().forEach(function(t){
-    if (retired.indexOf(t.getHandlerFunction())!==-1) ScriptApp.deleteTrigger(t);
-  });
-  handlers.forEach(function(handler,index){
-    ScriptApp.newTrigger(handler).timeBased().atHour(hours[index]).nearMinute(0).everyDays(1).inTimezone(timezone).create();
-  });
-  const result=tmv3_listTriggers();
-  if (result.some(function(t){return t.handler==='tmv3_preInspectionScheduledCycle';}) ||
-      handlers.some(function(h){return result.filter(function(t){return t.handler===h;}).length!==1;})) {
-    throw new Error('PREINSPECTION_TRIGGER_READBACK_FAILED');
-  }
-  return {status:'PREINSPECTION_TRIGGERS_VERIFIED',hours:hours,timezone:timezone,triggers:result};
-}
+function tmv3_installPreInspectionAutomationTrigger() { return tmv3_installStandardDailyTriggers(); }
 
 function tmv3_preInspectionFreshHistoryBeforeCreate_(record,plan) {
   const customer=tmv3_step4IdentityIndex_().customerById[String(plan.expectedCustomerId)];
@@ -2642,20 +2378,7 @@ function tmv3_runServiceAutomation() {const r=tmv3_verticalProductionCycle_('Ser
 function tmv3_runDeliveryAutomation() {const r=tmv3_verticalProductionCycle_('Delivery');Logger.log(JSON.stringify(r));return r;}
 function tmv3_runInstallAutomation() {const r=tmv3_verticalProductionCycle_('Install');Logger.log(JSON.stringify(r));return r;}
 
-function tmv3_installVerticalProductionTrigger() {
-  if(TMV3.OPERATIONS.verticalProductionEnabled!==true)throw new Error('VERTICAL_AUTOMATION_DISABLED');
-  const handler='tmv3_allVerticalAutomationTick';
-  const existing=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;});
-  if(!existing.length){
-    if(ScriptApp.getProjectTriggers().length>=20)throw new Error('TRIGGER_CAPACITY_NO_CHANGE');
-    ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
-  }
-  existing.slice(1).forEach(function(t){ScriptApp.deleteTrigger(t);});
-  tmv3_installAutomationSheetRefreshTrigger();
-  const triggers=tmv3_listTriggers();
-  if(triggers.filter(function(t){return t.handler===handler;}).length!==1)throw new Error('VERTICAL_TRIGGER_READBACK_FAILED');
-  return {status:'VERTICAL_TRIGGER_VERIFIED',triggers:triggers,verticals:TMV3.OPERATIONS.verticalProductionVerticals};
-}
+function tmv3_installVerticalProductionTrigger() { return tmv3_installStandardDailyTriggers(); }
 
 function tmv3_verticalAutomationFailureAlert_(vertical,eventId,error) {
   const props=PropertiesService.getScriptProperties();
@@ -2760,4 +2483,56 @@ function tmv3_automationSheetRefreshStatus() {
   return {version:TMV3.VERSION,lastSuccess:json('TMV3_SHEET_REFRESH_LAST_SUCCESS'),
     lastError:json('TMV3_SHEET_REFRESH_LAST_ERROR'),pending:p.getProperty('TMV3_SHEET_REFRESH_PENDING')==='true',
     triggers:tmv3_listTriggers()};
+}
+
+
+// Google Apps Script: independent daily execution windows for each vertical.
+function tmv3_standardDailySchedule_() {
+  return {hours:[8,13,17],timezone:'America/Toronto',verticals:['PreInspection','Install','Delivery','Service']};
+}
+function tmv3_standardVerticalSlot_(vertical,slot) {
+  const result=tmv3_verticalProductionCycle_(vertical);
+  if(vertical==='Install') {
+    result.relationships=tmv3_taskFirstProductionCycle_();
+    result.reminders=tmv3_installReminderCheck();
+  }
+  tmv3_audit_(vertical,'','','STANDARD_DAILY_SLOT',result.status,JSON.stringify({slot:slot,result:result}));
+  return result;
+}
+function tmv3_installCheck0800() { return tmv3_standardVerticalSlot_('Install','08:00'); }
+function tmv3_installCheck1300() { return tmv3_standardVerticalSlot_('Install','13:00'); }
+function tmv3_installCheck1700() { return tmv3_standardVerticalSlot_('Install','17:00'); }
+function tmv3_deliveryCheck0800() { return tmv3_standardVerticalSlot_('Delivery','08:00'); }
+function tmv3_deliveryCheck1300() { return tmv3_standardVerticalSlot_('Delivery','13:00'); }
+function tmv3_deliveryCheck1700() { return tmv3_standardVerticalSlot_('Delivery','17:00'); }
+function tmv3_serviceCheck0800() { return tmv3_standardVerticalSlot_('Service','08:00'); }
+function tmv3_serviceCheck1300() { return tmv3_standardVerticalSlot_('Service','13:00'); }
+function tmv3_serviceCheck1700() { return tmv3_standardVerticalSlot_('Service','17:00'); }
+
+function tmv3_installStandardDailyTriggers() {
+  const schedule=tmv3_standardDailySchedule_();
+  const handlers=[];
+  schedule.verticals.forEach(function(v){
+    const prefix=v==='PreInspection'?'preInspection':v.toLowerCase();
+    schedule.hours.forEach(function(hour){handlers.push({handler:'tmv3_'+prefix+'Check'+('0'+hour).slice(-2)+'00',hour:hour});});
+  });
+  // This is the complete V3 schedule. Calendar updates are picked up by the
+  // read-only sheet refresh; they no longer initiate business execution.
+  const before=ScriptApp.getProjectTriggers();
+  const removable=before.filter(function(t){return /^tmv3_/.test(t.getHandlerFunction());});
+  const unrelated=before.length-removable.length;
+  if(unrelated+handlers.length+2>20)throw Error('STANDARD_SCHEDULE_CAPACITY_NO_CHANGE');
+  removable.forEach(function(t){ScriptApp.deleteTrigger(t);});
+  handlers.forEach(function(spec){
+    ScriptApp.newTrigger(spec.handler).timeBased().atHour(spec.hour).nearMinute(0).everyDays(1).inTimezone(schedule.timezone).create();
+  });
+  ScriptApp.newTrigger('tmv3_dailySourceRefresh').timeBased().atHour(7).nearMinute(0).everyDays(1).inTimezone(schedule.timezone).create();
+  ScriptApp.newTrigger('tmv3_scheduledSheetRefresh').timeBased().everyHours(1).create();
+  const triggers=tmv3_listTriggers();
+  const expected=handlers.map(function(x){return x.handler;}).concat(['tmv3_dailySourceRefresh','tmv3_scheduledSheetRefresh']);
+  if(expected.some(function(h){return triggers.filter(function(t){return t.handler===h;}).length!==1;}) ||
+    triggers.some(function(t){return /^tmv3_/.test(t.handler)&&expected.indexOf(t.handler)<0;}))throw Error('STANDARD_SCHEDULE_READBACK_FAILED');
+  const result={status:'STANDARD_DAILY_TRIGGERS_VERIFIED',schedule:schedule,triggers:triggers,businessTriggerCount:12,maintenanceTriggerCount:2};
+  PropertiesService.getScriptProperties().setProperty('TMV3_STANDARD_SCHEDULE',JSON.stringify(result));
+  return result;
 }

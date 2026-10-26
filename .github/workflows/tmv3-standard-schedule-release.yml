@@ -1,0 +1,39 @@
+name: Standardize four verticals to 8 AM 1 PM 5 PM
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-standard-schedule-release.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/test-tmv3-standard-schedule.cjs
+      - name: Pull live source and prepare exact two-file patch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-standard-schedule-release.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standard-schedule-PRE-${{ github.run_id }}
+          path: schedule-evidence/
+      - name: Push same project and verify live schedule
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-standard-schedule-release.cjs apply
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: standard-schedule-result-${{ github.run_id }}
+          path: schedule-evidence/
