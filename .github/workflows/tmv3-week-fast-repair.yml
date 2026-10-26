@@ -1,0 +1,48 @@
+name: Resume weekly repair with read-only checks
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-week-fast-repair.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: true
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pull live source and prepare one-file read-only shortcut
+        run: node tools/tmv3-week-fast-repair-release.cjs prepare
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-fast-PRE-${{ github.run_id }}
+          path: week-fast-repair-evidence/
+          retention-days: 30
+      - name: Test exact live-source candidate
+        env:
+          TMV3_TEST_SOURCE_DIR: week-fast-repair-evidence/work
+        run: |
+          node tools/test-tmv3-week-readonly-fastpath.cjs
+          node tools/test-tmv3-week-scope.cjs
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-vertical-evidence.cjs
+      - name: Verify live source and resume durable weekly queues
+        run: node tools/tmv3-week-fast-repair-release.cjs apply
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-fast-result-${{ github.run_id }}
+          path: week-fast-repair-evidence/
+          retention-days: 30
