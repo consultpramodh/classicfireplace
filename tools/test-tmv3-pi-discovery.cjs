@@ -36,12 +36,12 @@ assert.throws(()=>ctx.tmv3_reconcilePreInspectionEvent('invalid'));assert.equal(
 ctx.tmv3_reconcilePreInspectionEvent('fixture@google.com');assert.equal(options.eventId,'fixture@google.com');assert.equal(options.force,true);assert.equal(refresh,1);calls++;
 const src=fs.readFileSync(path.join(dir,'60_Automation.js'),'utf8');
 for(const slot of ['0800','1300','1700'])assert(src.includes('function tmv3_preInspectionCheck'+slot+'() { return tmv3_runPreInspectionDailySlot_('));
-assert(src.includes('tmv3_preInspectionIntakeRecords_({recordDiscovery:true})'));assert(src.includes("return {status:'RETIRED_FIVE_MINUTE_SCHEDULE',writes:0}"));calls+=5;
+assert(src.includes('tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true})'));assert(src.includes("return {status:'RETIRED_FIVE_MINUTE_SCHEDULE',writes:0}"));calls+=5;
 // Intake integration: primary copies prevent duplicate discovery; unknown candidates never enter execution.
 ctx.tmv3_calendarEvent_=(_v,_cfg,source,event)=>({...event,calendarRole:source.role,calendarId:source.calendarId});
 ctx.tmv3_verticalCalendars_=()=>[{calendarId:'primary',role:'PRIMARY_SHARED'}];
 ctx.CalendarApp={getCalendarById:id=>({getEvents:()=>id==='primary'?[{...base,eventId:'primary@google.com'}]:[{...base,eventId:'primary@google.com'},{...base,eventId:'unknown@google.com'},{...base,eventId:'explicit@google.com',title:'Preinspect Customer'}]})};
-const intake=ctx.tmv3_preInspectionIntakeRecords_({recordDiscovery:true});
+const intake=ctx.tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true});
 assert.deepEqual(Array.from(intake,x=>x.eventId).sort(),['explicit@google.com','primary@google.com']);
 const queue=ctx.tmv3_preInspectionDiscoveryStatus();assert.equal(queue.total,2);assert.equal(queue.review,1);assert.equal(queue.explicit,1);assert(!queue.records.some(x=>x.eventId==='primary@google.com'));calls+=5;
 // Recover a single surviving old copy title before parity overwrites it.
