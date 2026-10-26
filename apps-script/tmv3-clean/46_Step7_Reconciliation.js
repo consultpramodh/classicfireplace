@@ -132,8 +132,8 @@ function tmv3_step7HydrateLinkedPreInspectionTasks_(records, refs, runtime) {
     const identity = record.step4 || {};
     const customerId = tmv3_clean_(identity.customer && identity.customer['Customer ID']);
     const linkedId = tmv3_clean_(record.existingTaskId);
-    if (record.vertical !== 'PreInspection' || identity.disposition !== 'VERIFIED' ||
-        !customerId || !linkedId || refs.taskById[linkedId]) return;
+    if (identity.disposition !== 'VERIFIED' ||
+        !customerId || !linkedId || (record.vertical==='PreInspection' && refs.taskById[linkedId])) return;
     if (!/^[1-9]\d*$/.test(linkedId)) {
       throw new Error('PREINSPECTION_LINKED_TASK_ID_INVALID_NO_CREATE');
     }
@@ -142,12 +142,15 @@ function tmv3_step7HydrateLinkedPreInspectionTasks_(records, refs, runtime) {
     const fresh = tmv3_step7FreshTask_(linkedId, runtime);
     if (!fresh.ok || !fresh.task ||
         tmv3_clean_(fresh.task['Task ID']) !== linkedId ||
-        Number(fresh.task['Task Type ID']) !== 105 ||
+        !tmv3_taskFitsVertical_(fresh.task,record.vertical,TMV3.VERTICALS[record.vertical]) ||
         tmv3_clean_(fresh.task['Customer ID']) !== customerId) {
       throw new Error('PREINSPECTION_LINKED_TASK_UNVERIFIED_NO_CREATE: ' + linkedId);
     }
     const task = fresh.task;
     refs.taskById[linkedId] = task;
+    refs.tasks=refs.tasks.filter(function(t){return tmv3_clean_(t['Task ID'])!==linkedId;});
+    Object.keys(refs.tasksByCustomer).forEach(function(k){refs.tasksByCustomer[k]=refs.tasksByCustomer[k].filter(function(t){return tmv3_clean_(t['Task ID'])!==linkedId;});});
+    Object.keys(refs.tasksByOrder).forEach(function(k){refs.tasksByOrder[k]=refs.tasksByOrder[k].filter(function(t){return tmv3_clean_(t['Task ID'])!==linkedId;});});
     refs.tasks.push(task);
     if (!refs.tasksByCustomer[customerId]) refs.tasksByCustomer[customerId] = [];
     refs.tasksByCustomer[customerId].push(task);
@@ -2278,4 +2281,5 @@ function tmv3_taskFirstRelationshipAudit(taskId, vertical) {
     writes:0
   };
 }
+
 
