@@ -2276,6 +2276,8 @@ function tmv3_verticalEnrichEvidence_(vertical, record, plans) {
 function tmv3_verticalProductionCycle_(vertical, options) {
   options=options || {};
   const weekScope=tmv3_verticalRepairScope_(vertical,options);
+  const targetIds=options.eventIds||null;
+  if(targetIds && (!Array.isArray(targetIds)||!targetIds.length||targetIds.some(function(id){return typeof id!=='string'||!id;})))throw Error('TARGET_IDS_REQUIRED');
   const policy=TMV3.OPERATIONS;
   if (TMV3.MODE!=='PRODUCTION_WRITE' || policy.verticalProductionEnabled!==true ||
       (policy.verticalProductionVerticals||[]).indexOf(vertical)<0) return {status:'VERTICAL_DISABLED',vertical:vertical,writes:0};
@@ -2284,7 +2286,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
   const result={status:'ACTIVE_NO_READY_RECORD',vertical:vertical,writes:0,scanned:0,results:[]};
   try {
     const props=PropertiesService.getScriptProperties(),now=Date.now();
-    const stateKey='TMV3_VERTICAL_SWEEP_'+vertical+(weekScope ? '_RANGE_'+weekScope.fromDay+'_'+weekScope.toDay : '');
+    const stateKey='TMV3_VERTICAL_SWEEP_'+vertical+(weekScope ? '_RANGE_'+weekScope.fromDay+'_'+weekScope.toDay : '')+(targetIds?'_TARGET_'+tmv3_hash_(targetIds.slice().sort().join('|')):'');
     let state=JSON.parse(props.getProperty(stateKey)||'null');
     if(!state || state.complete) {
       if(vertical==='Install') {
@@ -2298,7 +2300,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
       const today=tmv3_step6LocalDay_(new Date()),seen={};
       const events=tmv3_rows_(TMV3.VERTICALS[vertical].sheet).filter(function(row){
         const id=tmv3_clean_(row['Event ID']),day=tmv3_step6LocalDay_(row['Calendar Start']);
-        if(!id||seen[id]||!day||day<(weekScope ? weekScope.fromDay : today)||weekScope && day>=weekScope.toDay)return false;seen[id]=true;return true;
+        if(!id||seen[id]||targetIds && targetIds.indexOf(id)<0||!day||day<(weekScope ? weekScope.fromDay : today)||weekScope && day>=weekScope.toDay)return false;seen[id]=true;return true;
       }).sort(function(a,b){return new Date(a['Calendar Start'])-new Date(b['Calendar Start']);});
       const ids=events.map(function(row){return tmv3_clean_(row['Event ID']);});
       const chunks=Math.ceil(ids.length/50);
@@ -2323,6 +2325,10 @@ function tmv3_verticalProductionCycle_(vertical, options) {
         let plans=tmv3_step7FreshPlansForEvent_(vertical,id);
         const alreadyFulfilled=plans.length>0 && plans.every(function(p){return p.disposition==='FULFILLED_NO_RECREATE' && p.plan==='VERIFY_ONLY_HISTORY_NO_WRITE' && p.readStatus==='FRESH_TASK_GET' && p.actions.length===0 && p.customerCheck==='MATCH' && tmv3_step6IsFulfilledStatus_(p.taskStatus) && tmv3_step6TaskTouchesEventDay_({start:p.calendarStart},{Start:p.taskStart,Due:p.taskDue});});
         if(alreadyFulfilled){result.results.push({eventId:id,status:'FULFILLED_NO_RECREATE'});continue;}
+        const held=JSON.parse(props.getProperty(key)||'null');
+        if(weekScope && !options.forceLinkFormat && !(held && ['INTENT','UNCERTAIN'].indexOf(held.state)>=0) && tmv3_weeklyAlreadyAligned_(record,plans)) {
+          result.results.push({eventId:id,status:'ALREADY_ALIGNED_READ_ONLY',taskIds:plans.map(function(p){return p.taskId;}),freshTaskReads:true,clickableLinksVerified:true,businessWrites:0});continue;
+        }
         const enriched=tmv3_verticalEnrichEvidence_(vertical,record,plans);
         if(enriched.status==='EVIDENCE_REFRESHED') plans=tmv3_step7FreshPlansForEvent_(vertical,id);
         const historical=plans.length>0 && plans.every(function(p){return p.disposition==='FULFILLED_NO_RECREATE' && p.plan==='VERIFY_ONLY_HISTORY_NO_WRITE' && p.readStatus==='FRESH_TASK_GET' && p.actions.length===0 && p.customerCheck==='MATCH' && tmv3_step6IsFulfilledStatus_(p.taskStatus);});
@@ -2351,6 +2357,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
         if(prior && ['INTENT','UNCERTAIN'].indexOf(prior.state)>=0 && !noTaskActions) {
           result.results.push({eventId:id,status:'UNCERTAIN_RECONCILIATION_REQUIRED'});continue;
         }
+        if(options.forceLinkFormat && plans.some(function(p){return !p.taskId||(p.actions||[]).some(function(a){return a!=='VERIFY_CALENDAR_LINKS';});})){result.results.push({eventId:id,status:'REVIEW',error:'LINK_FORMAT_ONLY_OTHER_CHANGES_REQUIRE_SEPARATE_REPAIR'});continue;}
         const taskIds=[];
         if(plans.some(function(p){const duplicate=p.taskId && taskIds.indexOf(String(p.taskId))>=0;if(p.taskId)taskIds.push(String(p.taskId));return duplicate;})) throw new Error('DUPLICATE_TASK_CONTRACTS');
         const executions=[];
@@ -2380,7 +2387,7 @@ function tmv3_verticalProductionCycle_(vertical, options) {
       } finally {
         const outcome=result.results[result.results.length-1]||{status:'UNKNOWN'};
         state.cursor=i+1;state.scanned++;
-        if(outcome.status==='VERIFIED_CONVERGENCE'||outcome.status==='FULFILLED_NO_RECREATE')state.verified++;
+        if(outcome.status==='VERIFIED_CONVERGENCE'||outcome.status==='FULFILLED_NO_RECREATE'||outcome.status==='ALREADY_ALIGNED_READ_ONLY')state.verified++;
         else if(outcome.status==='UNCERTAIN_RECONCILIATION_REQUIRED')state.uncertain++;
         else state.review++;
         props.setProperty(stateKey,JSON.stringify(state));
@@ -2755,4 +2762,38 @@ function tmv3_runWeeklyVerticalRepair(vertical,fromDay,toDay) {
   const result=tmv3_verticalProductionCycle_(vertical,scope);
   PropertiesService.getScriptProperties().setProperty('TMV3_SHEET_REFRESH_PENDING','true');
   return result;
+}
+
+// Google Apps Script: zero business writes; preserve correct clickable Calendar blocks.
+function tmv3_weeklyAlreadyAligned_(record,plans) {
+  if(!record||['Install','Delivery','Service'].indexOf(record.vertical)<0||!plans||!plans.length)return false;
+  if(!plans.every(function(p){return p.taskId && p.readStatus==='FRESH_TASK_GET' && p.plan==='NO_CHANGE' && !p.blocker && p.inputFingerprint===record.fingerprint && p.customerCheck==='MATCH' && p.orderCheck==='MATCH' && p.locationCheck==='MATCH' && (p.actions||[]).every(function(a){return a==='VERIFY_CALENDAR_LINKS';});}))return false;
+  const cfg=TMV3.VERTICALS[record.vertical],taskIds=plans.map(function(p){return String(p.taskId);}).sort();
+  if(taskIds.some(function(id,i){return i>0&&id===taskIds[i-1];}))return false;
+  const required=taskIds.map(function(id){return TMV3.TASK_URL_BASE+id;});
+  if(cfg.calendarOrderLinkRequired){const orderIds=plans.map(function(p){return String(p.expectedOrderId||'');});if(!orderIds[0]||!orderIds.every(function(id){return id===orderIds[0];}))return false;required.push(TMV3.ORDER_URL_BASE+orderIds[0]);}
+  const ids=tmv3_requiredCalendarCopiesForEvent_(record);if(!ids.length)return false;
+  return ids.every(function(calendarId){
+    const found=tmv3_findEventCopyRobust_(calendarId,record.eventId);if(!found||!found.event)return false;
+    const description=String(found.event.getDescription()||''),hrefs=[];let m;const rx=/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi;
+    while((m=rx.exec(description))!==null)hrefs.push(m[1].replace(/&amp;/g,'&'));
+    if(!required.every(function(url){return hrefs.filter(function(h){return h===url;}).length===1;}))return false;
+    const actualTasks=hrefs.filter(function(h){return h.indexOf(TMV3.TASK_URL_BASE)===0;}).map(function(h){return h.slice(TMV3.TASK_URL_BASE.length);}).sort();
+    return JSON.stringify(actualTasks)===JSON.stringify(taskIds);
+  });
+}
+function tmv3_weeklyVerticalRepairStatus(vertical,fromDay,toDay) {
+  const s=tmv3_verticalRepairScope_(vertical,{fromDay:fromDay,toDay:toDay});
+  return JSON.parse(PropertiesService.getScriptProperties().getProperty('TMV3_VERTICAL_SWEEP_'+vertical+'_RANGE_'+s.fromDay+'_'+s.toDay)||'null');
+}
+
+// Google Apps Script: restore presentation only on records touched by this repair session.
+function tmv3_linkFormatRepairTargets() {
+  const rows=tmv3_sheet_(TMV3.SHEETS.AUDIT).getDataRange().getValues(),out={Install:[],Delivery:[],Service:[]};
+  rows.slice(1).forEach(function(row){const at=new Date(row[0]).getTime(),v=String(row[1]||''),id=String(row[2]||'');if(at>=Date.parse('2026-10-26T20:26:00Z')&&at<Date.parse('2026-10-26T20:50:00Z')&&out[v]&&row[4]==='STEP7_ALL'&&row[5]==='PASS'&&id&&out[v].indexOf(id)<0)out[v].push(id);});
+  return out;
+}
+function tmv3_runLinkFormatRepair(vertical,eventIds) {
+  if(['Install','Delivery','Service'].indexOf(vertical)<0||!Array.isArray(eventIds)||!eventIds.length)throw Error('FORMAT_REPAIR_SCOPE_REQUIRED');
+  return tmv3_verticalProductionCycle_(vertical,{fromDay:'2026-10-26',toDay:'2026-11-02',eventIds:eventIds,forceLinkFormat:true});
 }
