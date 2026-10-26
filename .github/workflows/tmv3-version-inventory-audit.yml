@@ -1,0 +1,70 @@
+name: Audit V3 saved versions read-only
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-version-inventory-audit.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read complete saved-version and deployment inventories
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          'use strict';
+          const fs=require('node:fs');
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+            const ps=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));
+            if(ps.length!==1)throw Error('EXPECTED_ONE_PROFILE');
+            const p=ps[0];
+            const ar=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p.client,client_secret:p.secret,refresh_token:p.refresh}),redirect:'error',signal:AbortSignal.timeout(30000)});
+            if(!ar.ok)throw Error('AUTH_HTTP_'+ar.status);
+            const auth=await ar.json();
+            if(!auth.access_token)throw Error('NO_ACCESS_TOKEN');
+            async function list(kind,key){
+              const out=[];let page='';const seen=new Set();
+              do {
+                const u=new URL('https://script.googleapis.com/v1/projects/'+sid+'/'+kind);
+                u.searchParams.set('pageSize','200');if(page)u.searchParams.set('pageToken',page);
+                const r=await fetch(u,{headers:{Authorization:'Bearer '+auth.access_token},redirect:'error',signal:AbortSignal.timeout(30000)});
+                if(!r.ok)throw Error(kind+'_HTTP_'+r.status);
+                const data=await r.json();if(!Array.isArray(data[key]||[]))throw Error('INVALID_LIST');
+                out.push(...(data[key]||[]));page=data.nextPageToken||'';
+                if(page&&seen.has(page))throw Error('REPEATED_PAGE_TOKEN');seen.add(page);
+              }while(page);
+              return out;
+            }
+            const versions=await list('versions','versions');
+            const deployments=await list('deployments','deployments');
+            const nums=versions.map(v=>v.versionNumber);
+            if(new Set(nums).size!==nums.length)throw Error('DUPLICATE_VERSION');
+            const report={status:'LIVE_READ_ONLY_INVENTORY',checkedAt:new Date().toISOString(),scriptId:sid,savedVersionCount:versions.length,sourceWrites:0,versionCreates:0,versionDeletes:0,businessFunctionsInvoked:0,
+              versions:versions.map(v=>({number:v.versionNumber,created:v.createTime})).sort((a,b)=>a.number-b.number),
+              deployments:deployments.map(d=>({versionNumber:d.deploymentConfig?.versionNumber??null,updated:d.updateTime,types:(d.entryPoints||[]).map(e=>e.entryPointType)}))};
+            fs.writeFileSync('version-inventory-result.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify(report));
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v3-version-inventory-${{ github.run_id }}
+          path: version-inventory-result.json
+          if-no-files-found: warn
+          retention-days: 14
