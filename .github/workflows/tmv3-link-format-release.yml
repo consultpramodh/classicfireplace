@@ -1,0 +1,46 @@
+name: Correct vertical link formats and restore touched events
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-link-format-release.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/tmv3-link-format-release.cjs prepare
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: link-format-PRE-${{ github.run_id }}
+          path: link-format-evidence/
+          retention-days: 30
+      - name: Verify exact live-source candidate
+        env:
+          TMV3_TEST_SOURCE_DIR: link-format-evidence/work
+        run: |
+          node tools/test-tmv3-link-formats.cjs
+          node tools/test-tmv3-week-scope.cjs
+          node tools/test-tmv3-core-hardening.cjs
+          node tools/test-tmv3-vertical-evidence.cjs
+      - run: node tools/tmv3-link-format-release.cjs apply
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: link-format-result-${{ github.run_id }}
+          path: link-format-evidence/
+          retention-days: 30
