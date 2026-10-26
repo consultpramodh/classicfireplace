@@ -2023,8 +2023,6 @@ function tmv3_preInspectionAutomationCycle_(options) {
       const one = {eventId:record.eventId};
       result.processed++;
       try {
-        const preservation=tmv3_restorePreInspectionLegacyTitle_(record);
-        if (preservation.writes) record=tmv3_preInspectionRecoveryRecord_(record.eventId);
         const doneKey='TMV3_PI_DONE_'+tmv3_hash_(record.eventId);
         const done=JSON.parse(props.getProperty(doneKey) || 'null');
         if (!options.eventId && done && done.fingerprint===record.fingerprint && now-Number(done.at || 0)<3600000) {
@@ -2038,6 +2036,8 @@ function tmv3_preInspectionAutomationCycle_(options) {
           // Wait until authoritative intake and matching have been attempted.
           one.notification = {status:'WAITING_FOR_INTAKE',sent:0};
         } else {
+          const preservation=tmv3_restorePreInspectionLegacyTitle_(record);
+          if (preservation.writes) record=tmv3_preInspectionRecoveryRecord_(record.eventId);
           let plans = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
           if (plans.length===1 && plans[0].blocker &&
               !tmv3_preInspectionHistoricalCoverageVerified_(plans[0])) {
