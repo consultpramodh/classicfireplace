@@ -1738,6 +1738,36 @@ function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
   return result;
 }
 
+// Recheck the current Order after asynchronous Calendar intake, immediately before CREATE.
+// An inferred visit keeps its verified Order evidence even when no SO was authored on Calendar.
+function tmv3_preInspectionOrderBeforeCreate_(record,plan) {
+  const key='TMV3_PI_INFERRED_'+tmv3_hash_(record.eventId);
+  const rawEvidence=PropertiesService.getScriptProperties().getProperty(key);
+  const evidence=rawEvidence ? JSON.parse(rawEvidence) : null;
+  const number=String(record.orderNumber || (evidence && evidence.orderNumber) || '');
+  if(!number)return {status:'OPTIONAL_ORDER_NOT_ATTACHED'};
+  if(!/^\d+$/.test(number))throw Error('PREINSPECTION_ORDER_STATUS_UNVERIFIED_NO_CREATE');
+  const customerId=Number(plan.expectedCustomerId),locationId=Number(plan.expectedLocationId);
+  if(!Number.isSafeInteger(customerId)||customerId<=0)throw Error('PREINSPECTION_ORDER_CUSTOMER_UNVERIFIED_NO_CREATE');
+  if(evidence && (String(evidence.orderNumber)!==number || Number(evidence.customerId)!==customerId || Number(evidence.locationId)!==locationId))throw Error('PREINSPECTION_INFERRED_ORDER_EVIDENCE_CONFLICT_NO_CREATE');
+  let id=Number(evidence && evidence.orderId);
+  if(!Number.isSafeInteger(id)||id<=0){
+    const found=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',payload:JSON.stringify({PageIndex:0,PageSize:2,Number:number,CustomerId:customerId})});
+    const data=tmv3_first_(found,['Data']),count=Number(tmv3_first_(found,['TotalCount']));
+    if(!Array.isArray(data)||count!==1||data.length!==1||String(tmv3_first_(data[0],['Number']))!==number)throw Error('PREINSPECTION_ORDER_NOT_UNIQUE_NO_CREATE');
+    id=Number(tmv3_first_(data[0],['Id']));
+  }
+  if(!Number.isSafeInteger(id)||id<=0)throw Error('PREINSPECTION_ORDER_ID_UNVERIFIED_NO_CREATE');
+  const order=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+id,{method:'get'});
+  const customer=tmv3_first_(order,['Customer']),status=tmv3_first_(order,['Status']);
+  if(Number(tmv3_first_(order,['Id']))!==id || String(tmv3_first_(order,['OrderNumber','Number']))!==number || Number(tmv3_first_(customer,['Id']))!==customerId)throw Error('PREINSPECTION_ORDER_OWNERSHIP_CONFLICT_NO_CREATE');
+  const statusId=String(tmv3_first_(status,['Id'])),statusName=tmv3_norm_(tmv3_first_(status,['Name']));
+  const known={'18':'incomplete','19':'quoted','20':'pending approval','22':'approved','25':'in progress'};
+  if(!known[statusId]||known[statusId]!==statusName)throw Error('PREINSPECTION_ORDER_STATUS_UNVERIFIED_NO_CREATE');
+  if(statusId==='22'||statusId==='25')throw Error('APPROVED_ORDER_REQUIRES_INSTALLATION_NO_PREINSPECTION_CREATE');
+  return {status:'FRESH_PREAPPROVAL_ORDER_VERIFIED',orderId:id,orderNumber:number,orderStatus:statusName};
+}
+
 function tmv3_preInspectionStoreDiscovery_(records) {
   const sorted=records.slice().sort(function(a,b){return new Date(a.start)-new Date(b.start);});
   const state={checkedAt:new Date().toISOString(),total:sorted.length,
@@ -1839,8 +1869,10 @@ function tmv3_preInspectionPromoteCandidate_(record) {
   const source = tmv3_findCalendarEventById_(record.calendarId,record.eventId);
   if (!source || !source.event) throw new Error('Stephen source event disappeared.');
   const freshSource=tmv3_calendarEvent_('PreInspection',cfg,{calendarId:record.calendarId,calendarName:'Stephen',role:'SECONDARY_STEPHEN'},source.event,{applyEligibility:false});
-  if(tmv3_preInspectionClassifyLikely_(freshSource,cfg,true).status!=='EXPLICIT_PREINSPECTION') throw new Error('SOURCE_INTENT_OR_CREATOR_NOT_AUTHORIZED_NO_INTAKE_WRITE');
+  const freshClassification=tmv3_preInspectionClassifyLikely_(freshSource,cfg,true);
+  if(freshClassification.status!=='EXPLICIT_PREINSPECTION') throw new Error('SOURCE_INTENT_OR_CREATOR_NOT_AUTHORIZED_NO_INTAKE_WRITE');
   if(freshSource.fingerprint!==record.fingerprint) throw new Error('SOURCE_CHANGED_NO_INTAKE_WRITE');
+  if(freshClassification.reason==='VERIFIED_QUOTED_ORDER_LIKELY_PREINSPECTION' && freshClassification.orders.length===1)PropertiesService.getScriptProperties().setProperty('TMV3_PI_INFERRED_'+tmv3_hash_(record.eventId),JSON.stringify(freshClassification.orders[0]));
   const guests = source.event.getGuestList(true).map(function(g) {return tmv3_normEmail_(g.getEmail());});
   [cfg.primaryCalendarId,cfg.secondaryOwnerEmail].forEach(function(email) {
     if (guests.indexOf(tmv3_normEmail_(email)) < 0) source.event.addGuest(email);
@@ -2053,6 +2085,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
           }
           if (plans.length !== 1) throw new Error('MULTIPLE_CANONICAL_PLANS_NO_WRITE');
           const plan = plans[0];
+          if(!plan.blocker && plan.actions.some(function(a){return a===TMV3_STEP7_ACTION.CREATE_TASK || a===TMV3_STEP7_ACTION.RECREATE_TASK;}))one.orderStatusBeforeCreate=tmv3_preInspectionOrderBeforeCreate_(record,plan);
           one.plan=plan.plan;one.blocker=plan.blocker || '';one.taskId=plan.taskId || '';
           // Preserve the single business-write transaction cap. Do not
           // advance the durable sweep cursor past a record whose update has
@@ -2085,6 +2118,8 @@ function tmv3_preInspectionAutomationCycle_(options) {
               one.status='FULFILLED_NO_RECREATE';one.historicalEvidence=one.blocker;one.blocker='';
             }
             pending=pending.filter(function(id){return id!==record.eventId;});
+            const inferredKey='TMV3_PI_INFERRED_'+tmv3_hash_(record.eventId);
+            if(props.getProperty(inferredKey))props.deleteProperty(inferredKey);
             props.setProperty(doneKey,JSON.stringify({fingerprint:fresh.fingerprint,at:Date.now()}));
           }
           else {
