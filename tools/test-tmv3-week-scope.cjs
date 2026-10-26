@@ -1,0 +1,20 @@
+// JavaScript / Node.js: verify the actual worker's date boundaries and durable queue isolation.
+'use strict';
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+const source=fs.readFileSync((process.env.TMV3_TEST_SOURCE_DIR||'week-repair-local')+'/60_Automation.js','utf8');
+const props=new Map([['TMV3_VERTICAL_SWEEP_Delivery',JSON.stringify({id:'ordinary',complete:false,cursor:99})]]),executed=[];
+let budgetReads=0,pauseAfter=Infinity;
+const c={Date,TMV3:{MODE:'PRODUCTION_WRITE',OPERATIONS:{verticalProductionEnabled:true,verticalProductionVerticals:['Install','Delivery','Service']},VERTICALS:{Delivery:{sheet:'Delivery'}}},LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v)})}};
+vm.createContext(c);vm.runInContext(source,c);
+c.tmv3_clean_=x=>String(x||'');c.tmv3_hash_=x=>x;c.tmv3_step6LocalDay_=x=>x?String(x).slice(0,10):'';
+c.tmv3_rows_=()=>[['before','2026-10-25'],['first','2026-10-26'],['last','2026-11-01'],['after','2026-11-02'],['moved','2026-10-28'],['missing',''],['first','2026-10-26']].map(([id,day])=>({'Event ID':id,'Calendar Start':day}));
+c.tmv3_strivenApiBudgetStatus_=()=>({remaining:++budgetReads>pauseAfter?0:1000,exhausted:false});
+c.tmv3_findFreshEventRecord_=(v,id)=>({start:id==='moved'?'2026-11-02':'2026-10-28',fingerprint:id});
+c.tmv3_step7FreshPlansForEvent_=(v,id)=>[{vertical:v,eventId:id,taskId:id,actions:['PATCH_TASK_NAME'],plan:'PATCH'}];c.tmv3_verticalEnrichEvidence_=()=>({status:'NO_CHANGE'});c.tmv3_audit_=()=>{};
+c.tmv3_executeFreshStep7Selection_=s=>{executed.push(s.contract.eventId);return {status:'VERIFIED_CONVERGENCE',taskId:s.contract.taskId};};c.tmv3_verticalAutomationFailureAlert_=()=>{};
+assert.equal(c.tmv3_verticalRepairScope_('Delivery',{}),null);
+for(const [v,a,b] of [['PreInspection','2026-10-26','2026-11-02'],['Delivery','2026-02-30','2026-03-01'],['Delivery','2026-10-26','2026-11-03'],['Delivery','2026-10-26','2026-10-26'],['Delivery','','2026-11-02']])assert.throws(()=>c.tmv3_verticalRepairScope_(v,{fromDay:a,toDay:b}));
+pauseAfter=0;let r=c.tmv3_runWeeklyVerticalRepair('Delivery','2026-10-26','2026-11-02');assert.equal(r.status,'API_BUDGET_WAIT');assert.equal(r.total,3);assert.equal(executed.length,0);
+pauseAfter=Infinity;r=c.tmv3_runWeeklyVerticalRepair('Delivery','2026-10-26','2026-11-02');assert.equal(r.status,'SWEEP_COMPLETE');assert.deepEqual(executed,['first','last']);assert.equal(r.results.find(x=>x.eventId==='moved').status,'SKIPPED_MOVED_OUTSIDE_REPAIR_RANGE');
+assert.equal(JSON.parse(props.get('TMV3_VERTICAL_SWEEP_Delivery')).cursor,99);assert.equal(JSON.parse(props.get('TMV3_VERTICAL_SWEEP_Delivery_RANGE_2026-10-26_2026-11-02')).complete,true);
+console.log('PASS: weekly worker boundaries, Sunday inclusion, next Monday exclusion, rescheduled-event recheck, missing date, deduplication, range validation, budget resume, ordinary queue isolation');
