@@ -1,0 +1,29 @@
+name: Targeted PreInspection audit 20261026
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi-audit-20261026.yml, tools/tmv3-pi-audit-20261026.cjs]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check tools/tmv3-pi-audit-20261026.cjs
+      - run: node tools/tmv3-pi-audit-20261026.cjs
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pi-audit-${{ github.run_id }}
+          path: pi-audit-evidence/
+          retention-days: 14
