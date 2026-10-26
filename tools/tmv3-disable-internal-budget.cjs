@@ -47,7 +47,7 @@ module.exports={patch,test};
 async function main(){
  const ps=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(ps.length!==1)throw Error('ONE_PROFILE_REQUIRED');const p=ps[0];
  const ar=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p.client,client_secret:p.secret,refresh_token:p.refresh})});if(!ar.ok)throw Error('GOOGLE_AUTH_FAILED');const auth=await ar.json();
- async function api(path,method='GET',body){const r=await fetch('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+auth.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(120000)});if(!r.ok)throw Error('GOOGLE_HTTP_'+r.status);return r.json();}
+ async function api(path,method='GET',body){const r=await fetch('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+auth.access_token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(120000)});if(!r.ok){let error={};try{error=await r.json();}catch{}throw Error('GOOGLE_HTTP_'+r.status+' '+method+' '+path+': '+String(error.error&&error.error.message||'').slice(0,500));}return r.json();}
  const hash=x=>crypto.createHash('sha256').update(JSON.stringify(x.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
  fs.mkdirSync(DIR,{recursive:true});const before=await api('projects/'+SID+'/content');fs.writeFileSync(DIR+'/before.json',JSON.stringify(before));
  const candidate={files:before.files.map(f=>({...f,source:patch(f.name,f.source||'')}))};
