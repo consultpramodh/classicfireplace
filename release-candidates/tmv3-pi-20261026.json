@@ -1,27 +1,24 @@
 {
-  "version": "3.12.5-likely-preinspection-intake-sequence-r1",
-  "eventIds": [
-    "45i1sm9ogfbuck1eu760tetin4@google.com",
-    "7k61omkf38ffetovqsglehhbg4@google.com"
-  ],
+  "version": "3.12.6-other-vertical-visit-guard-r1",
+  "eventIds": [],
   "projects": [
     {
       "key": "v3",
       "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-      "beforeHash": "1302b9f75a39bdff17c79f673654c8138f494e6f202d93693eb3f15e637e9b78",
-      "afterHash": "98663ec336d03567bdbbc35b06f54120a36b42cacf81e484be8f1975b716baec",
+      "beforeHash": "98663ec336d03567bdbbc35b06f54120a36b42cacf81e484be8f1975b716baec",
+      "afterHash": "41131a303016f4138a1d0059bab42a8c33f7caaf2043c86683376cb1e56015da",
       "files": [
         {
           "name": "00_Config",
           "path": "release-candidates/pi-20261026/00_Config.js",
-          "before": "8020ebfd6202d90686bc6517f8b5eee3d2e924ac485bd88354f38bdb4b8d0091",
-          "after": "7934c07505688d2db4c65a68bd16c994a60ba1d37bc68e70c6bc890f5dc3d15b"
+          "before": "7934c07505688d2db4c65a68bd16c994a60ba1d37bc68e70c6bc890f5dc3d15b",
+          "after": "79e231004a789aafc8efd3b42748f3e90297acd4fda1dfcc116e0f0793060a39"
         },
         {
           "name": "60_Automation",
           "path": "release-candidates/pi-20261026/60_Automation.js",
-          "before": "370475362804d4d0c8d747f9d9ad75ea3915c61a23a656be7c3dc515ac0f815c",
-          "after": "359afb7602d7fe889c027c08ff119a87d5fc821897f51d7d81180cfcf3241395"
+          "before": "359afb7602d7fe889c027c08ff119a87d5fc821897f51d7d81180cfcf3241395",
+          "after": "63255f0165ea4d3870e3418555be50b221b16ec515a95ff741c7af8c7fc232f6"
         }
       ]
     }
