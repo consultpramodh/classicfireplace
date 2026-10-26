@@ -60,6 +60,7 @@ async function main(){
  }
  const inv=await api('projects/'+SID+'/deployments'),ds=inv.deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXECUTABLE_AMBIGUOUS');const dep=ds[0];
  async function run(fn){const r=await api('scripts/'+encodeURIComponent(dep.deploymentId)+':run','POST',{function:fn,devMode:true});if(r.error||!r.done)throw Error('NATIVE_EXECUTION_FAILED');return r.response.result;}
+ const triggerSignature=rows=>JSON.stringify(rows.map(t=>[t.handler,t.source,t.eventType,t.sourceId]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
  const triggersBefore=await run('tmv3_listTriggers');let pushed=false,updatedDeployment=false;
  try{
   if(hash(await api('projects/'+SID+'/content'))!==hash(before))throw Error('PRE_PUSH_SOURCE_DRIFT');
@@ -67,7 +68,7 @@ async function main(){
   if(hash(await api('projects/'+SID+'/content'))!==hash(candidate))throw Error('SOURCE_READBACK_FAILED');
   const status=await run('tmv3_strivenApiBudgetStatus');if(status.enabled!==false||status.softLimit!==null||status.exhausted||status.remaining<1000000)throw Error('LIVE_BUDGET_CHECK_FAILED');
   const health=await run('tmv3_healthCheck');if(!health.ready||health.version!==VERSION)throw Error('LIVE_HEALTH_FAILED');
-  if(JSON.stringify(await run('tmv3_listTriggers'))!==JSON.stringify(triggersBefore))throw Error('TRIGGER_DRIFT');
+  if(triggerSignature(await run('tmv3_listTriggers'))!==triggerSignature(triggersBefore))throw Error('TRIGGER_DRIFT');
   const version=await api('projects/'+SID+'/versions','POST',{description:VERSION});
   await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:{...dep.deploymentConfig,versionNumber:version.versionNumber,description:VERSION}});updatedDeployment=true;
   const verify=await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId));if(verify.deploymentConfig.versionNumber!==version.versionNumber)throw Error('DEPLOYMENT_READBACK_FAILED');
