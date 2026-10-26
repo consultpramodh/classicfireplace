@@ -69,11 +69,21 @@ async function main(){
   const status=await run('tmv3_strivenApiBudgetStatus');if(status.enabled!==false||status.softLimit!==null||status.exhausted||status.remaining<1000000)throw Error('LIVE_BUDGET_CHECK_FAILED');
   const health=await run('tmv3_healthCheck');if(!health.ready||health.version!==VERSION)throw Error('LIVE_HEALTH_FAILED');
   if(triggerSignature(await run('tmv3_listTriggers'))!==triggerSignature(triggersBefore))throw Error('TRIGGER_DRIFT');
-  const version=await api('projects/'+SID+'/versions','POST',{description:VERSION});
-  await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:{...dep.deploymentConfig,versionNumber:version.versionNumber,description:VERSION}});updatedDeployment=true;
-  const verify=await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId));if(verify.deploymentConfig.versionNumber!==version.versionNumber)throw Error('DEPLOYMENT_READBACK_FAILED');
+  let deploymentVersion=null,versionSnapshotStatus='CREATED';
+  try {
+   const version=await api('projects/'+SID+'/versions','POST',{description:VERSION});
+   await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:{...dep.deploymentConfig,versionNumber:version.versionNumber,description:VERSION}});updatedDeployment=true;
+   const verify=await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId));if(verify.deploymentConfig.versionNumber!==version.versionNumber)throw Error('DEPLOYMENT_READBACK_FAILED');
+   deploymentVersion=version.versionNumber;
+  } catch(e) {
+   if(!String(e.message).includes('Cannot create more versions: Script has reached the limit of 200 versions.'))throw e;
+   // Scheduled triggers and the existing devMode API route execute verified HEAD.
+   // Preserve all immutable history and existing pinned deployments.
+   versionSnapshotStatus='BLOCKED_200_VERSION_HISTORY_LIMIT';
+  }
   for(const name of ['00_Config','20_Striven','60_Automation'])fs.writeFileSync('apps-script/tmv3-clean/'+name+'.js',candidate.files.find(f=>f.name===name).source);
-  console.log(JSON.stringify({status:'LIVE_INTERNAL_API_BUDGET_DISABLED',version:VERSION,deploymentVersion:version.versionNumber,sourceHash:hash(candidate),budget:status,triggersPreserved:true,businessWrites:0}));
+  if(hash(await api('projects/'+SID+'/content'))!==hash(candidate))throw Error('FINAL_SOURCE_READBACK_FAILED');
+  console.log(JSON.stringify({status:'LIVE_INTERNAL_API_BUDGET_DISABLED',version:VERSION,deploymentVersion:deploymentVersion,versionSnapshotStatus:versionSnapshotStatus,activeExecution:'SCHEDULED_TRIGGERS_AND_EXISTING_DEVMODE_API',sourceHash:hash(candidate),budget:status,triggersPreserved:true,businessWrites:0}));
  }catch(e){
   if(updatedDeployment)await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:dep.deploymentConfig});
   if(pushed){const current=await api('projects/'+SID+'/content');if(hash(current)!==hash(candidate))throw Error('SOURCE_DRIFT_ROLLBACK_BLOCKED');await api('projects/'+SID+'/content','PUT',{files:before.files});if(hash(await api('projects/'+SID+'/content'))!==hash(before))throw Error('ROLLBACK_FAILED');console.log('SOURCE_ROLLBACK_VERIFIED');}throw e;
