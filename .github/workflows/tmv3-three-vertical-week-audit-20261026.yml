@@ -1,0 +1,25 @@
+name: Audit current week Install Delivery Service
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-three-vertical-week-audit-20261026.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check tools/tmv3-three-vertical-week-audit-20261026.cjs
+      - run: node tools/tmv3-three-vertical-week-audit-20261026.cjs
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
