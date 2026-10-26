@@ -2,7 +2,7 @@ name: Verify restored links before completing weekly repairs
 on:
   push:
     branches: [task_mapping]
-    paths: [.github/workflows/tmv3-weekly-continuation.yml]
+    paths: [ops/tmv3-weekly-continuation-trigger.txt]
 permissions:
   contents: read
   actions: read
