@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('fs'),vm=require('vm'),crypto=require('crypto'),zlib=require('zlib'),cp=require('child_process');
-const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+const {profiles}=require('./tmv3-execution-access-diagnostic.js');
 const SID='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
 const VERSION='3.12.16-preinspection-sweep-recovery-r1';
 const canonical=o=>crypto.createHash('sha256').update(JSON.stringify(o.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
