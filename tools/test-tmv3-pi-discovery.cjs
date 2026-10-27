@@ -20,11 +20,14 @@ assert.equal(decide({descriptionClean:'Previous preinspection was completed last
 assert.equal(decide({title:'Preinspection not required'}).status,'IGNORE');
 assert.equal(decide({creator:'sales@example.invalid'}).reason,'CREATOR_UNVERIFIED');
 assert.equal(decide({creator:''}).reason,'CREATOR_UNVERIFIED');
+assert.equal(decide({creator:'',title:'Preinspect customer'}).status,'REVIEW_VISIT_TYPE');
+assert.equal(decide({creator:'',phone:'',location:'',title:'Team meeting'}).status,'IGNORE');
+assert.equal(decide({phone:'',location:''}).status,'IGNORE');
 assert.equal(decide({creator:'sales@classicfireplace.ca,other@classicfireplace.ca'}).reason,'CREATOR_UNVERIFIED');
 assert.equal(decide({isAllDay:true}).status,'IGNORE');
 assert.equal(decide({status:'cancelled'}).status,'IGNORE');
-assert.equal(decide({phone:''}).status,'IGNORE');
-assert.equal(decide({location:''}).status,'IGNORE');
+assert.equal(decide({phone:''}).reason,'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE');
+assert.equal(decide({location:''}).reason,'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE');
 assert.equal(decide({title:'Pre-inspection customer'}).status,'EXPLICIT_PREINSPECTION');
 assert.equal(decide({descriptionClean:'Preinspect the fireplace before install'}).status,'EXPLICIT_PREINSPECTION');
 for(const descriptionClean of ['Not a preinspection','No pre-inspect','not pre inspection'])assert.equal(decide({descriptionClean}).reason,'EXPLICIT_NOT_PREINSPECTION');
