@@ -1929,8 +1929,7 @@ function tmv3_runPreInspectionAutomation() {
 }
 
 function tmv3_verifyPreInspectionAutomation(eventId) {
-  const records=tmv3_preInspectionIntakeRecords_().filter(function(r){return !eventId || r.eventId===eventId;});
-  if (eventId && !records.length) records.push(tmv3_preInspectionRecoveryRecord_(eventId));
+  const records=eventId ? [tmv3_preInspectionRecoveryRecord_(eventId)] : tmv3_preInspectionIntakeRecords_();
   return {status:'READ_ONLY_VERIFICATION',version:TMV3.VERSION,
     automationEnabled:TMV3.OPERATIONS.preInspectionAutomationEnabled,
     emailEnabled:TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled,
