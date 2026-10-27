@@ -1427,14 +1427,16 @@ function tmv3_preInspectionDiscoveryDecision_(record,cfg) {
   if (!record || tmv3_step2PreInspectionNonCustomer_(record) || record.status==='cancelled') return {status:'IGNORE',reason:'NON_CUSTOMER_OR_CANCELLED'};
   const creator=tmv3_preInspectionCreatorEmail_(record);
   const excluded=(cfg.secondaryIgnoredCreatorEmails || []).map(tmv3_normEmail_);
-  if (!creator || excluded.indexOf(creator)>=0) return {status:'IGNORE',reason:creator?'EXCLUDED_CREATOR':'CREATOR_UNVERIFIED'};
+  if (creator && excluded.indexOf(creator)>=0) return {status:'IGNORE',reason:'EXCLUDED_CREATOR'};
   const text=[record.title || '',record.descriptionClean || record.rawDescription || ''].join(' ');
   if (/\b(?:not|no)\s+(?:a\s+)?pre[\s-]*inspect(?:ion)?\b/i.test(text)) return {status:'IGNORE',reason:'EXPLICIT_NOT_PREINSPECTION'};
   if (/\bpre[\s-]*inspect(?:ion)?\s+(?:(?:is|was)\s+)?(?:not\b|required later|already completed)/i.test(text)) return {status:'IGNORE',reason:'EXPLICIT_NOT_PREINSPECTION'};
   const instruction=/\bpre[\s-]*inspect(?:ion)?\b/i.test(record.title || '') ||
     /^\s*(?:(?:this is (?:a )?|appointment(?: type)?[: -]+))?pre[\s-]*inspect(?:ion)?\b/i.test(record.descriptionClean || record.rawDescription || '');
+  const hasPhone=!!tmv3_phone10_(record.phone), hasLocation=!!tmv3_clean_(record.location);
+  if (!creator) return instruction || hasPhone || hasLocation ? {status:'REVIEW_VISIT_TYPE',reason:'CREATOR_UNVERIFIED'} : {status:'IGNORE',reason:'NO_CUSTOMER_VISIT_EVIDENCE'};
   if (instruction) return {status:'EXPLICIT_PREINSPECTION',reason:'EXPLICIT_SOURCE_INSTRUCTION'};
-  if (!tmv3_phone10_(record.phone) || !tmv3_clean_(record.location)) return {status:'IGNORE',reason:'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE'};
+  if (!hasPhone || !hasLocation) return hasPhone || hasLocation ? {status:'REVIEW_VISIT_TYPE',reason:'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE'} : {status:'IGNORE',reason:'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE'};
   return {status:'REVIEW_VISIT_TYPE',reason:/\b(?:return|go back|measure|filler|trim)\b/i.test(text)?'RETURN_OR_MEASURING_VISIT_UNCONFIRMED':'CUSTOMER_VISIT_TYPE_UNCONFIRMED'};
 }
 // Google Apps Script: classify likely visits using current Order ownership and job site.
@@ -1442,7 +1444,7 @@ var TMV3_PI_LIKELY_REFS = null;
 var TMV3_PI_LIKELY_DECISIONS = {};
 function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
   const base=tmv3_preInspectionDiscoveryDecision_(record,cfg);
-  if(base.status!=='REVIEW_VISIT_TYPE')return base;
+  if(base.status!=='REVIEW_VISIT_TYPE' || base.reason==='CREATOR_UNVERIFIED' || base.reason==='INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE')return base;
   if(/\b(?:service|delivery|repair|maintenance|troubleshoot(?:ing)?)\b/i.test(record.title || '') ||
       /^\s*(?:service|delivery|repair|maintenance)\b/i.test(record.descriptionClean || record.rawDescription || ''))return {status:'REVIEW_VISIT_TYPE',reason:'OTHER_VERTICAL_INTENT_REQUIRES_REVIEW'};
   const key=record.eventId+'|'+record.fingerprint;
