@@ -1427,14 +1427,16 @@ function tmv3_preInspectionDiscoveryDecision_(record,cfg) {
   if (!record || tmv3_step2PreInspectionNonCustomer_(record) || record.status==='cancelled') return {status:'IGNORE',reason:'NON_CUSTOMER_OR_CANCELLED'};
   const creator=tmv3_preInspectionCreatorEmail_(record);
   const excluded=(cfg.secondaryIgnoredCreatorEmails || []).map(tmv3_normEmail_);
-  if (!creator || excluded.indexOf(creator)>=0) return {status:'IGNORE',reason:creator?'EXCLUDED_CREATOR':'CREATOR_UNVERIFIED'};
+  if (creator && excluded.indexOf(creator)>=0) return {status:'IGNORE',reason:'EXCLUDED_CREATOR'};
   const text=[record.title || '',record.descriptionClean || record.rawDescription || ''].join(' ');
   if (/\b(?:not|no)\s+(?:a\s+)?pre[\s-]*inspect(?:ion)?\b/i.test(text)) return {status:'IGNORE',reason:'EXPLICIT_NOT_PREINSPECTION'};
   if (/\bpre[\s-]*inspect(?:ion)?\s+(?:(?:is|was)\s+)?(?:not\b|required later|already completed)/i.test(text)) return {status:'IGNORE',reason:'EXPLICIT_NOT_PREINSPECTION'};
   const instruction=/\bpre[\s-]*inspect(?:ion)?\b/i.test(record.title || '') ||
     /^\s*(?:(?:this is (?:a )?|appointment(?: type)?[: -]+))?pre[\s-]*inspect(?:ion)?\b/i.test(record.descriptionClean || record.rawDescription || '');
+  const hasPhone=!!tmv3_phone10_(record.phone), hasLocation=!!tmv3_clean_(record.location);
+  if (!creator) return instruction || hasPhone || hasLocation ? {status:'REVIEW_VISIT_TYPE',reason:'CREATOR_UNVERIFIED'} : {status:'IGNORE',reason:'NO_CUSTOMER_VISIT_EVIDENCE'};
   if (instruction) return {status:'EXPLICIT_PREINSPECTION',reason:'EXPLICIT_SOURCE_INSTRUCTION'};
-  if (!tmv3_phone10_(record.phone) || !tmv3_clean_(record.location)) return {status:'IGNORE',reason:'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE'};
+  if (!hasPhone || !hasLocation) return hasPhone || hasLocation ? {status:'REVIEW_VISIT_TYPE',reason:'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE'} : {status:'IGNORE',reason:'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE'};
   return {status:'REVIEW_VISIT_TYPE',reason:/\b(?:return|go back|measure|filler|trim)\b/i.test(text)?'RETURN_OR_MEASURING_VISIT_UNCONFIRMED':'CUSTOMER_VISIT_TYPE_UNCONFIRMED'};
 }
 // Google Apps Script: classify likely visits using current Order ownership and job site.
@@ -1442,7 +1444,7 @@ var TMV3_PI_LIKELY_REFS = null;
 var TMV3_PI_LIKELY_DECISIONS = {};
 function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
   const base=tmv3_preInspectionDiscoveryDecision_(record,cfg);
-  if(base.status!=='REVIEW_VISIT_TYPE')return base;
+  if(base.status!=='REVIEW_VISIT_TYPE' || base.reason==='CREATOR_UNVERIFIED' || base.reason==='INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE')return base;
   if(/\b(?:service|delivery|repair|maintenance|troubleshoot(?:ing)?)\b/i.test(record.title || '') ||
       /^\s*(?:service|delivery|repair|maintenance)\b/i.test(record.descriptionClean || record.rawDescription || ''))return {status:'REVIEW_VISIT_TYPE',reason:'OTHER_VERTICAL_INTENT_REQUIRES_REVIEW'};
   const key=record.eventId+'|'+record.fingerprint;
@@ -1724,6 +1726,18 @@ function tmv3_preInspectionSweepKey_(record) {
   return start.toISOString() + '|' + String(record.eventId || '');
 }
 
+// A one-event request must not scan or classify the entire calendar.
+function tmv3_preInspectionTargetedIntake_(eventId,props) {
+  const pending=JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
+  const record=tmv3_preInspectionRecoveryRecord_(eventId);
+  const start=new Date(record.start);
+  if (!isFinite(start.getTime()) || record.status==='cancelled') throw new Error('TARGET_EVENT_INVALID_OR_CANCELLED');
+  const first=new Date();first.setHours(0,0,0,0);
+  const last=new Date(first);last.setDate(last.getDate()+Number(TMV3.VERTICALS.PreInspection.lookaheadDays || 365));
+  if (pending.indexOf(eventId)<0 && (start<first || start>=last)) return [];
+  return [record];
+}
+
 function tmv3_preInspectionAutomationCycle_(options) {
   options = options || {};
   if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
@@ -1735,7 +1749,10 @@ function tmv3_preInspectionAutomationCycle_(options) {
   const previousApiContext=TMV3_PREINSPECTION_API_CONTEXT_ACTIVE;
   TMV3_PREINSPECTION_API_CONTEXT_ACTIVE=true;
   try {
-    const records=tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true});
+    const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
+    const sweepRequested = options.sweepStart === true || options.sweepContinue === true;
+    if (sweepRequested && scopeEventId) return {status:'SWEEP_BLOCKED_BY_CANARY_SCOPE',processed:0,writes:0};
+    const records=scopeEventId ? tmv3_preInspectionTargetedIntake_(scopeEventId,props) : tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true});
     result.discovery=tmv3_preInspectionDiscoveryStatus();
     const budget=tmv3_strivenApiBudgetStatus_();
     if(budget.exhausted||budget.remaining<30) {
@@ -1759,7 +1776,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
     // stops this cycle before task creation or misleading missing-data emails.
     tmv3_refreshOperationalSourcesIfNeeded_(120,false);
     let pending = JSON.parse(props.getProperty('TMV3_PI_PENDING_EVENTS') || '[]');
-    pending.forEach(function(id) {
+    if (!scopeEventId) pending.forEach(function(id) {
       if (records.some(function(r) {return r.eventId===id;})) return;
       try {
         const recovered=tmv3_preInspectionRecoveryRecord_(id);
@@ -1768,9 +1785,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
       }
       catch(err) {tmv3_audit_('PreInspection',id,'','PREINSPECTION_RECOVERY','ATTENTION',String(err));}
     });
-    const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
     let selected = scopeEventId ? records.filter(function(r){return r.eventId===scopeEventId;}) : records;
-    const sweepRequested = options.sweepStart === true || options.sweepContinue === true;
     let sweep = null;
     if (sweepRequested && scopeEventId) {
       return {status:'SWEEP_BLOCKED_BY_CANARY_SCOPE',processed:0,writes:0,eligible:records.length};
