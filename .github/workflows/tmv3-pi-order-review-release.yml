@@ -1,0 +1,33 @@
+name: Deploy Preinspection order review
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi-order-review-release.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch pinned candidate
+        run: |
+          git fetch origin dd9893e77c013f08a8e893f7874f3e17a2944623
+          git show dd9893e77c013f08a8e893f7874f3e17a2944623:apps-script/tmv3-clean/00_Config.js > apps-script/tmv3-clean/00_Config.js
+          git show dd9893e77c013f08a8e893f7874f3e17a2944623:apps-script/tmv3-clean/60_Automation.js > apps-script/tmv3-clean/60_Automation.js
+          git show dd9893e77c013f08a8e893f7874f3e17a2944623:tools/test-tmv3-pi-order-classification.cjs > tools/test-tmv3-pi-order-classification.cjs
+          mkdir -p tests/preinspection
+          git show dd9893e77c013f08a8e893f7874f3e17a2944623:tests/preinspection/sweep-start-recovery.test.cjs > tests/preinspection/sweep-start-recovery.test.cjs
+      - name: Test and deploy
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-preinspection-order-review-release.cjs
