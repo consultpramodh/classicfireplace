@@ -1,0 +1,26 @@
+// Node.js: verify one-event intake avoids broad scans and preserves scope guards.
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const dir=process.env.TMV3_TEST_SOURCE_DIR||path.join(__dirname,'../../apps-script/tmv3-clean');
+const ctx={};vm.createContext(ctx);for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.js')).sort())vm.runInContext(fs.readFileSync(path.join(dir,f),'utf8'),ctx,{filename:f});
+let pending=[],lookup=[],record={eventId:'x@google.com',start:new Date(Date.now()+86400000).toISOString(),status:'confirmed',calendarRole:'PRIMARY_SHARED'};
+const props={getProperty:k=>k==='TMV3_PI_PENDING_EVENTS'?JSON.stringify(pending):null};
+ctx.tmv3_preInspectionRecoveryRecord_=id=>{lookup.push(id);return {...record,eventId:id}};
+assert.equal(ctx.tmv3_preInspectionTargetedIntake_('x@google.com',props).length,1);
+assert.deepEqual(lookup,['x@google.com']);
+record.start=new Date(Date.now()-3*86400000).toISOString();
+assert.equal(ctx.tmv3_preInspectionTargetedIntake_('x@google.com',props).length,0);
+pending=['x@google.com'];assert.equal(ctx.tmv3_preInspectionTargetedIntake_('x@google.com',props).length,1);
+record.status='cancelled';assert.throws(()=>ctx.tmv3_preInspectionTargetedIntake_('x@google.com',props),/CANCELLED/);
+record.status='confirmed';record.start='bad';assert.throws(()=>ctx.tmv3_preInspectionTargetedIntake_('x@google.com',props),/INVALID/);
+let scan=0,target=0;
+const fullProps={getProperty:()=>null,setProperty:()=>{},deleteProperty:()=>{}};
+ctx.PropertiesService={getScriptProperties:()=>fullProps};ctx.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})};
+ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_preInspectionIntakeRecords_=()=>{scan++;return []};
+ctx.tmv3_preInspectionTargetedIntake_=()=>{target++;return []};ctx.tmv3_preInspectionDiscoveryStatus=()=>({});
+ctx.tmv3_strivenApiBudgetStatus_=()=>({exhausted:false,remaining:1000});ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};
+ctx.tmv3_audit_=()=>{};ctx.tmv3_preInspectionFailureAlert_=()=>{};
+let result=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:'x@google.com'});assert.equal(result.status,'COMPLETE');assert.equal(target,1);assert.equal(scan,0);
+result=ctx.tmv3_preInspectionAutomationCycle_({force:true});assert.equal(result.status,'COMPLETE');assert.equal(scan,1);
+result=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:'x@google.com',sweepStart:true});assert.equal(result.status,'SWEEP_BLOCKED_BY_CANARY_SCOPE');assert.equal(target,1);
+console.log('PASS: direct target, date bounds, pending recovery, cancelled/invalid held, full scan skipped, scope guard');
