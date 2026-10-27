@@ -1,0 +1,23 @@
+name: Test Preinspection incomplete discovery
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi-discovery-review-test.yml]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bc6348b4178f9b7eb0189ba2a6c3d942e8e5c8cb
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          node --check apps-script/tmv3-clean/60_Automation.js
+          node tools/test-tmv3-pi-discovery.cjs
+          node tools/test-tmv3-pi-order-classification.cjs
+          node tools/test-tmv3-core-hardening.cjs
+          node tests/preinspection/sweep-start-recovery.test.cjs
