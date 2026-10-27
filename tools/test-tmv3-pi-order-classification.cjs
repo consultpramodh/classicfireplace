@@ -48,7 +48,7 @@ const props={};ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>p
 ctx.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})};
 ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};
 ctx.tmv3_strivenApiBudgetStatus_=()=>({remaining:1000,count:0,exhausted:false});
-ctx.tmv3_preInspectionIntakeRecords_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionDiscoveryStatus=()=>({total:1});
+ctx.tmv3_preInspectionIntakeRecords_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionTargetedIntake_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionDiscoveryStatus=()=>({total:1});
 ctx.tmv3_hash_=v=>String(v);
 const sequence=[];let wait=false;
 ctx.tmv3_preInspectionPromoteCandidate_=r=>{sequence.push('promote');return {status:wait?'WAITING_FOR_CF_COPY':'PRIMARY',record:{...r,calendarRole:wait?'SECONDARY_STEPHEN':'PRIMARY_SHARED'}};};
