@@ -47,7 +47,7 @@ assert(!ctx.tmv3_reconcilePreInspectionPendingReview.toString().includes('tmv3_e
 // Execute the real cycle: historical coverage clears review without a business write or alert.
 const record={vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',eventId:'cycle-history',fingerprint:'current',start:historical.calendarStart};
 ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_strivenApiBudgetStatus_=()=>({remaining:100,exhausted:false});
-ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};ctx.tmv3_preInspectionIntakeRecords_=()=>[record];
+ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};ctx.tmv3_preInspectionIntakeRecords_=()=>[record];ctx.tmv3_preInspectionTargetedIntake_=()=>[record];
 ctx.tmv3_restorePreInspectionLegacyTitle_=()=>({writes:0});ctx.tmv3_preInspectionPromoteCandidate_=r=>({status:'PRIMARY',record:r});
 ctx.tmv3_preInspectionSendMissingDetails_=()=>({sent:0});ctx.tmv3_findFreshEventRecord_=()=>record;
 ctx.tmv3_step7FreshPlansForEvent_=()=>[historical];
