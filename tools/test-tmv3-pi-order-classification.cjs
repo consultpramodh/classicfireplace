@@ -21,7 +21,7 @@ statusId=22;statusName='Quoted';check('REVIEW_VISIT_TYPE');statusName='Approved'
 customerId=999;check('REVIEW_VISIT_TYPE');customerId=63005;
 searchTotal=2;check('REVIEW_VISIT_TYPE');searchTotal=1;fail=true;check('REVIEW_VISIT_TYPE');fail=false;
 check('REVIEW_VISIT_TYPE',{descriptionClean:'SO#586242 / SO#586243'});
-const before=calls;check('IGNORE',{creator:'jay@classicfireplace.ca'});check('IGNORE',{title:'Not preinspect customer'});assert.equal(calls,before);
+const before=calls;check('IGNORE',{creator:'jay@classicfireplace.ca'});check('IGNORE',{title:'Not preinspect customer'});assert.equal(check('REVIEW_VISIT_TYPE',{creator:''}).reason,'CREATOR_UNVERIFIED');assert.equal(check('REVIEW_VISIT_TYPE',{phone:''}).reason,'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE');assert.equal(calls,before);
 statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION');statusId=22;statusName='Approved';check('INSTALLATION');
 // Same fingerprint must still re-read status at the final pre-invite check.
 assert(calls>before);
@@ -48,7 +48,7 @@ const props={};ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>p
 ctx.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})};
 ctx.tmv3_operationWritesEnabled_=()=>true;ctx.tmv3_refreshOperationalSourcesIfNeeded_=()=>{};
 ctx.tmv3_strivenApiBudgetStatus_=()=>({remaining:1000,count:0,exhausted:false});
-ctx.tmv3_preInspectionIntakeRecords_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionDiscoveryStatus=()=>({total:1});
+ctx.tmv3_preInspectionIntakeRecords_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionTargetedIntake_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionDiscoveryStatus=()=>({total:1});
 ctx.tmv3_hash_=v=>String(v);
 const sequence=[];let wait=false;
 ctx.tmv3_preInspectionPromoteCandidate_=r=>{sequence.push('promote');return {status:wait?'WAITING_FOR_CF_COPY':'PRIMARY',record:{...r,calendarRole:wait?'SECONDARY_STEPHEN':'PRIMARY_SHARED'}};};
