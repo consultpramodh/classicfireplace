@@ -34,3 +34,5 @@ jobs:
 # Retry with corrected helper import.
 
 # Reuse the verified candidate version if already created.
+
+# Preserve read-only execution deployment.
