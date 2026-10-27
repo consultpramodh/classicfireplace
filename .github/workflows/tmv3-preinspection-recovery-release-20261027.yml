@@ -30,3 +30,5 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-preinspection-recovery-release-20261027.cjs
+
+# Retry with corrected helper import.
