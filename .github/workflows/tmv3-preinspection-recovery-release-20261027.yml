@@ -1,0 +1,32 @@
+name: Deploy Preinspection recovery
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-preinspection-recovery-release-20261027.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch pinned release candidate
+        run: |
+          git fetch origin 5e2c326921ed6d6d5652f9488adc690a68c38caa
+          git show 5e2c326921ed6d6d5652f9488adc690a68c38caa:apps-script/tmv3-clean/00_Config.js > apps-script/tmv3-clean/00_Config.js
+          git show 5e2c326921ed6d6d5652f9488adc690a68c38caa:apps-script/tmv3-clean/60_Automation.js > apps-script/tmv3-clean/60_Automation.js
+          mkdir -p tests/preinspection
+          git show 5e2c326921ed6d6d5652f9488adc690a68c38caa:tests/preinspection/sweep-start-recovery.test.cjs > tests/preinspection/sweep-start-recovery.test.cjs
+      - name: Test and deploy with source and trigger verification
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-preinspection-recovery-release-20261027.cjs
