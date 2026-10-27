@@ -21,10 +21,10 @@ jobs:
           node-version: 22
       - name: Fetch pinned candidate
         run: |
-          git fetch origin cbce941943dda45c0f1a9d59fe286de895ff03d7
-          for file in apps-script/tmv3-clean/00_Config.js apps-script/tmv3-clean/60_Automation.js tools/test-tmv3-pi-order-classification.cjs tools/test-tmv3-pi-discovery.cjs tests/preinspection/sweep-start-recovery.test.cjs tests/preinspection/targeted-intake.test.cjs; do
+          git fetch origin 06db059f39627e8b84dc1c988eae20e26e9e77a8
+          for file in apps-script/tmv3-clean/00_Config.js apps-script/tmv3-clean/60_Automation.js tools/test-tmv3-pi-order-classification.cjs tools/test-tmv3-pi-discovery.cjs tools/test-tmv3-pi-history-completion.js tests/preinspection/sweep-start-recovery.test.cjs tests/preinspection/targeted-intake.test.cjs; do
             mkdir -p "$(dirname "$file")"
-            git show cbce941943dda45c0f1a9d59fe286de895ff03d7:"$file" > "$file"
+            git show 06db059f39627e8b84dc1c988eae20e26e9e77a8:"$file" > "$file"
           done
       - name: Test and deploy
         env:
