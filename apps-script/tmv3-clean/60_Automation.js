@@ -2017,7 +2017,12 @@ function tmv3_preInspectionMaybeContinueSweep_(result) {
 function tmv3_preInspectionContinueEligibleSweep() {
   const sheetRefreshStarted=Date.now();
   tmv3_preInspectionClearContinuationTrigger_();
-  const result=tmv3_preInspectionAutomationCycle_({force:true,sweepContinue:true,reason:'ELIGIBLE_SWEEP_CONTINUATION'});
+  const props=PropertiesService.getScriptProperties();
+  const retryStart=props.getProperty('TMV3_PI_RETRY_SWEEP_START')==='1';
+  const result=tmv3_preInspectionAutomationCycle_(retryStart ?
+    {force:true,sweepStart:true,reason:'RETRY_LOCKED_DAILY_SWEEP'} :
+    {force:true,sweepContinue:true,reason:'ELIGIBLE_SWEEP_CONTINUATION'});
+  if (retryStart && result.status!=='LOCK_BUSY') props.deleteProperty('TMV3_PI_RETRY_SWEEP_START');
   tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_('CONTINUATION',result);
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
@@ -2026,6 +2031,7 @@ function tmv3_preInspectionContinueEligibleSweep() {
 function tmv3_runPreInspectionDailySlot_(slot) {
   const sheetRefreshStarted=Date.now();
   const result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
+  if (result.status==='LOCK_BUSY') PropertiesService.getScriptProperties().setProperty('TMV3_PI_RETRY_SWEEP_START','1');
   tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_(slot,result);
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
