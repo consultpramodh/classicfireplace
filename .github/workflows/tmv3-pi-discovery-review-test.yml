@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: bc6348b4178f9b7eb0189ba2a6c3d942e8e5c8cb
+          ref: 94737640b5e8c59848d7d253362004864493e635
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -21,3 +21,4 @@ jobs:
           node tools/test-tmv3-pi-order-classification.cjs
           node tools/test-tmv3-core-hardening.cjs
           node tests/preinspection/sweep-start-recovery.test.cjs
+          node tests/preinspection/targeted-intake.test.cjs
