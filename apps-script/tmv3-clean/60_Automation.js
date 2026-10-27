@@ -1479,8 +1479,10 @@ function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
       if(Number(tmv3_first_(location,['Id']))!==Number(sites[0]['Location ID']))return;
       relevant.push({orderId:id,orderNumber:number,customerId:customerId,locationId:Number(sites[0]['Location ID']),orderStatus:statusName});
     });
-    const installations=relevant.filter(function(o){return o.orderStatus==='approved'||o.orderStatus==='in progress';});
-    if(installations.length)result={status:'INSTALLATION',reason:'APPROVED_OR_IN_PROGRESS_ORDER_AT_JOB_SITE',orders:installations};
+    const installations=relevant.filter(function(o){return o.orderStatus==='approved';});
+    const inProgress=relevant.filter(function(o){return o.orderStatus==='in progress';});
+    if(inProgress.length)result={status:'REVIEW_VISIT_TYPE',reason:'IN_PROGRESS_ORDER_TYPE_UNVERIFIED',orders:inProgress};
+    else if(installations.length)result={status:'INSTALLATION',reason:'APPROVED_ORDER_AT_JOB_SITE',orders:installations};
     else if(relevant.length===1 && relevant[0].orderStatus==='quoted') {
       // Measuring return visits already booked for install are not initial inspections.
       if(/\binstall(?:ation)?\b/i.test(record.title || '') || (/\b(?:return|go back)\b/i.test(text) && /\binstall(?:ation)?\b/i.test(text)))result={status:'REVIEW_VISIT_TYPE',reason:'INSTALLATION_RETURN_VISIT_ORDER_NOT_APPROVED'};
@@ -1517,7 +1519,8 @@ function tmv3_preInspectionOrderBeforeCreate_(record,plan) {
   const statusId=String(tmv3_first_(status,['Id'])),statusName=tmv3_norm_(tmv3_first_(status,['Name']));
   const known={'18':'incomplete','19':'quoted','20':'pending approval','22':'approved','25':'in progress'};
   if(!known[statusId]||known[statusId]!==statusName)throw Error('PREINSPECTION_ORDER_STATUS_UNVERIFIED_NO_CREATE');
-  if(statusId==='22'||statusId==='25')throw Error('APPROVED_ORDER_REQUIRES_INSTALLATION_NO_PREINSPECTION_CREATE');
+  if(statusId==='22')throw Error('APPROVED_ORDER_REQUIRES_INSTALLATION_NO_PREINSPECTION_CREATE');
+  if(statusId==='25')throw Error('IN_PROGRESS_ORDER_TYPE_UNVERIFIED_NO_PREINSPECTION_CREATE');
   return {status:'FRESH_PREAPPROVAL_ORDER_VERIFIED',orderId:id,orderNumber:number,orderStatus:statusName};
 }
 
