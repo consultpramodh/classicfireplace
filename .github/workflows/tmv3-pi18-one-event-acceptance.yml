@@ -1,0 +1,50 @@
+name: TMV3 targeted private reconciliation
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi18-one-event-acceptance.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reconcile one event
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const crypto=require('node:crypto');
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          const pub="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwU5yeUlO4MMA/asYRtoT\nkRIlm82IjFEK1HTeEZMs/NyBK91MqKC8G/wIeDD/biNoaG+7DblT+jKl7n6Y+b5c\nTb9B1uLi7vhsNOuvns0poivRNa35FXELCTxfhBexvtZ3KArpgAkoJsONHuvYSqHs\n0mIsRpoKOo5vaQ5NII1OsY6q8EFGP5Wlz664oaGukxeUyiexC25jh8Bw+nzfZWo4\nOTD8Y8qP7vSGby7+79i7IY6EhoWkk1UlgmeIA6LULjoajwBQOj+TllA7Yyt15FFv\nkjmrDIt//qFTBOnQQ3191LxgbXiBIn73RNYYzCVrfHfV85wtnFT9uMTY2JNjqsY9\n1QIDAQAB\n-----END PUBLIC KEY-----";
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));
+            if(p.length!==1)throw Error('EXPECTED_ONE_PROFILE');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh}),redirect:'error'});
+            if(!a.ok)throw Error('AUTH_HTTP_'+a.status);
+            const token=(await a.json()).access_token;
+            async function api(url,body){
+              const r=await fetch(url,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(450000)});
+              if(!r.ok)throw Error('GOOGLE_HTTP_'+r.status);
+              return r.json();
+            }
+            const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+            const base='https://script.googleapis.com/v1/';
+            const inv=await api(base+'projects/'+sid+'/deployments');
+            const deps=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));
+            if(deps.length!==1)throw Error('EXECUTION_DEPLOYMENT_COUNT_'+deps.length);
+            const response=await api(base+'scripts/'+encodeURIComponent(deps[0].deploymentId)+':run',{function:'tmv3_reconcilePreInspectionEvent',parameters:['61tccdggrgvcvired5pgo8vt4m@google.com'],devMode:true});
+            const key=crypto.randomBytes(32),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv);
+            const encrypted=Buffer.concat([cipher.update(JSON.stringify(response)),cipher.final()]);
+            const envelope={key:crypto.publicEncrypt({key:pub,oaepHash:'sha256'},key).toString('base64'),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:encrypted.toString('base64')};
+            console.log('ENCRYPTED_RESULT:'+Buffer.from(JSON.stringify(envelope)).toString('base64'));
+          })().catch(e=>{console.error('DIAGNOSTIC_FAILED:'+String(e.message).slice(0,200));process.exitCode=1});
+          NODE
