@@ -74,7 +74,7 @@ ctx.tmv3_strivenApiBudgetStatus_=()=>({exhausted:false,remaining:1000,count:0});
 ctx.tmv3_preInspectionIntakeRecords_=()=>[];
 for(const recovered of [{...explicit,creator:'jay@classicfireplace.ca'},{...explicit,title:'Not preinspect Fixture'}]){
  props.TMV3_PI_PENDING_EVENTS=JSON.stringify([recovered.eventId]);ctx.tmv3_preInspectionRecoveryRecord_=()=>recovered;
- const result=actualCycle({force:true,eventId:recovered.eventId});assert.equal(result.processed,0);assert.equal(result.status,'COMPLETE');assert.equal(props.TMV3_PI_PENDING_EVENTS,'[]');calls++;
+ const result=actualCycle({force:true});assert.equal(result.processed,0);assert.equal(result.status,'COMPLETE');assert.equal(props.TMV3_PI_PENDING_EVENTS,'[]');calls++;
 }
 const morning=fs.readFileSync(path.join(dir,'80_MorningOps.js'),'utf8');
 assert(morning.includes("['DISCOVERY',discovery.total || 0,'VISIT TYPE REVIEW',discovery.review || 0"));
