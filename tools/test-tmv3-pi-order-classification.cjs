@@ -14,7 +14,7 @@ let cases=0;function check(expected,change={}){const r=ctx.tmv3_preInspectionCla
 check('EXPLICIT_PREINSPECTION');
 for(const title of ['Service Customer 416-555-0100','Delivery Customer 416-555-0100','Install Customer 416-555-0100'])check('REVIEW_VISIT_TYPE',{title});
 check('REVIEW_VISIT_TYPE',{descriptionClean:'Maintenance visit'});
-statusId=22;statusName='Approved';check('INSTALLATION');statusId=25;statusName='In Progress';check('INSTALLATION');
+statusId=22;statusName='Approved';check('INSTALLATION');statusId=25;statusName='In Progress';assert.equal(check('REVIEW_VISIT_TYPE').reason,'IN_PROGRESS_ORDER_TYPE_UNVERIFIED');
 statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION',{orderNumber:''});
 check('REVIEW_VISIT_TYPE',{descriptionClean:'Return to measure filler. Install booked Nov 16.'});
 statusId=22;statusName='Quoted';check('REVIEW_VISIT_TYPE');statusName='Approved';site=999;check('REVIEW_VISIT_TYPE');site=58625;
@@ -33,7 +33,7 @@ assert(calls>before);
  const plan={expectedCustomerId:'63005',expectedLocationId:'58625'};
  statusId=19;statusName='Quoted';assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan).status,'FRESH_PREAPPROVAL_ORDER_VERIFIED');cases++;
  statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/REQUIRES_INSTALLATION/);cases++;
- statusId=25;statusName='In Progress';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/REQUIRES_INSTALLATION/);cases++;
+ statusId=25;statusName='In Progress';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/IN_PROGRESS_ORDER_TYPE_UNVERIFIED/);cases++;
  assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan).status,'OPTIONAL_ORDER_NOT_ATTACHED');cases++;
  metadata['TMV3_PI_INFERRED_'+base.eventId]=JSON.stringify({orderId:27976,orderNumber:'586242',customerId:63005,locationId:58625});
  statusId=19;statusName='Quoted';assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan).status,'FRESH_PREAPPROVAL_ORDER_VERIFIED');cases++;
