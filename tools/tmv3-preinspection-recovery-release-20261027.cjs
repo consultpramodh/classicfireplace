@@ -7,7 +7,7 @@ const canonical=o=>crypto.createHash('sha256').update(JSON.stringify(o.files.map
 (async()=>{
  const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('PROFILE_COUNT');
  const ar=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh}),redirect:'error'});if(!ar.ok)throw Error('AUTH_FAILED');const token=(await ar.json()).access_token;
- async function api(path,method='GET',body){const r=await fetch('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(120000)});if(!r.ok)throw Error('GOOGLE_HTTP_'+r.status+'_'+method);return r.json();}
+ async function api(path,method='GET',body){const r=await fetch('https://script.googleapis.com/v1/'+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(120000)});if(!r.ok){let e={};try{e=await r.json()}catch(_){};throw Error('GOOGLE_HTTP_'+r.status+'_'+method+'_'+(path.includes('/deployments/')?'DEPLOYMENT':'SOURCE')+': '+String(e.error&&e.error.message||'').slice(0,300));}return r.json();}
  const before=await api('projects/'+SID+'/content');
  const backup=JSON.parse(zlib.gunzipSync(Buffer.from(fs.readFileSync('backups/task-mapping-v3/2026-10-14-versions/head-current.json.gz.b64','utf8').trim(),'base64')).toString());
  if(canonical(before)!==canonical(backup))throw Error('LIVE_SOURCE_DIFFERS_FROM_VERIFIED_BACKUP');
