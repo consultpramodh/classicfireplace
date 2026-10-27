@@ -20,11 +20,14 @@ assert.equal(decide({descriptionClean:'Previous preinspection was completed last
 assert.equal(decide({title:'Preinspection not required'}).status,'IGNORE');
 assert.equal(decide({creator:'sales@example.invalid'}).reason,'CREATOR_UNVERIFIED');
 assert.equal(decide({creator:''}).reason,'CREATOR_UNVERIFIED');
+assert.equal(decide({creator:'',title:'Preinspect customer'}).status,'REVIEW_VISIT_TYPE');
+assert.equal(decide({creator:'',phone:'',location:'',title:'Team meeting'}).status,'IGNORE');
+assert.equal(decide({phone:'',location:''}).status,'IGNORE');
 assert.equal(decide({creator:'sales@classicfireplace.ca,other@classicfireplace.ca'}).reason,'CREATOR_UNVERIFIED');
 assert.equal(decide({isAllDay:true}).status,'IGNORE');
 assert.equal(decide({status:'cancelled'}).status,'IGNORE');
-assert.equal(decide({phone:''}).status,'IGNORE');
-assert.equal(decide({location:''}).status,'IGNORE');
+assert.equal(decide({phone:''}).reason,'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE');
+assert.equal(decide({location:''}).reason,'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE');
 assert.equal(decide({title:'Pre-inspection customer'}).status,'EXPLICIT_PREINSPECTION');
 assert.equal(decide({descriptionClean:'Preinspect the fireplace before install'}).status,'EXPLICIT_PREINSPECTION');
 for(const descriptionClean of ['Not a preinspection','No pre-inspect','not pre inspection'])assert.equal(decide({descriptionClean}).reason,'EXPLICIT_NOT_PREINSPECTION');
@@ -71,7 +74,7 @@ ctx.tmv3_strivenApiBudgetStatus_=()=>({exhausted:false,remaining:1000,count:0});
 ctx.tmv3_preInspectionIntakeRecords_=()=>[];
 for(const recovered of [{...explicit,creator:'jay@classicfireplace.ca'},{...explicit,title:'Not preinspect Fixture'}]){
  props.TMV3_PI_PENDING_EVENTS=JSON.stringify([recovered.eventId]);ctx.tmv3_preInspectionRecoveryRecord_=()=>recovered;
- const result=actualCycle({force:true,eventId:recovered.eventId});assert.equal(result.processed,0);assert.equal(result.status,'COMPLETE');assert.equal(props.TMV3_PI_PENDING_EVENTS,'[]');calls++;
+ const result=actualCycle({force:true});assert.equal(result.processed,0);assert.equal(result.status,'COMPLETE');assert.equal(props.TMV3_PI_PENDING_EVENTS,'[]');calls++;
 }
 const morning=fs.readFileSync(path.join(dir,'80_MorningOps.js'),'utf8');
 assert(morning.includes("['DISCOVERY',discovery.total || 0,'VISIT TYPE REVIEW',discovery.review || 0"));
