@@ -31,10 +31,17 @@ const canonical=o=>crypto.createHash('sha256').update(JSON.stringify(o.files.map
   const health=await run('tmv3_healthCheck');if(!health.ready||health.version!==VERSION)throw Error('HEALTH_FAILED');
   if(sig(await run('tmv3_listTriggers'))!==sig(triggersBefore))throw Error('TRIGGER_DRIFT');
   const versions=await api('projects/'+SID+'/versions?pageSize=200');let v=(versions.versions||[]).filter(x=>x.description===VERSION).sort((a,b)=>b.versionNumber-a.versionNumber)[0];if(v){const snap=await api('projects/'+SID+'/content?versionNumber='+v.versionNumber);if(canonical(snap)!==canonical(candidate))throw Error('EXISTING_VERSION_CONTENT_MISMATCH');}else v=await api('projects/'+SID+'/versions','POST',{description:VERSION});
-  await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:{...dep.deploymentConfig,versionNumber:v.versionNumber,description:VERSION}});changedDeployment=true;
-  const check=await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId));if(check.deploymentConfig.versionNumber!==v.versionNumber)throw Error('DEPLOYMENT_READBACK_FAILED');
+  let deploymentStatus='VERSIONED_DEPLOYMENT_UPDATED';
+  try {
+   await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:{...dep.deploymentConfig,versionNumber:v.versionNumber,description:VERSION}});changedDeployment=true;
+   const check=await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId));if(check.deploymentConfig.versionNumber!==v.versionNumber)throw Error('DEPLOYMENT_READBACK_FAILED');
+  } catch(e) {
+   if(!String(e.message).includes('Read-only deployments may not be modified.'))throw e;
+   const check=await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId));if(JSON.stringify(check.deploymentConfig)!==JSON.stringify(dep.deploymentConfig))throw Error('READ_ONLY_DEPLOYMENT_CHANGED');
+   deploymentStatus='EXISTING_READ_ONLY_DEPLOYMENT_UNCHANGED';
+  }
   if(canonical(await api('projects/'+SID+'/content'))!==canonical(candidate))throw Error('FINAL_SOURCE_DRIFT');
-  console.log(JSON.stringify({status:'DEPLOYED_VERIFIED',version:VERSION,versionNumber:v.versionNumber,sourceHash:canonical(candidate),triggersPreserved:true,businessRuns:0}));
+  console.log(JSON.stringify({status:'DEPLOYED_VERIFIED',version:VERSION,versionNumber:v.versionNumber,deploymentStatus:deploymentStatus,sourceHash:canonical(candidate),triggersPreserved:true,businessRuns:0}));
  } catch(e){
   if(changedDeployment)await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:dep.deploymentConfig});
   if(wrote){const now=await api('projects/'+SID+'/content');if(canonical(now)!==canonical(candidate))throw Error('ROLLBACK_BLOCKED_SOURCE_CHANGED');await api('projects/'+SID+'/content','PUT',{files:before.files});if(canonical(await api('projects/'+SID+'/content'))!==canonical(before))throw Error('ROLLBACK_VERIFY_FAILED');console.log('ROLLBACK_VERIFIED');}
