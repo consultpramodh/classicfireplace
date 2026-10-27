@@ -30,7 +30,7 @@ const canonical=o=>crypto.createHash('sha256').update(JSON.stringify(o.files.map
   if(canonical(await api('projects/'+SID+'/content'))!==canonical(candidate))throw Error('SOURCE_READBACK_FAILED');
   const health=await run('tmv3_healthCheck');if(!health.ready||health.version!==VERSION)throw Error('HEALTH_FAILED');
   if(sig(await run('tmv3_listTriggers'))!==sig(triggersBefore))throw Error('TRIGGER_DRIFT');
-  const v=await api('projects/'+SID+'/versions','POST',{description:VERSION});
+  const versions=await api('projects/'+SID+'/versions?pageSize=200');let v=(versions.versions||[]).filter(x=>x.description===VERSION).sort((a,b)=>b.versionNumber-a.versionNumber)[0];if(v){const snap=await api('projects/'+SID+'/content?versionNumber='+v.versionNumber);if(canonical(snap)!==canonical(candidate))throw Error('EXISTING_VERSION_CONTENT_MISMATCH');}else v=await api('projects/'+SID+'/versions','POST',{description:VERSION});
   await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId),'PUT',{deploymentConfig:{...dep.deploymentConfig,versionNumber:v.versionNumber,description:VERSION}});changedDeployment=true;
   const check=await api('projects/'+SID+'/deployments/'+encodeURIComponent(dep.deploymentId));if(check.deploymentConfig.versionNumber!==v.versionNumber)throw Error('DEPLOYMENT_READBACK_FAILED');
   if(canonical(await api('projects/'+SID+'/content'))!==canonical(candidate))throw Error('FINAL_SOURCE_DRIFT');
