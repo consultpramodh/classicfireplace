@@ -1,0 +1,45 @@
+name: ENTERNEWPART hub read-only source capture
+on:
+  push:
+    branches: [enternewpart]
+    paths: ['.github/workflows/enp-hub-readonly-capture.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Pull live hub source without modifications
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}" || { echo "Google credential unavailable"; exit 1; }
+          umask 077
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          mkdir -p "$RUNNER_TEMP/enp-hub"
+          cd "$RUNNER_TEMP/enp-hub"
+          npx -y @google/clasp@3.3.0 clone '1t81y0BcV0cnBEBSKcbZt2nx16IBAg63rRvsfSVpjiDiBvrNi6TEq-AG8' --rootDir src
+          echo "LIVE_SOURCE_PULL_SUCCEEDED"
+          find src -type f -printf '%P\n' | sort
+      - name: Check source for obvious embedded credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -i -E '(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AIza[0-9A-Za-z_-]{30,}|sk-proj-[0-9A-Za-z_-]{20,}|(client_secret|refresh_token|api[_-]?key|password)[[:space:]]*[:=][[:space:]]*["\x27][^"\x27]{12,})' "$RUNNER_TEMP/enp-hub/src" >/dev/null; then
+            echo "Potential embedded credential detected; source upload blocked."
+            exit 1
+          fi
+      - name: Save read-only snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: enp-hub-live-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/enp-hub/src/
+          retention-days: 1
+          if-no-files-found: error
