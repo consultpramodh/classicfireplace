@@ -1752,8 +1752,6 @@ function tmv3_preInspectionAutomationCycle_(options) {
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
     const sweepRequested = options.sweepStart === true || options.sweepContinue === true;
     if (sweepRequested && scopeEventId) return {status:'SWEEP_BLOCKED_BY_CANARY_SCOPE',processed:0,writes:0};
-    const records=scopeEventId ? tmv3_preInspectionTargetedIntake_(scopeEventId,props) : tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true});
-    result.discovery=tmv3_preInspectionDiscoveryStatus();
     const budget=tmv3_strivenApiBudgetStatus_();
     if(budget.exhausted||budget.remaining<30) {
       result.status='API_BUDGET_WAIT';result.apiBudget=budget;
@@ -1771,6 +1769,9 @@ function tmv3_preInspectionAutomationCycle_(options) {
     if (options.force !== true && now-last < Math.max(1,Number(TMV3.OPERATIONS.preInspectionAutomationIntervalMinutes || 5))*60000) {
       return {status:'THROTTLED',writes:0};
     }
+    // Do not spend Calendar/Striven calls on a cycle that is budget-paused or throttled.
+    const records=scopeEventId ? tmv3_preInspectionTargetedIntake_(scopeEventId,props) : tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true});
+    result.discovery=tmv3_preInspectionDiscoveryStatus();
     props.setProperty('TMV3_PI_LAST_CYCLE',String(now));
     // Reuse the cache-age gates and last-good source policy; refresh failure
     // stops this cycle before task creation or misleading missing-data emails.
