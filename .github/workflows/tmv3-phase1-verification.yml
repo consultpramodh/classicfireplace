@@ -1,0 +1,52 @@
+name: Phase 1 regression and version inventory
+on:
+  push:
+    branches: [preinspection-call-reduction-jev-shadow]
+    paths: [.github/workflows/tmv3-phase1-verification.yml]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax and targeted regression
+        run: |
+          set -euo pipefail
+          for f in apps-script/tmv3-clean/*.js; do node --check "$f"; done
+          node tests/preinspection/intake-gating.test.cjs
+          node tests/preinspection/sheet-refresh-fairness.test.cjs
+          node tests/preinspection/targeted-intake.test.cjs
+          node tests/preinspection/sweep-start-recovery.test.cjs
+          node tools/test-tmv3-pi-discovery.cjs
+          node tools/test-tmv3-pi-order-classification.cjs
+          node tools/test-tmv3-pi-history-completion.js
+          node tools/test-tmv3-core-hardening.cjs
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read-only version inventory
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));
+            if(p.length!==1)throw Error('EXPECTED_ONE_PROFILE');
+            const auth=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh}),redirect:'error'});
+            if(!auth.ok)throw Error('AUTH_HTTP_'+auth.status);
+            const token=(await auth.json()).access_token;
+            const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+            async function list(kind,key){let all=[],page='',seen=new Set();do{const u=new URL('https://script.googleapis.com/v1/projects/'+sid+'/'+kind);u.searchParams.set('pageSize','200');if(page)u.searchParams.set('pageToken',page);const r=await fetch(u,{headers:{Authorization:'Bearer '+token},redirect:'error'});if(!r.ok)throw Error(kind+'_HTTP_'+r.status);const j=await r.json();all.push(...(j[key]||[]));page=j.nextPageToken||'';if(page&&seen.has(page))throw Error('REPEATED_PAGE');seen.add(page);}while(page);return all}
+            const [vs,ds]=await Promise.all([list('versions','versions'),list('deployments','deployments')]);
+            console.log(JSON.stringify({savedVersionCount:vs.length,versionNumbers:vs.map(v=>v.versionNumber),deploymentVersions:ds.map(d=>d.deploymentConfig?.versionNumber??null),writes:0}));
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
