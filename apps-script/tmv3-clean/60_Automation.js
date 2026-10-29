@@ -2498,7 +2498,8 @@ function tmv3_scheduledSheetRefresh() {
   return tmv3_refreshAutomationSheets();
 }
 function tmv3_refreshAutomationSheets() {
-  if(tmv3_verticalBusinessQueuePending_())return {status:'DEFERRED_ACTIVE_BUSINESS_SWEEP',strivenWrites:0,calendarWrites:0};
+  // A queued sweep is not an active writer. The shared script lock serializes
+  // this projection with business executions and prevents refresh starvation.
   const lock=LockService.getScriptLock(),props=PropertiesService.getScriptProperties();
   props.setProperty('TMV3_SHEET_REFRESH_PENDING','true');
   if(!lock.tryLock(1000))return {status:'LOCK_BUSY'};
