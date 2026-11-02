@@ -24,11 +24,11 @@ lockOK=false;r=c.tmv3_refreshAutomationSheets();eq(r.status,'LOCK_BUSY');eq(prop
 pass=false;assert.throws(()=>c.tmv3_refreshAutomationSheets(),/VERIFICATION_FAILED/);cases++;eq(props.TMV3_SHEET_REFRESH_LAST_SUCCESS,last);eq(release,2);eq(!!props.TMV3_SHEET_REFRESH_LAST_ERROR,true);pass=true;
 countMismatch=true;assert.throws(()=>c.tmv3_refreshAutomationSheets(),/ROW_READBACK_MISMATCH/);cases++;countMismatch=false;
 flushBad=true;assert.throws(()=>c.tmv3_refreshAutomationSheets(),/TIMESTAMP_READBACK_MISMATCH/);cases++;flushBad=false;
-const before=projectionCalls;r=c.tmv3_refreshAutomationSheetsAfter_(Date.now()-241000);eq(r.status,'DEFERRED_TO_HOURLY_SHEET_REFRESH');eq(projectionCalls,before);
+const before=projectionCalls;r=c.tmv3_refreshAutomationSheetsAfter_(Date.now()-241000);eq(r.status,'DEFERRED_TO_NEXT_STANDARD_SLOT');eq(projectionCalls,before);
 pass=false;r=c.tmv3_refreshAutomationSheetsAfter_(Date.now());eq(r.status,'SHEET_REFRESH_ATTENTION');pass=true;
-clockHour=7;r=c.tmv3_scheduledSheetRefresh();eq(r.status,'OUTSIDE_BUSINESS_HOURS');clockHour=18;eq(c.tmv3_scheduledSheetRefresh().status,'AUTOMATION_SHEETS_REFRESHED');clockHour=19;eq(c.tmv3_scheduledSheetRefresh().status,'OUTSIDE_BUSINESS_HOURS');
+clockHour=7;r=c.tmv3_scheduledSheetRefresh();eq(r.status,'OUTSIDE_STANDARD_SLOTS');clockHour=8;eq(c.tmv3_scheduledSheetRefresh().status,'AUTOMATION_SHEETS_REFRESHED');clockHour=18;eq(c.tmv3_scheduledSheetRefresh().status,'OUTSIDE_STANDARD_SLOTS');
 let triggers=['tmv3_preInspectionCheck0800','tmv3_allVerticalAutomationTick'].map(handler=>({handler})),created=0;
-c.ScriptApp={getProjectTriggers:()=>triggers.map(t=>({...t,getHandlerFunction:()=>t.handler})),deleteTrigger:t=>triggers.splice(triggers.findIndex(x=>x.handler===t.handler),1),newTrigger:handler=>{const b={timeBased:()=>b,everyHours:n=>{eq(n,1);return b;},create:()=>{created++;triggers.push({handler});}};return b;}};c.tmv3_listTriggers=()=>triggers;
-eq(c.tmv3_installAutomationSheetRefreshTrigger().status,'SHEET_REFRESH_TRIGGER_VERIFIED');c.tmv3_installAutomationSheetRefreshTrigger();eq(created,1);eq(triggers.length,3);eq(triggers[0].handler,'tmv3_preInspectionCheck0800');
+c.ScriptApp={getProjectTriggers:()=>triggers.map(t=>({...t,getHandlerFunction:()=>t.handler})),deleteTrigger:t=>triggers.splice(triggers.findIndex(x=>x.handler===t.handler),1),newTrigger:handler=>{const b={timeBased:()=>b,atHour:n=>{assert([8,13,17].includes(n));return b;},nearMinute:()=>b,everyDays:()=>b,inTimezone:()=>b,create:()=>{created++;triggers.push({handler});}};return b;}};c.tmv3_listTriggers=()=>triggers;
+eq(c.tmv3_installAutomationSheetRefreshTrigger().status,'SHEET_REFRESH_TRIGGER_VERIFIED');c.tmv3_installAutomationSheetRefreshTrigger();eq(created,6);eq(triggers.length,5);eq(triggers[0].handler,'tmv3_preInspectionCheck0800');
 triggers=Array.from({length:20},(_,i)=>({handler:'unrelated'+i}));assert.throws(()=>c.tmv3_installAutomationSheetRefreshTrigger(),/TRIGGER_CAPACITY/);cases++;
 console.log('PASS: '+cases+' automatic Sheet refresh verification/lock/failure/trigger cases');

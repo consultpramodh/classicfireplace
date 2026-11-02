@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+const c={Date,Logger:{log(){}},PropertiesService:{getScriptProperties:()=>({setProperty(){}})}};
+vm.createContext(c);vm.runInContext(fs.readFileSync('apps-script/tmv3-clean/60_Automation.js','utf8'),c);
+let calls=0;c.tmv3_verticalProductionCycle_=()=>{calls++;return calls===1?{status:'RUNTIME_CONTINUATION_REQUIRED',pending:2,scanned:2,writes:1,results:[{id:1}]}:{status:'SWEEP_COMPLETE',pending:0,scanned:2,writes:1,results:[{id:2}]};};
+let r=c.tmv3_runFullVerticalSweep_('Service');assert.equal(calls,2);assert.equal(r.writes,2);assert.equal(r.scanned,4);assert.equal(r.results.length,2);assert.equal(c.tmv3_serviceSweepContinue().status,'RETIRED_OUTSIDE_STANDARD_SLOTS');
+calls=0;c.tmv3_preInspectionAutomationCycle_=()=>{calls++;return calls===1?{status:'COMPLETE',processed:2,writes:1,notifications:1,results:[{id:1}],sweep:{remaining:2}}:{status:'COMPLETE',processed:2,writes:1,notifications:0,results:[{id:2}],sweep:{remaining:0}};};
+c.tmv3_preInspectionMaybeContinueSweep_=()=>{};c.tmv3_preInspectionLogSweep_=()=>{};c.tmv3_refreshAutomationSheetsAfter_=()=>({});
+r=c.tmv3_runPreInspectionDailySlot_('08:00');assert.equal(calls,2);assert.equal(r.processed,4);assert.equal(r.writes,2);assert.equal(r.notifications,1);assert.equal(r.results.length,2);assert.equal(c.tmv3_preInspectionScheduleNextSweep_(),'DEFERRED_TO_NEXT_STANDARD_SLOT');
+console.log('PASS: batches continue within a slot, preserve counts, and do not schedule off-slot runs');
