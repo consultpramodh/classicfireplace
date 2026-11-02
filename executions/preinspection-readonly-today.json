@@ -1,0 +1,67 @@
+{
+  "status": "LIVE_BASELINE_READ_ONLY",
+  "date": "2026-11-02",
+  "totalEvents": 10,
+  "selected": 3,
+  "results": [
+    {
+      "eventHash": "b2b8e28add79e60636576dcee4583c8a2f1e38855dd6500b1d354aac7ba103b5",
+      "status": "READ_ONLY_VERIFICATION",
+      "version": "3.12.18-preinspection-discovery-targeted-r1",
+      "plans": [
+        {
+          "plan": "RECREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8__CALENDAR_TITLE",
+          "hasBlocker": false,
+          "taskId": 0,
+          "actions": [
+            "RECREATE_TASK",
+            "PATCH_ASSIGNMENTS",
+            "VERIFY_CALENDAR_LINKS",
+            "PATCH_CALENDAR_TITLE"
+          ],
+          "assignmentStatus": ""
+        }
+      ]
+    },
+    {
+      "eventHash": "dd1b30cef05e618ffc83e33df4d7ecbad70f8c52087058cc5e5aeaf361dea209",
+      "status": "READ_ONLY_VERIFICATION",
+      "version": "3.12.18-preinspection-discovery-targeted-r1",
+      "plans": [
+        {
+          "plan": "CREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8__CALENDAR_TITLE",
+          "hasBlocker": false,
+          "taskId": 0,
+          "actions": [
+            "CREATE_TASK",
+            "PATCH_ASSIGNMENTS",
+            "VERIFY_CALENDAR_LINKS",
+            "PATCH_CALENDAR_TITLE"
+          ],
+          "assignmentStatus": ""
+        }
+      ]
+    },
+    {
+      "eventHash": "ee808bede95eae3988c8fd58296bcce0bf7997c57481ab1ff0d41baceabf40ef",
+      "status": "READ_ONLY_VERIFICATION",
+      "version": "3.12.18-preinspection-discovery-targeted-r1",
+      "plans": [
+        {
+          "plan": "CREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8__CALENDAR_TITLE",
+          "hasBlocker": false,
+          "taskId": 0,
+          "actions": [
+            "CREATE_TASK",
+            "PATCH_ASSIGNMENTS",
+            "VERIFY_CALENDAR_LINKS",
+            "PATCH_CALENDAR_TITLE"
+          ],
+          "assignmentStatus": ""
+        }
+      ]
+    }
+  ],
+  "notificationsSent": 0,
+  "businessWrites": 0
+}
