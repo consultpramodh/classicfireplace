@@ -1752,8 +1752,6 @@ function tmv3_preInspectionAutomationCycle_(options) {
     const scopeEventId = tmv3_clean_(TMV3.OPERATIONS.preInspectionAutomationCanaryEventId || options.eventId);
     const sweepRequested = options.sweepStart === true || options.sweepContinue === true;
     if (sweepRequested && scopeEventId) return {status:'SWEEP_BLOCKED_BY_CANARY_SCOPE',processed:0,writes:0};
-    const records=scopeEventId ? tmv3_preInspectionTargetedIntake_(scopeEventId,props) : tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true});
-    result.discovery=tmv3_preInspectionDiscoveryStatus();
     const budget=tmv3_strivenApiBudgetStatus_();
     if(budget.exhausted||budget.remaining<30) {
       result.status='API_BUDGET_WAIT';result.apiBudget=budget;
@@ -1771,6 +1769,9 @@ function tmv3_preInspectionAutomationCycle_(options) {
     if (options.force !== true && now-last < Math.max(1,Number(TMV3.OPERATIONS.preInspectionAutomationIntervalMinutes || 5))*60000) {
       return {status:'THROTTLED',writes:0};
     }
+    // Do not spend Calendar/Striven calls on a cycle that is budget-paused or throttled.
+    const records=scopeEventId ? tmv3_preInspectionTargetedIntake_(scopeEventId,props) : tmv3_preInspectionIntakeRecords_({recordDiscovery:true,resolveLikely:true});
+    result.discovery=tmv3_preInspectionDiscoveryStatus();
     props.setProperty('TMV3_PI_LAST_CYCLE',String(now));
     // Reuse the cache-age gates and last-good source policy; refresh failure
     // stops this cycle before task creation or misleading missing-data emails.
@@ -2497,7 +2498,8 @@ function tmv3_scheduledSheetRefresh() {
   return tmv3_refreshAutomationSheets();
 }
 function tmv3_refreshAutomationSheets() {
-  if(tmv3_verticalBusinessQueuePending_())return {status:'DEFERRED_ACTIVE_BUSINESS_SWEEP',strivenWrites:0,calendarWrites:0};
+  // A queued sweep is not an active writer. The shared script lock serializes
+  // this projection with business executions and prevents refresh starvation.
   const lock=LockService.getScriptLock(),props=PropertiesService.getScriptProperties();
   props.setProperty('TMV3_SHEET_REFRESH_PENDING','true');
   if(!lock.tryLock(1000))return {status:'LOCK_BUSY'};
