@@ -536,6 +536,8 @@ function tmv3_assertHardRules_() {
     if (!ok) errors.push(message);
   }
 
+  requireRule(rules.approvedOrderVisitPolicy === 'CALENDAR_INSTRUCTIONS_BEFORE_STATUS', 'PreInspection visit classification must assess Calendar instructions before Order status.');
+
   requireRule(globalRules.taskLifecyclePolicy === 'SHARED_STAGE6_HISTORY_GATE', 'All verticals must use the shared Stage 6 Task history gate.');
   requireRule(globalRules.singleOpenDecision === 'MATCH_EXISTING', 'Exactly one valid OPEN Task must resolve to MATCH_EXISTING.');
   requireRule(globalRules.multipleOpenDecision === 'REVIEW', 'Multiple OPEN Tasks must require REVIEW unless the explicit Service multi-fireplace exception applies.');

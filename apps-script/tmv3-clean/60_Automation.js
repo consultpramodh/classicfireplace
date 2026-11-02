@@ -1422,6 +1422,33 @@ function tmv3_preInspectionExplicitCandidate_(record) {
   return !!record && tmv3_preInspectionClassifyLikely_(record,TMV3.VERTICALS.PreInspection).status==='EXPLICIT_PREINSPECTION';
 }
 
+// Order status is evidence of the sale, not by itself the purpose of this visit.
+// Contradictory or vague instructions remain in review rather than authorizing a write.
+function tmv3_preInspectionVisitIntent_(record) {
+  record=record || {};
+  const title=tmv3_clean_(record.title || '');
+  const description=tmv3_clean_(record.identityDescriptionClean !== undefined
+    ? record.identityDescriptionClean : record.descriptionClean !== undefined
+      ? record.descriptionClean : record.rawDescription || '');
+  const text=title+' '+description;
+  const negative=/\b(?:not|no|without|cancel(?:led|ed)?)\s+(?:a\s+)?pre[\s-]*inspect(?:ion)?\b/i.test(text) ||
+    /\bpre[\s-]*inspect(?:ion)?\s+(?:(?:is|was|has been)\s+)?(?:not\b|required later|(?:already\s+)?(?:completed|done|cancelled))\b/i.test(text) ||
+    /\b(?:do not|don't|no need to|not to)\s+(?:confirm|verify|check|inspect|measure)\b/i.test(text) ||
+    /\b(?:do not|don't|never|not to|no need to)\s+(?:(?:need|want)\s+to\s+)?(?:book|schedule|perform|do|confirm|verify|check|inspect|measure)\b[^.!?\n]{0,45}\b(?:pre[\s-]*inspect(?:ion)?|before|ahead of|prior to)\b/i.test(text) ||
+    /\b(?:do not|don't|not|no)\s+(?:want|need|require)\b[^.!?\n]{0,45}\bpre[\s-]*inspect(?:ion)?\b/i.test(text) ||
+    /\bpre[\s-]*inspect(?:ion)?\b[^.!?\n]{0,80}\b(?:after|following)\s+(?:the\s+)?install(?:ation)?\b/i.test(text) ||
+    /\b(?:if|maybe|possibly|perhaps|might|may|likely)\b[^.!?\n]{0,60}\bpre[\s-]*inspect(?:ion)?\b/i.test(text) ||
+    /\bpre[\s-]*inspect(?:ion)?\b[^.!?\n]{0,40}\b(?:if needed|if required|if necessary|(?:might|may|could) be needed)\b/i.test(text);
+  const check=/\bpre[\s-]*inspect(?:ion)?\b/i.test(text) ||
+    /\b(?:confirm|verify|check|inspect|measure)\b[^.!?\n]{0,100}\b(?:ahead of|before|prior to)\s+(?:the\s+)?install(?:ation)?\b/i.test(text);
+  const install=/^\s*(?:install|installation|replace)\b/i.test(title) ||
+    /\b(?:install|replace)\s+(?:the\s+|a\s+|an\s+)?(?:fireplace|stove|insert|unit|appliance)\b/i.test(description);
+  if(negative || (check && install)) return 'REVIEW';
+  if(check) return 'PREINSPECTION';
+  if(install) return 'INSTALLATION';
+  return 'REVIEW';
+}
+
 // Google Apps Script: discovery is metadata-only. Identity evidence never proves visit type.
 function tmv3_preInspectionDiscoveryDecision_(record,cfg) {
   if (!record || tmv3_step2PreInspectionNonCustomer_(record) || record.status==='cancelled') return {status:'IGNORE',reason:'NON_CUSTOMER_OR_CANCELLED'};
@@ -1433,6 +1460,7 @@ function tmv3_preInspectionDiscoveryDecision_(record,cfg) {
   if (/\bpre[\s-]*inspect(?:ion)?\s+(?:(?:is|was)\s+)?(?:not\b|required later|already completed)/i.test(text)) return {status:'IGNORE',reason:'EXPLICIT_NOT_PREINSPECTION'};
   const instruction=/\bpre[\s-]*inspect(?:ion)?\b/i.test(record.title || '') ||
     /^\s*(?:(?:this is (?:a )?|appointment(?: type)?[: -]+))?pre[\s-]*inspect(?:ion)?\b/i.test(record.descriptionClean || record.rawDescription || '');
+  if (instruction && tmv3_preInspectionVisitIntent_(record)==='REVIEW') return {status:'REVIEW_VISIT_TYPE',reason:'CONFLICTING_OR_CONDITIONAL_VISIT_INSTRUCTIONS'};
   const hasPhone=!!tmv3_phone10_(record.phone), hasLocation=!!tmv3_clean_(record.location);
   if (!creator) return instruction || hasPhone || hasLocation ? {status:'REVIEW_VISIT_TYPE',reason:'CREATOR_UNVERIFIED'} : {status:'IGNORE',reason:'NO_CUSTOMER_VISIT_EVIDENCE'};
   if (instruction) return {status:'EXPLICIT_PREINSPECTION',reason:'EXPLICIT_SOURCE_INSTRUCTION'};
@@ -1444,7 +1472,7 @@ var TMV3_PI_LIKELY_REFS = null;
 var TMV3_PI_LIKELY_DECISIONS = {};
 function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
   const base=tmv3_preInspectionDiscoveryDecision_(record,cfg);
-  if(base.status!=='REVIEW_VISIT_TYPE' || base.reason==='CREATOR_UNVERIFIED' || base.reason==='INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE')return base;
+  if(base.status!=='REVIEW_VISIT_TYPE' || base.reason==='CREATOR_UNVERIFIED' || base.reason==='INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE' || base.reason==='CONFLICTING_OR_CONDITIONAL_VISIT_INSTRUCTIONS')return base;
   if(/\b(?:service|delivery|repair|maintenance|troubleshoot(?:ing)?)\b/i.test(record.title || '') ||
       /^\s*(?:service|delivery|repair|maintenance)\b/i.test(record.descriptionClean || record.rawDescription || ''))return {status:'REVIEW_VISIT_TYPE',reason:'OTHER_VERTICAL_INTENT_REQUIRES_REVIEW'};
   const key=record.eventId+'|'+record.fingerprint;
@@ -1484,7 +1512,12 @@ function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
     const installations=relevant.filter(function(o){return o.orderStatus==='approved';});
     const inProgress=relevant.filter(function(o){return o.orderStatus==='in progress';});
     if(inProgress.length)result={status:'REVIEW_VISIT_TYPE',reason:'IN_PROGRESS_ORDER_TYPE_UNVERIFIED',orders:inProgress};
-    else if(installations.length)result={status:'INSTALLATION',reason:'APPROVED_ORDER_AT_JOB_SITE',orders:installations};
+    else if(installations.length) {
+      const intent=tmv3_preInspectionVisitIntent_(record);
+      if(intent==='PREINSPECTION') result={status:'EXPLICIT_PREINSPECTION',reason:'APPROVED_ORDER_WITH_PREINSTALL_VISIT_INSTRUCTIONS',orders:installations};
+      else if(intent==='INSTALLATION') result={status:'INSTALLATION',reason:'APPROVED_ORDER_WITH_INSTALL_INSTRUCTIONS',orders:installations};
+      else result={status:'REVIEW_VISIT_TYPE',reason:'APPROVED_ORDER_VISIT_INTENT_UNCLEAR',orders:installations};
+    }
     else if(relevant.length===1 && relevant[0].orderStatus==='quoted') {
       // Measuring return visits already booked for install are not initial inspections.
       if(/\binstall(?:ation)?\b/i.test(record.title || '') || (/\b(?:return|go back)\b/i.test(text) && /\binstall(?:ation)?\b/i.test(text)))result={status:'REVIEW_VISIT_TYPE',reason:'INSTALLATION_RETURN_VISIT_ORDER_NOT_APPROVED'};
@@ -1521,7 +1554,10 @@ function tmv3_preInspectionOrderBeforeCreate_(record,plan) {
   const statusId=String(tmv3_first_(status,['Id'])),statusName=tmv3_norm_(tmv3_first_(status,['Name']));
   const known={'18':'incomplete','19':'quoted','20':'pending approval','22':'approved','25':'in progress'};
   if(!known[statusId]||known[statusId]!==statusName)throw Error('PREINSPECTION_ORDER_STATUS_UNVERIFIED_NO_CREATE');
-  if(statusId==='22')throw Error('APPROVED_ORDER_REQUIRES_INSTALLATION_NO_PREINSPECTION_CREATE');
+  if(statusId==='22') {
+    if(tmv3_preInspectionVisitIntent_(record)!=='PREINSPECTION') throw Error('APPROVED_ORDER_VISIT_INTENT_REVIEW_NO_PREINSPECTION_CREATE');
+    return {status:'FRESH_APPROVED_ORDER_PREINSTALL_VISIT_VERIFIED',orderId:id,orderNumber:number,orderStatus:statusName};
+  }
   if(statusId==='25')throw Error('IN_PROGRESS_ORDER_TYPE_UNVERIFIED_NO_PREINSPECTION_CREATE');
   return {status:'FRESH_PREAPPROVAL_ORDER_VERIFIED',orderId:id,orderNumber:number,orderStatus:statusName};
 }
@@ -1558,6 +1594,15 @@ function tmv3_reconcilePreInspectionEvent(eventId) {
   if(!/^[a-z0-9_]+@google\.com$/.test(String(eventId || '')))throw new Error('INVALID_PREINSPECTION_EVENT_ID');
   const started=Date.now();
   const result=tmv3_preInspectionAutomationCycle_({force:true,eventId:eventId,reason:'TARGETED_RECONCILIATION'});
+  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(started);
+  return result;
+}
+
+// Explicit one-event repair through the canonical worker, with no email side effects.
+function tmv3_reconcilePreInspectionEventQuiet(eventId) {
+  if(!/^[a-z0-9_]+@google\.com$/.test(String(eventId || '')))throw new Error('INVALID_PREINSPECTION_EVENT_ID');
+  const started=Date.now();
+  const result=tmv3_preInspectionAutomationCycle_({force:true,eventId:eventId,suppressNotifications:true,reason:'TARGETED_QUIET_RECONCILIATION'});
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(started);
   return result;
 }
@@ -1740,6 +1785,8 @@ function tmv3_preInspectionTargetedIntake_(eventId,props) {
 
 function tmv3_preInspectionAutomationCycle_(options) {
   options = options || {};
+  const suppressNotifications=options.suppressNotifications===true;
+  const failureAlert=function(eventId,error){if(!suppressNotifications)tmv3_preInspectionFailureAlert_(eventId,error);};
   if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
   if (TMV3.OPERATIONS.preInspectionAutomationScheduleHours && options.force !== true) return {status:'SCHEDULE_ONLY',writes:0};
   const lock = LockService.getScriptLock();
@@ -1814,11 +1861,11 @@ function tmv3_preInspectionAutomationCycle_(options) {
     }
     // Scheduled slots still evaluate notification deadlines for all
     // authoritative events; continuations do not repeat the full mail scan.
-    const notificationRecords=options.sweepContinue===true ? [] :
+    const notificationRecords=suppressNotifications || options.sweepContinue===true ? [] :
       (scopeEventId ? selected : records);
     notificationRecords.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){
       try {const notice=tmv3_preInspectionSendMissingDetails_(r);result.notifications+=Number(notice.sent || 0);}
-      catch(err) {result.status='ATTENTION';tmv3_preInspectionFailureAlert_(r.eventId,String(err));}
+      catch(err) {result.status='ATTENTION';failureAlert(r.eventId,String(err));}
     });
     let cursor = sweep ? 0 : Number(props.getProperty('TMV3_PI_CURSOR') || 0);
     // Preserve the tested three-event and one-mutation safety budgets.
@@ -1877,10 +1924,10 @@ function tmv3_preInspectionAutomationCycle_(options) {
             }
           }
           const fresh = tmv3_findFreshEventRecord_('PreInspection',record.eventId);
-          one.notification = tmv3_preInspectionSendMissingDetails_(fresh);
+          one.notification = suppressNotifications ? {status:'SUPPRESSED_BY_REQUEST',sent:0} : tmv3_preInspectionSendMissingDetails_(fresh);
           if (/CREATOR_MISSING|UNCERTAIN_SEND/.test(one.notification.status || '')) {
             result.status='ATTENTION';
-            tmv3_preInspectionFailureAlert_(record.eventId,one.notification.status);
+            failureAlert(record.eventId,one.notification.status);
           }
           const after = tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId);
           one.afterPlans=after.map(function(p){return {plan:p.plan,blocker:p.blocker,taskId:p.taskId,actions:p.actions};});
@@ -1905,7 +1952,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
         one.status='ATTENTION';one.error=String(err && err.message || err);result.status='ATTENTION';
         if (pending.indexOf(record.eventId)<0) pending.push(record.eventId);
         tmv3_audit_('PreInspection',record.eventId,'','PREINSPECTIONAUTO','ATTENTION',one.error);
-        tmv3_preInspectionFailureAlert_(record.eventId,one.error);
+        failureAlert(record.eventId,one.error);
         if(/TMV3_STRIVEN_API_DAILY_GUARD|daily api usage limit/i.test(one.error)) {
           // Preserve this event's cursor position for a fresh reconciliation after reset.
           result.status='API_BUDGET_WAIT';result.processed--;
@@ -1935,7 +1982,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
   } catch(err) {
     result.status='ATTENTION';result.error=String(err && err.message || err);
     tmv3_audit_('PreInspection','','','PREINSPECTION_CYCLE','ATTENTION',result.error);
-    tmv3_preInspectionFailureAlert_('',result.error);
+    failureAlert('',result.error);
     return result;
   } finally {TMV3_PREINSPECTION_API_CONTEXT_ACTIVE=previousApiContext;lock.releaseLock();}
 }

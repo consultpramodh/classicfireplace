@@ -1,11 +1,11 @@
-const TMV3_VERSION = '3.12.18-preinspection-discovery-targeted-r1';
+const TMV3_VERSION = '3.12.19-preinspection-visit-intent-quiet-r1';
 const TMV3_EXECUTION_STAGE = 7;
 const TMV3_SPREADSHEET_ID = '1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E';
 const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'PRODUCTION_WRITE';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-26-r15',
+  version:'2026-11-02-r16',
   GLOBAL:Object.freeze({
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
@@ -55,6 +55,7 @@ const TMV3_HARD_RULES = Object.freeze({
   }),
   PreInspection:Object.freeze({
     discoveryPolicy:'EXPLICIT_INSTRUCTION_OR_REVIEW_NO_GUESS',
+    approvedOrderVisitPolicy:'CALENDAR_INSTRUCTIONS_BEFORE_STATUS',
     taskBusinessSource:'CF_PREINSPECTS_ONLY',
     supersededLegacyMutations:'RETIRED_TO_V3',
     orderRequired:false,

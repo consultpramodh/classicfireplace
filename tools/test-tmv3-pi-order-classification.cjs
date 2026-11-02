@@ -5,6 +5,11 @@ const dir=process.env.TMV3_TEST_SOURCE_DIR||path.join(__dirname,'../apps-script/
 const ctx={console};vm.createContext(ctx);for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.js')).sort())vm.runInContext(fs.readFileSync(path.join(dir,f),'utf8'),ctx);
 const cfg=vm.runInContext('TMV3.VERTICALS.PreInspection',ctx);
 const base={vertical:'PreInspection',eventId:'fixture@google.com',fingerprint:'fp',title:'Customer 416-555-0100',phone:'4165550100',location:'1 Test St, Toronto',creator:'sales@classicfireplace.ca',orderNumber:'586242',descriptionClean:''};
+for(const text of ['No preinspection is required.','Preinspection has been already completed.','If a preinspection is needed, let us know.','A preinspection may be needed.','Please install the fireplace and check dimensions before installation.',"We don't want a preinspection.","Don't need to check everything before installation.",'Do not schedule a preinspection.','Preinspection after installation.']) {
+  assert.equal(ctx.tmv3_preInspectionVisitIntent_({...base,descriptionClean:text}),'REVIEW',text);
+}
+assert.equal(ctx.tmv3_preInspectionVisitIntent_({...base,descriptionClean:'Please confirm everything ahead of install.'}),'PREINSPECTION');
+assert.equal(ctx.tmv3_preInspectionVisitIntent_({...base,descriptionClean:'Please install the fireplace.'}),'INSTALLATION');
 let customerId=63005,site=58625,statusId=19,statusName='Quoted',searchTotal=1,searchCount=1,fail=false,calls=0;
 ctx.tmv3_step4IdentityIndex_=()=>({});ctx.tmv3_step4ResolveCustomerFromCalendarEvidence_=()=>({customer:{'Customer ID':customerId}});
 ctx.tmv3_preInspectionCustomerLocationsFresh_=()=>[{'Customer ID':63005,'Location ID':58625}];
@@ -14,7 +19,11 @@ let cases=0;function check(expected,change={}){const r=ctx.tmv3_preInspectionCla
 check('EXPLICIT_PREINSPECTION');
 for(const title of ['Service Customer 416-555-0100','Delivery Customer 416-555-0100','Install Customer 416-555-0100'])check('REVIEW_VISIT_TYPE',{title});
 check('REVIEW_VISIT_TYPE',{descriptionClean:'Maintenance visit'});
-statusId=22;statusName='Approved';check('INSTALLATION');statusId=25;statusName='In Progress';assert.equal(check('REVIEW_VISIT_TYPE').reason,'IN_PROGRESS_ORDER_TYPE_UNVERIFIED');
+statusId=22;statusName='Approved';assert.equal(check('REVIEW_VISIT_TYPE').reason,'APPROVED_ORDER_VISIT_INTENT_UNCLEAR');
+assert.equal(check('EXPLICIT_PREINSPECTION',{descriptionClean:'Please confirm everything ahead of install.'}).reason,'APPROVED_ORDER_WITH_PREINSTALL_VISIT_INSTRUCTIONS');
+assert.equal(check('INSTALLATION',{descriptionClean:'Please install the fireplace.'}).reason,'APPROVED_ORDER_WITH_INSTALL_INSTRUCTIONS');
+check('REVIEW_VISIT_TYPE',{descriptionClean:'Please install the fireplace and check dimensions before installation.'});
+statusId=25;statusName='In Progress';assert.equal(check('REVIEW_VISIT_TYPE').reason,'IN_PROGRESS_ORDER_TYPE_UNVERIFIED');
 statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION',{orderNumber:''});
 check('REVIEW_VISIT_TYPE',{descriptionClean:'Return to measure filler. Install booked Nov 16.'});
 statusId=22;statusName='Quoted';check('REVIEW_VISIT_TYPE');statusName='Approved';site=999;check('REVIEW_VISIT_TYPE');site=58625;
@@ -22,7 +31,7 @@ customerId=999;check('REVIEW_VISIT_TYPE');customerId=63005;
 searchTotal=2;check('REVIEW_VISIT_TYPE');searchTotal=1;fail=true;check('REVIEW_VISIT_TYPE');fail=false;
 check('REVIEW_VISIT_TYPE',{descriptionClean:'SO#586242 / SO#586243'});
 const before=calls;check('IGNORE',{creator:'jay@classicfireplace.ca'});check('IGNORE',{title:'Not preinspect customer'});assert.equal(check('REVIEW_VISIT_TYPE',{creator:''}).reason,'CREATOR_UNVERIFIED');assert.equal(check('REVIEW_VISIT_TYPE',{phone:''}).reason,'INSUFFICIENT_CUSTOMER_VISIT_EVIDENCE');assert.equal(calls,before);
-statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION');statusId=22;statusName='Approved';check('INSTALLATION');
+statusId=19;statusName='Quoted';check('EXPLICIT_PREINSPECTION');statusId=22;statusName='Approved';check('REVIEW_VISIT_TYPE');
 // Same fingerprint must still re-read status at the final pre-invite check.
 assert(calls>before);
 
@@ -32,12 +41,15 @@ assert(calls>before);
  const metadata={};ctx.tmv3_hash_=v=>String(v);ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>metadata[k]||null})};
  const plan={expectedCustomerId:'63005',expectedLocationId:'58625'};
  statusId=19;statusName='Quoted';assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan).status,'FRESH_PREAPPROVAL_ORDER_VERIFIED');cases++;
- statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/REQUIRES_INSTALLATION/);cases++;
+ statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/VISIT_INTENT_REVIEW/);cases++;
+ assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,descriptionClean:'Please confirm everything ahead of install.'},plan).status,'FRESH_APPROVED_ORDER_PREINSTALL_VISIT_VERIFIED');cases++;
+ assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_({...base,descriptionClean:'Install the fireplace and check dimensions before installation.'},plan),/VISIT_INTENT_REVIEW/);cases++;
+ assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_({...base,descriptionClean:'No preinspection is required.'},plan),/VISIT_INTENT_REVIEW/);cases++;
  statusId=25;statusName='In Progress';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/IN_PROGRESS_ORDER_TYPE_UNVERIFIED/);cases++;
  assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan).status,'OPTIONAL_ORDER_NOT_ATTACHED');cases++;
  metadata['TMV3_PI_INFERRED_'+base.eventId]=JSON.stringify({orderId:27976,orderNumber:'586242',customerId:63005,locationId:58625});
  statusId=19;statusName='Quoted';assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan).status,'FRESH_PREAPPROVAL_ORDER_VERIFIED');cases++;
- statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan),/REQUIRES_INSTALLATION/);cases++;
+ statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},plan),/VISIT_INTENT_REVIEW/);cases++;
  assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_({...base,orderNumber:''},{...plan,expectedCustomerId:'999'}),/EVIDENCE_CONFLICT/);cases++;
 }
 
@@ -59,4 +71,13 @@ ctx.tmv3_preInspectionCompletionVerified_=()=>true;ctx.tmv3_preInspectionHistori
 ctx.tmv3_preInspectionFailureAlert_=()=>{};ctx.tmv3_audit_=()=>{};
 let cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId});assert.equal(cycle.status,'COMPLETE',JSON.stringify(cycle));assert.deepEqual(sequence,['promote','preserve']);cases++;
 sequence.length=0;wait=true;cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId});assert.equal(cycle.status,'COMPLETE',JSON.stringify(cycle));assert.deepEqual(sequence,['promote']);assert(JSON.parse(props.TMV3_PI_PENDING_EVENTS).includes(base.eventId));cases++;
+// A quiet targeted run must suppress both customer notifications and failure alerts.
+let notices=0,alerts=0;
+ctx.tmv3_preInspectionSendMissingDetails_=()=>{notices++;return {sent:1};};
+ctx.tmv3_preInspectionFailureAlert_=()=>{alerts++;};
+wait=false;cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId,suppressNotifications:true});
+assert.equal(cycle.status,'COMPLETE',JSON.stringify(cycle));assert.equal(notices,0);assert.equal(alerts,0);assert.equal(cycle.results[0].notification.status,'SUPPRESSED_BY_REQUEST');cases++;
+ctx.tmv3_preInspectionPromoteCandidate_=()=>{throw Error('TEST_FAILURE');};
+cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId,suppressNotifications:true});
+assert.equal(cycle.status,'ATTENTION');assert.equal(notices,0);assert.equal(alerts,0);cases++;
 console.log(JSON.stringify({status:'PASS',cases,apiMockCalls:calls}));
