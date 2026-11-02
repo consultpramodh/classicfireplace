@@ -18,7 +18,9 @@ const extra=`function tmv3_verifyTwoStephenContactsAndHistory20261102() {
         var plans=tmv3_step7FreshPlansForEvent_('PreInspection',eventId);
         var orderResult;
         try {if(plans.length!==1) throw Error('PLAN_COUNT');orderResult=tmv3_preInspectionOrderBeforeCreate_(event,plans[0]);} catch(e) {orderResult={error:String(e)};}
-        out.push({customerId:id,contacts:contacts,tasks:tasks,orderCheck:orderResult});
+        var nums=id===63048?['586368']:['586541','586542','586543','586545'];
+        var orders=nums.map(function(n){try{var raw=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/search',{method:'post',contentType:'application/json',payload:JSON.stringify({PageIndex:0,PageSize:2,Number:n,CustomerId:id})});var data=tmv3_first_(raw,['Data']),count=Number(tmv3_first_(raw,['TotalCount']));if(!Array.isArray(data)||count!==1||data.length!==1||String(tmv3_first_(data[0],['Number']))!==n)throw Error('NOT_UNIQUE');var oid=Number(tmv3_first_(data[0],['Id']));var full=tmv3_fetchJson_(TMV3.API_BASE+'/v1/sales-orders/'+oid,{method:'get'});var cust=tmv3_first_(full,['Customer']),st=tmv3_first_(full,['Status']);if(Number(tmv3_first_(cust,['Id']))!==id||Number(tmv3_first_(full,['Id']))!==oid||String(tmv3_first_(full,['OrderNumber','Number']))!==n)throw Error('OWNERSHIP_MISMATCH');return {number:n,id:oid,status:tmv3_first_(st,['Name']),statusId:tmv3_first_(st,['Id'])};}catch(e){return {number:n,error:String(e)};}});
+        out.push({customerId:id,contacts:contacts,tasks:tasks,orderCheck:orderResult,orders:orders});
       } catch(e){out.push({customerId:id,error:String(e)});}
     });
     return {status:'READ_ONLY',items:out};
