@@ -1,0 +1,27 @@
+name: One authorized preinspection repair
+on:
+  push:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-one-event-authorized-repair.yml]
+permissions:
+  contents: write
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: America/Toronto
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fresh plan, one authorized execution, independent readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-one-event-authorized-repair.cjs
