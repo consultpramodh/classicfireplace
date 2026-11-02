@@ -25,3 +25,5 @@ jobs:
         run: node tools/tmv3-one-event-readback.cjs
 
 # Compare title fingerprints without exposing customer details.
+
+# Verify normalization after updating the appointment.
