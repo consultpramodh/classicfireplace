@@ -36,3 +36,5 @@ jobs:
           name: stephen-verification-${{ github.run_id }}
           path: stephen-pi-verify/result.json
           retention-days: 7
+
+# Retry after the prior attempt reported a busy lock.
