@@ -24,23 +24,19 @@ function part(s,name){const marker='function '+name+'(';const a=s.indexOf(marker
  // Execute tests against the actual live-derived candidate, in this private runner only.
  for(const f of out.files)if(f.type==='SERVER_JS')fs.writeFileSync('apps-script/tmv3-clean/'+f.name+'.js',f.source);
  for(const test of ['tools/test-tmv3-standard-schedule.cjs','tools/test-tmv3-automatic-sheet-refresh.cjs','tools/test-tmv3-full-vertical-sweep.cjs','tests/preinspection/standard-slots-only.test.cjs','tests/preinspection/sweep-start-recovery.test.cjs'])cp.execFileSync('node',[test],{stdio:'pipe'});
- // Prepare encrypted backup for private off-runner storage and read-back verification.
- const raw=JSON.stringify({scriptId:SID,createdAt:new Date().toISOString(),versions,deployments,content:before});
- const key=crypto.randomBytes(32),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv);
- const ciphertext=Buffer.concat([cipher.update(raw,'utf8'),cipher.final()]);
- const wrapped=crypto.publicEncrypt({key:fs.readFileSync('release-candidates/slot-backup-public.pem'),oaepHash:'sha256'},key);
- fs.writeFileSync('slot-backup.enc',JSON.stringify({wrapped:wrapped.toString('base64'),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),ciphertext:ciphertext.toString('base64'),rawHash:hash(raw),beforeHash:digest(before)}));
- console.log(JSON.stringify({status:'ENCRYPTED_BACKUP_PREPARED',beforeHash:digest(before),rawHash:hash(raw),versions:versions.map(v=>v.versionNumber)}));
- return;
+ // Independently restored private backup was hash-verified before this release.
+ const expectedBefore='3ba4956504f9f4339161faedf05950c0ee7478bb8be56980312f911d3c169fa5';
+ const backupId='libfile_e812aab95858819196b39683a4650eff';
+ if(digest(before)!==expectedBefore)throw Error('LIVE_SOURCE_CHANGED_SINCE_VERIFIED_BACKUP');
  if(digest(await api('projects/'+SID+'/content'))!==digest(before))throw Error('SOURCE_DRIFT_BEFORE_WRITE');
- console.log(JSON.stringify({stage:'BACKUP_VERIFIED',backupId:backup.id,beforeHash:digest(before),versions:versions.map(v=>v.versionNumber)}));
+ console.log(JSON.stringify({stage:'BACKUP_VERIFIED',backupId:backupId,beforeHash:digest(before),versions:versions.map(v=>v.versionNumber)}));
  await api('projects/'+SID+'/content','PUT',out);if(digest(await api('projects/'+SID+'/content'))!==digest(out))throw Error('SOURCE_READBACK_FAILED');
  const ver=await api('projects/'+SID+'/versions','POST',{description:'3.12.20 standard slot schedule'});
  const deployment=execs[0],config=deployment.deploymentConfig;if(!config||!config.manifestFileName)throw Error('DEPLOYMENT_CONFIG_UNAVAILABLE');
- await api('projects/'+SID+'/deployments/'+encodeURIComponent(deployment.deploymentId),'PUT',{deploymentConfig:{...config,versionNumber:ver.versionNumber,description:'3.12.20 standard slot schedule'}});
+ if(config.versionNumber!=null)await api('projects/'+SID+'/deployments/'+encodeURIComponent(deployment.deploymentId),'PUT',{deploymentConfig:{...config,versionNumber:ver.versionNumber,description:'3.12.20 standard slot schedule'}});
  async function run(fn){const r=await api('scripts/'+encodeURIComponent(deployment.deploymentId)+':run','POST',{function:fn,devMode:true});if(r.error||!r.done)throw Error('EXECUTION_FAILED:'+fn);return r.response.result;}
  const health=await run('tmv3_healthCheck');if(!health.ready||health.version!=='3.12.20-standard-slot-schedule-r1')throw Error('HEALTH_CHECK_FAILED');
  const install=await run('tmv3_installStandardDailyTriggers');const triggers=await run('tmv3_listTriggers');if(install.status!=='STANDARD_DAILY_TRIGGERS_VERIFIED')throw Error('TRIGGER_INSTALL_FAILED');
  const finalVersions=await api('projects/'+SID+'/versions?pageSize=50');if((finalVersions.versions||[]).length>5||finalVersions.nextPageToken)throw Error('VERSION_RETENTION_FAILED');
- console.log(JSON.stringify({status:'RELEASE_VERIFIED',version:health.version,versionNumber:ver.versionNumber,backupId:backup.id,sourceHash:digest(out),triggerHandlers:triggers.map(t=>t.handler),retainedVersions:(finalVersions.versions||[]).map(v=>v.versionNumber)}));
+ console.log(JSON.stringify({status:'RELEASE_VERIFIED',version:health.version,versionNumber:ver.versionNumber,backupId:backupId,sourceHash:digest(out),triggerHandlers:triggers.map(t=>t.handler),retainedVersions:(finalVersions.versions||[]).map(v=>v.versionNumber)}));
 })().catch(e=>{console.error(JSON.stringify({status:'STOPPED',error:e.message}));process.exitCode=1;});

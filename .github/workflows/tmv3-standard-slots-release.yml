@@ -24,10 +24,4 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-slot-schedule-release.cjs
 
-# Retry with live queue guard mocked only in projection tests.
-# Exercise recovery functions independently of neighboring source layout.
-      - uses: actions/upload-artifact@v4
-        with:
-          name: encrypted-slot-backup
-          path: slot-backup.enc
-          retention-days: 7
+# Apply only if the live source matches the independently verified private backup.
