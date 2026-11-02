@@ -1,0 +1,30 @@
+name: Prepare encrypted preinspection source backup
+on:
+  push:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-preinspection-prepare-backup.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read and encrypt live source and oldest saved version
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-preinspection-prepare-backup.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-preinspection-backup
+          path: pi-backup.enc
+          retention-days: 7
