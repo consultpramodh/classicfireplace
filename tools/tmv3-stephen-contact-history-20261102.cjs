@@ -13,7 +13,12 @@ const extra=`function tmv3_verifyTwoStephenContactsAndHistory20261102() {
       try {
         var contacts=tmv3_getCustomerContacts_(id,{forceFresh:true,requireComplete:true});
         var tasks=tmv3_searchPreInspectionTasks_(row[0]);
-        out.push({customerId:id,contacts:contacts,tasks:tasks});
+        var eventId=id===63048?'6u1a4solo8a5a94ulc8cuqgamc@google.com':'0danub3va8sqssv8h2u49sp3r9@google.com';
+        var event=tmv3_preInspectionRecoveryRecord_(eventId);
+        var plans=tmv3_step7FreshPlansForEvent_('PreInspection',eventId);
+        var orderResult;
+        try {if(plans.length!==1) throw Error('PLAN_COUNT');orderResult=tmv3_preInspectionOrderBeforeCreate_(event,plans[0]);} catch(e) {orderResult={error:String(e)};}
+        out.push({customerId:id,contacts:contacts,tasks:tasks,orderCheck:orderResult});
       } catch(e){out.push({customerId:id,error:String(e)});}
     });
     return {status:'READ_ONLY',items:out};
