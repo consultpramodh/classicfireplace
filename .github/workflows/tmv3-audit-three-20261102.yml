@@ -1,0 +1,52 @@
+name: Verify three PreInspection appointments
+on:
+  push:
+    branches: [task_mapping]
+    paths: ['.github/workflows/tmv3-audit-three-20261102.yml']
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact event IDs without business writes
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));
+            if(p.length!==1) throw Error('OAUTH_PROFILE_COUNT');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});
+            if(!a.ok)throw Error('AUTH_REFRESH_FAILED');
+            const token=(await a.json()).access_token;
+            async function api(url,body){const r=await fetch(url,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});if(!r.ok)throw Error('API_HTTP_'+r.status);return r.json();}
+            const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+            const inv=await api('https://script.googleapis.com/v1/projects/'+sid+'/deployments');
+            const ds=inv.deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));
+            if(ds.length!==1)throw Error('EXECUTABLE_COUNT');
+            const out=[];
+            for(const id of ['6u1a4solo8a5a94ulc8cuqgamc@google.com','241db8lr2la667cs4317tk1rhp@google.com','0danub3va8sqssv8h2u49sp3r9@google.com']){
+              try {const z=await api('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{function:'tmv3_verifyPreInspectionAutomation',parameters:[id],devMode:true});out.push({id,done:z.done,result:z.response?.result,error:z.error});}
+              catch(e){out.push({id,error:String(e.message)});}
+            }
+            fs.mkdirSync('three-event-audit',{recursive:true});fs.writeFileSync('three-event-audit/result.json',JSON.stringify(out));
+            console.log('Audit completed for '+out.length+' event IDs; details in artifact.');
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: three-event-audit-${{ github.run_id }}
+          path: three-event-audit/
+          retention-days: 7
