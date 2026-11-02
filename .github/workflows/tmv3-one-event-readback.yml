@@ -23,3 +23,5 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-one-event-readback.cjs
+
+# Compare title fingerprints without exposing customer details.
