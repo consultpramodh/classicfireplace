@@ -42,3 +42,5 @@ jobs:
 # Read-only lookups do not hold the business execution lock.
 
 # Verify current order status for the two appointments.
+
+# Freshly verify all calendar-referenced order statuses.
