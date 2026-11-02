@@ -1,5 +1,5 @@
 {
-  "status": "UNCERTAIN_OR_INCOMPLETE_NO_RETRY",
+  "status": "RECONCILED_VERIFIED",
   "eventHash": "ee808bede95eae3988c8fd58296bcce0bf7997c57481ab1ff0d41baceabf40ef",
   "writeAttempted": true,
   "liveVersion": "3.12.18-preinspection-discovery-targeted-r1",
@@ -10,10 +10,26 @@
       "taskId": 0
     }
   ],
-  "executionStatus": "LOCK_BUSY",
-  "processed": 0,
-  "writes": 0,
+  "executionStatus": "COMPLETE",
+  "processed": 1,
+  "writes": 1,
   "notifications": 0,
-  "rows": [],
-  "reason": "INCOMPLETE_STOP_NO_RETRY"
+  "rows": [
+    {
+      "status": "",
+      "taskId": 19573,
+      "executionStatus": "CREATED_VERIFIED_AND_CONVERGED",
+      "hasError": false
+    }
+  ],
+  "afterPlans": [
+    {
+      "plan": "NO_CHANGE",
+      "hasBlocker": false,
+      "taskId": 19573,
+      "actions": [
+        "VERIFY_CALENDAR_LINKS"
+      ]
+    }
+  ]
 }
