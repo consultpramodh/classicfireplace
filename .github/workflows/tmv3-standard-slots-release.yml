@@ -25,3 +25,4 @@ jobs:
         run: node tools/tmv3-slot-schedule-release.cjs
 
 # Retry with live queue guard mocked only in projection tests.
+# Exercise recovery functions independently of neighboring source layout.
