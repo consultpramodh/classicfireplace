@@ -5,9 +5,7 @@ const dir='stephen-pi-verify';const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRA
 const hash=x=>crypto.createHash('sha256').update(JSON.stringify(x.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)))).digest('hex');
 const target='3ba4956504f9f4339161faedf05950c0ee7478bb8be56980312f911d3c169fa5';
 const extra=`function tmv3_verifyTwoStephenContactsAndHistory20261102() {
-  var lock=LockService.getScriptLock();
-  if(!lock.tryLock(30000)) throw Error('BUSY_NO_WRITE');
-  try {
+  {
     var ids=[63048,63114], out=[];
     ids.forEach(function(id) {
       var row=tmv3_rows_(TMV3.SHEETS.CUSTOMERS).filter(function(c){return String(c['Customer ID'])===String(id);});
@@ -19,7 +17,7 @@ const extra=`function tmv3_verifyTwoStephenContactsAndHistory20261102() {
       } catch(e){out.push({customerId:id,error:String(e)});}
     });
     return {status:'READ_ONLY',items:out};
-  } finally {lock.releaseLock();}
+  }
 }`;
 async function main(){
  const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('PROFILE_INVALID');
