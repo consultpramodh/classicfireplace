@@ -38,7 +38,7 @@ async function main(){
   if(hash(await api('projects/'+sid+'/content'))!==candidateHash)throw Error('PATCH_READBACK_FAILED');
   const deps=await api('projects/'+sid+'/deployments');const ds=deps.deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('DEPLOYMENT_COUNT');
   const result=await api('scripts/'+encodeURIComponent(ds[0].deploymentId)+':run','POST',{function:'tmv3_verifyTwoStephenContactsAndHistory20261102',devMode:true});
-  report={status:'RETURNED',result:result};
+  if(result.error || result.done!==true) throw Error('PROBE_NOT_COMPLETED:'+String(result.error && result.error.message || 'UNKNOWN')); report={status:'RETURNED',result:result};
  } catch(e){report={status:'FAILED_NO_RETRY',error:String(e)};process.exitCode=1}
  finally {
   if(changed){const live=await api('projects/'+sid+'/content');const h=hash(live);if(h===candidateHash){await api('projects/'+sid+'/content','PUT',{files:before.files});report.restored=hash(await api('projects/'+sid+'/content'))===target;}else report.restored=h===target;}
