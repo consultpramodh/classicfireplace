@@ -38,3 +38,5 @@ jobs:
           retention-days: 7
 
 # Retry after the prior attempt reported a busy lock.
+
+# Read-only lookups do not hold the business execution lock.
