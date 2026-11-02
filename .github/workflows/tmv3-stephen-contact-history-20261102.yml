@@ -40,3 +40,5 @@ jobs:
 # Retry after the prior attempt reported a busy lock.
 
 # Read-only lookups do not hold the business execution lock.
+
+# Verify current order status for the two appointments.
