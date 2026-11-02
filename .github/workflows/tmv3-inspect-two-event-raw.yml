@@ -25,3 +25,5 @@ jobs:
           name: encrypted-two-events
           path: two-events.enc
           retention-days: 1
+
+# Verify post-repair raw notes.
