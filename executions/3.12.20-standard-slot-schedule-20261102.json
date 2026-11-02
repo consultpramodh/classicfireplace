@@ -1,0 +1,27 @@
+{
+  "version": "3.12.20-standard-slot-schedule-r1",
+  "timestamp": "2026-11-02T17:53:29Z",
+  "appsScriptVersionNumber": 204,
+  "backupLibraryFileId": "libfile_e812aab95858819196b39683a4650eff",
+  "sourceBeforeHash": "3ba4956504f9f4339161faedf05950c0ee7478bb8be56980312f911d3c169fa5",
+  "sourceAfterHash": "7324630d562e7538bed6fa309fd428f0a00ab4e57ce3de9c65856337d7042fa1",
+  "retainedVersions": [
+    200,
+    201,
+    202,
+    203,
+    204
+  ],
+  "verifiedHandlers": {
+    "business": 12,
+    "sheetRefresh": 3,
+    "retiredContinuationHandlers": 0
+  },
+  "scheduleHours": [
+    8,
+    13,
+    17
+  ],
+  "timezone": "America/Toronto",
+  "note": "HEAD deployment remains unpinned; branch also contains preinspection changes not included in this scheduling-only production release. Existing business trigger times were retained and have not been independently read from each trigger editor."
+}

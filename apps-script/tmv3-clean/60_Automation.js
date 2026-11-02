@@ -1183,15 +1183,10 @@ function tmv3_taskFirstProductionCycle_() {
 /** Google Apps Script: dedicated resumable continuation, never a general write gate. */
 function tmv3_serviceDeliveryOrderBackfill() {
   const result=tmv3_taskFirstProductionCycle_();
-  if (result && result.status==='LOCK_BUSY') {
-    // A consumed one-shot must survive a collision with an existing Calendar refresh.
-    const handler='tmv3_serviceDeliveryOrderBackfill';
-    ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;})
-      .forEach(function(t){ScriptApp.deleteTrigger(t);});
-    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
-  }
+  if (result && result.status==='LOCK_BUSY') result.continuation='DEFERRED_TO_NEXT_STANDARD_SLOT';
   return result;
 }
+
 
 function tmv3_serviceDeliveryOrderBackfill_(props) {
   const ids = [18374,18471,18733,18735,18754,18774,18801,18806,18831,18896,18897,18908,18913,18914,18979,19037,19064,19098,19109,19126,19137,19190,19195,19198,19201,19203,19204,19205,19214,19218,19221,19222,19223,19224,19225,19226,19227,19228,19229,19230,19231,19232,19233,19234,19235,19240,19241,19242,19248,19249,19250,19251,19252,19253,19255,19256,19257,19258,19259,19260,19261,19262,19263,19264,19265,19266,19267,19268,19269,19270,19272,19273,19274,19275,19276,19279,19280,19281,19282,19283,19284];
@@ -1227,10 +1222,8 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
     return result;
   }
   function continueLater(delay) {
-    // Only our own one-shot continuation is replaced; installed schedules stay intact.
-    ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;})
-      .forEach(function(t){ScriptApp.deleteTrigger(t);});
-    ScriptApp.newTrigger(handler).timeBased().after(delay).create();
+    // Persisted queue state remains available; no off-slot trigger is created.
+    return 'DEFERRED_TO_NEXT_STANDARD_SLOT';
   }
   // Queue the next slice before work so a hard timeout cannot strand the backlog.
   continueLater(180000);
@@ -1333,6 +1326,7 @@ function tmv3_serviceDeliveryOrderBackfill_(props) {
 }
 
 /** Existing Delivery Task identity does not require a Calendar approval-report row. */
+
 function tmv3_taskFirstOrderMatchesVertical_(order,vertical) {
   if (vertical==='Delivery' && tmv3_clean_(order && order['Order Type']).split('|')
       .some(function(type){return tmv3_clean_(type).toUpperCase()==='SALES_ORDER';})) return true;
@@ -2038,14 +2032,9 @@ function tmv3_preInspectionCheck1700() { return tmv3_runPreInspectionDailySlot_(
 // Runs one bounded batch after the preceding batch finishes. Trigger
 // installation for the 08/13/17 slots remains unchanged.
 function tmv3_preInspectionScheduleNextSweep_() {
-  const handler='tmv3_preInspectionContinueEligibleSweep';
-  const exists=ScriptApp.getProjectTriggers().some(function(t){
-    return t.getHandlerFunction()===handler;
-  });
-  if (exists) return 'CONTINUATION_ALREADY_SCHEDULED';
-  ScriptApp.newTrigger(handler).timeBased().after(120000).create();
-  return 'CONTINUATION_SCHEDULED';
+  return 'DEFERRED_TO_NEXT_STANDARD_SLOT';
 }
+
 function tmv3_preInspectionClearContinuationTrigger_() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction()==='tmv3_preInspectionContinueEligibleSweep') {
@@ -2092,28 +2081,33 @@ function tmv3_preInspectionMaybeContinueSweep_(result) {
 }
 
 function tmv3_preInspectionContinueEligibleSweep() {
-  const sheetRefreshStarted=Date.now();
-  tmv3_preInspectionClearContinuationTrigger_();
-  const props=PropertiesService.getScriptProperties();
-  const retryStart=props.getProperty('TMV3_PI_RETRY_SWEEP_START')==='1';
-  const result=tmv3_preInspectionAutomationCycle_(retryStart ?
-    {force:true,sweepStart:true,reason:'RETRY_LOCKED_DAILY_SWEEP'} :
-    {force:true,sweepContinue:true,reason:'ELIGIBLE_SWEEP_CONTINUATION'});
-  if (retryStart && result.status!=='LOCK_BUSY') props.deleteProperty('TMV3_PI_RETRY_SWEEP_START');
-  tmv3_preInspectionMaybeContinueSweep_(result);
-  tmv3_preInspectionLogSweep_('CONTINUATION',result);
-  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
-  return result;
+  return {status:'RETIRED_OUTSIDE_STANDARD_SLOTS',writes:0,notifications:0};
 }
+
 function tmv3_runPreInspectionDailySlot_(slot) {
   const sheetRefreshStarted=Date.now();
-  const result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
+  let result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
+  const totals={processed:Number(result.processed||0),writes:Number(result.writes||0),notifications:Number(result.notifications||0),results:(result.results||[]).slice()};
+  let priorRemaining=result.sweep && result.sweep.remaining;
+  const batchStatuses=[result.status];
+  while (result.sweep && result.sweep.remaining>0 && result.processed>0 &&
+      result.status!=='API_BUDGET_WAIT' && result.status!=='LOCK_BUSY' &&
+      Date.now()-sheetRefreshStarted<240000) {
+    const next=tmv3_preInspectionAutomationCycle_({force:true,sweepContinue:true,reason:'DAILY_SLOT_'+slot});
+    batchStatuses.push(next.status);
+    totals.processed+=Number(next.processed||0);totals.writes+=Number(next.writes||0);totals.notifications+=Number(next.notifications||0);totals.results.push.apply(totals.results,next.results||[]);
+    if (!next.sweep || next.sweep.remaining>=priorRemaining || !next.processed) {result=next;break;}
+    priorRemaining=next.sweep.remaining;result=next;
+  }
+  result.batchStatuses=batchStatuses;
+  result.processed=totals.processed;result.writes=totals.writes;result.notifications=totals.notifications;result.results=totals.results;
   if (result.status==='LOCK_BUSY') PropertiesService.getScriptProperties().setProperty('TMV3_PI_RETRY_SWEEP_START','1');
   tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_(slot,result);
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
   return result;
 }
+
 function tmv3_installPreInspectionAutomationTrigger() { return tmv3_installStandardDailyTriggers(); }
 
 function tmv3_preInspectionFreshHistoryBeforeCreate_(record,plan) {
@@ -2543,18 +2537,20 @@ function tmv3_fourVerticalAutomationStatus() {
 function tmv3_refreshAutomationSheetsAfter_(startedAt) {
   try {
     PropertiesService.getScriptProperties().setProperty('TMV3_SHEET_REFRESH_PENDING','true');
-    if(Date.now()-Number(startedAt)>240000) return {status:'DEFERRED_TO_HOURLY_SHEET_REFRESH'};
+    if(Date.now()-Number(startedAt)>240000) return {status:'DEFERRED_TO_NEXT_STANDARD_SLOT'};
     return tmv3_refreshAutomationSheets();
   } catch(err) {
     // A view-publication failure must not replay or relabel a completed business transaction.
     return {status:'SHEET_REFRESH_ATTENTION',error:String(err && err.message || err)};
   }
 }
+
 function tmv3_scheduledSheetRefresh() {
   const hour=Number(Utilities.formatDate(new Date(),TMV3_TIMEZONE,'H'));
-  if(hour<8||hour>18)return {status:'OUTSIDE_BUSINESS_HOURS'};
+  if([8,13,17].indexOf(hour)<0)return {status:'OUTSIDE_STANDARD_SLOTS'};
   return tmv3_refreshAutomationSheets();
 }
+
 function tmv3_refreshAutomationSheets() {
   // A queued sweep is not an active writer. The shared script lock serializes
   // this projection with business executions and prevents refresh starvation.
@@ -2599,15 +2595,14 @@ function tmv3_refreshAutomationSheets() {
 function tmv3_installAutomationSheetRefreshTrigger() {
   const handler='tmv3_scheduledSheetRefresh';
   const existing=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;});
-  if(!existing.length){
-    if(ScriptApp.getProjectTriggers().length>=20)throw Error('SHEET_REFRESH_TRIGGER_CAPACITY');
-    ScriptApp.newTrigger(handler).timeBased().everyHours(1).create();
-  }
-  existing.slice(1).forEach(function(t){ScriptApp.deleteTrigger(t);});
+  if(ScriptApp.getProjectTriggers().length-existing.length+3>20)throw Error('SHEET_REFRESH_TRIGGER_CAPACITY');
+  existing.forEach(function(t){ScriptApp.deleteTrigger(t);});
+  [8,13,17].forEach(function(hour){ScriptApp.newTrigger(handler).timeBased().atHour(hour).nearMinute(0).everyDays(1).inTimezone('America/Toronto').create();});
   const triggers=tmv3_listTriggers();
-  if(triggers.filter(function(t){return t.handler===handler;}).length!==1)throw Error('SHEET_REFRESH_TRIGGER_READBACK_FAILED');
+  if(triggers.filter(function(t){return t.handler===handler;}).length!==3)throw Error('SHEET_REFRESH_TRIGGER_READBACK_FAILED');
   return {status:'SHEET_REFRESH_TRIGGER_VERIFIED',triggers:triggers};
 }
+
 function tmv3_automationSheetRefreshStatus() {
   const p=PropertiesService.getScriptProperties();
   function json(key){const value=p.getProperty(key);return value?JSON.parse(value):null;}
@@ -2646,50 +2641,61 @@ function tmv3_installStandardDailyTriggers() {
     const prefix=v==='PreInspection'?'preInspection':v.toLowerCase();
     schedule.hours.forEach(function(hour){handlers.push({handler:'tmv3_'+prefix+'Check'+('0'+hour).slice(-2)+'00',hour:hour});});
   });
-  // This is the complete V3 schedule. Calendar updates are picked up by the
-  // read-only sheet refresh; they no longer initiate business execution.
   const before=ScriptApp.getProjectTriggers();
-  const removable=before.filter(function(t){return /^tmv3_/.test(t.getHandlerFunction());});
-  const unrelated=before.length-removable.length;
-  if(unrelated+handlers.length+2>20)throw Error('STANDARD_SCHEDULE_CAPACITY_NO_CHANGE');
+  const obsolete=['tmv3_dailySourceRefresh','tmv3_scheduledSheetRefresh',
+    'tmv3_preInspectionContinueEligibleSweep','tmv3_installSweepContinue',
+    'tmv3_deliverySweepContinue','tmv3_serviceSweepContinue',
+    'tmv3_allVerticalAutomationTick','tmv3_scheduledOperations',
+    'tmv3_calendarEventUpdated','tmv3_calendarReconciliationFallback',
+    'tmv3_installReminderCheck','tmv3_installPublishView',
+    'tmv3_serviceDeliveryOrderBackfill'];
+  const removable=before.filter(function(t){return obsolete.indexOf(t.getHandlerFunction())>=0;});
+  const retained=before.filter(function(t){return removable.indexOf(t)<0;});
+  const missing=handlers.filter(function(spec){return !retained.some(function(t){return t.getHandlerFunction()===spec.handler;});});
+  if(retained.length+missing.length+3>20)throw Error('STANDARD_SCHEDULE_CAPACITY_NO_CHANGE');
   removable.forEach(function(t){ScriptApp.deleteTrigger(t);});
-  handlers.forEach(function(spec){
+  missing.forEach(function(spec){
     ScriptApp.newTrigger(spec.handler).timeBased().atHour(spec.hour).nearMinute(0).everyDays(1).inTimezone(schedule.timezone).create();
   });
-  ScriptApp.newTrigger('tmv3_dailySourceRefresh').timeBased().atHour(7).nearMinute(0).everyDays(1).inTimezone(schedule.timezone).create();
-  ScriptApp.newTrigger('tmv3_scheduledSheetRefresh').timeBased().everyHours(1).create();
+  schedule.hours.forEach(function(hour){ScriptApp.newTrigger('tmv3_scheduledSheetRefresh').timeBased().atHour(hour).nearMinute(0).everyDays(1).inTimezone(schedule.timezone).create();});
   const triggers=tmv3_listTriggers();
-  const expected=handlers.map(function(x){return x.handler;}).concat(['tmv3_dailySourceRefresh','tmv3_scheduledSheetRefresh']);
+  const expected=handlers.map(function(x){return x.handler;});
   if(expected.some(function(h){return triggers.filter(function(t){return t.handler===h;}).length!==1;}) ||
-    triggers.some(function(t){return /^tmv3_/.test(t.handler)&&expected.indexOf(t.handler)<0;}))throw Error('STANDARD_SCHEDULE_READBACK_FAILED');
-  const result={status:'STANDARD_DAILY_TRIGGERS_VERIFIED',schedule:schedule,triggers:triggers,businessTriggerCount:12,maintenanceTriggerCount:2};
+    triggers.filter(function(t){return t.handler==='tmv3_scheduledSheetRefresh';}).length!==3 ||
+    triggers.some(function(t){return obsolete.indexOf(t.handler)>=0 && t.handler!=='tmv3_scheduledSheetRefresh';}))throw Error('STANDARD_SCHEDULE_READBACK_FAILED');
+  const result={status:'STANDARD_DAILY_TRIGGERS_VERIFIED',schedule:schedule,triggers:triggers,businessTriggerCount:12,maintenanceTriggerCount:3};
   PropertiesService.getScriptProperties().setProperty('TMV3_STANDARD_SCHEDULE',JSON.stringify(result));
   return result;
 }
 
 // Google Apps Script: resume the same daily sweep; no additional recurring window.
+
 function tmv3_runFullVerticalSweep_(vertical) {
-  const handler='tmv3_'+vertical.toLowerCase()+'SweepContinue';
-  function clear(){ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;}).forEach(function(t){ScriptApp.deleteTrigger(t);});}
-  clear();
-  // Pre-arm recovery before business execution: survives a native hard timeout.
-  if(ScriptApp.getProjectTriggers().length>=20)throw Error('SWEEP_CONTINUATION_CAPACITY');
-  ScriptApp.newTrigger(handler).timeBased().after(420000).create();
-  const began=Date.now(),result=tmv3_verticalProductionCycle_(vertical);
-  clear();
-  if(result.status==='LOCK_BUSY'||result.pending>0&&result.status!=='API_BUDGET_WAIT') {
-    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
-    result.continuation='SCHEDULED';
+  const began=Date.now();let result=tmv3_verticalProductionCycle_(vertical);
+  let totalWrites=Number(result.writes||0),totalScanned=Number(result.scanned||0),allResults=(result.results||[]).slice(),batchStatuses=[result.status];
+  while (result.pending>0 && result.status!=='API_BUDGET_WAIT' && result.status!=='LOCK_BUSY' &&
+      result.scanned>0 && Date.now()-began<240000) {
+    const before=result.pending,next=tmv3_verticalProductionCycle_(vertical);
+    batchStatuses.push(next.status);
+    totalWrites+=Number(next.writes||0);totalScanned+=Number(next.scanned||0);allResults.push.apply(allResults,next.results||[]);
+    result=next;if(!next.scanned || next.pending>=before)break;
   }
+  result.batchStatuses=batchStatuses;
+  result.writes=totalWrites;result.scanned=totalScanned;result.results=allResults;
+  if(result.status==='LOCK_BUSY'||result.pending>0) result.continuation='DEFERRED_TO_NEXT_STANDARD_SLOT';
   PropertiesService.getScriptProperties().setProperty('TMV3_SHEET_REFRESH_PENDING','true');
-  result.sheetRefresh={status:'DEFERRED_TO_HOURLY_SHEET_REFRESH'};
+  result.sheetRefresh={status:'DEFERRED_TO_NEXT_STANDARD_SLOT'};
   if(vertical==='Install' && result.sweep && result.sweep.complete)result.sheetRefresh=tmv3_installSchedulePublication_();
   Logger.log(JSON.stringify(result));return result;
 }
 
-function tmv3_installSweepContinue(){return tmv3_runFullVerticalSweep_('Install');}
-function tmv3_deliverySweepContinue(){return tmv3_runFullVerticalSweep_('Delivery');}
-function tmv3_serviceSweepContinue(){return tmv3_runFullVerticalSweep_('Service');}
+
+function tmv3_installSweepContinue(){return {status:'RETIRED_OUTSIDE_STANDARD_SLOTS',writes:0};}
+
+function tmv3_deliverySweepContinue(){return {status:'RETIRED_OUTSIDE_STANDARD_SLOTS',writes:0};}
+
+function tmv3_serviceSweepContinue(){return {status:'RETIRED_OUTSIDE_STANDARD_SLOTS',writes:0};}
+
 function tmv3_verticalPatchDiagnostics(vertical,eventIds) {
   if(['Install','Delivery','Service'].indexOf(vertical)<0)throw Error('VERTICAL_REQUIRED');
   return (eventIds||[]).map(function(id){try{
@@ -2707,14 +2713,9 @@ function tmv3_fullVerticalSweepStatus() {
   });return out;
 }
 function tmv3_resumeFullVerticalQueues() {
-  ['Delivery','Service','Install'].forEach(function(v){
-    const handler='tmv3_'+v.toLowerCase()+'SweepContinue';
-    const existing=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;});
-    existing.forEach(function(t){ScriptApp.deleteTrigger(t);});
-    if(ScriptApp.getProjectTriggers().length>=20)throw Error('SWEEP_CONTINUATION_CAPACITY');
-    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
-  });return tmv3_fullVerticalSweepStatus();
+  return {status:'QUEUES_RETAINED_FOR_NEXT_STANDARD_SLOT',snapshot:tmv3_fullVerticalSweepStatus()};
 }
+
 function tmv3_verticalLinkedTaskDiagnostics(vertical,eventIds) {
   return (eventIds||[]).map(function(id){try{
     const record=tmv3_findFreshEventRecord_(vertical,id);
@@ -2795,18 +2796,11 @@ function tmv3_installRefreshView_(reason) {
   PropertiesService.getScriptProperties().setProperty('TMV3_INSTALL_VIEW_LAST_SUCCESS',JSON.stringify(result));return result;
 }
 function tmv3_installSchedulePublication_() {
-  const handler='tmv3_installPublishView';
-  if(!ScriptApp.getProjectTriggers().some(function(t){return t.getHandlerFunction()===handler;})) {
-    if(ScriptApp.getProjectTriggers().length>=20)return {status:'DEFERRED_TRIGGER_CAPACITY'};
-    ScriptApp.newTrigger(handler).timeBased().after(60000).create();
-  }
-  return {status:'INSTALL_PUBLICATION_SCHEDULED'};
+  return {status:'DEFERRED_TO_NEXT_STANDARD_SLOT'};
 }
+
 function tmv3_installPublishView() {
-  const handler='tmv3_installPublishView';
-  ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()===handler;}).forEach(function(t){ScriptApp.deleteTrigger(t);});
-  const lock=LockService.getScriptLock();if(!lock.tryLock(1000))return tmv3_installSchedulePublication_();
-  try{return tmv3_installRefreshView_('INSTALL_SWEEP_COMPLETE');}finally{lock.releaseLock();}
+  return {status:'RETIRED_OUTSIDE_STANDARD_SLOTS',writes:0};
 }
 // Read-only readiness inspection. It never installs triggers or executes tasks.
 function tmv3_installReadiness() {

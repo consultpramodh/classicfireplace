@@ -1,229 +1,27 @@
 {
-  "project": "CF Tasks — V3 ACTIVE — Clean Rebuild",
-  "version": "3.12.1-automatic-sheet-refresh-r1",
-  "sourceReleaseDate": "2026-10-23",
-  "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
-  "spreadsheetId": "1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E",
-  "branch": "task_mapping",
-  "sourceDirectory": "apps-script/tmv3-clean",
-  "sourceCommit": "f1c3497503d3578b1d7708e59a552da5b87b75cd",
-  "appsScriptStatus": "AUTOMATIC_SHEET_REFRESH_DEPLOYED_AND_VERIFIED",
-  "sourceVerification": {
-    "fileCount": 22,
-    "changedFiles": [
-      "00_Config",
-      "60_Automation"
-    ],
-    "beforeHash": "8c3b2fb3776a2b5d19391f65b7e04ddd68a1d90cc06e66d90daf3c35de34aeef",
-    "afterHash": "b24458af54c9282f2332163eb5fdcffab552899726cf12778fa9448f01b18b0e",
-    "deploymentRun": 40021982118,
-    "independentRun": 40022223511,
-    "sourceParityScope": "Full live candidate readback verified; only two changed deployed files synced in this release; other live/repository drift preserved"
+  "version": "3.12.20-standard-slot-schedule-r1",
+  "timestamp": "2026-11-02T17:53:29Z",
+  "appsScriptVersionNumber": 204,
+  "backupLibraryFileId": "libfile_e812aab95858819196b39683a4650eff",
+  "sourceBeforeHash": "3ba4956504f9f4339161faedf05950c0ee7478bb8be56980312f911d3c169fa5",
+  "sourceAfterHash": "7324630d562e7538bed6fa309fd428f0a00ab4e57ce3de9c65856337d7042fa1",
+  "retainedVersions": [
+    200,
+    201,
+    202,
+    203,
+    204
+  ],
+  "verifiedHandlers": {
+    "business": 12,
+    "sheetRefresh": 3,
+    "retiredContinuationHandlers": 0
   },
-  "mode": "PRODUCTION_WRITE",
-  "writeScope": "DEDICATED_PREINSPECTION_AND_SCOPED_SERVICE_DELIVERY_INSTALL",
-  "manualWritesEnabled": false,
-  "generalAutomationWritesEnabled": false,
-  "preInspectionAutomationEnabled": true,
-  "installedTriggerCount": 19,
-  "preInspectionHoursToronto": [
+  "scheduleHours": [
     8,
     13,
     17
   ],
-  "tests": {
-    "status": "PASS",
-    "cases": 411,
-    "againstActualLiveCandidate": true
-  },
-  "runtimeVerificationScope": "All four enabled and triggers verified. Service Task 18962 and Install Task 18745 changed and read back. Delivery first record blocked duplicate CREATE against persisted Task 18704; no Delivery mutation convergence claimed.",
-  "immutableVersionsCreated": 0,
-  "existingDeploymentsChanged": false,
-  "fullFourVerticalProductionVerified": false,
-  "nextVertical": null,
-  "nextAction": "Monitor natural post-run Sheet refresh and hourly fallback; Delivery persisted Task 18704 relationship and PreInspection identity holds remain separate data reviews.",
-  "rollback": {
-    "previousAttempt": "40012614518 explicit LOCK_BUSY_EXHAUSTED; source rollback verified",
-    "finalRelease": "No rollback; exact candidate active"
-  },
-  "evidence": [
-    "executions/20261023-four-vertical-activation.json",
-    "ops/tmv3-four-vertical-activation-20261023.md",
-    "executions/20261023-automatic-sheet-refresh.json",
-    "ops/tmv3-automatic-sheet-refresh-20261023.md",
-    "executions/20261023-preinspection-link-owner.json",
-    "ops/preinspection-canonical-link-owner-20261023.md"
-  ],
-  "allFourVerticalsActive": true,
-  "nativeActivation": {
-    "Service": {
-      "scanned": 1,
-      "vertical": "Service",
-      "writes": 1,
-      "results": [
-        {
-          "executions": [
-            {
-              "taskId": 18962,
-              "readbackVerified": true,
-              "status": "VERIFIED_CONVERGENCE",
-              "actions": [
-                "PATCH_TASK_NAME",
-                "VERIFY_CALENDAR_LINKS"
-              ]
-            }
-          ],
-          "status": "VERIFIED_CONVERGENCE",
-          "eventId": "7am80p4d6l7tep6k3eoj7pho0c@google.com"
-        }
-      ],
-      "transactionsVerified": 1,
-      "status": "VERIFIED_CONVERGENCE"
-    },
-    "Delivery": {
-      "results": [
-        {
-          "eventId": "0pau8qi27tv3sp9vve5p90ch53@google.com",
-          "error": "CREATE blocked: V3 previously persisted Task 18704 for this Calendar event. Reconcile that Task first.",
-          "status": "UNCERTAIN_RECONCILIATION_REQUIRED"
-        }
-      ],
-      "writes": 0,
-      "scanned": 1,
-      "vertical": "Delivery",
-      "status": "ACTIVE_NO_READY_RECORD"
-    },
-    "Install": {
-      "scanned": 1,
-      "writes": 1,
-      "results": [
-        {
-          "executions": [
-            {
-              "readbackVerified": true,
-              "actions": [
-                "PATCH_ASSIGNMENTS",
-                "PATCH_CALENDAR_TITLE",
-                "PATCH_TASK_NAME",
-                "VERIFY_CALENDAR_LINKS"
-              ],
-              "taskId": 18745,
-              "status": "VERIFIED_CONVERGENCE"
-            }
-          ],
-          "status": "VERIFIED_CONVERGENCE",
-          "eventId": "1ie24ail4lmtqqh09gekphmmi8@google.com"
-        }
-      ],
-      "vertical": "Install",
-      "status": "VERIFIED_CONVERGENCE",
-      "transactionsVerified": 1
-    }
-  },
-  "sheetRefresh": {
-    "active": true,
-    "hourlyBusinessHoursToronto": [
-      8,
-      18
-    ],
-    "afterVerticalBatch": true,
-    "afterPreInspectionWrappers": true,
-    "longRunDefersToHourly": true,
-    "lastNativeVerification": {
-      "strivenWrites": 0,
-      "startedAt": "2026-10-23T20:49:36.201Z",
-      "projectionVerified": true,
-      "sourceMode": "CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE",
-      "calendarWrites": 0,
-      "morningOps": {
-        "attention": 2,
-        "verticals": [
-          {
-            "attention": 0,
-            "mapped": 3,
-            "vertical": "Install",
-            "appointments": 3
-          },
-          {
-            "mapped": 0,
-            "vertical": "Delivery",
-            "appointments": 0,
-            "attention": 0
-          },
-          {
-            "mapped": 8,
-            "vertical": "Service",
-            "attention": 2,
-            "appointments": 8
-          },
-          {
-            "vertical": "PreInspection",
-            "mapped": 2,
-            "appointments": 2,
-            "attention": 0
-          }
-        ],
-        "appointments": 13,
-        "noTask": 0,
-        "mapped": 13,
-        "mode": "PRODUCTION_WRITE",
-        "date": "2026-10-23",
-        "status": "TODAY_SNAPSHOT"
-      },
-      "version": "3.12.1-automatic-sheet-refresh-r1",
-      "completedAt": "2026-10-23T20:50:39.255Z",
-      "timezone": "America/Toronto",
-      "status": "AUTOMATION_SHEETS_REFRESHED",
-      "timestampReadbackVerified": true,
-      "rows": {
-        "Service": 197,
-        "PreInspection": 14,
-        "Delivery": 11,
-        "Install": 50
-      }
-    },
-    "sourceMode": "CURRENT_CALENDAR_AND_LOCAL_STRIVEN_CACHE",
-    "noAdditionalFullStrivenPull": true
-  },
-  "legacyPreinspectionLinkOwnerCompatibility": {
-    "version": "2026-10-23-canonical-link-owner-r1",
-    "sourceHash": "beb5a03f3e004c55664c6d865e8f22fde5ce2f1f4c9ca70cea7b96d02a2e603c",
-    "scriptId": "1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m",
-    "releaseRun": 40025850821,
-    "independentRun": 40026083311,
-    "status": "DEPLOYED_SOURCE_AND_EVENT_REPAIR_VERIFIED",
-    "nativeLegacyExecutionAvailable": false,
-    "liveGuardVerification": {
-      "mode": "2026-10-23-canonical-link-owner-r1",
-      "status": "V3_CANONICAL_LINK_PRESERVED",
-      "eventId": "62odlrnni7nid3ckesp8eua4co@google.com",
-      "taskId": 19320,
-      "taskUrl": "https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=19320",
-      "writesPerformed": false,
-      "writePerformed": false,
-      "calendarWritesPerformed": false,
-      "strivenWritesPerformed": false,
-      "linkReturned": true,
-      "readBackVerified": true,
-      "existingDescriptionPreserved": true,
-      "authoredDescriptionPreserved": true,
-      "calendarCopiesFound": 2,
-      "calendarCopiesVerified": 2,
-      "calendars": [
-        {
-          "calendarId": "c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com",
-          "found": true,
-          "canonical": true,
-          "verified": true
-        },
-        {
-          "calendarId": "classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com",
-          "found": true,
-          "canonical": true,
-          "verified": true
-        }
-      ]
-    },
-    "notes": "V3 source/version/automation scopes unchanged; legacy footer writers defer on V3 canonical blocks."
-  }
+  "timezone": "America/Toronto",
+  "note": "HEAD deployment remains unpinned; branch also contains preinspection changes not included in this scheduling-only production release. Existing business trigger times were retained and have not been independently read from each trigger editor."
 }
