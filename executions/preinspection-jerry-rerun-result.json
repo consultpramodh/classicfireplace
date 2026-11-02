@@ -1,0 +1,26 @@
+{
+  "status": "UNCERTAIN_OR_INCOMPLETE_NO_RETRY",
+  "eventHash": "dd1b30cef05e618ffc83e33df4d7ecbad70f8c52087058cc5e5aeaf361dea209",
+  "writeAttempted": true,
+  "liveVersion": "3.12.18-preinspection-discovery-targeted-r1",
+  "beforePlan": [
+    {
+      "plan": "CREATE_TASK__TYPE105__BLANK_DESCRIPTION__NO_SO__POOL8__CALENDAR_TITLE",
+      "hasBlocker": false,
+      "taskId": 0
+    }
+  ],
+  "executionStatus": "ATTENTION",
+  "processed": 1,
+  "writes": 0,
+  "notifications": 0,
+  "rows": [
+    {
+      "status": "ATTENTION",
+      "taskId": 0,
+      "executionStatus": "",
+      "hasError": true
+    }
+  ],
+  "reason": "INCOMPLETE_STOP_NO_RETRY"
+}
