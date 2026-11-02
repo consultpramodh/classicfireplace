@@ -23,3 +23,5 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-slot-schedule-release.cjs
+
+# Retry with live queue guard mocked only in projection tests.

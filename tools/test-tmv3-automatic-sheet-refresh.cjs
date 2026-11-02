@@ -18,6 +18,8 @@ const c={Date,JSON,Object,Number,String,Math,Error,Logger:{log(){}},TMV3_TIMEZON
 };
 vm.createContext(c);vm.runInContext(fs.readFileSync(path.join(dir,'60_Automation.js'),'utf8'),c);
 c.tmv3_listTriggers=()=>[];
+// Isolate projection tests from the separately tested business queue policy.
+c.tmv3_verticalBusinessQueuePending_=()=>false;
 let r=c.tmv3_refreshAutomationSheets();eq(r.status,'AUTOMATION_SHEETS_REFRESHED');eq(r.projectionVerified,true);eq(r.timestampReadbackVerified,true);eq(Object.values(r.rows).join(','),'1,1,1,1');eq(r.strivenWrites,0);eq(r.calendarWrites,0);eq(props.TMV3_SHEET_REFRESH_PENDING,undefined);eq(release,1);eq(cells.B2.includes('Toronto'),true);eq(c.tmv3_automationSheetRefreshStatus().lastSuccess.status,r.status);
 const last=props.TMV3_SHEET_REFRESH_LAST_SUCCESS;
 lockOK=false;r=c.tmv3_refreshAutomationSheets();eq(r.status,'LOCK_BUSY');eq(props.TMV3_SHEET_REFRESH_PENDING,'true');eq(props.TMV3_SHEET_REFRESH_LAST_SUCCESS,last);eq(release,1);lockOK=true;
