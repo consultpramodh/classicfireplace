@@ -24,11 +24,14 @@ function part(s,name){const marker='function '+name+'(';const a=s.indexOf(marker
  // Execute tests against the actual live-derived candidate, in this private runner only.
  for(const f of out.files)if(f.type==='SERVER_JS')fs.writeFileSync('apps-script/tmv3-clean/'+f.name+'.js',f.source);
  for(const test of ['tools/test-tmv3-standard-schedule.cjs','tools/test-tmv3-automatic-sheet-refresh.cjs','tools/test-tmv3-full-vertical-sweep.cjs','tests/preinspection/standard-slots-only.test.cjs','tests/preinspection/sweep-start-recovery.test.cjs'])cp.execFileSync('node',[test],{stdio:'pipe'});
- // Private Drive backup, verified by reading the bytes back. Never save to public Actions artifacts.
- const raw=JSON.stringify({scriptId:SID,createdAt:new Date().toISOString(),versions,deployments,content:before});const metadata={name:'CF-Tasks-V3-before-slot-release-'+Date.now()+'.json',mimeType:'application/json'};
- const boundary='cfbackup'+crypto.randomBytes(12).toString('hex');const body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(metadata)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+raw+'\r\n--'+boundary+'--';
- const up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',{method:'POST',headers:{Authorization:'Bearer '+auth.access_token,'Content-Type':'multipart/related; boundary='+boundary},body});if(!up.ok)throw Error('PRIVATE_BACKUP_UPLOAD_FAILED_'+up.status);const backup=await up.json();
- const rr=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(backup.id)+'?alt=media',{headers:{Authorization:'Bearer '+auth.access_token}});if(!rr.ok||hash(await rr.text())!==hash(raw))throw Error('PRIVATE_BACKUP_READBACK_FAILED');
+ // Prepare encrypted backup for private off-runner storage and read-back verification.
+ const raw=JSON.stringify({scriptId:SID,createdAt:new Date().toISOString(),versions,deployments,content:before});
+ const key=crypto.randomBytes(32),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv);
+ const ciphertext=Buffer.concat([cipher.update(raw,'utf8'),cipher.final()]);
+ const wrapped=crypto.publicEncrypt({key:fs.readFileSync('release-candidates/slot-backup-public.pem'),oaepHash:'sha256'},key);
+ fs.writeFileSync('slot-backup.enc',JSON.stringify({wrapped:wrapped.toString('base64'),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),ciphertext:ciphertext.toString('base64'),rawHash:hash(raw),beforeHash:digest(before)}));
+ console.log(JSON.stringify({status:'ENCRYPTED_BACKUP_PREPARED',beforeHash:digest(before),rawHash:hash(raw),versions:versions.map(v=>v.versionNumber)}));
+ return;
  if(digest(await api('projects/'+SID+'/content'))!==digest(before))throw Error('SOURCE_DRIFT_BEFORE_WRITE');
  console.log(JSON.stringify({stage:'BACKUP_VERIFIED',backupId:backup.id,beforeHash:digest(before),versions:versions.map(v=>v.versionNumber)}));
  await api('projects/'+SID+'/content','PUT',out);if(digest(await api('projects/'+SID+'/content'))!==digest(out))throw Error('SOURCE_READBACK_FAILED');

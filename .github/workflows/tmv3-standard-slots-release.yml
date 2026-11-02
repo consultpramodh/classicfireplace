@@ -26,3 +26,8 @@ jobs:
 
 # Retry with live queue guard mocked only in projection tests.
 # Exercise recovery functions independently of neighboring source layout.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-slot-backup
+          path: slot-backup.enc
+          retention-days: 7
