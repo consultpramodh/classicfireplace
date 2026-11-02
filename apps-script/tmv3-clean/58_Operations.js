@@ -1785,6 +1785,12 @@ function tmv3_findEventCopyRobust_(calendarId, eventId) {
 }
 
 function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
+  // An appointment owned by another organizer must not invite Stephen.
+  const organizer=tmv3_clean_(eventRecord && eventRecord.organizerCalendarId);
+  const secondary=((TMV3.VERTICALS.PreInspection || {}).secondaryCalendarIds || []).map(tmv3_clean_);
+  if (eventRecord && eventRecord.vertical==='PreInspection' && organizer && secondary.indexOf(organizer)<0) {
+    return {status:'OTHER_ORGANIZER_NO_STEPHEN_MIRROR',writePerformed:false};
+  }
   if (
     !eventRecord ||
     eventRecord.vertical !== 'PreInspection'

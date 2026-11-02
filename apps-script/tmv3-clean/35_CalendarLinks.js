@@ -166,9 +166,11 @@ function tmv3_requiredCalendarCopiesForEvent_(eventRecord) {
 
     // CF Preinspects remains the sole intake authority, but presentation
     // state must converge on every configured PreInspection Calendar copy.
-    return tmv3_unique_(
-      [primaryId].concat(secondaryIds).filter(Boolean)
-    );
+    const organizer = tmv3_clean_(record.organizerCalendarId);
+    // Stephen's copy is required only for events organized on Stephen's
+    // configured calendar, or for legacy records with unknown organizer.
+    const requiredSecondary = !organizer || secondaryIds.indexOf(organizer)>=0 ? secondaryIds : [];
+    return tmv3_unique_([primaryId].concat(requiredSecondary).filter(Boolean));
   }
 
   if (sourceIds.length) return sourceIds;
