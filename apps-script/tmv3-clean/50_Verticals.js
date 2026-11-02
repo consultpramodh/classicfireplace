@@ -247,6 +247,14 @@ function tmv3_desiredTaskName_(record, options) {
     };
   }
 
+  // On the authoritative Preinspects calendar, a verified customer number
+  // is enough to name the task. Include address and phone when available.
+  if (record.vertical==='PreInspection' && record.calendarRole==='PRIMARY_SHARED' &&
+      record.calendarId===TMV3.VERTICALS.PreInspection.primaryCalendarId &&
+      /^\d+$/.test(context.customerNumber || '')) {
+    return {status:'READY',value:[context.customerName || ('Customer #'+context.customerNumber),context.address,context.phone]
+      .map(tmv3_clean_).filter(Boolean).join(' - '),reason:'',source:'VERIFIED_CUSTOMER_NUMBER_AVAILABLE_DETAILS'};
+  }
   const missing = [];
   if (!context.customerName) missing.push('Customer Name');
   if (!context.address) missing.push('Address');
@@ -343,6 +351,14 @@ function tmv3_desiredCalendarTitle_(record) {
   }
 
   if (record.vertical === 'PreInspection') {
+    // Preserve the existing title when optional name or phone information is
+    // missing; missing title decorations must not prevent task creation.
+    if (record.calendarRole==='PRIMARY_SHARED' && record.calendarId===TMV3.VERTICALS.PreInspection.primaryCalendarId &&
+        /^\d+$/.test(context.customerNumber || '') && (!context.customerName || !context.phone)) {
+      const original=tmv3_clean_(record.title);
+      return original ? {status:'READY',value:original,reason:'',source:'PRESERVE_EXISTING_TITLE'} :
+        {status:'BLOCKED',value:'',reason:'Calendar title is missing.'};
+    }
     if (!context.customerNumber || !context.customerName || !context.phone) {
       return {
         status:'BLOCKED',

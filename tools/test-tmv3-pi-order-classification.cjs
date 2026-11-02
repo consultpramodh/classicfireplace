@@ -10,6 +10,10 @@ for(const text of ['No preinspection is required.','Preinspection has been alrea
 }
 assert.equal(ctx.tmv3_preInspectionVisitIntent_({...base,descriptionClean:'Please confirm everything ahead of install.'}),'PREINSPECTION');
 assert.equal(ctx.tmv3_preInspectionVisitIntent_({...base,descriptionClean:'Please install the fireplace.'}),'INSTALLATION');
+const minimal={vertical:'PreInspection',calendarRole:'PRIMARY_SHARED',calendarId:cfg.primaryCalendarId,title:'Customer 12345',customerNumber:'12345',step3:{},step4:{disposition:'VERIFIED',customer:{'Customer Number':'12345','Customer ID':77,'Name':'Test Customer'},location:null}};
+assert.equal(ctx.tmv3_desiredTaskName_(minimal).value,'Test Customer');
+assert.equal(ctx.tmv3_desiredCalendarTitle_(minimal).value,'Customer 12345');
+assert.equal(ctx.tmv3_desiredTaskName_({...minimal,calendarId:'other'}).status,'BLOCKED');
 let customerId=63005,site=58625,statusId=19,statusName='Quoted',searchTotal=1,searchCount=1,fail=false,calls=0;
 ctx.tmv3_step4IdentityIndex_=()=>({});ctx.tmv3_step4ResolveCustomerFromCalendarEvidence_=()=>({customer:{'Customer ID':customerId}});
 ctx.tmv3_preInspectionCustomerLocationsFresh_=()=>[{'Customer ID':63005,'Location ID':58625}];
