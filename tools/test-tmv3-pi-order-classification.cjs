@@ -95,5 +95,8 @@ desired=ctx.tmv3_desiredAssignment_(rec);assert.equal(desired.employeeIds[0],1);
 assert.throws(()=>ctx.tmv3_desiredAssignment_({...rec,customerNumber:'99999'}),/OVERRIDE_EVIDENCE_MISMATCH/);cases++;
 assert.throws(()=>ctx.tmv3_desiredAssignment_({...rec,organizerCalendarId:'other'}),/OVERRIDE_EVIDENCE_MISMATCH/);cases++;
 assert.equal(ctx.tmv3_desiredAssignment_({...rec,eventId:'another@google.com'}).employeeIds.length,0);cases++;
+delete props[overrideKey];ctx.tmv3_findFreshEventRecord_=()=>rec;
+assert.throws(()=>ctx.tmv3_configurePreInspectionAssignmentOverride(rec.eventId,'99999',rec.organizerCalendarId,1),/EVIDENCE_MISMATCH/);assert.equal(props[overrideKey],undefined);
+assert.equal(ctx.tmv3_configurePreInspectionAssignmentOverride(rec.eventId,rec.customerNumber,rec.organizerCalendarId,1).status,'ASSIGNMENT_OVERRIDE_VERIFIED');assert.equal(ctx.tmv3_desiredAssignment_(rec).employeeIds[0],1);cases++;
 const quiet=ctx.tmv3_reconcilePreInspectionEventQuiet(base.eventId);assert.equal(quiet.status,'QUIET_CALENDAR_MUTATIONS_NOT_VERIFIED_NO_WRITE');assert.equal(quiet.writes,0);assert.equal(quiet.notifications,0);cases++;
 console.log(JSON.stringify({status:'PASS',cases,apiMockCalls:calls}));

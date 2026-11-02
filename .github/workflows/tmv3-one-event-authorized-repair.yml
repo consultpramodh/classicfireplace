@@ -1,4 +1,4 @@
-name: One authorized preinspection repair
+name: One authorized preinspection repair with lock recovery
 on:
   push:
     branches: [task-mapping-preinspection]

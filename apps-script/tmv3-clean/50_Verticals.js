@@ -69,6 +69,29 @@ function tmv3_preInspectionAssignmentOverride_(record) {
   return [employeeId];
 }
 
+// Explicitly configure one appointment after rereading its current Calendar
+// identity. No task or Calendar event is changed by this operation.
+function tmv3_configurePreInspectionAssignmentOverride(eventId, customerNumber, organizerCalendarId, employeeId) {
+  if (!/^[a-z0-9_]+@google\.com$/.test(String(eventId || '')) ||
+      !/^\d{3,8}$/.test(String(customerNumber || '')) ||
+      !tmv3_clean_(organizerCalendarId) || !Number.isSafeInteger(Number(employeeId)) ||
+      Number(employeeId) <= 0 || !tmv3_employeeNameById_(employeeId)) {
+    throw new Error('PREINSPECTION_ASSIGNMENT_OVERRIDE_INVALID');
+  }
+  const record=tmv3_findFreshEventRecord_('PreInspection',eventId);
+  if (!record || String(record.eventId)!==String(eventId) ||
+      String(record.customerNumber || '')!==String(customerNumber) ||
+      String(record.organizerCalendarId || '')!==String(organizerCalendarId)) {
+    throw new Error('PREINSPECTION_ASSIGNMENT_OVERRIDE_EVIDENCE_MISMATCH');
+  }
+  const value={eventId:String(eventId),customerNumber:String(customerNumber),
+    organizerCalendarId:String(organizerCalendarId),employeeId:Number(employeeId)};
+  const key='TMV3_PI_ASSIGNMENT_OVERRIDE_'+tmv3_hash_(eventId);
+  const props=PropertiesService.getScriptProperties();props.setProperty(key,JSON.stringify(value));
+  if (props.getProperty(key)!==JSON.stringify(value)) throw new Error('PREINSPECTION_ASSIGNMENT_OVERRIDE_READBACK_FAILED');
+  return {status:'ASSIGNMENT_OVERRIDE_VERIFIED',employeeId:Number(employeeId),businessWrites:0};
+}
+
 
 /************************************************************
  * TM V3 — CANONICAL TITLE / TASK NAME POLICY
