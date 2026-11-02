@@ -40,6 +40,9 @@ assert(calls>before);
 {
  const metadata={};ctx.tmv3_hash_=v=>String(v);ctx.PropertiesService={getScriptProperties:()=>({getProperty:k=>metadata[k]||null})};
  const plan={expectedCustomerId:'63005',expectedLocationId:'58625'};
+ const shared={...base,calendarRole:'PRIMARY_SHARED',calendarId:cfg.primaryCalendarId};
+ for(const pair of [[19,'Quoted'],[22,'Approved'],[25,'In Progress']]) {statusId=pair[0];statusName=pair[1];assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_(shared,plan).status,'SHARED_PREINSPECTION_CALENDAR_ORDER_STATUS_NOT_REQUIRED');cases++;}
+ assert.throws(()=>{statusId=22;statusName='Approved';ctx.tmv3_preInspectionOrderBeforeCreate_({...shared,calendarId:'other-calendar'},plan);},/VISIT_INTENT_REVIEW/);cases++;
  statusId=19;statusName='Quoted';assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan).status,'FRESH_PREAPPROVAL_ORDER_VERIFIED');cases++;
  statusId=22;statusName='Approved';assert.throws(()=>ctx.tmv3_preInspectionOrderBeforeCreate_(base,plan),/VISIT_INTENT_REVIEW/);cases++;
  assert.equal(ctx.tmv3_preInspectionOrderBeforeCreate_({...base,descriptionClean:'Please confirm everything ahead of install.'},plan).status,'FRESH_APPROVED_ORDER_PREINSTALL_VISIT_VERIFIED');cases++;

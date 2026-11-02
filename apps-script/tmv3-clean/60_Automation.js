@@ -1531,6 +1531,13 @@ function tmv3_preInspectionClassifyLikely_(record,cfg,fresh) {
 // Recheck the current Order after asynchronous Calendar intake, immediately before CREATE.
 // An inferred visit keeps its verified Order evidence even when no SO was authored on Calendar.
 function tmv3_preInspectionOrderBeforeCreate_(record,plan) {
+  // The user's confirmed shared Preinspects calendar is authoritative for
+  // visit type. Do not gate its events on Sales Order status; all customer,
+  // location, task history and duplicate checks remain in the caller.
+  if (record && record.calendarRole==='PRIMARY_SHARED' &&
+      record.calendarId===TMV3.VERTICALS.PreInspection.primaryCalendarId) {
+    return {status:'SHARED_PREINSPECTION_CALENDAR_ORDER_STATUS_NOT_REQUIRED'};
+  }
   const key='TMV3_PI_INFERRED_'+tmv3_hash_(record.eventId);
   const rawEvidence=PropertiesService.getScriptProperties().getProperty(key);
   const evidence=rawEvidence ? JSON.parse(rawEvidence) : null;

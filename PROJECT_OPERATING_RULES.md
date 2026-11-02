@@ -238,4 +238,6 @@ The scoped VERTICALAUTO worker uses the existing Stage 7 executor, fresh identit
 
 ## 2026-11-02 — Calendar visit intent before Order status
 
+The shared CF Preinspects calendar itself establishes PreInspection visit type; do not gate those events on Sales Order status. All other identity, ownership, location, lifecycle, duplicate and readback checks remain required. This is an explicit user exception to the Approved-order gate below.
+
 For an Approved Sales Order, assess the actual authored Calendar instructions before classifying the appointment. A clear pre-installation inspection or confirmation visit may remain PreInspection; a clear installation instruction is Installation; contradictory or insufficient instructions require REVIEW. Do not use Order status alone as proof of visit type. Preserve all current ownership, lifecycle, duplicate and read-back gates. Quiet repair must remain blocked until every Calendar mutation has a verified no-notification path. It does not change the scheduled notification setting.
