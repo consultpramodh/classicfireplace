@@ -1881,6 +1881,11 @@ function tmv3_preInspectionAutomationCycle_(options) {
         if (!options.eventId && done && done.fingerprint===record.fingerprint && now-Number(done.at || 0)<3600000) {
           one.status='VERIFIED_UNCHANGED_CACHE';result.results.push(one);continue;
         }
+        // CalendarApp.addGuest may send invitations. A quiet run must not
+        // promote a secondary event until a verified silent path exists.
+        if (suppressNotifications && record.calendarRole === 'SECONDARY_STEPHEN') {
+          throw new Error('QUIET_INTAKE_REQUIRES_SILENT_CALENDAR_GUEST_UPDATE');
+        }
         const intake = tmv3_preInspectionPromoteCandidate_(record);
         one.intake = intake.status;
         record = intake.record;

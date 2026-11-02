@@ -12,10 +12,11 @@ function tmv3_desiredAssignment_(eventRecord) {
   }
 
   if (eventRecord.vertical === 'PreInspection') {
-    // Legacy rule: PreInspection stays assigned to Pool 8.
-    // The Calendar organizer is Requested By, not Assigned To.
+    // A targeted operator instruction may add an employee for one verified
+    // event. It does not turn every organizer into an assignee.
+    const employees = tmv3_preInspectionAssignmentOverride_(eventRecord);
     return {
-      employeeIds: [],
+      employeeIds: employees,
       poolIds: [Number(cfg.defaultPoolId)]
     };
   }
@@ -46,6 +47,26 @@ function tmv3_desiredAssignment_(eventRecord) {
     employeeIds: tmv3_unique_(ids),
     poolIds: []
   };
+}
+
+// Overrides are private Script Properties, keyed to the immutable event ID.
+// Mismatched or incomplete evidence blocks the plan rather than assigning a
+// different appointment. No property means the normal Pool 8 rule applies.
+function tmv3_preInspectionAssignmentOverride_(record) {
+  if (!record || !tmv3_clean_(record.eventId) || typeof PropertiesService === 'undefined') return [];
+  const key = 'TMV3_PI_ASSIGNMENT_OVERRIDE_' + tmv3_hash_(record.eventId);
+  const raw = PropertiesService.getScriptProperties().getProperty(key);
+  if (!raw) return [];
+  let value;
+  try { value = JSON.parse(raw); } catch (error) { throw new Error('PREINSPECTION_ASSIGNMENT_OVERRIDE_INVALID'); }
+  const employeeId = Number(value.employeeId);
+  if (String(value.eventId || '') !== String(record.eventId) ||
+      !value.customerNumber || String(value.customerNumber) !== String(record.customerNumber || '') ||
+      !value.organizerCalendarId || String(value.organizerCalendarId) !== String(record.organizerCalendarId || '') ||
+      !Number.isSafeInteger(employeeId) || employeeId <= 0) {
+    throw new Error('PREINSPECTION_ASSIGNMENT_OVERRIDE_EVIDENCE_MISMATCH');
+  }
+  return [employeeId];
 }
 
 

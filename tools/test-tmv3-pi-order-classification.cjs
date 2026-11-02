@@ -75,9 +75,24 @@ sequence.length=0;wait=true;cycle=ctx.tmv3_preInspectionAutomationCycle_({force:
 let notices=0,alerts=0;
 ctx.tmv3_preInspectionSendMissingDetails_=()=>{notices++;return {sent:1};};
 ctx.tmv3_preInspectionFailureAlert_=()=>{alerts++;};
+ctx.tmv3_preInspectionIntakeRecords_=()=>[{...base,calendarRole:'PRIMARY_SHARED'}];ctx.tmv3_preInspectionTargetedIntake_=()=>[{...base,calendarRole:'PRIMARY_SHARED'}];
 wait=false;cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId,suppressNotifications:true});
 assert.equal(cycle.status,'COMPLETE',JSON.stringify(cycle));assert.equal(notices,0);assert.equal(alerts,0);assert.equal(cycle.results[0].notification.status,'SUPPRESSED_BY_REQUEST');cases++;
 ctx.tmv3_preInspectionPromoteCandidate_=()=>{throw Error('TEST_FAILURE');};
 cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId,suppressNotifications:true});
 assert.equal(cycle.status,'ATTENTION');assert.equal(notices,0);assert.equal(alerts,0);cases++;
+// A quiet run must not promote a secondary event using addGuest invitations.
+ctx.tmv3_preInspectionIntakeRecords_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];ctx.tmv3_preInspectionTargetedIntake_=()=>[{...base,calendarRole:'SECONDARY_STEPHEN'}];
+let promoted=false;ctx.tmv3_preInspectionPromoteCandidate_=()=>{promoted=true;throw Error('UNEXPECTED_PROMOTION');};
+cycle=ctx.tmv3_preInspectionAutomationCycle_({force:true,eventId:base.eventId,suppressNotifications:true});
+assert.equal(cycle.status,'ATTENTION');assert.equal(promoted,false);assert.match(cycle.results[0].error,/QUIET_INTAKE/);assert.equal(notices,0);assert.equal(alerts,0);cases++;
+// An employee override applies only to its exact verified event, customer and organizer.
+const rec={...base,customerNumber:'12345',organizerCalendarId:'organizer-calendar'};
+let desired=ctx.tmv3_desiredAssignment_(rec);assert.equal(desired.employeeIds.length,0);assert.equal(desired.poolIds[0],8);
+const overrideKey='TMV3_PI_ASSIGNMENT_OVERRIDE_'+rec.eventId;
+props[overrideKey]=JSON.stringify({eventId:rec.eventId,customerNumber:rec.customerNumber,organizerCalendarId:rec.organizerCalendarId,employeeId:1});
+desired=ctx.tmv3_desiredAssignment_(rec);assert.equal(desired.employeeIds[0],1);assert.equal(desired.poolIds[0],8);cases++;
+assert.throws(()=>ctx.tmv3_desiredAssignment_({...rec,customerNumber:'99999'}),/OVERRIDE_EVIDENCE_MISMATCH/);cases++;
+assert.throws(()=>ctx.tmv3_desiredAssignment_({...rec,organizerCalendarId:'other'}),/OVERRIDE_EVIDENCE_MISMATCH/);cases++;
+assert.equal(ctx.tmv3_desiredAssignment_({...rec,eventId:'another@google.com'}).employeeIds.length,0);cases++;
 console.log(JSON.stringify({status:'PASS',cases,apiMockCalls:calls}));
