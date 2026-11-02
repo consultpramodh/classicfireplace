@@ -1598,13 +1598,12 @@ function tmv3_reconcilePreInspectionEvent(eventId) {
   return result;
 }
 
-// Explicit one-event repair through the canonical worker, with no email side effects.
+// Do not advertise a quiet business write until every Calendar mutation in
+// the canonical worker uses a verified sendUpdates=none path. Suppressing
+// MailApp alone does not prove that Calendar sends no guest notifications.
 function tmv3_reconcilePreInspectionEventQuiet(eventId) {
   if(!/^[a-z0-9_]+@google\.com$/.test(String(eventId || '')))throw new Error('INVALID_PREINSPECTION_EVENT_ID');
-  const started=Date.now();
-  const result=tmv3_preInspectionAutomationCycle_({force:true,eventId:eventId,suppressNotifications:true,reason:'TARGETED_QUIET_RECONCILIATION'});
-  result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(started);
-  return result;
+  return {status:'QUIET_CALENDAR_MUTATIONS_NOT_VERIFIED_NO_WRITE',writes:0,notifications:0};
 }
 
 function tmv3_preInspectionIntakeRecords_(options) {
