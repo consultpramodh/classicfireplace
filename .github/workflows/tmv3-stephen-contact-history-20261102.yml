@@ -1,0 +1,38 @@
+name: Verify Stephen contacts and task history
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-stephen-contact-history-20261102.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify exact live source and back it up
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-stephen-contact-history-20261102.cjs prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stephen-source-backup-${{ github.run_id }}
+          path: stephen-pi-verify/before.json
+          retention-days: 30
+      - name: Check contacts and existing task history and restore source
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-stephen-contact-history-20261102.cjs inspect
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stephen-verification-${{ github.run_id }}
+          path: stephen-pi-verify/result.json
+          retention-days: 7
