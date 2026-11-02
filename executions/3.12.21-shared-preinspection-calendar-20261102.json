@@ -1,0 +1,18 @@
+{
+  "version": "3.12.21-shared-preinspection-calendar-r1",
+  "appsScriptVersionNumber": 205,
+  "releasedAt": "2026-11-02T21:46:34Z",
+  "sourceHash": "b5639671c9521ab387476c3a31cdfda7bf49906c46fd8e923102d3eb0bbe5e08",
+  "backupLibraryFileId": "libfile_45d00076bb448191b9f04ef4eaacdba8",
+  "retention": "CLEANUP_DEFERRED_BY_USER",
+  "savedVersionsBefore": [
+    200,
+    201,
+    202,
+    203,
+    204
+  ],
+  "productionStatus": "LIVE_HEALTH_AND_TRIGGER_HANDLERS_VERIFIED",
+  "businessWrites": 0,
+  "notes": "HEAD execution deployment remains unpinned. Scoped Jay override configured separately; event reconciliation running."
+}
