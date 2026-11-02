@@ -28,3 +28,5 @@ jobs:
           name: encrypted-preinspection-backup
           path: pi-backup.enc
           retention-days: 7
+
+# Refresh version inventory before preinspection release.
