@@ -1,27 +1,18 @@
 {
-  "version": "3.12.20-standard-slot-schedule-r1",
-  "timestamp": "2026-11-02T17:53:29Z",
-  "appsScriptVersionNumber": 204,
-  "backupLibraryFileId": "libfile_e812aab95858819196b39683a4650eff",
-  "sourceBeforeHash": "3ba4956504f9f4339161faedf05950c0ee7478bb8be56980312f911d3c169fa5",
-  "sourceAfterHash": "7324630d562e7538bed6fa309fd428f0a00ab4e57ce3de9c65856337d7042fa1",
-  "retainedVersions": [
+  "version": "3.12.21-shared-preinspection-calendar-r1",
+  "appsScriptVersionNumber": 205,
+  "releasedAt": "2026-11-02T21:46:34Z",
+  "sourceHash": "b5639671c9521ab387476c3a31cdfda7bf49906c46fd8e923102d3eb0bbe5e08",
+  "backupLibraryFileId": "libfile_45d00076bb448191b9f04ef4eaacdba8",
+  "retention": "CLEANUP_DEFERRED_BY_USER",
+  "savedVersionsBefore": [
     200,
     201,
     202,
     203,
     204
   ],
-  "verifiedHandlers": {
-    "business": 12,
-    "sheetRefresh": 3,
-    "retiredContinuationHandlers": 0
-  },
-  "scheduleHours": [
-    8,
-    13,
-    17
-  ],
-  "timezone": "America/Toronto",
-  "note": "HEAD deployment remains unpinned; branch also contains preinspection changes not included in this scheduling-only production release. Existing business trigger times were retained and have not been independently read from each trigger editor."
+  "productionStatus": "LIVE_HEALTH_AND_TRIGGER_HANDLERS_VERIFIED",
+  "businessWrites": 0,
+  "notes": "HEAD execution deployment remains unpinned. Scoped Jay override configured separately; event reconciliation running."
 }
