@@ -25,3 +25,5 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: node tools/tmv3-one-event-authorized-repair.cjs
+
+# User-requested rerun.
