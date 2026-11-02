@@ -1,0 +1,22 @@
+name: Repair preinspection event links and notes
+on:
+  push:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-two-event-note-repair.yml]
+permissions:
+  contents: read
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve notes and update links without invitations
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-two-event-note-repair.cjs
