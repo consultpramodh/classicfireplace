@@ -1,0 +1,44 @@
+name: One-time Delivery calendar links
+on:
+  pull_request:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-delivery-links-once.yml]
+permissions:
+  contents: read
+jobs:
+  add-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Add verified task and order links preserving notes
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('ONE_PROFILE_REQUIRED');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!a.ok)throw Error('AUTH_FAILED');
+            const h={Authorization:'Bearer '+(await a.json()).access_token},cal='classicfireplace.ca_2h90kflud3re121hga9bvsi33o@group.calendar.google.com';
+            const cases=[{event:'4bqpo07ognm9klj7crkq5ifo87',order:'586275',orderId:'28009',taskId:'19359',row:4777},{event:'77kb9bj32thqispvtbfl8ct5bh',order:'585839',orderId:'27573',taskId:'19037',row:4525}];
+            const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+            for(let i=0;i<cases.length;i++){
+              const c=cases[i],sheet='1Rxo2t3QjlC7TFWNc3kQ8A2foBAxM0l0VcEtRh4fkU2E',range="'Source Tasks'!A"+c.row+':P'+c.row;
+              const sr=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+sheet+'/values/'+encodeURIComponent(range),{headers:h});if(!sr.ok)throw Error('TASK_CACHE_READ_FAILED_'+i);const row=((await sr.json()).values||[])[0]||[];
+              if(String(row[0])!==c.taskId||String(row[9])!==c.orderId||!row[5])throw Error('TASK_CACHE_GUARD_FAILED_'+i);
+              const u='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(cal)+'/events/'+encodeURIComponent(c.event);const g=await fetch(u,{headers:h});if(!g.ok)throw Error('CALENDAR_READ_FAILED_'+i);const e=await g.json(),before=String(e.description||'');
+              if(!e.etag||!new RegExp('(?:SO|Order)\\s*#?\\s*'+c.order+'\\b','i').test((e.summary||'')+' '+before))throw Error('ORDER_EVIDENCE_MISSING_'+i);
+              const taskUrl='https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID='+c.taskId,orderUrl='https://classicfireplace.striven.com/next/crm#/sales-orders/'+c.orderId;
+              if(before.includes(taskUrl)&&before.includes(orderUrl)){console.log(JSON.stringify({case:i+1,status:'ALREADY_PRESENT'}));continue;}
+              if(/TaskInfo\.aspx\?|\/sales-orders\/|striven\s+links/i.test(before))throw Error('EXISTING_LINK_REVIEW_'+i);
+              const footer='<br><br>-----Striven Links-----<br><a href="'+orderUrl+'">Sales Order – '+c.order+'</a><br><a href="'+taskUrl+'">Task #'+c.taskId+' – '+escape(row[5])+'</a>';
+              const after=before+footer,pr=await fetch(u,{method:'PATCH',headers:{...h,'Content-Type':'application/json','If-Match':e.etag},body:JSON.stringify({description:after})});if(!pr.ok)throw Error('PATCH_FAILED_'+i+'_'+pr.status);
+              const vr=await fetch(u,{headers:h});if(!vr.ok)throw Error('READBACK_FAILED_'+i);const v=await vr.json();if(v.description!==after||v.summary!==e.summary||v.location!==e.location||v.start.dateTime!==e.start.dateTime||v.end.dateTime!==e.end.dateTime)throw Error('READBACK_MISMATCH_'+i);
+              console.log(JSON.stringify({case:i+1,status:'VERIFIED',originalNotesUnchanged:true,taskLink:true,orderLink:true}));
+            }
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
