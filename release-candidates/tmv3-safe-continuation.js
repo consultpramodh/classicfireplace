@@ -109,3 +109,23 @@ function tmv3_withInitialSweepWatchdog_(vertical, operation) {
   }
   return result;
 }
+
+/** Draft decision; caller MUST compare the snapshot while holding the business script lock. */
+function tmv3_preInspectionResumeDecision_(baselineRaw, currentRaw) {
+  const before = baselineRaw || '';
+  const now = currentRaw || '';
+  let state = null;
+  if (before) {
+    try { const prior = JSON.parse(before); if (!prior || typeof prior !== 'object' || Array.isArray(prior)) return 'INVALID'; } catch (error) { return 'INVALID'; }
+  }
+  if (now) {
+    try { state = JSON.parse(now); } catch (error) { return 'INVALID'; }
+    if (!state || typeof state !== 'object' || Array.isArray(state)) return 'INVALID';
+  }
+  if (state && state.status === 'IN_PROGRESS') return 'CONTINUE';
+  if (before !== now) {
+    if (state && (state.status === 'COMPLETE' || state.status === 'SCANNED_WITH_PENDING_REVIEW')) return 'FINISHED';
+    return 'REVIEW';
+  }
+  return 'START';
+}
