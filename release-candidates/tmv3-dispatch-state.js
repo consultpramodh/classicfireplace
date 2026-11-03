@@ -1,5 +1,5 @@
 /** Google Apps Script prototype: pure state transitions only. NOT WIRED OR DEPLOYABLE. */
-const TMV3_DISPATCH_ORDER = Object.freeze(['PreInspection','Install','Delivery','Service']);
+const TMV3_DISPATCH_ORDER = Object.freeze(['PreInspection','Install','Delivery','Service','SheetPublication']);
 function tmv3_dispatchStart_(cycleId, startTime) {
   if (typeof cycleId !== 'string' || !cycleId || !Number.isFinite(startTime)) throw Error('DISPATCH_INVALID_CYCLE');
   return {cycleId:cycleId, startedAt:startTime, index:0, status:'READY', attemptId:null, outcomes:[]};
