@@ -131,13 +131,12 @@ function tmv3_preInspectionResumeDecision_(baselineRaw, currentRaw) {
   if (state && state.status === 'IN_PROGRESS') {
     const age=Date.now()-new Date(state.startedAt).getTime();
     if (!isFinite(age) || age < 0) return 'INVALID';
+    // A changed snapshot can belong to another execution; ownership is unknown.
+    if (before !== now) return 'REVIEW';
     if (age >= 86400000) return before === now ? 'START' : 'REVIEW';
     return 'CONTINUE';
   }
-  if (before !== now) {
-    if (state && (state.status === 'COMPLETE' || state.status === 'SCANNED_WITH_PENDING_REVIEW')) return 'FINISHED';
-    return 'REVIEW';
-  }
+  if (before !== now) return 'REVIEW';
   return 'START';
 }
 
@@ -147,7 +146,8 @@ function tmv3_verticalResumeDecision_(baselineRaw, currentRaw) {
   function parse(raw) { if (!raw) return null; const x=JSON.parse(raw); if (!x || typeof x !== 'object' || Array.isArray(x) || typeof x.complete !== 'boolean' || !x.id) throw Error('INVALID'); return x; }
   let oldState, state;
   try { oldState=parse(before); state=parse(now); } catch (error) { return 'INVALID'; }
+  // Snapshot changes do not identify which execution made them.
+  if (before !== now) return 'REVIEW';
   if (state && state.complete === false) return 'CONTINUE';
-  if (before !== now) return state && state.complete === true ? 'FINISHED' : 'REVIEW';
   return 'START';
 }
