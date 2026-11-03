@@ -1,6 +1,11 @@
 /** Google Apps Script prototype. Normalize one existing business-cycle result; not wired to live execution. */
 function tmv3_dispatchClassifyBatch_(vertical, result) {
-  if (['PreInspection','Install','Delivery','Service'].indexOf(vertical)<0 || !result || typeof result!=='object' || Array.isArray(result) || typeof result.status!=='string') return {outcome:'UNCERTAIN',reason:'INVALID_RESULT'};
+  if (['PreInspection','Install','Delivery','Service','SheetPublication'].indexOf(vertical)<0 || !result || typeof result!=='object' || Array.isArray(result) || typeof result.status!=='string') return {outcome:'UNCERTAIN',reason:'INVALID_RESULT'};
+  if (vertical==='SheetPublication') {
+    if (result.status==='AUTOMATION_SHEETS_REFRESHED' && result.projectionVerified===true && result.timestampReadbackVerified===true) return {outcome:'COMPLETE',reason:'SHEETS_PUBLISHED'};
+    if (result.status==='LOCK_BUSY' || result.status==='DEFERRED_ACTIVE_BUSINESS_SWEEP') return {outcome:'PENDING',reason:result.status};
+    return {outcome:'UNCERTAIN',reason:'SHEET_PUBLICATION_NOT_VERIFIED'};
+  }
   if (result.status==='LOCK_BUSY') return {outcome:'PENDING',reason:'LOCK_BUSY'};
   if (result.status==='API_BUDGET_WAIT') return {outcome:'BLOCKED',reason:'API_BUDGET_WAIT'};
   if (result.dispatchSideEffectError) return {outcome:'BLOCKED',reason:result.dispatchSideEffectError};
