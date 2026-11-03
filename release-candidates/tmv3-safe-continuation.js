@@ -28,7 +28,7 @@ function tmv3_queueContinuation_(vertical, ignoreTriggerUid, baselineRaw) {
     const dueHour = Number(Utilities.formatDate(new Date(Date.now() + 120000), 'America/Toronto', 'H'));
     if (hour < 6 || hour >= 20 || dueHour < 6 || dueHour >= 20) return {status:'CONTINUATION_OUTSIDE_WINDOW'};
     const props = PropertiesService.getScriptProperties();
-    if (vertical === 'PreInspection' && typeof baselineRaw !== 'string') return {status:'CONTINUATION_BASELINE_REQUIRED'};
+    if (typeof baselineRaw !== 'string') return {status:'CONTINUATION_BASELINE_REQUIRED'};
     const day = Utilities.formatDate(new Date(), 'America/Toronto', 'yyyy-MM-dd');
     const key = 'TMV3_CONTINUATION_ATTEMPTS_' + vertical + '_' + day;
     const raw = props.getProperty(key);
@@ -38,7 +38,7 @@ function tmv3_queueContinuation_(vertical, ignoreTriggerUid, baselineRaw) {
     const trigger = ScriptApp.newTrigger(handler).timeBased().after(120000).create();
     const baselineKey = 'TMV3_WATCHDOG_BASELINE_' + String(trigger.getUniqueId());
     try {
-      if (vertical === 'PreInspection') props.setProperty(baselineKey,JSON.stringify({baseline:baselineRaw}));
+      props.setProperty(baselineKey,JSON.stringify({baseline:baselineRaw}));
       props.setProperty(key,String(attempts + 1));
     } catch (error) { try { ScriptApp.deleteTrigger(trigger); props.deleteProperty(baselineKey); } catch (cleanup) {} throw error; }
     return {status:'CONTINUATION_QUEUED', triggerId:String(trigger.getUniqueId()), attempts:attempts + 1};
@@ -56,12 +56,10 @@ function tmv3_runQueuedContinuation_(vertical, e) {
     return {status:'CONTINUATION_OUTSIDE_WINDOW'};
   }
   let baseline;
-  if (vertical === 'PreInspection') {
-    const raw = PropertiesService.getScriptProperties().getProperty('TMV3_WATCHDOG_BASELINE_' + uid);
-    if (!raw) throw Error('PREINSPECTION_WATCHDOG_BASELINE_MISSING');
-    try { baseline = JSON.parse(raw).baseline; } catch (error) { throw Error('PREINSPECTION_WATCHDOG_BASELINE_INVALID'); }
-    if (typeof baseline !== 'string') throw Error('PREINSPECTION_WATCHDOG_BASELINE_INVALID');
-  }
+  const raw = PropertiesService.getScriptProperties().getProperty('TMV3_WATCHDOG_BASELINE_' + uid);
+  if (!raw) throw Error('WATCHDOG_BASELINE_MISSING');
+  try { baseline = JSON.parse(raw).baseline; } catch (error) { throw Error('WATCHDOG_BASELINE_INVALID'); }
+  if (typeof baseline !== 'string') throw Error('WATCHDOG_BASELINE_INVALID');
   // Pre-arm a successor before deleting the fired trigger or doing business work.
   // If this execution times out, the successor retains the ability to retry.
   const watchdog = tmv3_queueContinuation_(vertical, uid, baseline);
@@ -71,7 +69,7 @@ function tmv3_runQueuedContinuation_(vertical, e) {
     return {status:'CONTINUATION_NOT_STARTED', reason:watchdog.status};
   }
   tmv3_consumeContinuationTrigger_(e, vertical);
-  const result = vertical === 'PreInspection' ? tmv3_resumePreInspectionSweep_(baseline) : tmv3_runFullVerticalSweep_(vertical);
+  const result = vertical === 'PreInspection' ? tmv3_resumePreInspectionSweep_(baseline) : tmv3_runFullVerticalSweep_(vertical,{watchdogBaseline:baseline});
   if (Number(result.processed || 0) > 0 || Number(result.scanned || 0) > 0) {
     const day = Utilities.formatDate(new Date(), 'America/Toronto', 'yyyy-MM-dd');
     PropertiesService.getScriptProperties().deleteProperty('TMV3_CONTINUATION_ATTEMPTS_' + vertical + '_' + day);
@@ -96,7 +94,8 @@ function tmv3_resumePreInspectionSweep_(baselineRaw) {
 /** Prototype: pre-arm recovery before the first business batch; not wired to live handlers. */
 function tmv3_withInitialSweepWatchdog_(vertical, operation) {
   if (typeof operation !== 'function') throw Error('INITIAL_SWEEP_OPERATION_REQUIRED');
-  const baseline = vertical === 'PreInspection' ? (PropertiesService.getScriptProperties().getProperty('TMV3_PI_SWEEP_STATE') || '') : undefined;
+  const stateKey = vertical === 'PreInspection' ? 'TMV3_PI_SWEEP_STATE' : 'TMV3_VERTICAL_SWEEP_' + vertical;
+  const baseline = PropertiesService.getScriptProperties().getProperty(stateKey) || '';
   const watchdog = tmv3_queueContinuation_(vertical, null, baseline);
   if (watchdog.status !== 'CONTINUATION_QUEUED') {
     PropertiesService.getScriptProperties().setProperty('TMV3_CONTINUATION_ATTENTION_' + vertical,JSON.stringify({at:new Date().toISOString(),reason:watchdog.status}));
@@ -139,5 +138,16 @@ function tmv3_preInspectionResumeDecision_(baselineRaw, currentRaw) {
     if (state && (state.status === 'COMPLETE' || state.status === 'SCANNED_WITH_PENDING_REVIEW')) return 'FINISHED';
     return 'REVIEW';
   }
+  return 'START';
+}
+
+/** Draft decision for cached Install, Delivery and Service sweep state. Call under the business script lock. */
+function tmv3_verticalResumeDecision_(baselineRaw, currentRaw) {
+  const before = baselineRaw || '', now = currentRaw || '';
+  function parse(raw) { if (!raw) return null; const x=JSON.parse(raw); if (!x || typeof x !== 'object' || Array.isArray(x) || typeof x.complete !== 'boolean' || !x.id) throw Error('INVALID'); return x; }
+  let oldState, state;
+  try { oldState=parse(before); state=parse(now); } catch (error) { return 'INVALID'; }
+  if (state && state.complete === false) return 'CONTINUE';
+  if (before !== now) return state && state.complete === true ? 'FINISHED' : 'REVIEW';
   return 'START';
 }
