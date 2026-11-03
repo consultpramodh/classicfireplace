@@ -1,0 +1,39 @@
+name: One-time Delivery link format correction
+on:
+  pull_request:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-delivery-format.yml]
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply approved Delivery link block and verify
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('ONE_PROFILE_REQUIRED');
+            const auth=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!auth.ok)throw Error('AUTH_FAILED');
+            const h={Authorization:'Bearer '+(await auth.json()).access_token},cal='classicfireplace.ca_2h90kflud3re121hga9bvsi33o@group.calendar.google.com';
+            const cs=[{id:'4bqpo07ognm9klj7crkq5ifo87',order:'586275',orderId:'28009',task:'19359'},{id:'77kb9bj32thqispvtbfl8ct5bh',order:'585839',orderId:'27573',task:'19037'}];
+            for(let i=0;i<cs.length;i++){
+              const c=cs[i],u='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(cal)+'/events/'+encodeURIComponent(c.id);const g=await fetch(u,{headers:h});if(!g.ok)throw Error('READ_FAILED_'+i);const e=await g.json(),raw=String(e.description||''),marker='-----Striven Links-----<br>',idx=raw.indexOf(marker);if(idx<0||raw.indexOf(marker,idx+1)>=0||!e.etag)throw Error('FORMAT_CHANGED_STOP_'+i);
+              const tail=raw.slice(idx),rx=/<a\s+href="([^"]+)">([^<]*)<\/a>/g,anchors=[...tail.matchAll(rx)],order='https://classicfireplace.striven.com/next/crm#/sales-orders/'+c.orderId,task='https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID='+c.task;
+              if(anchors.length!==2||anchors[0][1]!==order||anchors[1][1]!==task||!anchors[1][2].startsWith('Task #'+c.task+' – ')||tail.slice(anchors[1].index+anchors[1][0].length).trim())throw Error('UNEXPECTED_LINK_BLOCK_STOP_'+i);
+              const taskLabel=anchors[1][2].replace('Task #'+c.task+' – ','Task #'+c.task+' - '),prefix=raw.slice(0,idx);
+              const block='------- Delivery Striven Links -------<br><br>Sales Order<br><a href="'+order+'">SO #'+c.order+'</a><br><br>Delivery Task<br><a href="'+task+'">'+taskLabel+'</a><br><br>------------------------------------';
+              const after=prefix+block,put=await fetch(u,{method:'PATCH',headers:{...h,'Content-Type':'application/json','If-Match':e.etag},body:JSON.stringify({description:after})});if(!put.ok)throw Error('PATCH_FAILED_'+i+'_'+put.status);
+              const vr=await fetch(u,{headers:h});if(!vr.ok)throw Error('READBACK_FAILED_'+i);const v=await vr.json();if(v.description!==after||v.summary!==e.summary||v.location!==e.location||v.start.dateTime!==e.start.dateTime||v.end.dateTime!==e.end.dateTime)throw Error('READBACK_MISMATCH_'+i);
+              console.log(JSON.stringify({case:i+1,status:'VERIFIED',originalNotesUnchanged:v.description.startsWith(prefix),approvedHeading:true,clickableOrderAndTask:true}));
+            }
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
