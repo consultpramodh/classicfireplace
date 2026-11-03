@@ -34,6 +34,8 @@ function tmv3_queueContinuation_(vertical, ignoreTriggerUid) {
 function tmv3_runQueuedContinuation_(vertical, e) {
   const uid = e && String(e.triggerUid || '');
   if (!uid) throw Error('CONTINUATION_TRIGGER_ID_REQUIRED');
+  const matching = ScriptApp.getProjectTriggers().filter(function(t) {return t.getHandlerFunction() === tmv3_continueTriggerName_(vertical) && String(t.getUniqueId()) === uid;});
+  if (matching.length !== 1) throw Error('CONTINUATION_TRIGGER_ID_NOT_UNIQUE');
   const hour = Number(Utilities.formatDate(new Date(), 'America/Toronto', 'H'));
   if (hour < 6 || hour >= 20) {
     tmv3_consumeContinuationTrigger_(e, vertical);
