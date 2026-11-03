@@ -1,0 +1,31 @@
+name: One-time Service completed-task check
+on:
+  pull_request:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-service-completed-check.yml]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Evaluate Service records without task or calendar mutations
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('ONE_PROFILE_REQUIRED');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!a.ok)throw Error('AUTH_FAILED');
+            const h={Authorization:'Bearer '+(await a.json()).access_token},sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+            const d=await fetch('https://script.googleapis.com/v1/projects/'+sid+'/deployments',{headers:h});if(!d.ok)throw Error('DEPLOYMENTS_READ_FAILED');const apis=((await d.json()).deployments||[]).filter(x=>(x.entryPoints||[]).some(e=>e.executionApi));if(apis.length!==1)throw Error('EXECUTION_API_NOT_UNIQUE');
+            const ids=['6v15b1je7egkmmtojjqrkp6u0s@google.com','23q91ub6fcqe2gfbjodugu9460@google.com','1v1leaa3v7a9oi85cvigt06qht@google.com','6vmp67gup2uev7e1qup8ebkfl8@google.com'];
+            const r=await fetch('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(apis[0].deploymentId)+':run',{method:'POST',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify({function:'tmv3_verticalPatchDiagnostics',parameters:['Service',ids],devMode:true}),signal:AbortSignal.timeout(750000)});const x=await r.json();if(!r.ok||x.error)throw Error('DIAGNOSTIC_FAILED '+JSON.stringify(x.error||r.status));const v=x.response&&x.response.result;if(!Array.isArray(v)||v.length!==ids.length)throw Error('INCOMPLETE_RESULTS');console.log(JSON.stringify({status:'PLAN_ONLY',results:v.map((row,i)=>({case:i+1,error:row.error||'',plans:row.plans||[]}))}));
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
