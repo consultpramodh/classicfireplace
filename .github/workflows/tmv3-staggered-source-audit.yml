@@ -1,0 +1,38 @@
+name: Read-only V3 source parity audit
+on:
+  pull_request:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-staggered-source-audit.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare live source without business writes
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const crypto=require('node:crypto');
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));
+            if(p.length!==1)throw Error('ONE_PROFILE_REQUIRED');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});
+            if(!a.ok)throw Error('AUTH_FAILED');
+            const token=(await a.json()).access_token;
+            const r=await fetch('https://script.googleapis.com/v1/projects/1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt/content',{headers:{Authorization:'Bearer '+token}});
+            if(!r.ok)throw Error('READ_FAILED_'+r.status);
+            const x=await r.json();
+            const raw=JSON.stringify(x.files.map(f=>({name:f.name,type:f.type,source:f.source||''})).sort((a,b)=>a.name.localeCompare(b.name)));
+            const hash=crypto.createHash('sha256').update(raw).digest('hex');
+            const version=(x.files.find(f=>f.name==='00_Config')?.source||'').match(/const TMV3_VERSION\s*=\s*'([^']+)'/);
+            console.log(JSON.stringify({status:'READ_ONLY',version:version?version[1]:'UNKNOWN',sourceHash:hash,files:x.files.length,businessWrites:0}));
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE

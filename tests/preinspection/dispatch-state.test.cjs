@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const env={};vm.createContext(env);vm.runInContext(fs.readFileSync('release-candidates/tmv3-dispatch-state.js','utf8'),env);
+let s=env.tmv3_dispatchStart_('cycle-1',1);s=env.tmv3_dispatchClaim_(s,'pi-1');
+assert.throws(()=>env.tmv3_dispatchClaim_(s,'pi-2'),/CLAIM_REJECTED/);
+assert.throws(()=>env.tmv3_dispatchFinish_(s,'cycle-1','stale','COMPLETE'),/STALE_ATTEMPT/);
+s=env.tmv3_dispatchFinish_(s,'cycle-1','pi-1','PENDING');assert.equal(s.index,0);assert.equal(s.status,'READY');
+s=env.tmv3_dispatchClaim_(s,'pi-2');s=env.tmv3_dispatchFinish_(s,'cycle-1','pi-2','COMPLETE');assert.equal(s.index,1);
+for(const id of ['install','delivery','service','publication']){s=env.tmv3_dispatchClaim_(s,id);s=env.tmv3_dispatchFinish_(s,'cycle-1',id,'COMPLETE');}assert.equal(s.status,'COMPLETE');assert.equal(s.index,5);assert.deepEqual(Array.from(s.outcomes,x=>x.vertical),['PreInspection','PreInspection','Install','Delivery','Service','SheetPublication']);
+let blocked=env.tmv3_dispatchClaim_(env.tmv3_dispatchStart_('cycle-2',2),'x');blocked=env.tmv3_dispatchFinish_(blocked,'cycle-2','x','UNCERTAIN');assert.equal(blocked.status,'ATTENTION');assert.equal(blocked.index,0);assert.throws(()=>env.tmv3_dispatchClaim_(blocked,'y'),/CLAIM_REJECTED/);
+assert.throws(()=>env.tmv3_dispatchClaim_({cycleId:'x',startedAt:0,index:5,status:'READY',attemptId:null,outcomes:[]},'z'),/INVALID_STATE/);
+console.log('PASS: ordered progression, pending resume, stale attempts, uncertain stop and invalid state');
