@@ -3,6 +3,7 @@ function tmv3_dispatchClassifyBatch_(vertical, result) {
   if (['PreInspection','Install','Delivery','Service'].indexOf(vertical)<0 || !result || typeof result!=='object' || Array.isArray(result) || typeof result.status!=='string') return {outcome:'UNCERTAIN',reason:'INVALID_RESULT'};
   if (result.status==='LOCK_BUSY') return {outcome:'PENDING',reason:'LOCK_BUSY'};
   if (result.status==='API_BUDGET_WAIT') return {outcome:'BLOCKED',reason:'API_BUDGET_WAIT'};
+  if (result.dispatchSideEffectError) return {outcome:'BLOCKED',reason:result.dispatchSideEffectError};
   if (result.status==='ATTENTION' || result.error) return {outcome:'BLOCKED',reason:'CYCLE_ATTENTION'};
   const events=Array.isArray(result.results)?result.results:[];
   if (events.some(function(x){return x && (x.status==='UNCERTAIN_RECONCILIATION_REQUIRED' || x.status==='ATTENTION' || !!x.error);})) return {outcome:'BLOCKED',reason:'EVENT_ATTENTION'};
