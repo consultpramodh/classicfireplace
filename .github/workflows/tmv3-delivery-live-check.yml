@@ -1,0 +1,32 @@
+name: One-time Delivery live diagnostic
+on:
+  pull_request:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-delivery-live-check.yml]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect targeted live plans without executing them
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('ONE_PROFILE_REQUIRED');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!a.ok)throw Error('AUTH_FAILED');
+            const headers={Authorization:'Bearer '+(await a.json()).access_token},sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+            const d=await fetch('https://script.googleapis.com/v1/projects/'+sid+'/deployments',{headers});if(!d.ok)throw Error('DEPLOYMENTS_READ_FAILED');const ds=(await d.json()).deployments||[],apis=ds.filter(x=>(x.entryPoints||[]).some(e=>e.executionApi));if(apis.length!==1)throw Error('EXECUTION_API_NOT_UNIQUE');
+            const events=['4bqpo07ognm9klj7crkq5ifo87@google.com','631nuhtpfi7uh5uokiesg70ppi@google.com','77kb9bj32thqispvtbfl8ct5bh@google.com'];
+            const r=await fetch('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(apis[0].deploymentId)+':run',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({function:'tmv3_verticalPatchDiagnostics',parameters:['Delivery',events],devMode:true}),signal:AbortSignal.timeout(600000)});const x=await r.json();if(!r.ok||x.error)throw Error('DIAGNOSTIC_FAILED '+JSON.stringify(x.error||r.status));
+            const results=x.response&&x.response.result;if(!Array.isArray(results)||results.length!==3)throw Error('UNEXPECTED_RESULT');console.log(JSON.stringify({mode:'LIVE_PLAN_ONLY',results:results.map((v,i)=>({case:i+1,error:v.error||'',plans:v.plans||[]}))}));
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
