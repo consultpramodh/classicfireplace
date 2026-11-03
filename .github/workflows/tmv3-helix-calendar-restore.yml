@@ -1,0 +1,36 @@
+name: Restore appointment notes and verify links
+on:
+  pull_request:
+    branches: [task-mapping-preinspection]
+    paths: [.github/workflows/tmv3-helix-calendar-restore.yml]
+permissions:
+  contents: read
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore original note markup and add verified links
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('ONE_PROFILE_REQUIRED');
+            const auth=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!auth.ok)throw Error('AUTH_FAILED');
+            const token=(await auth.json()).access_token, cal='classicfireplace.ca_vpg05s56lp9f7kaegsiqask34o@group.calendar.google.com',id='3murnedmvr6fspuruv84qqcc0f';
+            const url='https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(cal)+'/events/'+encodeURIComponent(id);const headers={Authorization:'Bearer '+token};
+            const get=await fetch(url,{headers});if(!get.ok)throw Error('EVENT_READ_FAILED_'+get.status);const event=await get.json();
+            if(event.summary!=='Helix SO#586497 - Regency New York - Roman 416 827 7319'||!event.description.includes('TaskID=19529')||!event.description.includes('sales-orders/28232')||!event.etag)throw Error('EVENT_CHANGED_NO_WRITE');
+            const original="Electrical and gas in place<br>Roman to put drywall behind bottom half of unit.<br><br>**Stephen asks: <b>Make a note to send extra duravent need roughly 5' up and 5' out\u00a0</b>";
+            const links='<br><br>------- Striven Links -------<br><a href="https://classicfireplace.striven.com/next/crm#/sales-orders/28232">Sales Order #586497</a><br><a href="https://classicfireplace.striven.com/Tasks/TaskInfo.aspx?TaskID=19529">Task #19529 - SO#586497 - Helix Developments - (416) 827-7319</a>';
+            const patch=await fetch(url,{method:'PATCH',headers:{...headers,'Content-Type':'application/json','If-Match':event.etag},body:JSON.stringify({description:original+links})});if(!patch.ok)throw Error('EVENT_PATCH_FAILED_'+patch.status);
+            const verify=await fetch(url,{headers});if(!verify.ok)throw Error('READBACK_FAILED');const saved=await verify.json();if(saved.description!==original+links)throw Error('DESCRIPTION_READBACK_MISMATCH');
+            console.log(JSON.stringify({status:'VERIFIED',originalNotesMarkupPreserved:true,taskLink:true,orderLink:true,otherFieldsUnchanged:saved.summary===event.summary&&saved.location===event.location&&saved.start.dateTime===event.start.dateTime&&saved.end.dateTime===event.end.dateTime}));
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
