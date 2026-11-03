@@ -9,5 +9,7 @@ const marker='function tmv3_verticalProductionCycle_(',start=automation.source.i
 let cycle=automation.source.slice(start,end),old='const events=tmv3_rows_(TMV3.VERTICALS[vertical].sheet).filter(function(row){',replacement="const intakeRows=vertical==='Delivery' ? tmv3_deliveryFreshIntakeRows_() : tmv3_rows_(TMV3.VERTICALS[vertical].sheet);\n      const events=intakeRows.filter(function(row){";
 if(cycle.split(old).length!==2)throw Error('CYCLE_ANCHOR_NOT_UNIQUE');cycle=cycle.replace(old,replacement);
 automation.source=automation.source.slice(0,start)+cycle+automation.source.slice(end);const helper=fs.readFileSync('release-candidates/tmv3-delivery-fresh-intake.js','utf8');
-new vm.Script(project.files.filter(f=>f.type==='SERVER_JS').map(f=>f.source).concat([helper]).join('\n;\n'));
+if(automation.source.includes('function tmv3_deliveryFreshIntakeRows_('))throw Error('HELPER_ALREADY_PRESENT');
+automation.source+='\n\n'+helper+'\n';
+new vm.Script(project.files.filter(f=>f.type==='SERVER_JS').map(f=>f.source).join('\n;\n'));
 fs.writeFileSync('delivery-intake-candidate.json',JSON.stringify(project));console.log('PASS: Delivery-only offline patch built; no live changes');
