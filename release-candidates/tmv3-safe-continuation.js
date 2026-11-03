@@ -26,8 +26,17 @@ function tmv3_queueContinuation_(vertical, ignoreTriggerUid) {
     const hour = Number(Utilities.formatDate(new Date(), 'America/Toronto', 'H'));
     const dueHour = Number(Utilities.formatDate(new Date(Date.now() + 120000), 'America/Toronto', 'H'));
     if (hour < 6 || hour >= 20 || dueHour < 6 || dueHour >= 20) return {status:'CONTINUATION_OUTSIDE_WINDOW'};
+    const props = PropertiesService.getScriptProperties();
+    const day = Utilities.formatDate(new Date(), 'America/Toronto', 'yyyy-MM-dd');
+    const key = 'TMV3_CONTINUATION_ATTEMPTS_' + vertical + '_' + day;
+    const raw = props.getProperty(key);
+    if (raw !== null && !/^\d+$/.test(String(raw))) return {status:'CONTINUATION_COUNTER_INVALID'};
+    const attempts = Number(raw || 0);
+    if (attempts >= 12) return {status:'CONTINUATION_RETRY_LIMIT'};
     const trigger = ScriptApp.newTrigger(handler).timeBased().after(120000).create();
-    return {status:'CONTINUATION_QUEUED', triggerId:String(trigger.getUniqueId())};
+    try { props.setProperty(key,String(attempts + 1)); }
+    catch (error) { try { ScriptApp.deleteTrigger(trigger); } catch (cleanup) {} throw error; }
+    return {status:'CONTINUATION_QUEUED', triggerId:String(trigger.getUniqueId()), attempts:attempts + 1};
   } finally {lock.releaseLock();}
 }
 
@@ -45,13 +54,19 @@ function tmv3_runQueuedContinuation_(vertical, e) {
   // If this execution times out, the successor retains the ability to retry.
   const watchdog = tmv3_queueContinuation_(vertical, uid);
   if (['CONTINUATION_QUEUED','CONTINUATION_ALREADY_QUEUED'].indexOf(watchdog.status) < 0) {
+    tmv3_consumeContinuationTrigger_(e, vertical);
+    PropertiesService.getScriptProperties().setProperty('TMV3_CONTINUATION_ATTENTION_' + vertical,JSON.stringify({at:new Date().toISOString(),reason:watchdog.status}));
     return {status:'CONTINUATION_NOT_STARTED', reason:watchdog.status};
   }
   tmv3_consumeContinuationTrigger_(e, vertical);
   const result = vertical === 'PreInspection' ? tmv3_resumePreInspectionSweep_() : tmv3_runFullVerticalSweep_(vertical);
+  if (Number(result.processed || 0) > 0 || Number(result.scanned || 0) > 0) {
+    const day = Utilities.formatDate(new Date(), 'America/Toronto', 'yyyy-MM-dd');
+    PropertiesService.getScriptProperties().deleteProperty('TMV3_CONTINUATION_ATTEMPTS_' + vertical + '_' + day);
+  }
   const pending = result.status === 'LOCK_BUSY' || Number(result.pending || 0) > 0 || Number(result.sweep && result.sweep.remaining || 0) > 0;
   const pause = result.status === 'API_BUDGET_WAIT' || (result.status === 'ATTENTION' && !!result.error);
-  if (!pending || pause) {
+  if ((!pending || pause) && watchdog.status === 'CONTINUATION_QUEUED') {
     const handler = tmv3_continueTriggerName_(vertical);
     ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === handler && String(t.getUniqueId()) === String(watchdog.triggerId); }).forEach(function(t) { ScriptApp.deleteTrigger(t); });
   }
@@ -70,5 +85,27 @@ function tmv3_resumePreInspectionSweep_() {
   if (valid) options.sweepContinue = true; else options.sweepStart = true;
   const result = tmv3_preInspectionAutomationCycle_(options);
   tmv3_preInspectionLogSweep_('CONTINUATION',result);
+  return result;
+}
+
+/** Prototype: pre-arm recovery before the first business batch; not wired to live handlers. */
+function tmv3_withInitialSweepWatchdog_(vertical, operation) {
+  if (typeof operation !== 'function') throw Error('INITIAL_SWEEP_OPERATION_REQUIRED');
+  const watchdog = tmv3_queueContinuation_(vertical);
+  if (['CONTINUATION_QUEUED','CONTINUATION_ALREADY_QUEUED'].indexOf(watchdog.status) < 0) {
+    PropertiesService.getScriptProperties().setProperty('TMV3_CONTINUATION_ATTENTION_' + vertical,JSON.stringify({at:new Date().toISOString(),reason:watchdog.status}));
+    return {status:'INITIAL_SWEEP_NOT_STARTED',reason:watchdog.status};
+  }
+  const result = operation();
+  if (Number(result.processed || 0) > 0 || Number(result.scanned || 0) > 0) {
+    const day = Utilities.formatDate(new Date(), 'America/Toronto', 'yyyy-MM-dd');
+    PropertiesService.getScriptProperties().deleteProperty('TMV3_CONTINUATION_ATTEMPTS_' + vertical + '_' + day);
+  }
+  const pending = result.status === 'LOCK_BUSY' || Number(result.pending || 0) > 0 || Number(result.sweep && result.sweep.remaining || 0) > 0;
+  const pause = result.status === 'API_BUDGET_WAIT' || (result.status === 'ATTENTION' && !!result.error);
+  if ((!pending || pause) && watchdog.status === 'CONTINUATION_QUEUED') {
+    const handler = tmv3_continueTriggerName_(vertical);
+    ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === handler && String(t.getUniqueId()) === String(watchdog.triggerId); }).forEach(function(t) { ScriptApp.deleteTrigger(t); });
+  }
   return result;
 }
