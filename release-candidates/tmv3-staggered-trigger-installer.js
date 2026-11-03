@@ -13,17 +13,28 @@ function tmv3_installStandardDailyTriggers() {
   if (duplicates.length) throw Error('TRIGGER_INVENTORY_NOT_UNIQUE:' + duplicates.join(','));
   if (initial.length >= 20) throw Error('TRIGGER_REPLACEMENT_REQUIRES_SPARE_SLOT');
   const results = [];
-  specs.forEach(function(spec) {
+  const props = PropertiesService.getScriptProperties();
+  const journalKey = 'TMV3_STAGGERED_INSTALL_JOURNAL';
+  function checkpoint(status, handler, error) {
+    props.setProperty(journalKey, JSON.stringify({status:status, completed:results.slice(), currentHandler:handler || '', error:String(error || ''), at:new Date().toISOString()}));
+  }
+  checkpoint('IN_PROGRESS');
+  try { specs.forEach(function(spec) {
     const matches = ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === spec[0]; });
     if (matches.length !== 1) throw Error('TRIGGER_CHANGED_DURING_INSTALL:' + spec[0]);
     const created = ScriptApp.newTrigger(spec[0]).timeBased().atHour(spec[1]).nearMinute(30).everyDays(1).inTimezone(timezone).create();
     try { ScriptApp.deleteTrigger(matches[0]); }
     catch (err) { try { ScriptApp.deleteTrigger(created); } catch (cleanup) {} throw err; }
     results.push({handler:spec[0],hour:spec[1]});
-  });
+    checkpoint('IN_PROGRESS',spec[0]);
+  }); } catch (error) {
+    checkpoint('PARTIAL_REQUIRES_RETRY', '', error && error.message || error);
+    throw error;
+  }
   const actual = ScriptApp.getProjectTriggers();
   if (target.some(function(h) { return actual.filter(function(t) { return t.getHandlerFunction() === h; }).length !== 1; })) throw Error('TRIGGER_HANDLER_READBACK_FAILED');
   const out = {status:'STAGGERED_HANDLERS_INSTALLED',timezone:timezone,scheduled:results,maintenanceUnchanged:true};
-  PropertiesService.getScriptProperties().setProperty('TMV3_STANDARD_SCHEDULE',JSON.stringify(out));
+  props.setProperty('TMV3_STANDARD_SCHEDULE',JSON.stringify(out));
+  checkpoint('HANDLERS_INSTALLED');
   return out;
 }
