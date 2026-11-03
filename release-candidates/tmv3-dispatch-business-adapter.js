@@ -2,6 +2,7 @@
 function tmv3_dispatchBusinessBatch_(vertical,firstBatch,claim) {
   if (!claim || claim.vertical!==vertical || typeof claim.cycleId!=='string' || typeof claim.attemptId!=='string' || typeof firstBatch!=='boolean') throw Error('DISPATCH_INVALID_CLAIM');
   const props=PropertiesService.getScriptProperties();
+  if (vertical==='SheetPublication') return tmv3_refreshAutomationSheets();
   if (vertical==='PreInspection') {
     const options={force:true,reason:'DISPATCH_'+claim.cycleId};
     if (firstBatch) options.sweepStart=true; else options.sweepContinue=true;
