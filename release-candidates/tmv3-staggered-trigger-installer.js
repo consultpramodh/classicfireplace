@@ -15,17 +15,24 @@ function tmv3_installStandardDailyTriggers() {
   const results = [];
   const props = PropertiesService.getScriptProperties();
   const journalKey = 'TMV3_STAGGERED_INSTALL_JOURNAL';
+  let pending = null;
   function checkpoint(status, handler, error) {
-    props.setProperty(journalKey, JSON.stringify({status:status, completed:results.slice(), currentHandler:handler || '', error:String(error || ''), at:new Date().toISOString()}));
+    props.setProperty(journalKey, JSON.stringify({status:status, completed:results.slice(), currentHandler:handler || '', pending:pending, error:String(error || ''), at:new Date().toISOString()}));
   }
   checkpoint('IN_PROGRESS');
   try { specs.forEach(function(spec) {
     const matches = ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === spec[0]; });
     if (matches.length !== 1) throw Error('TRIGGER_CHANGED_DURING_INSTALL:' + spec[0]);
+    pending = {handler:spec[0],hour:spec[1],oldTriggerId:String(matches[0].getUniqueId()),newTriggerId:'',phase:'BEFORE_CREATE'};
+    checkpoint('IN_PROGRESS',spec[0]);
     const created = ScriptApp.newTrigger(spec[0]).timeBased().atHour(spec[1]).nearMinute(30).everyDays(1).inTimezone(timezone).create();
+    pending.newTriggerId=String(created.getUniqueId()); pending.phase='CREATED_BEFORE_DELETE';
+    try { checkpoint('IN_PROGRESS',spec[0]); }
+    catch (err) { try { ScriptApp.deleteTrigger(created); } catch (cleanup) {} throw err; }
     try { ScriptApp.deleteTrigger(matches[0]); }
     catch (err) { try { ScriptApp.deleteTrigger(created); } catch (cleanup) {} throw err; }
-    results.push({handler:spec[0],hour:spec[1]});
+    results.push({handler:spec[0],hour:spec[1],triggerId:pending.newTriggerId});
+    pending = null;
     checkpoint('IN_PROGRESS',spec[0]);
   }); } catch (error) {
     checkpoint('PARTIAL_REQUIRES_RETRY', '', error && error.message || error);
