@@ -10,9 +10,9 @@ function tmv3_deliveryFreshIntakeRows_() {
   if (!Array.isArray(list)) throw Error('DELIVERY_CALENDAR_RESULT_INVALID_NO_SWEEP');
   const byId={},rows=[];
   list.forEach(function(event){
-    const record=tmv3_calendarEvent_('Delivery',cfg,{calendarId:cfg.calendarIds[0],role:'DELIVERY'},event);
+    const record=tmv3_calendarEvent_('Delivery',cfg,{calendarId:cfg.calendarIds[0],role:'DELIVERY'},event,{stage:'STEP1',applyEligibility:false});
     if (!record) return;
-    const id=tmv3_clean_(record.eventId),date=new Date(record.start);
+    const id=tmv3_clean_(record.eventId),date=record.start ? new Date(record.start) : new Date(NaN);
     if (!id || !isFinite(date.getTime())) throw Error('DELIVERY_CALENDAR_EVENT_INVALID_NO_SWEEP');
     if (byId[id]) {
       // Duplicate IDs with different starts can represent recurrence; do not silently discard an occurrence.
