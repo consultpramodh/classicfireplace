@@ -3306,6 +3306,8 @@ function tmv3_preInspectionLogSweep_(slot,result) {
     writes:result.writes,notifications:result.notifications,
     sweep:result.sweep || null,continuation:result.continuation || null,
     error:result.error || '',
+    calendarReview:result.calendarReview && result.calendarReview.status || 'NOT_RUN',
+    operatorQueue:result.operatorQueue && result.operatorQueue.status || 'NOT_RUN',
     attentionEvents:(result.results || []).filter(function(r){
       return r.status==='ATTENTION'||!!r.blocker||!!r.error;
     }).map(function(r){return {eventId:r.eventId,status:r.status||'',blocker:r.blocker||'',error:r.error||''};})
@@ -3377,15 +3379,18 @@ function tmv3_runPreInspectionDailySlot_(slot) {
     result.status='ATTENTION_PENDING_REVIEW';
   if(calendarReview && calendarReview.status==='PI_REVIEW_PARTIAL_SOURCE_ACCESS' && result.status==='COMPLETE')
     result.status='ATTENTION_CALENDAR_COVERAGE';
-  tmv3_preInspectionLogSweep_(slot,result);
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
   try{result.operatorQueue=tmv3_preInspectionRefreshOperatorView_();}
   catch(err){
     result.operatorQueue={status:'PI_OPERATOR_QUEUE_ATTENTION',error:String(err&&err.message||err).slice(0,350)};
     try{tmv3_audit_('PreInspection','','','PI_OPERATOR_QUEUE','ATTENTION',result.operatorQueue.error);}catch(ignore){}
-    if(result.status==='COMPLETE')result.status='ATTENTION_OPERATOR_QUEUE';
   }
   result.calendarReview=calendarReview;
+  if(result.status==='COMPLETE' && (!result.operatorQueue || result.operatorQueue.status!=='PI_OPERATOR_VIEW_REFRESHED'))
+    result.status='ATTENTION_OPERATOR_QUEUE';
+  if(result.status==='COMPLETE' && (!calendarReview || !/^(?:PI_REVIEW_REFRESHED|PI_REVIEW_UNCHANGED)$/.test(String(calendarReview.status||''))))
+    result.status='ATTENTION_CALENDAR_COVERAGE';
+  tmv3_preInspectionLogSweep_(slot,result); // Audit only AFTER both publication outcomes are known.
   return result;
 }
 
