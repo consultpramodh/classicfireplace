@@ -3209,6 +3209,9 @@ function tmv3_preInspectionAutomationCycle_(options) {
       props.setProperty('TMV3_PI_SWEEP_STATE',JSON.stringify(sweep));
       result.sweep={status:sweep.status,eligible:result.eligible,attempted:sweep.processed,
         remaining:remaining,pendingReview:pending.length,lastKey:sweep.lastKey};
+      // A successful batch is not a completed queue; retain honest backlog state.
+      if(result.status==='COMPLETE' && remaining>0) result.status='IN_PROGRESS';
+      else if(result.status==='COMPLETE' && pending.length>0) result.status='ATTENTION_PENDING_REVIEW';
     } else if (!options.eventId && selected.length) {
       props.setProperty('TMV3_PI_CURSOR',String((cursor+result.processed)%selected.length));
     }
@@ -3359,8 +3362,19 @@ function tmv3_runPreInspectionDailySlot_(slot) {
   result.processed=totals.processed;result.writes=totals.writes;result.notifications=totals.notifications;result.results=totals.results;
   if (result.status==='LOCK_BUSY') PropertiesService.getScriptProperties().setProperty('TMV3_PI_RETRY_SWEEP_START','1');
   tmv3_preInspectionMaybeContinueSweep_(result);
+  if(result.sweep && result.sweep.remaining>0 && result.status==='COMPLETE')result.status='IN_PROGRESS';
+  if(result.sweep && result.sweep.remaining===0 && result.sweep.pendingReview>0 && result.status==='COMPLETE')
+    result.status='ATTENTION_PENDING_REVIEW';
+  if(calendarReview && calendarReview.status==='PI_REVIEW_PARTIAL_SOURCE_ACCESS' && result.status==='COMPLETE')
+    result.status='ATTENTION_CALENDAR_COVERAGE';
   tmv3_preInspectionLogSweep_(slot,result);
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
+  try{result.operatorQueue=tmv3_preInspectionRefreshOperatorView_();}
+  catch(err){
+    result.operatorQueue={status:'PI_OPERATOR_QUEUE_ATTENTION',error:String(err&&err.message||err).slice(0,350)};
+    try{tmv3_audit_('PreInspection','','','PI_OPERATOR_QUEUE','ATTENTION',result.operatorQueue.error);}catch(ignore){}
+    if(result.status==='COMPLETE')result.status='ATTENTION_OPERATOR_QUEUE';
+  }
   result.calendarReview=calendarReview;
   return result;
 }
@@ -3897,10 +3911,22 @@ function tmv3_piCalendarReviewRefresh_() {
     ];
     const copiesByKey = {};
     const sourceCounts = {};
+    const coverageErrors = [];
     calendarSources.forEach(function(source) {
-      const calendar = CalendarApp.getCalendarById(source.id);
-      if (!calendar) throw new Error('PI_CALENDAR_ACCESS_REQUIRED_NO_WRITE:'+source.name);
-      const events = calendar.getEvents(today,until);
+      let calendar=null,events=null;
+      try {
+        calendar=CalendarApp.getCalendarById(source.id);
+        if(calendar) events=calendar.getEvents(today,until);
+      }catch(error){
+        coverageErrors.push({source:source.name,reason:'CALENDAR_ACCESS_DENIED'});
+      }
+      if (!calendar || !events) {
+        if (!coverageErrors.some(function(x){return x.source===source.name;}))
+          coverageErrors.push({source:source.name,reason:'CALENDAR_UNAVAILABLE'});
+        if(source.name==='CF Preinspects') throw new Error('PI_PRIMARY_CALENDAR_REQUIRED_NO_WRITE');
+        sourceCounts[source.name]=null;
+        return;
+      }
       if(events.length>750) throw new Error('PI_CALENDAR_EVENT_LIMIT_REVIEW_NO_WRITE:'+source.name);
       sourceCounts[source.name] = events.length;
       events.forEach(function(event) {
@@ -3964,8 +3990,11 @@ function tmv3_piCalendarReviewRefresh_() {
       if(shared){
         const st=copies.Stephen;
         const exact=st&&['title','location','description','start','end'].every(function(field){return String(shared[field]||'')===String(st[field]||'');});
-        mirror=st?(exact?'EXACT':'MISMATCH'):'NOT_PRESENT';
-        status=mirror==='MISMATCH'?'REVIEW_MIRROR_MISMATCH':linked?'SHARED_LINKED':'SHARED_UNLINKED';
+        mirror=st?(exact?'EXACT':'MISMATCH'):
+          coverageErrors.some(function(x){return x.source==='Stephen';})?'ACCESS_UNVERIFIED':'NOT_PRESENT';
+        status=mirror==='MISMATCH'?'REVIEW_MIRROR_MISMATCH':
+          mirror==='ACCESS_UNVERIFIED'?'REVIEW_MIRROR_ACCESS':
+          linked?'SHARED_LINKED':'SHARED_UNLINKED';
         reason=linked?'Task link is present; verify Striven before marking fully complete':'Task link absent; search existing Striven Task before any create';
       }else if(knownOther){
         status='EXCLUDED_OTHER_WORKFLOW';
@@ -3993,6 +4022,18 @@ function tmv3_piCalendarReviewRefresh_() {
         copies.Jay?'PRESENT':'—',copies.Karen?'PRESENT':'—',linked?'YES':'NO',reason,
         norm(ev.description).slice(0,330),link,checkedDate,orig?orig.decision:'',orig?orig.notes:'']);
     });
+    // Preserve last-known rows for inaccessible secondary calendars. Never report
+    // absence as a fact when an access failure prevented the scan.
+    Object.keys(oldByKey).forEach(function(key){
+      const prev=oldByKey[key];
+      const sourceNames=String(prev.row[4]||'');
+      if(!coverageErrors.some(function(x){return sourceNames.split(', ').indexOf(x.source)>=0;}))return;
+      if(rows.some(function(r){return r[8]+'|'+r[1]===key;}))return;
+      const preserved=prev.row.slice(0,20);
+      preserved[0]='SOURCE_ACCESS_UNVERIFIED';
+      preserved[14]='Calendar source access missing; last-known event retained, no auto-promotion or Task creation';
+      rows.push(preserved);
+    });
     // Keep operator decisions for events that moved beyond the review horizon; never erase human decisions.
     Object.keys(oldByKey).forEach(function(key){
       const prev=oldByKey[key];
@@ -4011,7 +4052,9 @@ function tmv3_piCalendarReviewRefresh_() {
     });
     const statuses={};rows.forEach(function(r){statuses[r[0]]=(statuses[r[0]]||0)+1;});
     const summary='Calendar-only review '+checkedDate+' | '+sourceCounts['CF Preinspects']+' shared | '+
-      (statuses.REVIEW_POSSIBLE_PI||0)+' possible | '+(statuses.REVIEW_UNCLEAR_VISIT||0)+' unclear | zero Striven writes';
+      (statuses.REVIEW_POSSIBLE_PI||0)+' possible | '+(statuses.REVIEW_UNCLEAR_VISIT||0)+' unclear | '+
+      (coverageErrors.length?'PARTIAL COVERAGE: '+coverageErrors.map(function(x){return x.source;}).join(', '):'all sources accessible')+
+      ' | zero Striven writes';
     const report=[
       ['PI CALENDAR INTAKE REVIEW — READ ONLY'].concat(Array(19).fill('')),
       [summary].concat(Array(19).fill('')),
@@ -4037,8 +4080,10 @@ function tmv3_piCalendarReviewRefresh_() {
     // Row-by-row independent event keys make the publication idempotent.
     if(sheet.getRange(3,1).getDisplayValue()!=='Status'||sheet.getRange(1,1).getDisplayValue()!=='PI CALENDAR INTAKE REVIEW — READ ONLY')
       throw new Error('PI_REVIEW_SHEET_READBACK_FAILED');
-    return {status:changed?'PI_REVIEW_REFRESHED':'PI_REVIEW_UNCHANGED',
-      calendarCounts:sourceCounts,logicalEvents:rows.length,statuses:statuses,
+    return {status:coverageErrors.length?'PI_REVIEW_PARTIAL_SOURCE_ACCESS':
+        (changed?'PI_REVIEW_REFRESHED':'PI_REVIEW_UNCHANGED'),
+      calendarCounts:sourceCounts,coverageErrors:coverageErrors,
+      logicalEvents:rows.length,statuses:statuses,
       scope:'TODAY_FORWARD_31_DAYS',calendarWrites:0,strivenCalls:0,emailsSent:0};
   } finally {lock.releaseLock();}
 }
@@ -4222,4 +4267,59 @@ function tmv3_preInspectionRepairThreeAddedByOthersNov9() {
     ?'THREE_EVENTS_VERIFIED':'PARTIAL_ATTENTION';
   Logger.log('PI_NOV9_THREE_REPAIR='+JSON.stringify(out));
   return out;
+}
+
+
+/**
+ * Google Apps Script — read-only Striven cache, current CF Preinspects Calendar
+ * and ONLY the PreInspection operator tab. This publishes a fresh Stage-6
+ * projection independently of pending Install/Delivery/Service sweeps.
+ * Does NOT refresh Striven source reports or mutate Striven/Calendar records.
+ */
+function tmv3_preInspectionRefreshOperatorView_() {
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(1500))return {status:'PI_OPERATOR_LOCK_BUSY',strivenCalls:0};
+  try{
+    const cfg=TMV3.VERTICALS.PreInspection;
+    const source=tmv3_verticalCalendars_('PreInspection',cfg)[0];
+    const calendar=CalendarApp.getCalendarById(cfg.primaryCalendarId);
+    if(!calendar)throw new Error('PI_OPERATOR_PRIMARY_CALENDAR_NOT_ACCESSIBLE');
+    const start=new Date();start.setHours(0,0,0,0);
+    const end=new Date(start);end.setDate(end.getDate()+Math.max(1,Number(cfg.lookaheadDays||365)));
+    const events=calendar.getEvents(start,end);
+    const step1=events.map(function(event){
+      return tmv3_calendarEvent_('PreInspection',cfg,source,event,{applyEligibility:false});
+    }).filter(function(x){return x && !tmv3_step2PreInspectionNonCustomer_(x);});
+    const step2=tmv3_step2CalendarRecords_(step1);
+    const step3=tmv3_step3BusinessAnchorRecords_(step2,tmv3_step3AnchorIndex_());
+    const step4=tmv3_step4IdentityRecords_(step3,tmv3_step4IdentityIndex_());
+    const step5=tmv3_step5TaskRecords_(step4,tmv3_step5TaskIndex_());
+    const step6=tmv3_step6DecisionRecords_(step5).filter(function(r){return r.vertical==='PreInspection';});
+    step6.sort(function(a,b){return new Date(a.start)-new Date(b.start);});
+    const sheet=tmv3_sheet_(cfg.sheet),oldLast=sheet.getLastRow();
+    const rows=step6.map(tmv3_step6OperatorRow_);
+    tmv3_replaceRows_(cfg.sheet,TMV3_STEP1_HEADERS.slice(),rows);
+    tmv3_step1FormatOperatorView_(cfg.sheet,'PreInspection',step6,oldLast);
+    const actual=tmv3_rows_(cfg.sheet),seen={};
+    actual.forEach(function(row){
+      const id=String(row['Event ID']||'');
+      if(!id||seen[id])throw new Error('PI_OPERATOR_EVENT_ID_EMPTY_OR_DUPLICATE');
+      seen[id]=true;
+    });
+    const expected=step6.map(function(r){return String(r.eventId||'');});
+    if(actual.length!==expected.length ||
+       expected.some(function(id){return !seen[id];}))
+      throw new Error('PI_OPERATOR_ROW_READBACK_MISMATCH');
+    const stamp=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd HH:mm:ss');
+    const result={status:'PI_OPERATOR_VIEW_REFRESHED',at:stamp,events:actual.length,
+      mode:'CURRENT_SHARED_CALENDAR_PLUS_CACHED_STRIVEN_SOURCES',
+      strivenCalls:0,calendarWrites:0,taskWrites:0};
+    tmv3_audit_('PreInspection','','','PI_OPERATOR_QUEUE','PASS',JSON.stringify(result));
+    return result;
+  }finally{lock.releaseLock();}
+}
+
+/** Explicit manual read-only cache projection for operator acceptance. */
+function tmv3_preInspectionRefreshOperatorView() {
+  return tmv3_preInspectionRefreshOperatorView_();
 }
