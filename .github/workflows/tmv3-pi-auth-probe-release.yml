@@ -1,0 +1,33 @@
+name: V3 Preinspection - read-only authorization probe source release
+on:
+  push:
+    branches:
+      - staging/v3-vertical-split-20261109
+    paths:
+      - .github/workflows/tmv3-pi-auth-probe-release.yml
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  diagnostic_source_release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Node deployment script
+        run: node --check tools/tmv3-pi-auth-probe-deploy.cjs
+      - name: Verify live 9-file HEAD, source parity and diagnostic safety
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-auth-probe-deploy.cjs dry-run
+      - name: Apply diagnostic only; preserve 682 existing functions and verify readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-auth-probe-deploy.cjs deploy
