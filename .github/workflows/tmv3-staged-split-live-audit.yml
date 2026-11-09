@@ -19,35 +19,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Clone live Apps Script HEAD without writing
+      - name: Inspect live Apps Script HEAD through read-only Apps Script API
         shell: bash
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-          SCRIPT_ID: 1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt
         run: |
           set -euo pipefail
           if [ -z "$CLASPRC_JSON" ]; then
             echo "::error::CLASPRC_JSON is not configured. No Apps Script writes attempted."
             exit 1
           fi
-          umask 077
-          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-          WORK="$(mktemp -d)"
-          cd "$WORK"
-          npx -y @google/clasp@3.3.0 clone "$SCRIPT_ID" --rootDir src
-          node - <<'NODE'
-          const fs=require('fs');
-          const path=require('path');
-          const crypto=require('crypto');
-          const root=path.resolve('src');
-          const files=fs.readdirSync(root).filter(n=>n.endsWith('.js')||n.endsWith('.gs')||n.endsWith('.json')).sort();
-          const rows=files.map(name=>{
-            const data=fs.readFileSync(path.join(root,name));
-            return {name,size:data.length,sha256:crypto.createHash('sha256').update(data).digest('hex')};
-          });
-          const cfg=files.find(n=>n==='00_Config.js'||n==='00_Config.gs');
-          const source=cfg ? fs.readFileSync(path.join(root,cfg),'utf8') : '';
-          const version=(source.match(/TMV3_VERSION[ ]*=[ ]*['"]([^'"]+)/)||[])[1]||'UNKNOWN';
-          console.log('READ_ONLY_LIVE_HEAD_AUDIT='+JSON.stringify({scriptId:process.env.SCRIPT_ID,version,files:rows}));
-          console.log('No source or business-data writes were performed.');
-          NODE
+          node tools/tmv3-service-delivery-backfill-launch.js inspect
+      - name: Preserve hash-only inspection results
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v3-live-head-hashes-${{ github.run_id }}
+          path: autopatch-output-sd-backfill-launch/inspection.json
+          retention-days: 7
