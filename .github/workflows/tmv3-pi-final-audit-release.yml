@@ -1,4 +1,5 @@
 name: V3 PI final audit-order guarded release
+# Retry after a workflow pre-run failure; the HEAD source guard remains mandatory.
 on:
   push:
     branches:
