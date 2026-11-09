@@ -4120,3 +4120,106 @@ function tmv3_preInspectionRepairNov9Stephen() {
   Logger.log('PI_NOV9_TARGETED_REPAIR='+JSON.stringify(out));
   return out;
 }
+
+
+/**
+ * Targeted, explicit Nov 9 three-event reconciliation.
+ * Existing production V3 guards own all Striven mutations; this wrapper is
+ * fail-closed, idempotent, and never sends a generic missing-details email.
+ * Creator notifications must use tmv3_preInspectionMissingDetailEmailPreview_.
+ */
+function tmv3_preInspectionRepairThreeAddedByOthersNov9() {
+  const today=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
+  if(today!=='2026-11-09')return {status:'DATE_GUARD_NO_WRITES',today:today};
+  const cfg=TMV3.VERTICALS.PreInspection;
+  const ownerCalendar=(cfg.secondaryCalendarIds||[])[0];
+  const targets=[
+    {id:'1cmb7i5r3i16esfk2q05betmd4@google.com',number:'63196',title:'63196 - Nick Rogers - (416) 988-4212',start:'12:00'},
+    {id:'1p8inlluovcrlm1ei32mjafocr@google.com',number:'63200',title:'63200 - Laura Menard - (416) 876-4411',start:'13:00'},
+    {id:'3hv5sv78a5ub2vsmgl245llqsl@google.com',number:'63123',title:'63123 - Bill and Zena Klement - (416) 286-6700',start:'14:00'}
+  ];
+  const out={status:'IN_PROGRESS',date:today,events:[],writeCyclesAttempted:0,notificationsSent:0};
+  for(let i=0;i<targets.length;i++){
+    const t=targets[i],line={eventId:t.id,customerNumber:t.number};
+    try{
+      const record=tmv3_findFreshEventRecord_('PreInspection',t.id);
+      const start=Utilities.formatDate(new Date(record.start),TMV3_TIMEZONE,'yyyy-MM-dd HH:mm');
+      if(record.calendarRole!=='PRIMARY_SHARED'||
+         String(record.eventId)!==t.id||
+         String(record.customerNumber||'')!==t.number||
+         String(record.title)!==t.title||
+         start!==today+' '+t.start||
+         String(record.organizerCalendarId||'')!==String(ownerCalendar)||
+         !tmv3_clean_(record.location)){
+        line.status='IDENTITY_OWNER_SCHEDULE_OR_LOCATION_NOT_VERIFIED_NO_WRITE';
+        line.found={title:record.title,start:start,owner:record.organizerCalendarId,hasLocation:!!record.location};
+        out.events.push(line);break;
+      }
+      const budget=tmv3_strivenApiBudgetStatus_();
+      if(budget.exhausted||!Number.isFinite(budget.remaining)||budget.remaining<100){
+        line.status='API_READBACK_BUDGET_GATED';out.events.push(line);break;
+      }
+      const initial=tmv3_step7FreshPlansForEvent_('PreInspection',t.id);
+      if(initial.length!==1||initial[0].blocker){
+        line.status='FRESH_TASK_OR_LOCATION_REVIEW_REQUIRED';
+        line.plan=initial[0]&&initial[0].plan||'NONE';
+        line.blocker=String(initial[0]&&initial[0].blocker||'NO_UNIQUE_PLAN').slice(0,300);
+        out.events.push(line);
+        // Independent appointments continue; no Task write on this one.
+        continue;
+      }
+      const plan=initial[0];
+      if(plan.actions&&plan.actions.indexOf(TMV3_STEP7_ACTION.RECREATE_TASK)>=0){
+        line.status='RECREATE_NOT_ALLOWED';out.events.push(line);continue;
+      }
+      const permitted=(
+        plan.plan==='NO_CHANGE'&&/^[1-9]\d*$/.test(String(plan.taskId||'')))||
+        (!plan.taskId&&Array.isArray(plan.actions)&&
+         plan.actions.indexOf(TMV3_STEP7_ACTION.CREATE_TASK)>=0);
+      if(!permitted){
+        line.status='UNSAFE_OR_UNSUPPORTED_TASK_PLAN';
+        line.plan=plan.plan;out.events.push(line);continue;
+      }
+      // Stephen's verified owner-calendar identity is anchored to each
+      // immutable Google event ID before entering the existing Striven pipeline.
+      tmv3_configurePreInspectionAssignmentOverride(t.id,t.number,ownerCalendar,15);
+      const confirmed=tmv3_step7FreshPlansForEvent_('PreInspection',t.id);
+      if(confirmed.length!==1||confirmed[0].blocker||
+         (plan.taskId&&String(confirmed[0].taskId||'')!==String(plan.taskId))){
+        line.status='ASSIGNMENT_PLAN_CHANGED_NO_WRITE';out.events.push(line);continue;
+      }
+      out.writeCyclesAttempted++;
+      const result=tmv3_preInspectionAutomationCycle_({
+        force:true,eventId:t.id,reason:'NOV9_THREE_ADDED_CONFIRMED_PI'
+      });
+      const item=(result.results||[]).filter(function(r){return r.eventId===t.id;})[0];
+      if(result.status!=='COMPLETE'||!item){
+        line.status='EXECUTION_UNCERTAIN_DO_NOT_RETRY';
+        line.cycleStatus=result.status;
+        out.events.push(line);break;
+      }
+      const finalPlans=tmv3_step7FreshPlansForEvent_('PreInspection',t.id);
+      const finalPlan=finalPlans.length===1?finalPlans[0]:null;
+      const taskId=String(finalPlan&&finalPlan.taskId||'');
+      const found=tmv3_findCalendarEventById_(cfg.primaryCalendarId,t.id);
+      const description=String(found&&found.event&&found.event.getDescription()||'');
+      line.taskId=taskId;
+      line.status=/^[1-9]\d*$/.test(taskId)&&
+        description.indexOf('TaskID='+taskId)>=0&&
+        finalPlan&&!finalPlan.blocker&&
+        tmv3_preInspectionCompletionVerified_(finalPlans,item.execution)
+        ?'TASK_AND_CALENDAR_VERIFIED':'READBACK_INCOMPLETE_DO_NOT_RETRY';
+      out.events.push(line);
+      if(line.status!=='TASK_AND_CALENDAR_VERIFIED')break;
+    }catch(error){
+      line.status='ERROR_DO_NOT_RETRY';
+      line.error=String(error&&error.message||error).slice(0,350);
+      out.events.push(line);break;
+    }
+  }
+  out.status=out.events.length===targets.length&&
+    out.events.every(function(x){return x.status==='TASK_AND_CALENDAR_VERIFIED';})
+    ?'THREE_EVENTS_VERIFIED':'PARTIAL_ATTENTION';
+  Logger.log('PI_NOV9_THREE_REPAIR='+JSON.stringify(out));
+  return out;
+}
