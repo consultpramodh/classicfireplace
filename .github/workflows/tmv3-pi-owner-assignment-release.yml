@@ -1,4 +1,4 @@
-name: V3 PI - final audit ordering guarded release
+name: V3 PI - bounded cache diagnostic guarded release
 on:
   push:
     branches:
@@ -22,16 +22,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify PI regression and audit release source syntax
+      - name: Verify bounded cache diagnostic regression and release syntax
         run: |
-          node --check tools/tmv3-pi-final-audit-release.cjs
+          node --check tools/tmv3-pi-diagnostic-release.cjs
           node tools/test-tmv3-preinspection-owner.cjs
           node tools/test-tmv3-pi-calendar-review.cjs
-      - name: Require exact live Apps Script HEAD and 687 unchanged functions
+          node tools/test-tmv3-pi-diagnostic.cjs
+      - name: Require exact live Apps Script HEAD and 688 unchanged functions
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-pi-final-audit-release.cjs dry-run
-      - name: Deploy PI-only final audit ordering with source readback
+        run: node tools/tmv3-pi-diagnostic-release.cjs dry-run
+      - name: Deploy PI diagnostic only with source readback
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-pi-final-audit-release.cjs deploy
+        run: node tools/tmv3-pi-diagnostic-release.cjs deploy

@@ -3249,26 +3249,129 @@ function tmv3_runPreInspectionAutomation() {
 
 // Original: 60_Automation; Function: tmv3_verifyPreInspectionAutomation
 function tmv3_verifyPreInspectionAutomation(eventId) {
-  const records=eventId ? [tmv3_preInspectionRecoveryRecord_(eventId)] : tmv3_preInspectionIntakeRecords_();
-  return {status:'READ_ONLY_VERIFICATION',version:TMV3.VERSION,
-    automationEnabled:TMV3.OPERATIONS.preInspectionAutomationEnabled,
-    emailEnabled:TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled,
-    triggers:tmv3_listTriggers(),records:records.map(function(record){
-      let diagnostics=null;
-      if (record.calendarRole==='PRIMARY_SHARED') {
-        const s2=tmv3_step2CalendarRecords_([record]);
-        const s3=tmv3_step3BusinessAnchorRecords_(s2,tmv3_step3AnchorIndex_());
-        const s4=tmv3_step4IdentityRecords_(s3,tmv3_step4IdentityIndex_());
-        diagnostics=s4.map(function(r){return {step2:r.step2,step3:r.step3,step4:r.step4};});
+  // Fast cache-only diagnostic: three events per invocation, no business/API writes.
+  // Fresh Task history, Requested By and field 854 are NOT certified by this function.
+  const startedMs=Date.now();
+  const lock=LockService.getScriptLock();
+  if (!lock.tryLock(1500)) {
+    const busy={status:'PI_VERIFY_LOCK_BUSY',businessWrites:0};
+    Logger.log('PI_VERIFICATION_BATCH='+JSON.stringify(busy));
+    return busy;
+  }
+  try {
+    const today=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
+    const rows=tmv3_rows_(TMV3.VERTICALS.PreInspection.sheet);
+    function startText(row) {
+      const value=row['Calendar Start'];
+      return value instanceof Date
+        ? Utilities.formatDate(value,TMV3_TIMEZONE,'yyyy-MM-dd HH:mm:ss')
+        : String(value||'');
+    }
+    const queue=rows.filter(function(row) {
+      if(String(row['Vertical']||'')!=='PreInspection' ||
+         String(row['Calendar Role']||'')!=='PRIMARY_SHARED') return false;
+      const start=startText(row);
+      return !/^\d{4}-\d{2}-\d{2}/.test(start) || start.slice(0,10)>=today;
+    }).sort(function(a,b) {
+      return startText(a).localeCompare(startText(b)) ||
+        String(a['Event ID']||'').localeCompare(String(b['Event ID']||''));
+    });
+    const seen={};
+    queue.forEach(function(row) {
+      const id=String(row['Event ID']||'');
+      if(!id||seen[id]) throw new Error('PI_DIAGNOSTIC_EVENT_ID_EMPTY_OR_DUPLICATE');
+      seen[id]=true;
+    });
+    const target=String(eventId||'').trim();
+    const selectedQueue=target
+      ? queue.filter(function(row){return String(row['Event ID'])===target;})
+      : queue;
+    const fingerprint=tmv3_hash_(today+'|'+queue.map(function(row) {
+      return String(row['Event ID'])+'|'+startText(row)+'|'+String(row['Fingerprint']||'');
+    }).join('|'));
+    const props=PropertiesService.getScriptProperties();
+    const cursorKey='TMV3_PI_VERIFY_CURSOR';
+    let offset=0;
+    if(!target) {
+      let state=null;
+      try{state=JSON.parse(props.getProperty(cursorKey)||'null');}catch(ignored){}
+      if(state&&state.fingerprint===fingerprint&&
+         Number.isInteger(state.offset)&&state.offset>=0&&state.offset<queue.length) {
+        offset=state.offset;
       }
-      return {eventId:record.eventId,title:record.title,source:record.calendarRole,
-        creator:tmv3_preInspectionCreatorEmail_(record),location:record.location,
-        calendarCreatedAt:record.calendarCreatedAt,firstNotificationTiming:tmv3_preInspectionNotificationDecision_(record,null),
-        diagnostics:diagnostics,
-        notification:tmv3_preInspectionMissingDetailEmailPreview_(record),
-        plans:record.calendarRole==='PRIMARY_SHARED' ? tmv3_step7FreshPlansForEvent_('PreInspection',record.eventId) : [],
-        intake:record.calendarRole==='SECONDARY_STEPHEN' ? 'PROMOTE_EXPLICIT_PREINSPECTION' : 'PRIMARY'};
-    })};
+    }
+    const batch=target?selectedQueue.slice(0,1):selectedQueue.slice(offset,offset+3);
+    const records=batch.map(function(row) {
+      const linked=String(row['Existing Task Link']||'');
+      const detail=String(row['Task']||'');
+      const linkedId=(/[?&]TaskID=(\d+)/i.exec(linked)||[])[1]||'';
+      const detailId=(/\bTask\s*#\s*(\d+)/i.exec(detail)||[])[1]||'';
+      const taskId=linkedId||detailId;
+      const mapping=String(row['Mapping Status']||'');
+      const checklist=String(row['Data Checklist']||'');
+      const warnings=checklist.split(/\r?\n/).filter(function(line) {
+        return line.indexOf('⚠')>=0;
+      }).slice(0,5);
+      const pending=checklist.split(/\r?\n/).filter(function(line) {
+        return line.indexOf('⏳')>=0;
+      }).slice(0,5);
+      let disposition='CACHE_SNAPSHOT_UNRESOLVED';
+      if(linkedId&&detailId&&linkedId!==detailId)
+        disposition='TASK_ID_CONFLICT_REVIEW_NO_WRITE';
+      else if(/\b(?:NOT_RUN|REVIEW|BLOCKED)\b/i.test(mapping))
+        disposition='OPERATOR_REVIEW_REQUIRED';
+      else if(/\b(?:CREATE_TASK|RECREATE_TASK)\b/i.test(mapping))
+        disposition='FRESH_TASK_HISTORY_REQUIRED_NO_CREATE';
+      else if(!linkedId&&taskId)
+        disposition='TASK_LINK_MISSING_LIVE_CHECK_REQUIRED';
+      else if(!taskId)
+        disposition='TASK_ID_NOT_IN_OPERATOR_SNAPSHOT';
+      else if(warnings.length)
+        disposition='OPERATOR_WARNING_LIVE_CHECK_REQUIRED';
+      else disposition='CACHED_MATCH_LIVE_NOT_VERIFIED';
+      return {
+        eventId:String(row['Event ID']||''),
+        customerNumber:String(row['Customer # (Calendar)']||''),
+        start:startText(row),
+        taskId:taskId,
+        taskLinkPresent:!!linkedId,
+        mapping:mapping,
+        disposition:disposition,
+        warnings:warnings,
+        pending:pending,
+        nextAction:String(row['Issue / Next Action']||'').slice(0,180)
+      };
+    });
+    const hasMore=!target&&offset+batch.length<queue.length;
+    const result={
+      status:target&&!batch.length?'TARGET_NOT_IN_OPERATOR_VIEW':
+        !queue.length?'NO_CURRENT_OPERATOR_EVENTS_REVIEW_REFRESH':'CACHE_ONLY_BATCH',
+      version:TMV3.VERSION,
+      source:'PREINSPECTION_OPERATOR_SNAPSHOT',
+      evidence:'CACHE_ONLY_NOT_LIVE_STRIVEN_OR_CALENDAR_VERIFICATION',
+      automationEnabled:TMV3.OPERATIONS.preInspectionAutomationEnabled,
+      emailEnabled:TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled,
+      total:queue.length,
+      processed:batch.length,
+      startIndex:target?null:offset,
+      nextIndex:hasMore?offset+batch.length:null,
+      remaining:target?null:Math.max(0,queue.length-offset-batch.length),
+      hasMore:hasMore,
+      records:records,
+      elapsedMs:Date.now()-startedMs,
+      strivenCalls:0,calendarReads:0,calendarWrites:0,taskWrites:0,emailsSent:0,
+      diagnosticCursorPropertyOnly:!target
+    };
+    if(!target) {
+      if(hasMore)props.setProperty(cursorKey,JSON.stringify({fingerprint:fingerprint,offset:offset+batch.length}));
+      else props.deleteProperty(cursorKey);
+    }
+    Logger.log('PI_VERIFICATION_BATCH='+JSON.stringify(result));
+    return result;
+  }catch(error) {
+    Logger.log('PI_VERIFICATION_ERROR='+String(error&&error.message||error).slice(0,300));
+    throw error;
+  }finally{lock.releaseLock();}
 }
 
 // Original: 60_Automation; Function: tmv3_preInspectionScheduledCycle
