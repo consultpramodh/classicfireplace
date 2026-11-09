@@ -1,4 +1,4 @@
-name: V3 PI - owner assignment guarded source release
+name: V3 PI - final audit ordering guarded release
 on:
   push:
     branches:
@@ -22,16 +22,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify owner identity mapping and source syntax
+      - name: Verify PI regression and audit release source syntax
         run: |
-          node --check tools/tmv3-pi-owner-assignment-release.cjs
+          node --check tools/tmv3-pi-final-audit-release.cjs
           node tools/test-tmv3-preinspection-owner.cjs
           node tools/test-tmv3-pi-calendar-review.cjs
-      - name: Require exact live Apps Script HEAD and 688 unchanged functions
+      - name: Require exact live Apps Script HEAD and 687 unchanged functions
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-pi-owner-assignment-release.cjs dry-run
-      - name: Deploy PI-only owner mapping with source readback
+        run: node tools/tmv3-pi-final-audit-release.cjs dry-run
+      - name: Deploy PI-only final audit ordering with source readback
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-pi-owner-assignment-release.cjs deploy
+        run: node tools/tmv3-pi-final-audit-release.cjs deploy
