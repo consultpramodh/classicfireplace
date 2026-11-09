@@ -4039,3 +4039,76 @@ function tmv3_piCalendarReviewRefresh_() {
 function tmv3_preInspectionCalendarReviewRefresh() {
   return tmv3_piCalendarReviewRefresh_();
 }
+
+
+/**
+ * Google Apps Script — Nov 9 2026 targeted production repair.
+ * Explicit 2-event scope, fresh Task history guard, one existing transaction per event,
+ * no force recreation, stop on uncertain outcome. Remove after acceptance.
+ */
+function tmv3_preInspectionRepairNov9Stephen() {
+  const today=Utilities.formatDate(new Date(),TMV3_TIMEZONE,'yyyy-MM-dd');
+  if(today!=='2026-11-09')return {status:'DATE_GUARD_NO_WRITES',today:today};
+  const targets=[
+    {id:'1h35gn1jffpmllhof1467gi00a@google.com',number:'63199',name:'Stephanie & Kyle Tomlin'},
+    {id:'3n8bshit4qn9mfjtahdbivk94u@google.com',number:'63202',name:'Emilie & John Stamers'}
+  ];
+  const out={status:'IN_PROGRESS',date:today,events:[],writesAttempted:0};
+  for(let i=0;i<targets.length;i++){
+    const t=targets[i],entry={eventId:t.id,name:t.name};
+    try{
+      const record=tmv3_preInspectionRecoveryRecord_(t.id);
+      if(record.calendarRole!=='PRIMARY_SHARED' ||
+          Utilities.formatDate(new Date(record.start),TMV3_TIMEZONE,'yyyy-MM-dd')!==today ||
+          String(record.title||'').indexOf(t.number+' - ')!==0){
+        entry.status='SOURCE_IDENTITY_CHANGED_NO_WRITE';out.events.push(entry);break;
+      }
+      const plans=tmv3_step7FreshPlansForEvent_('PreInspection',t.id);
+      if(plans.length!==1 || plans[0].blocker){
+        entry.status='FRESH_PLAN_BLOCKED_NO_WRITE';entry.plan=plans[0]?plans[0].plan:'NONE';
+        entry.blocker=plans[0]?String(plans[0].blocker||''):'NO_UNIQUE_PLAN';
+        out.events.push(entry);break;
+      }
+      const p=plans[0];
+      if(p.plan==='NO_CHANGE' && /^[1-9]\d*$/.test(String(p.taskId||''))){
+        entry.status='ALREADY_CONVERGED';entry.taskId=String(p.taskId);
+        out.events.push(entry);continue;
+      }
+      const allowed=Array.isArray(p.actions) && p.actions.indexOf(TMV3_STEP7_ACTION.CREATE_TASK)>=0 &&
+        p.actions.indexOf(TMV3_STEP7_ACTION.RECREATE_TASK)<0 &&
+        !p.taskId;
+      if(!allowed){
+        entry.status='NOT_SAFE_CREATE_PLAN';entry.plan=p.plan;
+        out.events.push(entry);break;
+      }
+      out.writesAttempted++;
+      // Existing cycle rechecks live Striven task history immediately before create.
+      // It also guards the write with the canonical event lock and readback.
+      const run=tmv3_preInspectionAutomationCycle_({force:true,eventId:t.id,reason:'NOV9_STEPPHEN_TARGETED_VERIFIED_CREATE'});
+      const one=(run.results||[]).filter(function(x){return x.eventId===t.id;})[0];
+      entry.cycleStatus=run.status;
+      entry.executionStatus=one&&one.execution&&one.execution.status||'NO_VERIFIED_EXECUTION';
+      if(!one || run.status!=='COMPLETE'){
+        entry.status='UNCERTAIN_STOP_REVIEW_BEFORE_RETRY';
+        entry.reason=String(one&&one.blocker||one&&one.error||run.error||'').slice(0,350);
+        out.events.push(entry);break;
+      }
+      const fresh=tmv3_step7FreshPlansForEvent_('PreInspection',t.id);
+      entry.taskId=fresh.length===1?String(fresh[0].taskId||''):'';
+      entry.status=fresh.length===1 && /^[1-9]\d*$/.test(entry.taskId) &&
+        tmv3_preInspectionCompletionVerified_(fresh,one.execution)
+        ?'TASK_CREATED_AND_READBACK_VERIFIED':'INCOMPLETE_STOP_REVIEW_BEFORE_RETRY';
+      out.events.push(entry);
+      if(entry.status!=='TASK_CREATED_AND_READBACK_VERIFIED')break;
+    }catch(error){
+      entry.status='ERROR_STOP_REVIEW_BEFORE_RETRY';
+      entry.reason=String(error&&error.message||error).slice(0,400);
+      out.events.push(entry);break;
+    }
+  }
+  out.status=out.events.length===targets.length &&
+    out.events.every(function(x){return x.status==='ALREADY_CONVERGED'||x.status==='TASK_CREATED_AND_READBACK_VERIFIED';})
+    ?'TWO_TARGETS_VERIFIED':'PARTIAL_ATTENTION';
+  Logger.log('PI_NOV9_TARGETED_REPAIR='+JSON.stringify(out));
+  return out;
+}
