@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const scriptId='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
 const dir='apps-script/tmv3-vertical-split-staging';
 const manifest=JSON.parse(fs.readFileSync(path.join(dir,'migration-manifest.json'),'utf8'));
-const priorPIHash=sha(require('node:child_process').execFileSync('git',['show','c54469137c2ff4615ccc5055431109f9c33e80fc:apps-script/tmv3-vertical-split-staging/30_PreInspection.gs'],{encoding:'utf8'}));
+const priorPIHash=crypto.createHash('sha256').update(require('node:child_process').execFileSync('git',['show','c54469137c2ff4615ccc5055431109f9c33e80fc:apps-script/tmv3-vertical-split-staging/30_PreInspection.gs'],{encoding:'utf8'})).digest('hex');
 // Desired source is pinned to the immutable GitHub Actions checkout; parity below checks every original function.
 const desiredPI=fs.readFileSync(path.join(dir,'30_PreInspection.gs'),'utf8');
 const allNames=['00_Configuration','10_Shared_Core','20_Master_Triggers','30_PreInspection','40_Installation','50_Delivery','60_Service','90_Regression_Tests'];
