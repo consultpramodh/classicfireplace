@@ -45,3 +45,10 @@ The staged scripts are not verified against live Apps Script HEAD, Striven, or C
 5. Run pure tests, mock integration tests, four-vertical regression tests, and real read-only verification.
 6. Back up existing live source; stage a versioned GitHub branch and inspect the diff before deploying.
 7. Deploy to the existing project only when parity and production safety have been demonstrated.
+
+## Auth probe extension — 2026-11-09
+
+- After the original 682-function structural split was deployed and verified, the read-only `tmv3_preInspectionAuthorizationCheck` function was appended to `30_PreInspection.gs` (current count: **683**).
+- The original `migration-manifest.json` and `verification.json` remain immutable historical evidence for the initial 682-function / nine-file baseline. They intentionally do not describe this incremental diagnostic. The authorized release script verifies the new source is **exactly** the baseline plus the named probe.
+- [Guarded diagnostic-only source release](https://github.com/consultpramodh/classicfireplace/actions/runs/42648009627) verified live Apps Script HEAD readback; none of the 682 existing function bodies changed; zero task, calendar, mail, trigger, or numbered-deployment writes.
+- The diagnostic does not send any email. It checks the authoritative Calendar read, MailApp quota read, and current executing user's Preinspection triggers. **It must be run interactively in the Apps Script editor by the trigger owner to validate/authorize runtime scopes.**
