@@ -1,0 +1,19 @@
+{
+  "sourceVersion": "3.12.21-shared-preinspection-calendar-r1",
+  "sourceFileCount": 22,
+  "stagedFileCount": 8,
+  "sourceFunctionCount": 682,
+  "stagedFunctionCount": 682,
+  "missing": [],
+  "changed": [],
+  "added": [],
+  "duplicates": {},
+  "errors": [],
+  "loadTest": {
+    "status": "PASS",
+    "version": "3.12.21-shared-preinspection-calendar-r1",
+    "triggerAvailable": "function",
+    "policies": "function"
+  },
+  "pass": true
+}

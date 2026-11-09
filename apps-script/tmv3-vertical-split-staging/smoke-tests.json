@@ -1,0 +1,48 @@
+{
+  "passed": 6,
+  "total": 6,
+  "results": [
+    {
+      "name": "preInspectionCreatePolicy",
+      "pass": true,
+      "originalOutput": "{\"taskTypeId\":105,\"attachSalesOrder\":false,\"description\":\"\",\"calendarNotes\":\"CALENDAR_ONLY\",\"previousCalendarTitlePolicy\":\"PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER\",\"descriptionHeaderPolicy\":\"REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT\",\"calendarCopyParityPolicy\":\"FULL_BUSINESS_VISIBLE_PARITY_REQUIRED\",\"calendarLinksPreservationPolicy\":\"PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY\",\"calendarTaskLinkLabelPolicy\":\"TASK_ID_PLUS_ACTUAL_STRIVEN_TASK_NAME\",\"field854\":\"DO_NOT_MANAGE\",\"infoCustomFieldsAtCreate\":\"NONE\",\"requiredPoolId\":8,\"requestedBy\":\"CALENDAR_ORGANIZER\",\"assignedToFromOrganizer\":false,\"calendarLinks\":[\"CUSTOMER_SALES_ORDERS_PAGE\",\"TASK\"],\"technicianFields\":\"DO_NOT_PREFILL\"}",
+      "stagedOutput": "{\"taskTypeId\":105,\"attachSalesOrder\":false,\"description\":\"\",\"calendarNotes\":\"CALENDAR_ONLY\",\"previousCalendarTitlePolicy\":\"PRESERVE_AS_FIRST_DESCRIPTION_LINE_NO_HEADER\",\"descriptionHeaderPolicy\":\"REMOVE_NOTES_AND_SALES_ORDER_LABELS_PRESERVE_CONTENT\",\"calendarCopyParityPolicy\":\"FULL_BUSINESS_VISIBLE_PARITY_REQUIRED\",\"calendarLinksPreservationPolicy\":\"PRESERVE_EXISTING_CLICKABLE_BLOCK_REPAIR_NONCLICKABLE_OR_MISSING_ONLY\",\"calendarTaskLinkLabelPolicy\":\"TASK_ID_PLUS_ACTUAL_STRIVEN_TASK_NAME\",\"field854\":\"DO_NOT_MANAGE\",\"infoCustomFieldsAtCreate\":\"NONE\",\"requiredPoolId\":8,\"requestedBy\":\"CALENDAR_ORGANIZER\",\"assignedToFromOrganizer\":false,\"calendarLinks\":[\"CUSTOMER_SALES_ORDERS_PAGE\",\"TASK\"],\"technicianFields\":\"DO_NOT_PREFILL\"}",
+      "error": ""
+    },
+    {
+      "name": "preInspectionGuestPresent",
+      "pass": true,
+      "originalOutput": "{\"status\":\"ALREADY_PRESENT\",\"action\":\"NONE\"}",
+      "stagedOutput": "{\"status\":\"ALREADY_PRESENT\",\"action\":\"NONE\"}",
+      "error": ""
+    },
+    {
+      "name": "preInspectionGuestMissing",
+      "pass": true,
+      "originalOutput": "{\"status\":\"ADD_STEPHEN\",\"action\":\"ADD\"}",
+      "stagedOutput": "{\"status\":\"ADD_STEPHEN\",\"action\":\"ADD\"}",
+      "error": ""
+    },
+    {
+      "name": "preInspectionAssignment",
+      "pass": true,
+      "originalOutput": "{\"employeeIds\":[],\"poolIds\":[8]}",
+      "stagedOutput": "{\"employeeIds\":[],\"poolIds\":[8]}",
+      "error": ""
+    },
+    {
+      "name": "standardDailySchedule",
+      "pass": true,
+      "originalOutput": "{\"hours\":[8,13,17],\"timezone\":\"America/Toronto\",\"verticals\":[\"PreInspection\",\"Install\",\"Delivery\",\"Service\"]}",
+      "stagedOutput": "{\"hours\":[8,13,17],\"timezone\":\"America/Toronto\",\"verticals\":[\"PreInspection\",\"Install\",\"Delivery\",\"Service\"]}",
+      "error": ""
+    },
+    {
+      "name": "titlePhone",
+      "pass": true,
+      "originalOutput": "\"(416) 123-4567\"",
+      "stagedOutput": "\"(416) 123-4567\"",
+      "error": ""
+    }
+  ]
+}
