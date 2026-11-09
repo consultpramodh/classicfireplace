@@ -3335,6 +3335,13 @@ function tmv3_preInspectionContinueEligibleSweep() {
 // Original: 60_Automation; Function: tmv3_runPreInspectionDailySlot_
 function tmv3_runPreInspectionDailySlot_(slot) {
   const sheetRefreshStarted=Date.now();
+  // Report-only Calendar synchronization; failure preserves last-good view and never blocks Striven work.
+  let calendarReview=null;
+  try { calendarReview=tmv3_piCalendarReviewRefresh_(); }
+  catch(err) {
+    calendarReview={status:'PI_REVIEW_ATTENTION',error:String(err&&err.message||err).slice(0,400)};
+    try {tmv3_audit_('PreInspection','','','PI_CALENDAR_REVIEW','ATTENTION',calendarReview.error);}catch(ignored){}
+  }
   let result=tmv3_preInspectionAutomationCycle_({force:true,sweepStart:true,reason:'DAILY_SLOT_'+slot});
   const totals={processed:Number(result.processed||0),writes:Number(result.writes||0),notifications:Number(result.notifications||0),results:(result.results||[]).slice()};
   let priorRemaining=result.sweep && result.sweep.remaining;
@@ -3354,6 +3361,7 @@ function tmv3_runPreInspectionDailySlot_(slot) {
   tmv3_preInspectionMaybeContinueSweep_(result);
   tmv3_preInspectionLogSweep_(slot,result);
   result.sheetRefresh=tmv3_refreshAutomationSheetsAfter_(sheetRefreshStarted);
+  result.calendarReview=calendarReview;
   return result;
 }
 
@@ -3861,4 +3869,173 @@ function tmv3_preInspectionAuthorizationCheck() {
   if (!result.mailQuotaReadable) throw new Error('MAIL_QUOTA_NOT_INTEGER');
   Logger.log(JSON.stringify(result));
   return result;
+}
+
+/**
+ * PREINSPECTION / INTAKE AUDIT — Nov 2026
+ * Business owner: Preinspection vertical. No Striven reads/writes, no Calendar mutations,
+ * no emails, no trigger installation. Snapshot only; operator decisions persist by event+start.
+ * Source of truth: CF Preinspects. Representative calendars are discovery-only.
+ * Do not automatically copy or promote private-calendar events into the shared Calendar.
+ */
+function tmv3_piCalendarReviewRefresh_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1200)) return {status:'PI_REVIEW_LOCK_BUSY',calendarWrites:0,strivenCalls:0};
+  try {
+    const spreadsheet = SpreadsheetApp.openById(TMV3_SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('PI Calendar Review');
+    if (!sheet) throw new Error('PI_REVIEW_SHEET_NOT_FOUND_NO_WRITE');
+    const timezone = 'America/Toronto';
+    const today = new Date(); today.setHours(0,0,0,0);
+    const until = new Date(today.getTime()); until.setDate(until.getDate()+31);
+    const checkedDate = Utilities.formatDate(today,timezone,'yyyy-MM-dd');
+    const calendarSources = [
+      {name:'CF Preinspects',id:TMV3.VERTICALS.PreInspection.primaryCalendarId},
+      {name:'Stephen',id:'classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'},
+      {name:'Jay',id:'jay@classicfireplace.ca'},
+      {name:'Karen',id:'karen@classicfireplace.ca'}
+    ];
+    const copiesByKey = {};
+    const sourceCounts = {};
+    calendarSources.forEach(function(source) {
+      const calendar = CalendarApp.getCalendarById(source.id);
+      if (!calendar) throw new Error('PI_CALENDAR_ACCESS_REQUIRED_NO_WRITE:'+source.name);
+      const events = calendar.getEvents(today,until);
+      if(events.length>750) throw new Error('PI_CALENDAR_EVENT_LIMIT_REVIEW_NO_WRITE:'+source.name);
+      sourceCounts[source.name] = events.length;
+      events.forEach(function(event) {
+        if(event.isAllDayEvent() && event.getStartTime()<today) return;
+        const rawId = String(event.getId()||'');
+        const id = rawId.replace(/@google\.com$/i,'');
+        const start = event.getStartTime();
+        const key = id+'|'+start.getTime();
+        const record = {
+          id:id,
+          rawId:rawId,
+          start:start.toISOString(),
+          end:event.getEndTime().toISOString(),
+          title:String(event.getTitle()||''),
+          location:String(event.getLocation()||''),
+          description:String(event.getDescription()||''),
+          creators:event.getCreators().map(String),
+          calendarId:source.id,
+          calendarName:source.name
+        };
+        if (!copiesByKey[key]) copiesByKey[key]={};
+        if (copiesByKey[key][source.name]) throw new Error('PI_DUPLICATE_SOURCE_EVENT_NO_WRITE:'+key);
+        copiesByKey[key][source.name]=record;
+      });
+    });
+    const old = sheet.getLastRow()>3 ? sheet.getRange(4,1,Math.min(sheet.getLastRow()-3,1500),20).getValues() : [];
+    const oldByKey = {};
+    old.forEach(function(row){
+      const id=String(row[8]||'');
+      const start=String(row[1]||'');
+      if (!id || !start) return;
+      const key=id+'|'+start;
+      if (!oldByKey[key]) oldByKey[key]={decision:String(row[18]||''),notes:String(row[19]||''),row:row};
+    });
+    const headers = [
+      'Status','Start (Toronto)','End (Toronto)','Event / Customer','Calendar Copies',
+      'Organizer / Origin','Location','Customer #','Google Event ID','Shared CF?',
+      'Stephen Copy','Jay Copy','Karen Copy','Task Link?','Review Reason',
+      'Original Notes Preview','Calendar URL','Checked Date','Operator Decision','Operator Notes'
+    ];
+    const rows = [];
+    const norm=function(s){return String(s||'').replace(/\s+/g,' ').trim().toLowerCase();};
+    const statusOrder={REVIEW_MIRROR_MISMATCH:0,SHARED_UNLINKED:1,SHARED_LINKED:2,
+      REVIEW_POSSIBLE_PI:3,REVIEW_UNCLEAR_VISIT:4,EXCLUDED_SERVICE:6,
+      EXCLUDED_OTHER_WORKFLOW:7,EXCLUDED_NON_CUSTOMER:8,EXCLUDED_UNVERIFIED:9};
+    Object.keys(copiesByKey).forEach(function(key){
+      const copies=copiesByKey[key];
+      const shared=copies['CF Preinspects'];
+      const ev=shared||copies.Stephen||copies.Karen||copies.Jay;
+      const creators=(ev.creators||[]).join(', ');
+      const knownOther=(ev.creators||[]).some(function(email){return /(?:vpg05s56lp9f7kaegsiqask34o|2pbtbkjl1g2sos1fspgfq029h0|2h90kflud3re121hga9bvsi33o|service@classicfireplace\.ca|steve\.jensen83@gmail\.com)/i.test(email);});
+      const internal=/do not book|newmarket|team meeting|flash|rylander|layout meeting|follow up appointment|meet with steve|vacation|personal|holiday|golf club/i.test(ev.title);
+      const serviceOnly=/\bservice\b/i.test(ev.title)&&!/\bpre[\s-]?inspect/i.test(ev.title+' '+ev.description);
+      const ownerVisit=Boolean(copies.Stephen||copies.Jay||copies.Karen);
+      const visitClue=/\bpre[\s-]?inspect|\bon[\s-]?site\b|\bsite visit\b|\bmeasure\b|\binspect\b/i.test(ev.title+' '+ev.description);
+      const productClue=Boolean(ev.location)&&/\b(fireplace|insert|gas unit|stove|mantle|chimney|remove|replace)\b/i.test(ev.title+' '+ev.description);
+      const customerClue=/(?:\b\d{5}\b|(?:\d{3}[-. ]?\d{3}[-. ]?\d{4}))/i.test(ev.title+' '+ev.description);
+      const linked=/Tasks\/TaskInfo\.aspx\?TaskID|Task\s*#\s*\d+/i.test(ev.description);
+      const number=ev.title.match(/(?:^|#)\s*(\d{5})\b/);
+      let status='',reason='',mirror='NOT_EXPECTED';
+      if(shared){
+        const st=copies.Stephen;
+        const exact=st&&['title','location','description','start','end'].every(function(field){return String(shared[field]||'')===String(st[field]||'');});
+        mirror=st?(exact?'EXACT':'MISMATCH'):'NOT_PRESENT';
+        status=mirror==='MISMATCH'?'REVIEW_MIRROR_MISMATCH':linked?'SHARED_LINKED':'SHARED_UNLINKED';
+        reason=linked?'Task link is present; verify Striven before marking fully complete':'Task link absent; search existing Striven Task before any create';
+      }else if(knownOther){
+        status='EXCLUDED_OTHER_WORKFLOW';
+        reason='Creator identifies Installation/Delivery/Service or contractor workflow; no automatic promotion';
+      }else if(internal){status='EXCLUDED_NON_CUSTOMER';reason='Internal block/meeting/non-customer';}
+      else if(serviceOnly){status='EXCLUDED_SERVICE';reason='Service-specific appointment';}
+      else if(ownerVisit&&(visitClue||productClue)){
+        status='REVIEW_POSSIBLE_PI';reason='Possible on-site preinspection omitted from shared Calendar; confirm visit type and ownership';
+      }else if(ownerVisit&&customerClue){status='REVIEW_UNCLEAR_VISIT';reason='Customer/sales visit with no confirmed preinspection intention or adequate location';}
+      else{status='EXCLUDED_UNVERIFIED';reason='Insufficient evidence to treat as Preinspection';}
+      const stamp=function(iso){return Utilities.formatDate(new Date(iso),timezone,"yyyy-MM-dd'T'HH:mm:ssXXX");};
+      const startText=stamp(ev.start),endText=stamp(ev.end);
+      const orig=oldByKey[ev.id+'|'+startText];
+      const link='https://www.google.com/calendar/event?eid='+Utilities.base64EncodeWebSafe(ev.id+' '+ev.calendarId).replace(/=+$/,'');
+      rows.push([status,startText,endText,ev.title,Object.keys(copies).join(', '),creators,
+        ev.location,number?number[1]:'',ev.id,shared?'YES':'NO',shared?mirror:copies.Stephen?'PRIVATE':'—',
+        copies.Jay?'PRESENT':'—',copies.Karen?'PRESENT':'—',linked?'YES':'NO',reason,
+        norm(ev.description).slice(0,330),link,checkedDate,orig?orig.decision:'',orig?orig.notes:'']);
+    });
+    // Keep operator decisions for events that moved beyond the review horizon; never erase human decisions.
+    Object.keys(oldByKey).forEach(function(key){
+      const prev=oldByKey[key];
+      if(!prev.decision && !prev.notes)return;
+      const already=rows.some(function(row){return row[8]+'|'+row[1]===key;});
+      if(already)return;
+      const preserved=prev.row.slice(0,20);
+      preserved[0]='OUT_OF_WINDOW_REVIEW';
+      preserved[14]='Retained due to operator decision; event not in current 31-day Calendar window';
+      rows.push(preserved);
+    });
+    rows.sort(function(a,b){
+      const aa=typeof statusOrder[a[0]]==='number'?statusOrder[a[0]]:10;
+      const bb=typeof statusOrder[b[0]]==='number'?statusOrder[b[0]]:10;
+      return aa-bb||String(a[1]).localeCompare(String(b[1]));
+    });
+    const statuses={};rows.forEach(function(r){statuses[r[0]]=(statuses[r[0]]||0)+1;});
+    const summary='Calendar-only review '+checkedDate+' | '+sourceCounts['CF Preinspects']+' shared | '+
+      (statuses.REVIEW_POSSIBLE_PI||0)+' possible | '+(statuses.REVIEW_UNCLEAR_VISIT||0)+' unclear | zero Striven writes';
+    const report=[
+      ['PI CALENDAR INTAKE REVIEW — READ ONLY'].concat(Array(19).fill('')),
+      [summary].concat(Array(19).fill('')),
+      headers
+    ].concat(rows);
+    const lastRow=sheet.getLastRow();
+    if(report.length>sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(),report.length-sheet.getMaxRows());
+    let changed=false;
+    // A1:T1 and A2:T2 are merged. Set only the anchor cell to protect the merge.
+    if(sheet.getRange(1,1).getDisplayValue()!==report[0][0]){sheet.getRange(1,1).setValue(report[0][0]);changed=true;}
+    if(sheet.getRange(2,1).getDisplayValue()!==report[1][0]){sheet.getRange(2,1).setValue(report[1][0]);changed=true;}
+    const headerNow=sheet.getRange(3,1,1,20).getDisplayValues()[0];
+    if(!headerNow.every(function(v,i){return String(v||'')===String(headers[i]||'');})){
+      sheet.getRange(3,1,1,20).setValues([headers]);changed=true;
+    }
+    if(rows.length){
+      const bodyNow=sheet.getRange(4,1,rows.length,20).getDisplayValues();
+      const bodyMatches=bodyNow.every(function(row,i){return row.every(function(v,j){return String(v||'')===String(rows[i][j]||'');});});
+      if(!bodyMatches){sheet.getRange(4,1,rows.length,20).setValues(rows);changed=true;}
+    }
+    if(lastRow>report.length){sheet.getRange(report.length+1,1,lastRow-report.length,20).clearContent();changed=true;}
+    if(changed) SpreadsheetApp.flush();
+    // Row-by-row independent event keys make the publication idempotent.
+    if(sheet.getRange(3,1).getDisplayValue()!=='Status'||sheet.getRange(1,1).getDisplayValue()!=='PI CALENDAR INTAKE REVIEW — READ ONLY')
+      throw new Error('PI_REVIEW_SHEET_READBACK_FAILED');
+    return {status:changed?'PI_REVIEW_REFRESHED':'PI_REVIEW_UNCHANGED',
+      calendarCounts:sourceCounts,logicalEvents:rows.length,statuses:statuses,
+      scope:'TODAY_FORWARD_31_DAYS',calendarWrites:0,strivenCalls:0,emailsSent:0};
+  } finally {lock.releaseLock();}
+}
+
+/** Manual read/write-to-review-sheet-only entry point; NEVER alters Calendar/Striven. */
+function tmv3_preInspectionCalendarReviewRefresh() {
+  return tmv3_piCalendarReviewRefresh_();
 }
