@@ -3944,7 +3944,7 @@ function tmv3_piCalendarReviewRefresh_() {
     const rows = [];
     const norm=function(s){return String(s||'').replace(/\s+/g,' ').trim().toLowerCase();};
     const statusOrder={REVIEW_MIRROR_MISMATCH:0,SHARED_UNLINKED:1,SHARED_LINKED:2,
-      REVIEW_POSSIBLE_PI:3,REVIEW_UNCLEAR_VISIT:4,EXCLUDED_SERVICE:6,
+      REVIEW_POSSIBLE_PI:3,REVIEW_UNCLEAR_VISIT:4,REVIEW_IDENTITY_MISSING:5,EXCLUDED_SERVICE:6,
       EXCLUDED_OTHER_WORKFLOW:7,EXCLUDED_NON_CUSTOMER:8,EXCLUDED_UNVERIFIED:9};
     Object.keys(copiesByKey).forEach(function(key){
       const copies=copiesByKey[key];
@@ -3975,6 +3975,14 @@ function tmv3_piCalendarReviewRefresh_() {
       else if(ownerVisit&&(visitClue||productClue)){
         status='REVIEW_POSSIBLE_PI';reason='Possible on-site preinspection omitted from shared Calendar; confirm visit type and ownership';
       }else if(ownerVisit&&customerClue){status='REVIEW_UNCLEAR_VISIT';reason='Customer/sales visit with no confirmed preinspection intention or adequate location';}
+      else if(ownerVisit && (ev.creators||[]).some(function(email){
+        const id=String(email||'').toLowerCase();
+        return (copies.Stephen && (id==='classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com'||id==='stephen@classicfireplace.ca')) ||
+          (copies.Jay && id==='jay@classicfireplace.ca') ||
+          (copies.Karen && id==='karen@classicfireplace.ca');
+      })){
+        status='REVIEW_IDENTITY_MISSING';reason='Owner-created appointment missing evidence to classify; verify identity, location and visit type, do not silently exclude';
+      }
       else{status='EXCLUDED_UNVERIFIED';reason='Insufficient evidence to treat as Preinspection';}
       const stamp=function(iso){return Utilities.formatDate(new Date(iso),timezone,"yyyy-MM-dd'T'HH:mm:ssXXX");};
       const startText=stamp(ev.start),endText=stamp(ev.end);
