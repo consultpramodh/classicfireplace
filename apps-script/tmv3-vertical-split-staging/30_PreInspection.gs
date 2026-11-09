@@ -1646,7 +1646,17 @@ function tmv3_preInspectionAssignmentOverride_(record) {
   if (!record || !tmv3_clean_(record.eventId) || typeof PropertiesService === 'undefined') return [];
   const key = 'TMV3_PI_ASSIGNMENT_OVERRIDE_' + tmv3_hash_(record.eventId);
   const raw = PropertiesService.getScriptProperties().getProperty(key);
-  if (!raw) return [];
+  if (!raw) {
+    // The employee comes from the original verified appointment organizer,
+    // never from the sales representative who created the event or a guest.
+    const owner=String(record.organizerCalendarId||'').toLowerCase();
+    const stephen=String((TMV3.VERTICALS.PreInspection.secondaryCalendarIds||[])[0]||'').toLowerCase();
+    if (owner && owner===stephen) return [15]; // Stephen Foley — verified Striven employee ID.
+    if (owner==='jay@classicfireplace.ca') return [1]; // Jay Scott — verified Striven employee ID.
+    if (owner==='karen@classicfireplace.ca')
+      throw new Error('PREINSPECTION_KAREN_STRIVEN_EMPLOYEE_ID_NOT_VERIFIED_NO_WRITE');
+    return []; // Unknown organizer: preserve Pool 8, never invent an employee.
+  }
   let value;
   try { value = JSON.parse(raw); } catch (error) { throw new Error('PREINSPECTION_ASSIGNMENT_OVERRIDE_INVALID'); }
   const employeeId = Number(value.employeeId);
