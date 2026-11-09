@@ -29,6 +29,28 @@ jobs:
             echo "::error::CLASPRC_JSON is not configured. No Apps Script writes attempted."
             exit 1
           fi
+          node - <<'NODE'
+          const config=JSON.parse(process.env.CLASPRC_JSON||'{}');
+          function find(o,keys){
+            if(!o||typeof o!=='object')return '';
+            for(const [k,v] of Object.entries(o))if(keys.includes(k)&&typeof v==='string'&&v)return v;
+            for(const v of Object.values(o)){const s=find(v,keys);if(s)return s;}
+            return '';
+          }
+          const data=new URLSearchParams({
+            grant_type:'refresh_token',
+            client_id:find(config,['clientId','client_id']),
+            client_secret:find(config,['clientSecret','client_secret']),
+            refresh_token:find(config,['refresh_token','refreshToken'])
+          });
+          if([...data.values()].some(v=>!v)){console.error('GOOGLE_OAUTH_DIAGNOSTIC=CONFIGURATION_FIELDS_MISSING');process.exit(1);}
+          fetch('https://oauth2.googleapis.com/token',{method:'POST',body:data,redirect:'error',signal:AbortSignal.timeout(15000)}).then(async r=>{
+            if(r.ok){console.log('GOOGLE_OAUTH_DIAGNOSTIC=REFRESH_OK');return;}
+            const b=await r.json().catch(()=>({}));
+            console.error('GOOGLE_OAUTH_DIAGNOSTIC='+JSON.stringify({http:r.status,error:String(b.error||'UNKNOWN').slice(0,90)}));
+            process.exitCode=1;
+          }).catch(e=>{console.error('GOOGLE_OAUTH_DIAGNOSTIC=NETWORK_OR_TIMEOUT');process.exitCode=1;});
+          NODE
           node tools/tmv3-service-delivery-backfill-launch.js inspect
       - name: Preserve hash-only inspection results
         if: success()
