@@ -3828,3 +3828,37 @@ function tmv3_preInspectionLastWeekAudit() {
     events:records.length,before:before.count,afterCalls:tmv3_strivenApiBudgetStatus_().count,
     strivenWrites:0,calendarWrites:0,notifications:0}));
 }
+// Preinspection authorization diagnostic: READ ONLY. Never sends mail or modifies Calendar, Striven, or Sheets.
+function tmv3_preInspectionAuthorizationCheck() {
+  ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/script.send_mail',
+    'https://www.googleapis.com/auth/script.scriptapp'
+  ]);
+  const cfg = TMV3.VERTICALS.PreInspection;
+  const calendarId = String(cfg && cfg.primaryCalendarId || '');
+  if (!calendarId) throw new Error('PREINSPECTION_CALENDAR_ID_MISSING');
+  const calendar = CalendarApp.getCalendarById(calendarId);
+  if (!calendar) throw new Error('PREINSPECTION_CALENDAR_INACCESSIBLE');
+  const mailQuota = MailApp.getRemainingDailyQuota();
+  const handlers = ScriptApp.getProjectTriggers().map(function(t) {
+    return t.getHandlerFunction();
+  }).filter(function(name) {
+    return /^tmv3_preInspectionCheck(0800|1300|1700)$/.test(name);
+  });
+  const result = {
+    status: 'CALENDAR_MAIL_AUTHORIZATION_CHECK_PASSED',
+    calendarName: calendar.getName(),
+    calendarReadable: true,
+    mailQuotaReadable: Number.isInteger(mailQuota),
+    mailQuotaRecipientsRemaining: mailQuota,
+    currentUserPreinspectionTriggerHandlers: handlers.sort(),
+    calendarWrites: 0,
+    strivenCalls: 0,
+    emailsSent: 0,
+    triggerChanges: 0
+  };
+  if (!result.mailQuotaReadable) throw new Error('MAIL_QUOTA_NOT_INTEGER');
+  Logger.log(JSON.stringify(result));
+  return result;
+}
