@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
-const code=fs.readFileSync('ops/tmv3-pi-calendar-review-source.gs.txt','utf8');
+const code=fs.readFileSync('apps-script/tmv3-vertical-split-staging/30_PreInspection.gs','utf8');
 const now=new Date(), next=new Date(now.getTime()+86400000), one=new Date(next);one.setHours(13,0,0,0);const two=new Date(one.getTime()+3600000);
 const make=(id,title,loc,desc,creator)=>({
 getId:()=>id+'@google.com', getStartTime:()=>one,getEndTime:()=>two,getTitle:()=>title,
@@ -42,6 +42,24 @@ r=ctx.tmv3_piCalendarReviewRefresh_();assert.strictEqual(r.status,'PI_REVIEW_UNC
 let operatorRow=data.find(x=>x[8]==='b2');operatorRow[18]='NEEDS_INFO';operatorRow[19]='Sales team should confirm site visit';
 const pre=data.length;calendars[stephenId][1]=make('b2','63170 - Visit Candidate Updated','125 Test Road','Remove old gas fireplace and replace insert',stephenId);
 r=ctx.tmv3_piCalendarReviewRefresh_();const after=data.find(x=>x[8]==='b2');assert.strictEqual(after[18],'NEEDS_INFO');assert.strictEqual(after[19],'Sales team should confirm site visit');
-// One source gone: abort without clearing previous rows.
-delete calendars['karen@classicfireplace.ca'];const oldData=JSON.stringify(data);assert.throws(()=>ctx.tmv3_piCalendarReviewRefresh_(),/PI_CALENDAR_ACCESS_REQUIRED_NO_WRITE:Karen/);assert.strictEqual(JSON.stringify(data),oldData);
-console.log(JSON.stringify({status:'PASS',tests:5,logicalEvents:4,firstWriteCount:1,operatorDecisionPreserved:true,missingSourceFailClosed:true}));
+// An unavailable source must not prevent refreshing the other calendars or drop
+// last-known review entries from the inaccessible source.
+delete calendars['karen@classicfireplace.ca'];
+r=ctx.tmv3_piCalendarReviewRefresh_();
+assert.strictEqual(r.status,'PI_REVIEW_PARTIAL_SOURCE_ACCESS');
+assert.strictEqual(r.coverageErrors.length,1);
+assert.strictEqual(r.coverageErrors[0].source,'Karen');
+let retained=data.find(x=>x[8]==='d4');
+assert.strictEqual(retained[0],'SOURCE_ACCESS_UNVERIFIED');
+assert.strictEqual(data.find(x=>x[8]==='b2')[18],'NEEDS_INFO');
+delete calendars['jay@classicfireplace.ca'];
+r=ctx.tmv3_piCalendarReviewRefresh_();
+assert.strictEqual(r.coverageErrors.length,2);
+assert.strictEqual(data.find(x=>x[8]==='c3')[0],'SOURCE_ACCESS_UNVERIFIED');
+const prePrimaryLoss=JSON.stringify(data);
+delete calendars[sharedId];
+assert.throws(()=>ctx.tmv3_piCalendarReviewRefresh_(),/PI_PRIMARY_CALENDAR_REQUIRED_NO_WRITE/);
+assert.strictEqual(JSON.stringify(data),prePrimaryLoss);
+console.log(JSON.stringify({status:'PASS',tests:8,logicalEvents:4,
+  operatorDecisionPreserved:true,sourceCoverageHonest:true,
+  inaccessibleSourcesRetained:true,primaryMissingFailClosed:true}));
