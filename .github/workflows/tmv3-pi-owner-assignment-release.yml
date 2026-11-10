@@ -1,4 +1,4 @@
-name: V3 Terry intake safety hold guarded source release
+name: V3 Terry intake safety hold guarded source release (hash fix)
 on:
   push:
     branches:

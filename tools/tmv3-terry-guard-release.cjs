@@ -16,8 +16,8 @@ const priorPIHash=crypto.createHash('sha256').update(expectedLivePI).digest('hex
 const lastDeployedStandards='c1452dd4edd16d928317eb16e9beb41d6b8a917f';
 function priorText(file){return require('node:child_process').execFileSync('git',
  ['show',lastDeployedStandards+':'+dir+'/'+file+'.gs'],{encoding:'utf8'});}
-const priorConfigHash=sha(priorText('00_Configuration'));
-const priorCoreHash=sha(priorText('10_Shared_Core'));
+const priorConfigHash=crypto.createHash('sha256').update(priorText('00_Configuration')).digest('hex');
+const priorCoreHash=crypto.createHash('sha256').update(priorText('10_Shared_Core')).digest('hex');
 // Approved staging source is pinned to this checkout. All live files are retained except configuration and shared core.
 const allNames=['00_Configuration','10_Shared_Core','20_Master_Triggers','30_PreInspection','40_Installation','50_Delivery','60_Service','90_Regression_Tests'];
 const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
