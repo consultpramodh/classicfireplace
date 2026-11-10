@@ -1,0 +1,48 @@
+name: Pre-Inspection controlled Jeff execution
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-jeff-controlled-20261110.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify unchanged source and execute one eligible event
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          const {canonical}=require('./tools/tmv3-relationship-function-patch.js');
+          const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+          const event='0enqriah41g553sgt79oq2jrp2@google.com',expected='84a40ee36c916e483f005a6ec02c9574396a460c4fb2f2abc61980d4e6c9a829';
+          let executionAttempted=false;
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('PROFILE_COUNT');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!a.ok)throw Error('AUTH');
+            const token=(await a.json()).access_token;
+            async function api(url,o={}){const r=await fetch(url,{...o,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},signal:AbortSignal.timeout(330000)});if(!r.ok)throw Error('HTTP_'+r.status);return r.json()}
+            const root='https://script.googleapis.com/v1/projects/'+sid;
+            const src=await api(root+'/content');if(canonical(src)!==expected)throw Error('SOURCE_DRIFT_NO_RUN');
+            const ds=(await api(root+'/deployments')).deployments.filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('DEPLOYMENT_COUNT');
+            async function run(fn,args){const x=await api('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{method:'POST',body:JSON.stringify({function:fn,parameters:args,devMode:true})});if(!x.done||x.error)throw Error('SCRIPT_EXECUTION_UNCERTAIN');return x.response&&x.response.result}
+            const preview=await run('tmv3_previewTitleNormalizationForEvent',['PreInspection',event,19694]);
+            if(!preview || preview.blocker || !Array.isArray(preview.actions) || preview.actions.some(a=>a!=='VERIFY_CALENDAR_LINKS') || !preview.titleNormalization || preview.titleNormalization.calendar.check!=='MATCH' || preview.titleNormalization.task.check!=='MATCH')throw Error('PREVIEW_NOT_CONVERGED_NO_RUN');
+            if(canonical(await api(root+'/content'))!==expected)throw Error('SOURCE_DRIFT_NO_RUN');
+            executionAttempted=true;
+            const result=await run('tmv3_reconcilePreInspectionEvent',[event]);
+            const rows=result&&result.results||[];
+            if(rows.some(x=>x.eventId!==event)||rows.length>1)throw Error('TARGET_SCOPE_VIOLATION');
+            console.log(JSON.stringify({status:'EXECUTION_RETURNED',cycleStatus:result.status,processed:result.processed,writes:result.writes,notifications:result.notifications,events:rows.map(x=>({status:x.status||null,plan:x.plan||null,taskId:Number(x.taskId||0),executionStatus:x.execution&&x.execution.status||null,hasError:!!x.error,afterPlans:x.afterPlans||[]}))}));
+          })().catch(e=>{console.error(JSON.stringify({status:executionAttempted?'UNCERTAIN_NO_RETRY':'BLOCKED_NO_EXECUTION',reason:e.message}));process.exitCode=1});
+          NODE
