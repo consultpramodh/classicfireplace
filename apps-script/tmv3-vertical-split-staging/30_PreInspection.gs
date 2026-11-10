@@ -4339,3 +4339,96 @@ function tmv3_previewTerryQuietCalendarIntake() {
 function tmv3_importTerryQuietCalendarIntake() {
   return tmv3_terryQuietCalendarIntake_('IMPORT');
 }
+
+
+// PREINSPECTION LOCK 2026-11-10-r1.
+// Canonical rules: docs/workflows/preinspection/STANDARD_2026_11_10.md
+// Never fetch a rule from GitHub or ask an agent to interpret it at runtime.
+function tmv3_piRendererFingerprint_() {
+  const source = Function.prototype.toString.call(tmv3_preInspectionMissingDetailEmailPreview_);
+  let hash = 2166136261;
+  for (let i = 0; i < source.length; i++) {
+    hash = Math.imul(hash ^ source.charCodeAt(i), 16777619) >>> 0;
+  }
+  return ('00000000' + hash.toString(16)).slice(-8);
+}
+
+function tmv3_piAssertLockedStandard_() {
+  const root = TMV3_HARD_RULES || {};
+  const r = root.PreInspection || {};
+  const live = (TMV3.VERTICALS || {}).PreInspection || {};
+  if (root.version !== '2026-11-10-r1' || r.lockedStandardId !== '2026-11-10-r1') {
+    throw new Error('PI_STANDARD_VERSION_MISMATCH_NO_WRITE');
+  }
+  if (r.lockedStandardReference !== 'docs/workflows/preinspection/STANDARD_2026_11_10.md') {
+    throw new Error('PI_STANDARD_REFERENCE_MISMATCH_NO_WRITE');
+  }
+  if (Number(r.taskTypeId) !== 105 || Number(live.defaultPoolId) !== 8 ||
+      r.orderRequired !== false || r.attachOrderToTask !== false ||
+      r.field854Policy !== 'DO_NOT_MANAGE' || r.infoCustomFieldsAtCreate !== 'NONE' ||
+      r.calendarNotesPolicy !== 'CALENDAR_ONLY' || live.descriptionMustBeBlankAtCreate !== true ||
+      live.requestedByFromOrganizer !== true) {
+    throw new Error('PI_TASK_RULES_MISMATCH_NO_WRITE');
+  }
+  if (r.ownerGuestPolicy !== 'VERIFIED_EVENT_OWNER_ONLY') {
+    throw new Error('PI_OWNER_GUEST_POLICY_DRIFT_NO_WRITE');
+  }
+  if (JSON.stringify((r.inspectorOwnedFields || []).slice().sort()) !== JSON.stringify([852,853,854,860])) {
+    throw new Error('PI_INSPECTOR_FIELDS_POLICY_DRIFT_NO_WRITE');
+  }
+  if (JSON.stringify((TMV3.OPERATIONS.preInspectionAutomationScheduleHours || [])) !== JSON.stringify([8,13,17]) ||
+      TMV3.OPERATIONS.preInspectionAutomationScheduleTimezone !== 'America/Toronto') {
+    throw new Error('PI_NOTIFICATION_SCHEDULE_DRIFT_NO_WRITE');
+  }
+  if (r.notificationTemplatePolicy !== 'EXACT_EXISTING_RENDERER_NO_REDRAFT' ||
+      r.notificationRendererFingerprint !== tmv3_piRendererFingerprint_()) {
+    throw new Error('PI_NOTIFICATION_TEMPLATE_DRIFT_NO_SEND');
+  }
+  if (r.presentation.linkHeading !== '-----Striven Links-----' ||
+      r.presentation.calendarTitleParts.join('|') !== 'customerNumber|customerName|phone' ||
+      r.presentation.taskTitleParts.join('|') !== 'customerName|address|phone') {
+    throw new Error('PI_CALENDAR_OR_TASK_FORMAT_DRIFT_NO_WRITE');
+  }
+  return {status:'PASS',standard:'2026-11-10-r1',
+    reference:r.lockedStandardReference,notificationFingerprint:r.notificationRendererFingerprint};
+}
+
+function tmv3_piCreatorEmailExcluded_(creatorEmail) {
+  const creator = String(creatorEmail || '').trim().toLowerCase();
+  const blocked = TMV3_HARD_RULES.PreInspection.notificationExcludedCreatorEmails || [];
+  return !!creator && blocked.indexOf(creator) >= 0;
+}
+
+function tmv3_piAssertCalendarTitle_(value) {
+  const s = String(value || '').trim();
+  if (!/^[0-9]+ - .+ - \([0-9]{3}\) [0-9]{3}-[0-9]{4}$/.test(s)) {
+    throw new Error('PI_CALENDAR_TITLE_OUTSIDE_LOCKED_FORMAT_NO_WRITE');
+  }
+  return true;
+}
+
+function tmv3_piAssertTaskTitle_(value) {
+  const s = String(value || '').trim();
+  if (!/^.+ - .+, .+ - \([0-9]{3}\) [0-9]{3}-[0-9]{4}$/.test(s)) {
+    throw new Error('PI_TASK_TITLE_OUTSIDE_LOCKED_FORMAT_NO_WRITE');
+  }
+  return true;
+}
+
+function tmv3_piAssertSafeTaskPatch_(payload) {
+  tmv3_piAssertLockedStandard_();
+  const p = payload || {};
+  const forbidden = /^(?:InfoCustomFields|Description|SalesOrder|SalesOrderID|SalesOrderId|SOId|Type)$/i;
+  Object.keys(p).forEach(function(k) {
+    if (forbidden.test(k)) throw new Error('PI_PROTECTED_TASK_FIELD_NO_WRITE:' + k);
+  });
+  if (p.RequestedBy && String(p.RequestedBy.Type || '').toLowerCase() !== 'employee') {
+    throw new Error('PI_REQUESTED_BY_MUST_BE_VERIFIED_EMPLOYEE_NO_WRITE');
+  }
+  if (p.Title !== undefined) tmv3_piAssertTaskTitle_(p.Title);
+  return true;
+}
+
+function tmv3_preInspectionLockedStandardStatus() {
+  return tmv3_piAssertLockedStandard_();
+}
