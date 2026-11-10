@@ -1,3 +1,5 @@
 2026-10-21: inspect current bound Apps Script HEAD and file hashes; zero Task/source/deployment writes.
 Inspect after missed 13:00 PreInspection slot; prepare guarded automatic recovery repair.
 2026-11-10: read current V3 source before guarded operator reconciliation.
+
+2026-11-10: recheck live source before cf_taskmapping migration.
