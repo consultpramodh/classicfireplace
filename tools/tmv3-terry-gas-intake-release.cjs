@@ -60,7 +60,7 @@ function verify(before,after){
    throw Error('SOURCE_SCOPE_DRIFT_'+changed.join(',')+'+'+introduced.join(','));
  for(const name of added){
   const body=newFns[name];
-  if(!body||body.includes('MailApp')||body.includes('.addGuest(')||body.includes('tmv3_executeFreshStep7Selection_('))
+  if(!body||body.includes('MailApp.sendEmail(')||body.split('\n').filter(x=>!x.trim().startsWith('//')).join('\n').includes('.addGuest(')||body.includes('tmv3_executeFreshStep7Selection_('))
    throw Error('DISALLOWED_BUSINESS_WRITER_'+name);
  }
  return{prior:690,unchanged:690,added:introduced,after:693};

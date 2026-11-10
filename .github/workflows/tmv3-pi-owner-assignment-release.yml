@@ -1,4 +1,4 @@
-name: V3 Terry quiet Apps Script intake release — corrected regression
+name: V3 Terry quiet Apps Script intake release — corrected validator
 on:
   push:
     branches:
