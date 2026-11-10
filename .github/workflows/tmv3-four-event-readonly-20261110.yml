@@ -38,3 +38,5 @@ jobs:
             console.log(JSON.stringify({status:'READ_ONLY',results:rows.map((x,i)=>({index:i+1,identity:x.identity||null,locationStatus:x.locationStatus||null,hasCustomer:!!x.expectedCustomer,hasLocation:!!x.expectedLocation,linkedTaskId:Number(x.linkedId||0),freshTaskRead:!!(x.fresh&&x.fresh.ok),error:!!x.error})),businessWrites:0}));
           })().catch(e=>{console.error(JSON.stringify({status:'STOPPED',reason:e.message}));process.exitCode=1});
           NODE
+
+# Verify reauthorized matching OAuth client.
