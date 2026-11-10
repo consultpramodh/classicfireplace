@@ -1,8 +1,10 @@
 # PreInspection Workflow
 
+**Latest format/notification authority (2026-11-10-r1):** [STANDARD_2026_11_10.md](STANDARD_2026_11_10.md). This is a business-standard revision; live Apps Script deployment is not verified. Where older wording below describes unconditional Stephen participation, the new owner-dependent rule takes precedence. The existing branded notification template must not be redesigned.
+
 ## Scope
 
-PreInspection is one of the four primary Task Mapping workflows. **CF Preinspects is the authoritative Calendar source.** Stephen's Calendar is mirror-only; every CF Preinspects event must include `stephen@classicfireplace.ca` as a required guest.
+PreInspection is one of the four primary Task Mapping workflows. **CF Preinspects is the authoritative Calendar source.** An inspector's personal calendar is a required copy only when the verified appointment belongs to that inspector. Do not automatically add Stephen to Jay/Karen appointments. Shared CF Preinspects remains the business source.
 
 ## Current production profile
 
@@ -46,12 +48,12 @@ Before any CREATE/RECREATE write, Stage 7 must fresh-verify the Calendar event, 
 
 ## Calendar completion
 
-After a Task is verified, maintain exactly one idempotent managed **clickable** Striven Links block and verify full business-visible parity across both required PreInspection Calendar copies:
+After a Task is verified, maintain exactly one idempotent managed **clickable** Striven Links block and verify full business-visible parity across each required PreInspection Calendar copy:
 
 - Customer Sales Orders link;
 - one Task link when a deterministic Task exists.
 
-Stephen remains a required guest on the authoritative event; his Calendar is mirror-only, not an independent business-source appointment. Read both required copies back for title, Description, location, start/end, attendees and clickable links.
+Maintain the verified inspector's required participation on the authoritative event. An inspector's personal Calendar is a copy only for that inspector's appointment, not an independent business-source appointment. Read both required copies back for title, Description, location, start/end, attendees and clickable links.
 
 ## Downstream completion/handoff
 
@@ -69,3 +71,4 @@ No final SO yet = `DEFERRED_RETRY`. Zero Install match = deferred retry. Multipl
 
 - `FLOW.md` — end-to-end canonical business flow.
 - `REQUESTED_BY_POLICY.md` — exact Requested By resolution and runtime evidence.
+- `STANDARD_2026_11_10.md` — latest frozen Calendar/Task formatting, inspector-field protection and notification-template contract.
