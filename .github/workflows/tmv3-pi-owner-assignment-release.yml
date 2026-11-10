@@ -1,4 +1,4 @@
-name: V3 Terry intake safety hold guarded source release (validated full source)
+name: V3 Terry quiet Apps Script Editor functions guarded release
 on:
   push:
     branches:
@@ -24,17 +24,18 @@ jobs:
           node-version: '22'
       - name: Verify standards format and source safety regression
         run: |
-          node --check tools/tmv3-terry-guard-release.cjs
+          node --check tools/tmv3-terry-gas-intake-release.cjs
           node tools/test-tmv3-preinspection-owner.cjs
           node tools/test-tmv3-pi-calendar-review.cjs
           node tools/test-tmv3-pi-diagnostic.cjs
           node tools/test-tmv3-execution-standards.cjs
           node tools/test-tmv3-terry-intake-guards.cjs
-      - name: Require exact live Apps Script HEAD and 680 unchanged functions
+          node tools/test-tmv3-terry-gas-quiet-intake.cjs
+      - name: Require exact live Apps Script HEAD and all 690 existing functions
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-terry-guard-release.cjs dry-run
-      - name: Deploy Terry safety hold only with exact source readback
+        run: node tools/tmv3-terry-gas-intake-release.cjs dry-run
+      - name: Deploy three quiet intake Editor functions with exact source readback
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-terry-guard-release.cjs deploy
+        run: node tools/tmv3-terry-gas-intake-release.cjs deploy
