@@ -1,0 +1,36 @@
+name: V3 Terry Beettam guarded no-invite Calendar intake
+on:
+  push:
+    branches:
+      - staging/v3-vertical-split-20261109
+    paths:
+      - .github/workflows/tmv3-terry-approval-intake.yml
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  guarded-intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Terry private-copy/notifications/identity offline
+        run: |
+          node --check tools/tmv3-terry-approval-intake.cjs
+          node tools/test-tmv3-terry-approval-intake.cjs
+          node tools/test-tmv3-terry-intake-guards.cjs
+      - name: Verify live Task-write hold, source identity, and duplicate-free target
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-terry-approval-intake.cjs dry-run
+      - name: Import exact same iCalUID private copy, no guests, with readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-terry-approval-intake.cjs import

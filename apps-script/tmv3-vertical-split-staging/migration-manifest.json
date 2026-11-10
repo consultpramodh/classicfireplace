@@ -1,0 +1,3028 @@
+{
+  "source": {
+    "description": "Reconstructed V3 snapshot, NOT an independently confirmed live HEAD",
+    "scriptId": "1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt",
+    "version": "3.12.21-shared-preinspection-calendar-r1"
+  },
+  "files": {
+    "00_Configuration.gs": {
+      "bytes": 13673,
+      "sha256": "fbcd19ec539603919284b5763d52f722cbbf37880bfa0f8fd9f0bcc136d9040f",
+      "chunks": 1
+    },
+    "10_Shared_Core.gs": {
+      "bytes": 637625,
+      "sha256": "3e0ddefc85a409c5d491d0a518c852049f0ed695868ce0a58a3fc9e6f52c1bf2",
+      "chunks": 19
+    },
+    "20_Master_Triggers.gs": {
+      "bytes": 3046,
+      "sha256": "82d6d8a979c321ea4403ca8b8d480a3933f34a8cd1d66baa82d4dffba09881fb",
+      "chunks": 7
+    },
+    "30_PreInspection.gs": {
+      "bytes": 164616,
+      "sha256": "fd60862ce0106959645297092778873a7ecc8bba1e40a6e2d4833137994ebe2e",
+      "chunks": 114
+    },
+    "40_Installation.gs": {
+      "bytes": 19535,
+      "sha256": "d1e810696bad994b2f4faf3e83c8dcbb36ae63a47251ae852fc18e42125c9b7f",
+      "chunks": 24
+    },
+    "50_Delivery.gs": {
+      "bytes": 3041,
+      "sha256": "a3a76a0f155654fadc8a96af92aae81b1b0048b1949aa071a78364d2e58a5c8c",
+      "chunks": 7
+    },
+    "60_Service.gs": {
+      "bytes": 10175,
+      "sha256": "562ffb3bb1b186874571a4f9d5ecab1f786e8b17107041bd537e35f86b633b2b",
+      "chunks": 14
+    },
+    "90_Regression_Tests.gs": {
+      "bytes": 104938,
+      "sha256": "5aa0ceac1e6606b0de5eb7bcdac57dd5a7f95a589faa00a04baaac9203cfbd5a",
+      "chunks": 1
+    },
+    "appsscript.json": {
+      "bytes": 397,
+      "sha256": "7e189dc49b9ac58af337fab5a4a96ee8532a2a5c8c190eb571dd6373cd154543"
+    }
+  },
+  "relocated": [
+    {
+      "name": "tmv3_preInspectionTaskRowArray_",
+      "origin": "20_Striven",
+      "target": "PreInspection",
+      "sha256": "fafa13ceac69943c10dcf386c2dcc341bf4f4dc4023ecd586aec2544420bde54"
+    },
+    {
+      "name": "tmv3_preInspectionTaskRefreshTargets_",
+      "origin": "20_Striven",
+      "target": "PreInspection",
+      "sha256": "ed538fadb6f85685f6195f00583fb54d55cc9887075090c8060bcf36a60eeb07"
+    },
+    {
+      "name": "tmv3_searchPreInspectionTaskIdsForCustomer_",
+      "origin": "20_Striven",
+      "target": "PreInspection",
+      "sha256": "80424c2a499fc6fae6187b8ce56fe360d701f09378a98251810921e9c854ecb1"
+    },
+    {
+      "name": "tmv3_preInspectionTaskSourceRows_",
+      "origin": "20_Striven",
+      "target": "PreInspection",
+      "sha256": "6828de424abdefc9d20ae6c3207ee2628f62e6cead9019b74b5084db0370a8c1"
+    },
+    {
+      "name": "tmv3_searchPreInspectionTasks_",
+      "origin": "20_Striven",
+      "target": "PreInspection",
+      "sha256": "7f6001ac4579cd11c891d9021139d3f9f63389631bbec6c616a3038036348349"
+    },
+    {
+      "name": "tmv3_preInspectionStep1SourceAllowed_",
+      "origin": "30_Calendar",
+      "target": "PreInspection",
+      "sha256": "b3787c57b28d641cece1c6bbddd3f2859883e081196c9c001f1b5c03c6301c16"
+    },
+    {
+      "name": "tmv3_serviceStep1LegacyAllowed_",
+      "origin": "30_Calendar",
+      "target": "Service",
+      "sha256": "ce7ee7aa9f6d96412680cf7b8e19fd0d75837c82d3e798494d6028088cb3f0b7"
+    },
+    {
+      "name": "tmv3_serviceExternalCreatorRecoveryAllowed_",
+      "origin": "30_Calendar",
+      "target": "Service",
+      "sha256": "6e2dca99e82b75cf6a8d86b69819bc2ef67f03df4bc05db2b277b24932dd8f1d"
+    },
+    {
+      "name": "tmv3_extractLegacyInstallOrderNumber_",
+      "origin": "30_Calendar",
+      "target": "Installation",
+      "sha256": "494a6a6986b2615d8df5e2abbd6f1c16e1cf1b289583a9bbc57e2bca5bf943d4"
+    },
+    {
+      "name": "tmv3_extractLegacyDeliveryOrderNumber_",
+      "origin": "30_Calendar",
+      "target": "Delivery",
+      "sha256": "5a149e445a67c16b9a1f814597e432a355ac448fc199e5d06d045a091b449175"
+    },
+    {
+      "name": "tmv3_extractLegacyServiceOrderNumber_",
+      "origin": "30_Calendar",
+      "target": "Service",
+      "sha256": "120bcf32a7f1177d831439acc1725832484fd386aefec20b0d6dfa6cef035ca1"
+    },
+    {
+      "name": "tmv3_extractLegacyPreInspectionOrderNumber_",
+      "origin": "30_Calendar",
+      "target": "PreInspection",
+      "sha256": "049e6cf7138f32cfd2e1bc4a84eedb81f20d55d4ec7035f00ec34abc43f67726"
+    },
+    {
+      "name": "tmv3_installLegacyCustomerName_",
+      "origin": "30_Calendar",
+      "target": "Installation",
+      "sha256": "7524fcc8c9d657906acb21f12e7ce4cddde1abb562da013e7a72770ff66dee8f"
+    },
+    {
+      "name": "tmv3_deliveryLegacyCustomerName_",
+      "origin": "30_Calendar",
+      "target": "Delivery",
+      "sha256": "edb63ed53de90036c78a0f33b96ad8b14a51ded1c990870256ed155bf30f6da4"
+    },
+    {
+      "name": "tmv3_serviceLegacyCustomerName_",
+      "origin": "30_Calendar",
+      "target": "Service",
+      "sha256": "2049a005bca8cf082f62bef8ece148d94929783126ff5c386b4b18317311e625"
+    },
+    {
+      "name": "tmv3_preInspectionCalendarCustomerName_",
+      "origin": "30_Calendar",
+      "target": "PreInspection",
+      "sha256": "36ffaec20df07a578d9e9916872829fe3a8d353fe41afe5ba18ba644afa1a94b"
+    },
+    {
+      "name": "tmv3_preInspectionProvenanceCreator_",
+      "origin": "30_Calendar",
+      "target": "PreInspection",
+      "sha256": "ddd654d3b662c8241796c47e191f9e01c8bb6dae04b5e0acdbafb703a90a7fcb"
+    },
+    {
+      "name": "tmv3_installStep1CalendarLiveSync",
+      "origin": "32_Step1_Calendar_View",
+      "target": "Installation",
+      "sha256": "845a7f698b3f38a3b1a5b7ba818d1693a3faee0c7814cc50ecc86905ff7ac1bf"
+    },
+    {
+      "name": "tmv3_step2ClassifyService_",
+      "origin": "34_Step2_Eligibility",
+      "target": "Service",
+      "sha256": "ee613bc092922e2823a256a9bc9bc93ad8f6c86e94c2af89bb2ae882a31f1d0c"
+    },
+    {
+      "name": "tmv3_step2ClassifyPreInspection_",
+      "origin": "34_Step2_Eligibility",
+      "target": "PreInspection",
+      "sha256": "2a88049f4a069018d3b602ea2b24e2d210a11e8c756996e65bc5a016d0bc1613"
+    },
+    {
+      "name": "tmv3_step2PreInspectionNonCustomer_",
+      "origin": "34_Step2_Eligibility",
+      "target": "PreInspection",
+      "sha256": "45928f6c42c530431f12fde34b64ed08f0e0ea1731e7183cc0309bd344b02263"
+    },
+    {
+      "name": "tmv3_step2PreInspectionFormatWarnings_",
+      "origin": "34_Step2_Eligibility",
+      "target": "PreInspection",
+      "sha256": "8e3c9a92ce873be985eb35cf03a6e823128c3911996b4daa6eb543e0e81f44ba"
+    },
+    {
+      "name": "tmv3_preInspectionClickableLinkPresent_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "ed8169d0de7155c529befea85af482bef37940fda17ddabca168f34c9740100d"
+    },
+    {
+      "name": "tmv3_preInspectionHtmlLink_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "6e4e7108c98a7ec5e8a1f554611a91981a005a7179c39a5e8c9923213fc840ca"
+    },
+    {
+      "name": "tmv3_preInspectionEnsureLegacyTitle_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "81753bc260875a5a38099af7c34c8105aa2e5178e816f890a9720ebb6abd3d1b"
+    },
+    {
+      "name": "tmv3_preInspectionAuthoredMarkup_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "10e644c0b5f1ed415f9e734efd53f276c512153991e4ff5b3861a5d11b07de11"
+    },
+    {
+      "name": "tmv3_preInspectionClickableManagedDescription_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "21033aa407b80de78617c683b16a38fb669ecc120af93faffb22721dc22dbbf1"
+    },
+    {
+      "name": "tmv3_preInspectionTitleVariants_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "7b260d4b285b90ab9d63edc7434881237b487f386c03682e5aff4e22a782fd99"
+    },
+    {
+      "name": "tmv3_stripPreInspectionPreservedTitle_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "0ff68001e435bbd54d87223333aa63baf512724c902a21f44f678ce329b613eb"
+    },
+    {
+      "name": "tmv3_normalizePreInspectionAuthoredWraps_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "9215fc68d29f96e30acb35f6a551bf20fc6165799b485c19ff3c9309147d0550"
+    },
+    {
+      "name": "tmv3_preInspectionCalendarNotesText_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "9abafc092edb78fcfa2ab8c35888ab1209af3eb7ac74bf325ca584641c683af7"
+    },
+    {
+      "name": "tmv3_assertPreInspectionLinkDescription_",
+      "origin": "35_CalendarLinks",
+      "target": "PreInspection",
+      "sha256": "fea3c283035cc2fa18e116b814eac01f02672eafc230103f65bf5540d707022f"
+    },
+    {
+      "name": "tmv3_step3ResolvePreInspectionAnchor_",
+      "origin": "36_Step3_Business_Anchor",
+      "target": "PreInspection",
+      "sha256": "f1308444a9ec6d61d162bdf0fbe3f0c1474bfc8302153ae7f79871a92bdd1295"
+    },
+    {
+      "name": "tmv3_step3ResolvePreInspectionOrderEvidence_",
+      "origin": "36_Step3_Business_Anchor",
+      "target": "PreInspection",
+      "sha256": "c5c0c299bb081610177cbeb8f35efd9f8ed68de5b43f14882ddd6674c354d718"
+    },
+    {
+      "name": "tmv3_step3AnchorFromPreInspection_",
+      "origin": "36_Step3_Business_Anchor",
+      "target": "PreInspection",
+      "sha256": "079b40e1e7048298ed55ad1c6927bb606a618df2c8ef4193f0311e19eb1ab4f2"
+    },
+    {
+      "name": "tmv3_step4ResolveServiceIdentity_",
+      "origin": "38_Step4_Identity",
+      "target": "Service",
+      "sha256": "99efc7d069412e43028c55a242d8126dcca7a75c1800d8c0eb7949b73f3d65d8"
+    },
+    {
+      "name": "tmv3_step4ResolvePreInspectionIdentity_",
+      "origin": "38_Step4_Identity",
+      "target": "PreInspection",
+      "sha256": "3dafaa0dcc41f2a7eb5c199d9293e03c4c6dcb7f24dc10c32750c3a2e95d27b6"
+    },
+    {
+      "name": "tmv3_preInspectionTaskDecision_",
+      "origin": "40_Engine",
+      "target": "PreInspection",
+      "sha256": "2d4b2b693ba5c140851fd9700c65da653cad0f83e33dc87dbc48c449bda4e915"
+    },
+    {
+      "name": "tmv3_preInspectionCandidateEvidence_",
+      "origin": "40_Engine",
+      "target": "PreInspection",
+      "sha256": "073f5e451d0a756a66453014ce994da1e6440ab1b9877e1fed3f13bc17b26be4"
+    },
+    {
+      "name": "tmv3_extractServiceFireplaceNumber_",
+      "origin": "40_Engine",
+      "target": "Service",
+      "sha256": "4e95eeff5f7e532708c93807db4464cbe1e4b0e8577e444598f654224a0d2fce"
+    },
+    {
+      "name": "tmv3_step5ResolvePreInspection_",
+      "origin": "42_Step5_Task_Resolution",
+      "target": "PreInspection",
+      "sha256": "dc1d7dc7987740677a42914ed2503b6261578377aec233d866a9efe874be16a9"
+    },
+    {
+      "name": "tmv3_step5NormalizePreInspectionTaskTimesAcrossRecords_",
+      "origin": "42_Step5_Task_Resolution",
+      "target": "PreInspection",
+      "sha256": "685b5214a61e128a05c8cf5e5a1224a519073f9b749a333e251969f27a193ab3"
+    },
+    {
+      "name": "tmv3_step5AlignPreInspectionTaskClock_",
+      "origin": "42_Step5_Task_Resolution",
+      "target": "PreInspection",
+      "sha256": "5ac50d1c58e9319ffc3501497d9349311e3cb58954256ae8bc5f0fd90fd6050c"
+    },
+    {
+      "name": "tmv3_step7HydrateLinkedPreInspectionTasks_",
+      "origin": "46_Step7_Reconciliation",
+      "target": "PreInspection",
+      "sha256": "324f40a9b39bc7fded76694c541f4212d80c25e1048c4a3b0877588576085cf8"
+    },
+    {
+      "name": "tmv3_step7InstallReconciliationRun",
+      "origin": "46_Step7_Reconciliation",
+      "target": "Installation",
+      "sha256": "763dc7337540a5ea0d22ccf8c583e973b66d188d5176eeb6cdaf923dc30a2da1"
+    },
+    {
+      "name": "tmv3_preInspectionAssignmentOverride_",
+      "origin": "50_Verticals",
+      "target": "PreInspection",
+      "sha256": "bccfee7898c1b49ccb219835a720e6fcd2a5ff7e153d92150940f0773a6c9652"
+    },
+    {
+      "name": "tmv3_configurePreInspectionAssignmentOverride",
+      "origin": "50_Verticals",
+      "target": "PreInspection",
+      "sha256": "1aa248df45f4b9a67496ed94f69f7251bfafd42ec6baa623354402b6a02bd240"
+    },
+    {
+      "name": "tmv3_preInspectionCreatePolicy",
+      "origin": "50_Verticals",
+      "target": "PreInspection",
+      "sha256": "2ea38830cfd289b0e041617526a59a51e5a6327af02c61957abfb84aee3220d2"
+    },
+    {
+      "name": "tmv3_servicePolicy",
+      "origin": "50_Verticals",
+      "target": "Service",
+      "sha256": "c7f5eee6665ad2071d05e43430449a9aa368251028a533a9d1e28b23cb9bebf8"
+    },
+    {
+      "name": "tmv3_ensurePreInspectionMirror_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "c18906439a61d2438ada9a1c18155cd0d47d6d6b11777661e79c75aa62403bcd"
+    },
+    {
+      "name": "tmv3_preInspectionCalendarBusinessSnapshot_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "f07d35f36d536953c09976ac52664255478274fd675039ca987023d7a6bf223a"
+    },
+    {
+      "name": "tmv3_preInspectionCalendarParityEqual_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "a1d22467f521fd2fffaba0d6aa9d21a604385a645eaf1b56a31782ac224b6c7a"
+    },
+    {
+      "name": "tmv3_reconcilePreInspectionCalendarParity_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "129b73def2f2d922fbe44df0f89900cc7230ad7da27a909f224eb2cdd34d1d8d"
+    },
+    {
+      "name": "tmv3_serviceTaskTypeForOrder_",
+      "origin": "58_Operations",
+      "target": "Service",
+      "sha256": "5a31c746f0ebb7612d8a010f6f877e804776b67cbf490d7b19407969f1a60b21"
+    },
+    {
+      "name": "tmv3_enforcePreInspectionCreatePayloadHardRules_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "ad9fbac06ddf0fbe3e22297a8ddc2b3b2cbe70603fdf9a81b583ee34a264b23a"
+    },
+    {
+      "name": "tmv3_assertPreInspectionCreatePayloadHardRules_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "fd16c23404eb751b1cf42efc3d511e9b783cefbfbc5b2a1a39351adbf54639ee"
+    },
+    {
+      "name": "tmv3_installReminderAlreadySentToday_",
+      "origin": "58_Operations",
+      "target": "Installation",
+      "sha256": "5b2460052a1b679645cf4d2d60bdb93d52655b0807ae567bc4c874507fdb90af"
+    },
+    {
+      "name": "tmv3_markInstallReminderSent_",
+      "origin": "58_Operations",
+      "target": "Installation",
+      "sha256": "75c796e7c8efa5ec13953b41994f53c507ebe60e22f9ac34d8311ef5210f9dd1"
+    },
+    {
+      "name": "tmv3_sendInstallMissingSoReminders_",
+      "origin": "58_Operations",
+      "target": "Installation",
+      "sha256": "d666daddc35ddf4f5be57d1814cc77607c8498c76f550289f64a172732898166"
+    },
+    {
+      "name": "tmv3_sendInstallMissingSoRemindersNow",
+      "origin": "58_Operations",
+      "target": "Installation",
+      "sha256": "474ab2a5f8f7a02da0daea3cdadcf0d43366ef29b77113dd5c7e20718d4ddb5b"
+    },
+    {
+      "name": "tmv3_preInspectionGuestEmails_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "68bde76ed31a56a344bb158c25d1f23684f1afd5701705684c89da8384e9ac36"
+    },
+    {
+      "name": "tmv3_preInspectionHasSalesOrderReference_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "40614907d7b2be0a40484f43039319fd5cbbad2face89ec0a6aaadf6c8c64245"
+    },
+    {
+      "name": "tmv3_preInspectionCreatorEmail_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "a65195e06959c4bb3f40c817c00a0c7361339c9bf08aa64e576afeb0ff7de982"
+    },
+    {
+      "name": "tmv3_preInspectionCreatorFirstName_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "a790e6f5fd09b95e3f24a1607d38ab6e1686f8ece5d92a9b99004ae8baefb51a"
+    },
+    {
+      "name": "tmv3_preInspectionNotificationCustomerNumber_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "b7600e30a6702cd81138c87154ba649bd516d8efbf8dfc28a1896faae33d3c1c"
+    },
+    {
+      "name": "tmv3_preInspectionMissingDetailAssessment_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "caf6fd6ba52987e3eda0429de81591dbd5c7e3c610a177b313aee8f6740e4f47"
+    },
+    {
+      "name": "tmv3_preInspectionHtmlEscape_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "10e2318bf9bd531eee8214eca4963b40097396882bd231b1e281e179663fd1f1"
+    },
+    {
+      "name": "tmv3_preInspectionDisplayGuests_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "d17a33e0158186952a4fec2ddd7780516e2f3910ad047cfa2f1b5dfaf9207542"
+    },
+    {
+      "name": "tmv3_preInspectionMissingFields_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "e04e28e9da85042c218297a2c461e70aeac33417a199c9141dc6bbac2d30dd3e"
+    },
+    {
+      "name": "tmv3_preInspectionComparisonRowsHtml_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "d220d7f17082165987ed14de10a2286500a8aed57b3f6cbf65fbd6fd8307dcc8"
+    },
+    {
+      "name": "tmv3_preInspectionNotificationCc_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "9abea23598de430a01db95524c73f4145902a45e918a497d015d735975b0cc67"
+    },
+    {
+      "name": "tmv3_preInspectionMissingDetailEmailPreview_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "04f92b0a2753a8731b386201cd5c47a19c373cd5f76daf1ff621421b6a6d49cf"
+    },
+    {
+      "name": "tmv3_preInspectionMissingDetailPreviewFromRecords_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "6081e4e59918cb827a525f0cce85f43ce9fcfbe4ddb7296610dd3f432b7f37d8"
+    },
+    {
+      "name": "tmv3_previewPreInspectionMissingDetailEmails",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "b4319e12544140885903d619975d73e1628cb571e98a72ed1059b00388597a68"
+    },
+    {
+      "name": "tmv3_preInspectionCustomerLocationsFresh_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "f31baa643d170c42a6874c6028ac6aa605441a6996f3c4680677166b54b8bf28"
+    },
+    {
+      "name": "tmv3_preInspectionRejectedAddressGuard_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "835c3219c9c81db9a08f800840ae8309c85d291ed0184dbc961be9b5cc1e6db2"
+    },
+    {
+      "name": "tmv3_preInspectionOptionalOrderLocationEvidence_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "124ef3de288874d0b47f2b62a8902eef499abb3f41fca84d13a255c9bb68ed33"
+    },
+    {
+      "name": "tmv3_preInspectionCanonicalCacheTask_",
+      "origin": "58_Operations",
+      "target": "PreInspection",
+      "sha256": "132f0ece9ef6088b48f25cebdc8b8f41fca969086024181779c6b73d3cc1b6fd"
+    },
+    {
+      "name": "tmv3_installTriggers",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "62c267f18ca8d10646dcf82d0b06e70f5bf179c3f3b112ad00200858bdad8a47"
+    },
+    {
+      "name": "tmv3_removeTriggers",
+      "origin": "60_Automation",
+      "target": "Master_Triggers",
+      "sha256": "45d9009bb43a23e2495981839a46179bf8c14c28ff3f1a0c291936bf78bffa70"
+    },
+    {
+      "name": "tmv3_preInspectionGuestSyncDecision_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "b98681f5fe61a094231ae6f061658564f545c2e777007c33128f100498a61a11"
+    },
+    {
+      "name": "tmv3_reconcilePreInspectionSharedGuest_AUTO_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "a6d6ca9e9dde28fc937e2af49593f0db0e8caf0ccfaddf2a4cfd02f70835584b"
+    },
+    {
+      "name": "tmv3_installReminderCheck",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "3c2e8ac3cc3bb7a60ae5da9a84352c3eee8b18b76e22ba198dc62565249d4720"
+    },
+    {
+      "name": "tmv3_listTriggers",
+      "origin": "60_Automation",
+      "target": "Master_Triggers",
+      "sha256": "7f0c43a1fd31f51335bba617b59645c469be2a10bde1f75e1b2a7290d2aeeb5e"
+    },
+    {
+      "name": "tmv3_logTriggers",
+      "origin": "60_Automation",
+      "target": "Master_Triggers",
+      "sha256": "5451c303bf72fe248c6771e2c3ef3a32dc95a40c4396c8962c3337d56a7d2536"
+    },
+    {
+      "name": "tmv3_preInspectionExplicitCandidate_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "60974b5bc228047715efec54db2859c364d65424b5edb8211f4068c81240fe1e"
+    },
+    {
+      "name": "tmv3_preInspectionDiscoveryDecision_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "0b48aad493070182f03554a1754d4f3db90212fa7398c5228e5e650fad894b3b"
+    },
+    {
+      "name": "tmv3_preInspectionClassifyLikely_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "0dd29e93076e847539af3f5d9ed40efce74a0a324eabb96e9196f2222a5dfb7a"
+    },
+    {
+      "name": "tmv3_preInspectionOrderBeforeCreate_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "caad86b633a2b8e6bbb5dbb7dbf1f605c38dae26475e5fa86ae315701cb9a901"
+    },
+    {
+      "name": "tmv3_preInspectionStoreDiscovery_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "d12d63933c543acfd802d6a4ee2092b332618a3d99c42e42eac1108d719952d9"
+    },
+    {
+      "name": "tmv3_preInspectionDiscoveryStatus",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "0d3ca90c651384bb2a04a39e10f74c13c9fc8943e06dece7bab43fa5167c89e4"
+    },
+    {
+      "name": "tmv3_refreshPreInspectionDiscovery",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "f8d213a429bfbf86351722a80dff07f563210400cc731f54c580de6b9c498c51"
+    },
+    {
+      "name": "tmv3_reconcilePreInspectionEvent",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "aecb43feddaa8d799abf4ade6a01a29436dc8abe15dc836982418c0a689aac3e"
+    },
+    {
+      "name": "tmv3_preInspectionIntakeRecords_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "7e8db39b5e8f5e89936fb8728d5a2d7c753cafd5d8e5fb714a21433970cdbb13"
+    },
+    {
+      "name": "tmv3_preInspectionPromoteCandidate_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "57b333b9bef6af2548d443e4e0786133ed6834ce375b4a642ef6a605100e6c61"
+    },
+    {
+      "name": "tmv3_preInspectionNotificationDateParts_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "3e4e3ef718bf78dcc371f71b3c62e52cfc14df1173b466daf7e25b62c5449925"
+    },
+    {
+      "name": "tmv3_preInspectionNotificationWeek_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "3c9b5f7db9757083ab2253e2f3ef222cbd5ff7455b3b7c2f90ad8714687f398e"
+    },
+    {
+      "name": "tmv3_preInspectionNotificationDecision_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "4cb6d9fc86e511d6b3bc139b0788b1f0c7a150535b74b8b0170d8118e280dac9"
+    },
+    {
+      "name": "tmv3_preInspectionSendMissingDetails_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "de89d6b3d7d244aeb7d0d55206d56c8ec62db73cbccf26b325230384efb1b2ef"
+    },
+    {
+      "name": "tmv3_preInspectionSweepKey_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "fa372983b1e5cadead466ea687e984a1692a033ba391f32d6f90a60dc2d0d04c"
+    },
+    {
+      "name": "tmv3_preInspectionTargetedIntake_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "68a736d59482c7980c0fd136abf57bf7a0759a343bd2a3b376d55816907fd0be"
+    },
+    {
+      "name": "tmv3_preInspectionAutomationCycle_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "0a494da1a15ccb9fb0cfbd35da12b4cf101afb0b74575112dd65b444c27c2e06"
+    },
+    {
+      "name": "tmv3_runPreInspectionAutomation",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "80eb19e6df69c06c8938bd63de73026e560042de6788731ed9d739e6ad9a2780"
+    },
+    {
+      "name": "tmv3_verifyPreInspectionAutomation",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "66efe0227589510e44a7aa75cf6f5d57ac8edfd3811f6aa7c2ca79f948bc2c88"
+    },
+    {
+      "name": "tmv3_preInspectionScheduledCycle",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "44cee02a60b912db5bed34b3c1a692b9dfcf3258b0f653e95b676c92c32baaea"
+    },
+    {
+      "name": "tmv3_preInspectionCheck0800",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "fe71e245811b0e12c32c8d9c756a13cb99cfa81065492cac55241f2fadd0c72c"
+    },
+    {
+      "name": "tmv3_preInspectionCheck1300",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "e8f0de0b29d2035a2720dd8bd96cfbf48d4681f01def17f89993a4b1ad75ea6c"
+    },
+    {
+      "name": "tmv3_preInspectionCheck1700",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "bce00cf1003d0537938ffb68334a257a70028d123bc22db6aa2774a3a4d23896"
+    },
+    {
+      "name": "tmv3_preInspectionScheduleNextSweep_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "59015b2f086a4d601b2cd2b099d55df642d4f30a2010197efaf4d637130d80e9"
+    },
+    {
+      "name": "tmv3_preInspectionClearContinuationTrigger_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "bccb19d92e583485598349a2bdca09588ea63c77cca8b429921350c9d3a98096"
+    },
+    {
+      "name": "tmv3_preInspectionLogSweep_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "2bf0a8aadbf388aa324bb4ace637e0b4b7b000ab973ec0a1ce982a438080583f"
+    },
+    {
+      "name": "tmv3_preInspectionMaybeContinueSweep_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "00154ccd0874606d4aaa9eadda1d9c72ff04412e67fe5d1e53f23288b2e2ac54"
+    },
+    {
+      "name": "tmv3_preInspectionContinueEligibleSweep",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "c2998cd9d946af2c7a2f839763964a88996a54284047305f702a9ddf374a5649"
+    },
+    {
+      "name": "tmv3_runPreInspectionDailySlot_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "46d32d5b49999b3c65be018fa9dbe9760e57581050adad379492d8a53b273bcf"
+    },
+    {
+      "name": "tmv3_installPreInspectionAutomationTrigger",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "b0d3a7bf18c25958c361f04b6dbdd0b30bcfc4601205040279195c36b0bc13e8"
+    },
+    {
+      "name": "tmv3_preInspectionFreshHistoryBeforeCreate_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "0a8c62e7da7c1aff72140315d245838a8093cc122b32311bf4950e11fe10f3e9"
+    },
+    {
+      "name": "tmv3_preInspectionRecoveryRecord_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "3917df6a9950af2787f74156b2cd1640b7b293e0188c8a2525869fb96fd910a8"
+    },
+    {
+      "name": "tmv3_preInspectionFailureAlert_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "7c30aaf064368eae97dd82ffc2c8949d776af7011b85e624f2d96a04671c7de3"
+    },
+    {
+      "name": "tmv3_restorePreInspectionLegacyTitle_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "ff6e3f80889ec092920846054933c028fe78d544845078f6835290b6eb598155"
+    },
+    {
+      "name": "tmv3_restoreRecordedPreInspectionLegacyTitles",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "0db0bf080fcd71bfb9e3745b4a60e354aebf95a0f4fc341efcd15ddca8cbb2a2"
+    },
+    {
+      "name": "tmv3_preInspectionCompletionVerified_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "8c083953a4184a8a54cf2e24ce9f3a575f05861881febfc826f6f237df1d992d"
+    },
+    {
+      "name": "tmv3_preInspectionAutomaticRecovery_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "3f8a89a6e2d92d83b10a4f841a1781dd2f1c3f1d175f601b49935cfc0b3640f0"
+    },
+    {
+      "name": "tmv3_preInspectionHistoricalCoverageVerified_",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "36cf42451b95e6a3f539e14173671d6a552b24c27ef5f1a6936d013515397963"
+    },
+    {
+      "name": "tmv3_reconcilePreInspectionPendingReview",
+      "origin": "60_Automation",
+      "target": "PreInspection",
+      "sha256": "36ff40f73e08a409fc00fa372cdf98646733ab665cad04047f13849876c0edca"
+    },
+    {
+      "name": "tmv3_allVerticalAutomationTick",
+      "origin": "60_Automation",
+      "target": "Master_Triggers",
+      "sha256": "a5780e6091bde34ac05bdfaea366d20607c915381cf4fb72f208dec9a19bfbb0"
+    },
+    {
+      "name": "tmv3_runServiceAutomation",
+      "origin": "60_Automation",
+      "target": "Service",
+      "sha256": "77db3d2cbae8b8443ad2aaf3a1dd7fc47b1f14f6109bbc50805b489328dfd4b1"
+    },
+    {
+      "name": "tmv3_runDeliveryAutomation",
+      "origin": "60_Automation",
+      "target": "Delivery",
+      "sha256": "22f0cbc489ba56689355aef1c458ddf31339fcad080ed488c5413a11501b7958"
+    },
+    {
+      "name": "tmv3_runInstallAutomation",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "3ec8831908f838da96ee8db5370449f510be8c20a26eef1e58860192e58cd95e"
+    },
+    {
+      "name": "tmv3_installVerticalProductionTrigger",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "b8fc9c8132432baa23925c2f6d35ace454052c1119d1a0cd1e313943d265e339"
+    },
+    {
+      "name": "tmv3_scheduledSheetRefresh",
+      "origin": "60_Automation",
+      "target": "Master_Triggers",
+      "sha256": "e9175ed5252951b1a910c5381849c969a36694b3cc470bb719b88f5007270cbe"
+    },
+    {
+      "name": "tmv3_installAutomationSheetRefreshTrigger",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "4bca582c8c0941f696413222d2d1a85372a35d63646480bdf750787c51951a19"
+    },
+    {
+      "name": "tmv3_standardDailySchedule_",
+      "origin": "60_Automation",
+      "target": "Master_Triggers",
+      "sha256": "2fdeacc4de35be196098acc5232c05627878082e2eae8c3571233f896b414c7c"
+    },
+    {
+      "name": "tmv3_standardVerticalSlot_",
+      "origin": "60_Automation",
+      "target": "Master_Triggers",
+      "sha256": "49c716d6000d9661bfbfbe8204057dffcdea2a41e6396d65f8ab4cd30cd74d13"
+    },
+    {
+      "name": "tmv3_installCheck0800",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "cf00fc167dadecaa6a2ea12a07ad4edbe0d2d6a1f8c1523e0f0bc22e08869b5d"
+    },
+    {
+      "name": "tmv3_installCheck1300",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "d6662694af64ef6d582cbd6e6d9093550327e0d35a3aeb1a667e34409d0e22c3"
+    },
+    {
+      "name": "tmv3_installCheck1700",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "cff3f1c2f16ad4f3fc0bff913d6686f9a3ffd2442aba865bceb880822b00af14"
+    },
+    {
+      "name": "tmv3_deliveryCheck0800",
+      "origin": "60_Automation",
+      "target": "Delivery",
+      "sha256": "c3f18c26debee13cc142726752241c184f4a45669748e5fc19a2c85ada858bbb"
+    },
+    {
+      "name": "tmv3_deliveryCheck1300",
+      "origin": "60_Automation",
+      "target": "Delivery",
+      "sha256": "babc9771d1397a4c8ef1b246c7d5ecdbf96f7e3a9e27135ec4410fb37f727cbc"
+    },
+    {
+      "name": "tmv3_deliveryCheck1700",
+      "origin": "60_Automation",
+      "target": "Delivery",
+      "sha256": "4698d04b81b70b250ce8b1fb14e45ca0daa6a98b8ec3009550eeecf8056e4df9"
+    },
+    {
+      "name": "tmv3_serviceCheck0800",
+      "origin": "60_Automation",
+      "target": "Service",
+      "sha256": "35ea0a161845dc48eb2c4c36e86cc59c5dbfc194131092bc346e8c340228618f"
+    },
+    {
+      "name": "tmv3_serviceCheck1300",
+      "origin": "60_Automation",
+      "target": "Service",
+      "sha256": "4e4dcc2245cd8143a95e2ec5c4b56f738b7aa2466b927ee319446844845ebe91"
+    },
+    {
+      "name": "tmv3_serviceCheck1700",
+      "origin": "60_Automation",
+      "target": "Service",
+      "sha256": "df587a038d04e37f290f7d732bc98c570f9c99b2a50bb3662e63e7b0efced52d"
+    },
+    {
+      "name": "tmv3_installStandardDailyTriggers",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "e0beae536cafb0fec1dcb16a6341d1aaaf6ca116f0721eb80e1f390abca70fc6"
+    },
+    {
+      "name": "tmv3_installSweepContinue",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "47d1d43757e2b076244d4459abd63e95f76ea27ea89be43cffcb1f92c2b64256"
+    },
+    {
+      "name": "tmv3_deliverySweepContinue",
+      "origin": "60_Automation",
+      "target": "Delivery",
+      "sha256": "e85e8721254118fa20466f5d1945395f1c6cbc1e9816840b85e704f37a9715a1"
+    },
+    {
+      "name": "tmv3_serviceSweepContinue",
+      "origin": "60_Automation",
+      "target": "Service",
+      "sha256": "b77a607a98dcdbed04297af9d85319d90d8217eb8cb181e007ac7ba78e28a6e9"
+    },
+    {
+      "name": "tmv3_installResolveContactFresh_",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "f43275c15ae308e0b6e062ddd55b06f5752448a6fb2260a63109e1312ebd2d3e"
+    },
+    {
+      "name": "tmv3_installRefreshView_",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "037d4a414f13ad239d0014ae4c4b6c570b35af8793c7c5a2fc5251799ab8e522"
+    },
+    {
+      "name": "tmv3_installSchedulePublication_",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "29fd4315622f1818258fd295452244f68714e9b0ba9824da89d35a72dd842354"
+    },
+    {
+      "name": "tmv3_installPublishView",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "3b6b8a45be4eb9e72c2126c1573abe3bf289fafc624ab2689607b82499a4af53"
+    },
+    {
+      "name": "tmv3_installReadiness",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "b59657956d047ace8d4169133b9693c6058dbfa6b73d96b19439d197110f9c69"
+    },
+    {
+      "name": "tmv3_installCreatorAllowed_",
+      "origin": "60_Automation",
+      "target": "Installation",
+      "sha256": "b41632c2271b84a56cd6faf2370585c1a1acbbfcedea66aecfe80c3255e3ee1f"
+    },
+    {
+      "name": "tmv3_preInspectionTodayRecords_",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "77ca18ebe52d544b910ae717dea99cf2bbffd67f5d7cfdf3958262c62705efbc"
+    },
+    {
+      "name": "tmv3_preInspectionCompactPlan_",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "30a025da2171e1502d3f39c3461df7949d8e387e32865347cc2ed74606c8ca82"
+    },
+    {
+      "name": "tmv3_preInspectionTodayPreview",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "1f0483524c2c5fb66d374d86d7dd256b40b9847e733743a967f0f0fb2833dab4"
+    },
+    {
+      "name": "tmv3_preInspectionTodayEligibleQueue_",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "b1c5a092bb7b676fa2490c4c88b21db6eedd62cd95d722ca6a6e0a5c66bc8043"
+    },
+    {
+      "name": "tmv3_preInspectionTodayRunNext",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "459b26163f221f5278a5b92216fb8569212f3e5253f17f3a719f03d5e99372b3"
+    },
+    {
+      "name": "tmv3_preInspectionTodayRunEligibleBatch",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "bf45ca4e22cbdd0715d306d6c59ee28bb3d96422d2bce57b15b20d814b989e9d"
+    },
+    {
+      "name": "tmv3_preInspectionTodayLocationEvidence",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "f099cef805322544c8956f92a8b708e2932019547dd78b39e70563b8db25c8c6"
+    },
+    {
+      "name": "tmv3_preInspectionTodayRunUnlinked",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "62ad1c24084dba1d6b942f1e7f0dc0ecc6a42809837906e831fdd8b41e35bd02"
+    },
+    {
+      "name": "tmv3_preInspectionTodayLocationResponseShape",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "75d9f7b9f9fff681273bc0dd68cfddc4fb9c12ea82838c95d9a2ddf3b177e071"
+    },
+    {
+      "name": "tmv3_preInspectionTodayRefreshTaskCacheSchedules",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "177f2e0fc809789333cc2b0ce1727ed0bf22b49db2055aa8f65f7a846cc3bbb2"
+    },
+    {
+      "name": "tmv3_preInspectionOct21Preview",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "0159dc560f585c3bf0faf0cdcff27dc898f9097b8eebc51d1e4847faea840bc2"
+    },
+    {
+      "name": "tmv3_preInspectionOct21RunNext",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "3e25cc7199cdc0b1e8c08c7b5f55e283e5aace1e10e33427155b8cb2f7047f1b"
+    },
+    {
+      "name": "tmv3_preInspectionOct21RefreshCache",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "583f5d9d9a368d7785a966a910da5a10b5bf02247136c656700f6759fff6eb4a"
+    },
+    {
+      "name": "tmv3_preInspectionLastWeekAudit",
+      "origin": "90_Admin",
+      "target": "PreInspection",
+      "sha256": "276f0efff21b80d55c917ea627ef36f688d1b25167e126cfc599b3877677ca50"
+    }
+  ],
+  "remainingShared": [
+    {
+      "name": "tmv3_ss_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_sheet_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_clean_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_norm_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_digits_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_phone10_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_now_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_date_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_time_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_iso_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_strivenTaskDateTime_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_parseDateTime_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_sameCalendarDate_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_taskDueDateOnly_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_hash_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_first_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_unique_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_property_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_configCapabilities_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_rows_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_replaceRows_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_audit_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_stateKey_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_eventStateIndex_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_titleMigrationStateIndex_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_titleMigrationStateForEvent_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_recordTitleMigrationState_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_upsertState_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_assertHardRules_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_assertShadow_",
+      "origin": "10_Core"
+    },
+    {
+      "name": "tmv3_identityDescriptionForRecord_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_identityIndex_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_resolveIdentity_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_resolveOwnedLocation_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_resolveOwnedContact_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_identityFail_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_normalizeAddress_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_addressParts_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_addressStrongMatch_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_locationFullAddress_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_extractEmails_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_normEmail_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_nameCorroboratesCustomer_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_phoneCorroboratesCustomer_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_normCode_",
+      "origin": "15_Identity"
+    },
+    {
+      "name": "tmv3_resetRuntimeMetrics_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_runtimeMetrics_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_strivenApiBudgetConfig_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_strivenApiBudgetDate_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_strivenApiBudgetKeys_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_strivenApiBudgetStatus_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_strivenApiEffectiveSoftLimit_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_reserveStrivenApiCall_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_markStrivenDailyLimitExhausted_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_isStrivenDailyLimitResponse_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_strivenApiBudgetStatus",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_token_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_fetchJson_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_reportRows_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_extractReportRows_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_assertSourceReplacementSafe_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_refreshMasterSources_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_refreshTransactionSources_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_refreshSources",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_normalizeCustomer_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_normalizeLocation_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_normalizeContact_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_normalizeOrder_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_normalizeTask_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_dedupeObjects_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_mergeOrderRows_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_getTaskById_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_getCanonicalV1TaskSchedule_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_taskScheduleCheck_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_extractTaskSearchRows_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_normalizeV2TaskModel_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_employeeDirectory_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_resolveOrganizerEmployee_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_getCustomerContacts_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_getContactById_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_normalizeApiContact_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_arrayFromApiResponse_",
+      "origin": "20_Striven"
+    },
+    {
+      "name": "tmv3_calendarRecords_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_step1CalendarRecords_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_calendarRecordsWithOptions_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_verticalCalendars_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_calendarEvent_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_mergeLogicalCalendarRecords_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_calendarLogicalKey_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_calendarEventUrl_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_identityEvidenceDescriptionRaw_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_decodeCalendarHtmlEntities_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_calendarReadableDescription_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractCalendarTaskNumber_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractOrderNumberForVertical_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_stripPhonesForOrderParsing_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractCustomerNumberForVertical_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractCalendarCustomerName_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_shouldIgnoreEvent_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractLinks_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractOrderNumber_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractCustomerNumber_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_extractPhone_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_safeCalendar_",
+      "origin": "30_Calendar"
+    },
+    {
+      "name": "tmv3_executionStage_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1CalendarRun",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1CalendarDiagnostics_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1WriteOperatorViews_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1OperatorRow_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1EventDetails_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1CalendarCustomerDetails_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1People_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1CalendarScheduleDisplay_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1CalendarChecklist_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1SourceLabel_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1FormatPhone_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1FormatOperatorView_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1FormatTaskCells_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1VerifyOperatorViews_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1Counts_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1CalendarIds_",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step1CalendarLiveSyncStatus",
+      "origin": "32_Step1_Calendar_View"
+    },
+    {
+      "name": "tmv3_step2CalendarRecords_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2EligibleCalendarRecords_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2ClassifyCalendarRecord_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2Decision_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2CalendarRun",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2Counts_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2WriteOperatorViews_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2OperatorRow_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_step2Verify_",
+      "origin": "34_Step2_Eligibility"
+    },
+    {
+      "name": "tmv3_buildCalendarLinkPlan_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_requiredCalendarCopiesForEvent_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_requiredCalendarCopies_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_calendarHtmlEscape_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_calendarHtmlText_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_managedCalendarDescription_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_calendarMarkdownLabel_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_managedCalendarBlockStart_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_stripManagedLinkBlocks_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_stripV3ManagedBlock_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_regexEscape_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_findEventCopies_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_findCalendarOccurrence_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_previewCalendarLinks_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_assertLegacyCalendarMutationDisabled_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_writeCalendarLinks_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_writeCalendarLinksForEvent_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_verticalClickableDescription_",
+      "origin": "35_CalendarLinks"
+    },
+    {
+      "name": "tmv3_step3RefreshAnchorSources_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3AnchorSourceSummary_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3AnchorIndex_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3AllowedOrderTypes_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3OrderTypes_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3OrderMatchesVertical_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3BusinessAnchorRecords_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3ResolveOrderAnchor_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3BareSixDigitOrderCandidates_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3UniqueOrders_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3AnchorFromOrder_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3Decision_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3BusinessAnchorRun",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3BusinessAnchorRunCached",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3Counts_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3WriteOperatorViews_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3OperatorRow_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3AnchorSummary_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step3Verify_",
+      "origin": "36_Step3_Business_Anchor"
+    },
+    {
+      "name": "tmv3_step4RefreshIdentitySources_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4IdentityIndex_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4AnchorPendingIdentityAllowed_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4IdentityRecords_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4ResolveIdentityWithoutAnchor_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4ResolveCalendarIdentityOnly_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4ResolveIdentity_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4ResolveOrderIdentity_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4ResolveCustomerFromCalendarEvidence_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4TaskMatchesVertical_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4TaskIdentityCandidate_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4SurnameCorroboratesCustomer_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4AddressCandidates_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4CorroborateCustomer_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4ResolveLocation_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4LinkedTaskLocation_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4ResolveContact_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4Decision_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4IdentityRun",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4IdentityRunCached",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4Counts_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4WriteOperatorViews_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4OperatorRow_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4SyncChecklist_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4TaskColumnIdentity_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4LocationDisplay_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4IdentitySummary_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4Verify_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_step4WrittenAddressKey_",
+      "origin": "38_Step4_Identity"
+    },
+    {
+      "name": "tmv3_shadowRun",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_shadowMapFromCache",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_sourceCacheSummary_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_shadowMapFromCache_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_referenceIndex_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_resolveEvent_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_taskFitsVertical_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_taskIsOpen_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_taskIsCompleted_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_taskDifferences_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_calendarLinkAcceptance_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_result_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_buildDataChecklist_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_assignmentChecklistLine_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_calendarLinkSummary_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_writeOperatorViews_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_formatOperatorView_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_statusCounts_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_updateOverview_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_sameMinute_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_sameLocalDay_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_allPhones_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_verificationSummary_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_resolveEventRecords_",
+      "origin": "40_Engine"
+    },
+    {
+      "name": "tmv3_step5CachedSourceSummary_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5RefreshTaskSources_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskIndex_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskRecords_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5ResolveStandardTask_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5Decision_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskResolutionRun",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskResolutionRunCached",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5Counts_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5WriteOperatorViews_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5OperatorRow_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5SyncChecklist_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskSummary_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5GuardTaskLinkedAcrossEventDates_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskColumnSummary_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskCombinedSummary_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5DisplayTaskName_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskScheduleSummary_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskScheduleOne_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5DisplayStatus_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5TaskStatusSummary_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step5Verify_",
+      "origin": "42_Step5_Task_Resolution"
+    },
+    {
+      "name": "tmv3_step6TaskDecisionRun",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6TaskDecisionRunCached",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6DecisionRecords_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6NoOpenTaskDecision_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6Decision_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6IsFulfilledStatus_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6IsCancelledStatus_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6TaskTouchesEventDay_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6TaskLocalDay_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6LocalDay_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6Counts_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6WriteOperatorViews_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6OperatorRow_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step6Verify_",
+      "origin": "44_Step6_Task_Decision"
+    },
+    {
+      "name": "tmv3_step7ValidateExecutionContract_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7FreshPlansForEvent_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7FreshExecutionContract_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7ReconciliationRun",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7CreateCandidateScan",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7ReconciliationRunCached",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7ReconciliationBatchRun",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7FreshPlanForTask_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7Plans_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7Expected_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7ContactOwnership_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7FreshTask_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7RequestedByFromRaw_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7TitleState_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7ExistingTaskPlan_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7ExistingAction_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7CreatePlan_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7NoTaskPlan_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7PlanRow_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7BlankChecks_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7IdCheck_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7RequestedByCheck_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7DateCheck_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7DesiredAssignmentText_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7AssignmentText_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7AssignmentCheck_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7Evidence_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7EnsureSheet_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7WritePlans_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7OperatorNextAction_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_publishLatestStep7ToVisibleSheets",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7Counts_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_step7Verify_",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_taskFirstRelationshipAudit",
+      "origin": "46_Step7_Reconciliation"
+    },
+    {
+      "name": "tmv3_desiredAssignment_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_titlePhoneDisplay_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_taskNameNormalizationStatusAllowed_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_titleCityFromAddress_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_titleLocationDisplay_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_verifiedTitleContext_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_desiredTaskName_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_desiredCalendarTitle_",
+      "origin": "50_Verticals"
+    },
+    {
+      "name": "tmv3_writesEnabled_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_assertBusinessWritesEnabled_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_assertLegacyMutationHelperDisabled_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_buildTaskPatchPayload_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_buildAssignmentPlan_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_employeeNameById_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_safeTaskPatchPayload_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_patchTaskById_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_addAssignment_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_applyAssignmentPlan_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_previewTaskMutation_",
+      "origin": "55_Writes"
+    },
+    {
+      "name": "tmv3_operationPolicy_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_operationWritesEnabled_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_assertOperationWrite_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_selectedContext_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_taskIdHintFromText_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_findCalendarEventById_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_findFreshEventRecord_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_freshSelectedResolution_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7PublishedPlan_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7FreshSelectedContract_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7PlanChangedResult_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7BundleFromContract_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7FreshLocationOwnership_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7FreshOrderOwnership_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7FreshCriticalOwnership_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7DatePayload_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7RelationshipPayload_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7DesiredAssignmentFromContract_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_step7ActionsForMode_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_executeFreshStep7Selection_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_assertResolvedRecordWritable_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_rawTaskById_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_taskAssignmentsFromRaw_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_upsertTaskCacheRow_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_operationPatchTask_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_operationAssignmentRequest_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_reconcileTaskAssignments_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_assertResolvedOwnership_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_selectedDatePayload_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_selectedRelationshipPayload_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_verifyTaskPatch_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_stripAuthoredCalendarNotes_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_titleDescriptionPlan_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_assertTitleNormalizationWriteAuthorized_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_titleNormalizationCalendarIds_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_titleMissingRequiredCalendarIds_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_titleCalendarProtectedSnapshot_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_titleTaskProtectedSnapshot_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_assertTitleProtectedSnapshotUnchanged_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_operationNormalizeCalendarTitle_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_operationNormalizeTaskName_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_infoCustomFieldsRaw_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_fieldId_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_fieldValue_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_setExistingFieldValue_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_findEventCopyRobust_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_operationWriteCalendarLinks_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_replacementSourceSnapshot_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_safeCreateInfoCustomFields_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_buildReplacementCreatePayload_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_extractCreatedTaskId_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_customerFromRefs_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_locationFromRefs_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_createTaskTitle_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_findCreateTemplateTask_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_findRecreateSourceTask_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_buildCreateSource_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_durableWriteGuardKey_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_readDurableWriteGuard_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_writeDurableWriteGuard_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_createGuardStateBlocksRetry_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_taskCreateGuardKey_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_locationCreateGuardKey_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_parseCanadianCustomerLocation_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_normalizedLocationObject_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_freshCustomerLocationCandidates_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_extractCreatedLocationId_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_upsertLocationCacheObject_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_locationResultFromVerified_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_ensureStep7LocationUnlocked_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_ensureStep7Location_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_existingPersistedTaskForEvent_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_persistCreatedTaskIdState_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_createOrRecreateFromBundle_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_createOrRecreateFromBundleUnlocked_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_executeExistingTaskSync_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_refreshOperatorAfterManual_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_executeVerifiedStep7ExistingPlan",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_previewTitleNormalizationForEvent",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_executeVerifiedTitleNormalization",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_titleNormalizationPreview_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_previewSelectedAction",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_syncSelectedAppointment",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_pushSelectedDates",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_pushSelectedRelationships",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_reconcileSelectedAssignee",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_fixSelectedCalendarLinks",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_createOrRecreateSelectedTask",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_canaryWriteEventAllowed_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runSafeReadyRows_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runSafeReadyRows_MANUAL",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_configuredCanaryContractDecision_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runConfiguredCanary_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runConfiguredCanary_MANUAL",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runConfiguredCanary_AUTO",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runConfiguredCanaryWithAllowance_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runSafeReadyRows_AUTO",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_emailListFromEvent_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_businessDaysUntil_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_runCalendarLinksForReady_AUTO",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_repairExistingTaskRelationships",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_taskFirstFreshOrderOwnershipById_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "tmv3_taskFirstTitleOrderNumber_",
+      "origin": "58_Operations"
+    },
+    {
+      "name": "onOpen",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_managedTriggerHandlers_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_assertCalendarTriggerAuthorization_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_calendarStageRefresh_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_sourceRefreshState_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_operationalSourceRefreshState_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_masterSourceRefreshState_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_operationalSourceMinAgeMinutes_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_masterSourceMinAgeMinutes_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshOperationalSourcesIfNeeded_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_stage7ConfiguredCanaryEnabled_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_stage7AutomaticCanaryCycle_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_runProductionAutomationCycle_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_calendarReconciliationFallback",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_dailySourceRefresh",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_scheduledShadow",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_taskFirstProductionCycle_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_taskFirstOrderMatchesVertical_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_taskFirstFindOrderByTitle_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_scheduledOperations",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshLinksSlot_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshLinksSlot_0800",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshLinksSlot_1000",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshLinksSlot_1200",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshLinksSlot_1400",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshLinksSlot_1600",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshLinksSlot_1800",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_calendarEventUpdated",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_verticalEnrichEvidence_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_verticalProductionCycle_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_verticalAutomationFailureAlert_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_fourVerticalAutomationStatus",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshAutomationSheetsAfter_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshAutomationSheets",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_automationSheetRefreshStatus",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_runFullVerticalSweep_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_verticalPatchDiagnostics",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_fullVerticalSweepStatus",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_resumeFullVerticalQueues",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_verticalLinkedTaskDiagnostics",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_verticalBusinessQueuePending_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_verticalRepairScope_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_runWeeklyVerticalRepair",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_weeklyAlreadyAligned_",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_weeklyVerticalRepairStatus",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_linkFormatRepairTargets",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_runLinkFormatRepair",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_refreshMorningOps",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_morningStateByEvent_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_morningExceptionRecord_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_morningDateValue_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_morningTimeValue_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_morningExceptionSort_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_morningUrgencyRank_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_lastSuccessfulRun_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_recentTechnicalFailures_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_regressionHealth_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_triggerHealth_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_morningReadiness_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_writeMorningHeader_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_writeMorningWorkflowHealth_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_writeMorningExceptions_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_writeMorningAutomation_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_writeMorningReadiness_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_writeMorningSinceRun_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_acknowledgeSelectedMorningOps",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_clearAcknowledgementSelectedMorningOps",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_parseDate_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_minutesSince_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_ageLabel_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_compactDateTime_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_writeMorningPipeline_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_latestAuditAction_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_operatorLinkFormula_",
+      "origin": "80_MorningOps"
+    },
+    {
+      "name": "tmv3_healthCheck",
+      "origin": "90_Admin"
+    },
+    {
+      "name": "tmv3_configKeysOnly",
+      "origin": "90_Admin"
+    },
+    {
+      "name": "tmv3_importConfigBundle",
+      "origin": "90_Admin"
+    },
+    {
+      "name": "tmv3_assertNoBusinessWrites",
+      "origin": "90_Admin"
+    }
+  ],
+  "ambiguous": [
+    {
+      "name": "tmv3_serviceDeliveryOrderBackfill",
+      "origin": "60_Automation"
+    },
+    {
+      "name": "tmv3_serviceDeliveryOrderBackfill_",
+      "origin": "60_Automation"
+    }
+  ],
+  "topLevelDeclarations": []
+}

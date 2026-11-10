@@ -1,0 +1,33 @@
+name: V3 vertical split - guarded Apps Script HEAD release
+on:
+  push:
+    branches:
+      - staging/v3-vertical-split-20261109
+    paths:
+      - .github/workflows/tmv3-vertical-split-release.yml
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify deployment script syntax
+        run: node --check tools/tmv3-vertical-split-deploy.cjs
+      - name: Confirm live source and 682-function parity (read-only)
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-vertical-split-deploy.cjs dry-run
+      - name: Update existing Apps Script HEAD with rollback and readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-vertical-split-deploy.cjs deploy

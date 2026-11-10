@@ -1,0 +1,41 @@
+name: V3 Terry quiet Apps Script intake release — corrected validator
+on:
+  push:
+    branches:
+      - staging/v3-vertical-split-20261109
+    paths:
+      - .github/workflows/tmv3-pi-owner-assignment-release.yml
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify standards format and source safety regression
+        run: |
+          node --check tools/tmv3-terry-gas-intake-release.cjs
+          node tools/test-tmv3-preinspection-owner.cjs
+          node tools/test-tmv3-pi-calendar-review.cjs
+          node tools/test-tmv3-pi-diagnostic.cjs
+          node tools/test-tmv3-execution-standards.cjs
+          node tools/test-tmv3-terry-intake-guards.cjs
+          node tools/test-tmv3-terry-gas-quiet-intake.cjs
+      - name: Require exact live Apps Script HEAD and all 690 existing functions
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-terry-gas-intake-release.cjs dry-run
+      - name: Deploy three quiet intake Editor functions with exact source readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-terry-gas-intake-release.cjs deploy

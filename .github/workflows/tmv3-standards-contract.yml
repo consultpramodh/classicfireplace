@@ -1,0 +1,26 @@
+name: V3 Standard Contract Regression (read-only)
+on:
+  push:
+    branches: [staging/v3-vertical-split-20261109]
+    paths:
+      - 'apps-script/tmv3-vertical-split-staging/00_Configuration.gs'
+      - 'apps-script/tmv3-vertical-split-staging/10_Shared_Core.gs'
+      - 'tools/test-tmv3-execution-standards.cjs'
+      - '.github/workflows/tmv3-standards-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate all four vertical standards
+        run: |
+          node --check tools/test-tmv3-execution-standards.cjs
+          node tools/test-tmv3-execution-standards.cjs
+          node tools/test-tmv3-preinspection-owner.cjs
+          node tools/test-tmv3-pi-calendar-review.cjs
+          node tools/test-tmv3-pi-diagnostic.cjs

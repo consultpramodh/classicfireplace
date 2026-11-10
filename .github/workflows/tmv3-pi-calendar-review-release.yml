@@ -1,0 +1,34 @@
+name: V3 PI calendar review - guarded source release
+on:
+  push:
+    branches: [staging/v3-vertical-split-20261109]
+    paths:
+      - .github/workflows/tmv3-pi-calendar-review-release.yml
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate deployment source and synthetic review tests
+        run: |
+          node --check tools/tmv3-pi-calendar-review-deploy.cjs
+          node tools/test-tmv3-pi-calendar-review.cjs
+      - name: Fail closed on Apps Script live HEAD mismatch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-calendar-review-deploy.cjs dry-run
+      - name: Update only PI source, compare 685 functions, verify HEAD readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-calendar-review-deploy.cjs deploy

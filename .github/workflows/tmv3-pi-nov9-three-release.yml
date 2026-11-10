@@ -1,0 +1,36 @@
+name: V3 Preinspection Nov 9 three-event repair source release
+on:
+  push:
+    branches:
+      - staging/v3-vertical-split-20261109
+    paths:
+      - .github/workflows/tmv3-pi-nov9-three-release.yml
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check deployment source and existing synthetic regression tests
+        run: |
+          node --check tools/tmv3-pi-nov9-three-release.cjs
+          node tools/test-tmv3-pi-calendar-review.cjs
+      - name: Verify live 686-function HEAD without writes
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-nov9-three-release.cjs dry-run
+      - name: Deploy one targeted entrypoint with exact readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-nov9-three-release.cjs deploy

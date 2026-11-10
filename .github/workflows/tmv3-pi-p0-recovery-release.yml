@@ -1,0 +1,36 @@
+name: V3 PI P0 recovery — guarded Calendar coverage and active operator queue
+on:
+  push:
+    branches:
+      - staging/v3-vertical-split-20261109
+    paths:
+      - .github/workflows/tmv3-pi-p0-recovery-release.yml
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  source_release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Synthetic PI calendar review regression and release script syntax
+        run: |
+          node --check tools/tmv3-pi-core-recovery-release.cjs
+          node tools/test-tmv3-pi-calendar-review.cjs
+      - name: Fail closed on live Apps Script HEAD mismatch
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-core-recovery-release.cjs dry-run
+      - name: Deploy PI-only source with rollback and readback
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-pi-core-recovery-release.cjs deploy
