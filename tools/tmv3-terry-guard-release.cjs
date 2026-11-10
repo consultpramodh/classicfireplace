@@ -75,7 +75,7 @@ function extractFunction(source,name){
  const at=source.indexOf(needle);
  if(at<0||source.indexOf(needle,at+needle.length)>=0)throw Error('FUNCTION_MISSING_OR_DUP_'+name);
  const tail=source.slice(at);
- const m=/^function [\\s\\S]*?^\\}/m.exec(tail);
+ const m=/^function [^]*?^}/m.exec(tail);
  if(!m||m.index!==0)throw Error('FUNCTION_EXTRACT_FAILED_'+name);
  return m[0];
 }
