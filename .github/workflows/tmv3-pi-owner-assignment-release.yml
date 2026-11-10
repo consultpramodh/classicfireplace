@@ -1,4 +1,4 @@
-name: V3 PI - bounded cache diagnostic guarded release
+name: V3 standards contract guarded source release
 on:
   push:
     branches:
@@ -22,17 +22,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify bounded cache diagnostic regression and release syntax
+      - name: Verify standards format and source safety regression
         run: |
-          node --check tools/tmv3-pi-diagnostic-release.cjs
+          node --check tools/tmv3-standards-release.cjs
           node tools/test-tmv3-preinspection-owner.cjs
           node tools/test-tmv3-pi-calendar-review.cjs
           node tools/test-tmv3-pi-diagnostic.cjs
-      - name: Require exact live Apps Script HEAD and 688 unchanged functions
+          node tools/test-tmv3-execution-standards.cjs
+      - name: Require exact live Apps Script HEAD and 684 unchanged functions
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-pi-diagnostic-release.cjs dry-run
-      - name: Deploy PI diagnostic only with source readback
+        run: node tools/tmv3-standards-release.cjs dry-run
+      - name: Deploy 00 Configuration + 10 Shared Core with exact source readback
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-pi-diagnostic-release.cjs deploy
+        run: node tools/tmv3-standards-release.cjs deploy
