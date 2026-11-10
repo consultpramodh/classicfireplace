@@ -1,0 +1,44 @@
+name: Pre-Inspection Friday targeted plan
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-friday-plan-20261110.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate bounded Apps Script plans
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+          const targets=[['Doug','2rpr964ne2i9n2bgagu6f1huho@google.com',0],['Dan','3lff3jji596dsuskun27ccu6qp@google.com',0],['Angela','6to9gp63iofcs1qrmkna6k46a1@google.com',19389]];
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('PROFILE_COUNT');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!a.ok)throw Error('AUTH');
+            const token=(await a.json()).access_token;
+            async function api(url,o={}){const r=await fetch(url,{...o,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},signal:AbortSignal.timeout(330000)});if(!r.ok)throw Error('HTTP_'+r.status);return r.json()}
+            const inv=await api('https://script.googleapis.com/v1/projects/'+sid+'/deployments');
+            const ds=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('DEPLOYMENT_COUNT');
+            for(const [name,id,taskId] of targets){
+              try {
+                const x=await api('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{method:'POST',body:JSON.stringify({function:'tmv3_previewTitleNormalizationForEvent',parameters:['PreInspection',id,taskId],devMode:true})});
+                if(!x.done||x.error){console.log(JSON.stringify({name,status:'PREVIEW_FAILED',error:x.error&&x.error.message}));continue}
+                const v=x.response&&x.response.result;if(!v){console.log(JSON.stringify({name,status:'EMPTY_RESULT'}));continue}
+                console.log(JSON.stringify({name,status:'PREVIEW_RETURNED',mode:v.mode,plan:v.plan,blocker:v.blocker,actions:v.actions,calendarCheck:v.titleNormalization&&v.titleNormalization.calendar&&v.titleNormalization.calendar.check,taskCheck:v.titleNormalization&&v.titleNormalization.task&&v.titleNormalization.task.check}));
+              } catch(e){console.log(JSON.stringify({name,status:'ERROR',error:e.message}));break}
+            }
+          })().catch(e=>{console.error(JSON.stringify({status:'STOPPED',error:e.message}));process.exitCode=1});
+          NODE
