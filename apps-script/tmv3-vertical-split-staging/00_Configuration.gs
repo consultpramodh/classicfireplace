@@ -8,9 +8,10 @@ const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'PRODUCTION_WRITE';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-11-10-r16-standards-contract',
+  version:'2026-11-10-r1',
   GLOBAL:Object.freeze({
     authority:'TMV3_HARD_RULES_IN_00_CONFIGURATION',
+    preInspectionStandard:'docs/workflows/preinspection/STANDARD_2026_11_10.md',
     executionGate:'CANONICAL_STAGE7_FRESH_EVIDENCE_READBACK',
     timezone:'America/Toronto',
     dailySlots:Object.freeze([8,13,17]),
@@ -22,11 +23,7 @@ const TMV3_HARD_RULES = Object.freeze({
     clickableLinks:'HTML_ANCHORS_NOT_LITERAL_MARKDOWN',
     cachedReadPolicy:'CACHED_NORMAL_FRESH_WRITE_CRITICAL',
     missingDetailsNotification:'DYNAMIC_HTML_DEDUPE_VERIFIED_CREATOR',
-    pendingPolicyDecisions:Object.freeze([
-      'PreInspection.RequestedBy contact vs employee',
-      'PreInspection.Field854 copy notes vs do-not-manage',
-      'PreInspection.Calendar guest for non-Stephen owners'
-    ]),
+    pendingPolicyDecisions:Object.freeze([]),
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
     mutationVerification:'READ_BACK_REQUIRED',
@@ -107,6 +104,17 @@ const TMV3_HARD_RULES = Object.freeze({
     removeOnlyConflictingKnownServiceTechnicians:true
   }),
   PreInspection:Object.freeze({
+    lockedStandardId:'2026-11-10-r1',
+    lockedStandardReference:'docs/workflows/preinspection/STANDARD_2026_11_10.md',
+    notificationRendererFingerprint:'b77a1a07',
+    notificationTemplatePolicy:'EXACT_EXISTING_RENDERER_NO_REDRAFT',
+    ownerGuestPolicy:'VERIFIED_EVENT_OWNER_ONLY',
+    inspectorOwnedFields:Object.freeze([852,853,854,860]),
+    notificationExcludedCreatorEmails:Object.freeze([
+      'trevor@classicfireplace.ca','stephen@classicfireplace.ca',
+      'pramodh@classicfireplace.ca','jay@classicfireplace.ca',
+      'thang@classicfireplace.ca'
+    ]),
     presentation:Object.freeze({
       calendarTitleMode:'VERIFIED_CUSTOMER_NUMBER_NAME_PHONE',
       calendarTitleParts:Object.freeze(['customerNumber','customerName','phone']),
