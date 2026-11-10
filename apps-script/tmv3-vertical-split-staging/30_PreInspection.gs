@@ -4463,3 +4463,104 @@ function tmv3_preInspectionRefreshOperatorView_() {
 function tmv3_preInspectionRefreshOperatorView() {
   return tmv3_preInspectionRefreshOperatorView_();
 }
+
+
+
+// Google Apps Script: approved Terry #53480 no-invitation private-copy intake.
+// This function NEVER creates or patches Striven Tasks, sends email or adds guests.
+function tmv3_terryQuietCalendarIntake_(mode) {
+  if(mode!=='PREVIEW'&&mode!=='IMPORT')throw new Error('TERRY_INTAKE_MODE_REJECTED');
+  const uid='5mafnqht16o2hrqv4232rofmm3@google.com';
+  const approved=tmv3_preInspectionApprovalHold_(uid);
+  if(!approved||approved.customerNumber!=='53480'||approved.authorizeTaskWrites!==false||
+      approved.authorizeGuestChanges!==false||approved.authorizeEmail!==false)
+    throw new Error('TERRY_APPROVAL_HOLD_NOT_VERIFIED');
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(2000))return {status:'LOCK_BUSY',writes:0};
+  try {
+    const token=ScriptApp.getOAuthToken(),base='https://www.googleapis.com/calendar/v3/calendars/';
+    const endpoint=function(cal,path){return base+encodeURIComponent(cal)+'/events'+path;};
+    const call=function(method,url,data){
+      const options={method:method,headers:{Authorization:'Bearer '+token},
+        muteHttpExceptions:true,followRedirects:false};
+      if(data){options.contentType='application/json';options.payload=JSON.stringify(data);}
+      const response=UrlFetchApp.fetch(url,options),code=response.getResponseCode();
+      if(code<200||code>299)throw new Error('GOOGLE_CALENDAR_'+method+'_HTTP_'+code+'_NO_RETRY');
+      return JSON.parse(response.getContentText());
+    };
+    const source=approved.sourceCalendarId,target=approved.primaryCalendarId;
+    if(target!==TMV3.VERTICALS.PreInspection.primaryCalendarId)throw new Error('CF_CALENDAR_MISMATCH');
+    const epoch=function(e){return Date.parse(e&&e.dateTime||'');};
+    const getOriginal=function(){
+      const e=call('get',endpoint(source,'/5mafnqht16o2hrqv4232rofmm3'));
+      if(e.status!=='confirmed'||e.iCalUID!==uid||e.id!=='5mafnqht16o2hrqv4232rofmm3'||
+        e.summary!==approved.title||e.location!==approved.location||
+        epoch(e.start)!==Date.parse(approved.start)||epoch(e.end)!==Date.parse(approved.end)||
+        String(e.creator&&e.creator.email||'').toLowerCase()!==approved.creator||
+        String(e.organizer&&e.organizer.email||'').toLowerCase()!==source.toLowerCase()||
+        e.recurrence||e.recurringEventId||(e.attendees||[]).length||(e.attachments||[]).length||
+        typeof e.description!=='string'||e.description.indexOf('H3 install')===-1||
+        e.description.toLowerCase().indexOf('g3.5')===-1)
+        throw new Error('TERRY_SOURCE_IDENTITY_CONTENT_OR_GUEST_DRIFT');
+      return e;
+    };
+    const readCopy=function(e){
+      const found=call('get',endpoint(target,'?iCalUID='+encodeURIComponent(uid)+'&maxResults=20'));
+      const items=found.items||[];
+      if(found.nextPageToken||items.length>1)throw new Error('TERRY_ICALUID_DUPLICATES');
+      const copy=items.length?items[0]:null;
+      if(copy){
+        const marker=copy.extendedProperties&&copy.extendedProperties.private||{};
+        if(copy.iCalUID!==uid||copy.status==='cancelled'||copy.summary!==e.summary||
+          copy.description!==e.description||copy.location!==e.location||
+          epoch(copy.start)!==epoch(e.start)||epoch(copy.end)!==epoch(e.end)||
+          (copy.attendees||[]).length||copy.privateCopy!==true||
+          marker.tmv3TaskWriteHold!=='YES'||marker.tmv3SourceEventUid!==uid)
+          throw new Error('TERRY_SHARED_COPY_DIFFERENT_OR_UNVERIFIED_NO_RETRY');
+      } else {
+        const near=call('get',endpoint(target,'?timeMin='+encodeURIComponent('2026-11-11T19:50:00Z')+
+          '&timeMax='+encodeURIComponent('2026-11-11T21:10:00Z')+'&singleEvents=true&maxResults=250'));
+        if(near.nextPageToken||(near.items||[]).some(function(x){
+          return x.status!=='cancelled'&&x.iCalUID!==uid&&
+            (String(x.summary||'').indexOf('53480')>=0||
+             String(x.summary||'').toLowerCase().indexOf('terry beettam')>=0||
+             String(x.summary||'').indexOf('523-9364')>=0);
+        }))throw new Error('TERRY_POSSIBLE_CF_DUPLICATE_NO_IMPORT');
+      }
+      return copy;
+    };
+    let origin=getOriginal(),copy=readCopy(origin);
+    if(mode==='PREVIEW'||copy){
+      const status=copy?'TERRY_COPY_ALREADY_VERIFIED':'TERRY_SAFE_IMPORT_CANDIDATE';
+      const result={status:status,eventId:uid,copyId:copy?copy.id:'',
+        guestWrites:0,emailSends:0,strivenWrites:0,taskCreates:0};
+      Logger.log('PI_TERRY_INTAKE='+JSON.stringify(result));return result;
+    }
+    // Revalidate immediately before the one permitted import.
+    origin=getOriginal();if(readCopy(origin))throw new Error('TERRY_COPY_RACE_NO_RETRY');
+    const body={iCalUID:uid,summary:origin.summary,location:origin.location,
+      description:origin.description,start:origin.start,end:origin.end,
+      organizer:origin.organizer,visibility:origin.visibility||'private',privateCopy:true,
+      reminders:{useDefault:false,overrides:[]},
+      extendedProperties:{private:{tmv3CustomerNumber:'53480',tmv3TaskWriteHold:'YES',
+        tmv3SourceEventUid:uid,tmv3SourceCalendarId:source}}};
+    // Import copies the existing iCalUID without inviting attendees.
+    // No attendees property, CalendarApp.addGuest, insert, move or MailApp.
+    let response;
+    try{response=call('post',endpoint(target,'/import'),body);}
+    catch(err){throw new Error('TERRY_IMPORT_OUTCOME_UNKNOWN_DO_NOT_RETRY_'+err.message);}
+    if(response.iCalUID!==uid)throw new Error('TERRY_IMPORT_IDENTITY_UNCERTAIN_NO_RETRY');
+    copy=readCopy(origin);
+    if(!copy)throw new Error('TERRY_IMPORT_READBACK_NOT_VISIBLE_NO_RETRY');
+    const after=getOriginal();
+    if(after.summary!==origin.summary||after.description!==origin.description||
+       after.location!==origin.location||JSON.stringify(after.attendees||[])!==JSON.stringify(origin.attendees||[]))
+      throw new Error('TERRY_ORIGINAL_CHANGED_STOP');
+    const result={status:'TERRY_PRIVATE_CF_COPY_VERIFIED',eventId:uid,copyId:copy.id,
+      sourceUnchanged:true,notesPreserved:true,calendarWrites:1,
+      guestInvites:0,emailSends:0,strivenWrites:0,taskCreates:0,taskWriteHold:true};
+    Logger.log('PI_TERRY_INTAKE='+JSON.stringify(result));return result;
+  }finally{lock.releaseLock();}
+}
+function tmv3_previewTerryQuietCalendarIntake(){return tmv3_terryQuietCalendarIntake_('PREVIEW');}
+function tmv3_importTerryQuietCalendarIntake(){return tmv3_terryQuietCalendarIntake_('IMPORT');}
