@@ -1,0 +1,29 @@
+name: Diagnose Apps Script execution connection
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-connection-probe-20261110.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run read-only authorization diagnostic
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node tools/tmv3-execution-access-diagnostic.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: execution-connection-diagnostic
+          path: execution-access-diagnostic/
+          retention-days: 7
