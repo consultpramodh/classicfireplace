@@ -8528,34 +8528,13 @@ function tmv3_taskDifferences_(
       ]
     );
 
-  if (
-    taskStart &&
-    tmv3_norm_(
-      taskStart
-    ).indexOf(
-      tmv3_date_(
-        e.start
-      )
-    ) === -1
-  ) {
-    issues.push(
-      'Start date/time differs'
-    );
+  // Compare instants to the minute. ISO-date substring matches against
+  // normalized text produced false date/time discrepancy warnings.
+  if (taskStart && !tmv3_sameMinute_(e.start, taskStart)) {
+    issues.push('Start date/time differs');
   }
-
-  if (
-    taskDue &&
-    tmv3_norm_(
-      taskDue
-    ).indexOf(
-      tmv3_date_(
-        e.end
-      )
-    ) === -1
-  ) {
-    issues.push(
-      'Due date/time differs'
-    );
+  if (taskDue && !tmv3_sameMinute_(e.end, taskDue)) {
+    issues.push('Due date/time differs');
   }
 
   const assigned =
@@ -8584,29 +8563,17 @@ function tmv3_taskDifferences_(
     e.vertical ===
     'PreInspection'
   ) {
-    const pools =
-      tmv3_norm_(
-        task[
-          'Pools'
-        ]
-      );
-
-    if (
-      pools &&
-      pools.indexOf(
-        tmv3_norm_(
-          cfg.defaultPoolName
-        )
-      ) === -1 &&
-      pools.indexOf(
-        String(
-          cfg.defaultPoolId
-        )
-      ) === -1
-    ) {
-      issues.push(
-        'Pre-Inspection Pool 8 missing'
-      );
+    // Treat the known 'Preinspection Pool' and 'Pre-Inspection Pool'
+    // display-label spellings as equivalent. Striven Pool ID 8 remains
+    // authoritative for actual task writes and live verification.
+    function canonicalPool(value) {
+      return tmv3_norm_(value).replace(/\bpre\s+inspection\b/g, 'preinspection');
+    }
+    const pools = canonicalPool(task['Pools']);
+    const expected = canonicalPool(cfg.defaultPoolName);
+    if (!pools || (expected && pools.indexOf(expected) === -1 &&
+        pools.indexOf(String(cfg.defaultPoolId)) === -1)) {
+      issues.push('Pre-Inspection Pool 8 missing');
     }
   }
 
