@@ -90,7 +90,7 @@ function finalFiles(before){
  }
  const helper=extractFunction(stagedPI,'tmv3_preInspectionApprovalHold_');
  if(pi.includes('function tmv3_preInspectionApprovalHold_('))throw Error('HELPER_ALREADY_PRESENT');
- pi+='\\n\\n'+helper+'\\n';
+ pi+='\n\n'+helper+'\n';
  return before.map(f=>f.name==='00_Configuration'?{...f,source:config}:
  f.name==='10_Shared_Core'?{...f,source:shared}:
  f.name==='30_PreInspection'?{...f,source:pi}:f);
