@@ -1,4 +1,4 @@
-name: V3 Terry quiet Apps Script Editor functions guarded release
+name: V3 Terry quiet Apps Script intake release — corrected regression
 on:
   push:
     branches:
