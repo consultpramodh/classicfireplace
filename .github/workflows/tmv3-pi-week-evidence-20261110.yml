@@ -1,0 +1,40 @@
+name: Pre-Inspection verified source evidence
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-pi-week-evidence-20261110.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read bounded Striven evidence via Apps Script
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('PROFILE');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!a.ok)throw Error('AUTH');const token=(await a.json()).access_token;
+            async function api(url,o={}){const r=await fetch(url,{...o,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},signal:AbortSignal.timeout(120000)});if(!r.ok)throw Error('HTTP_'+r.status);return r.json()}
+            const inv=await api('https://script.googleapis.com/v1/projects/'+sid+'/deployments');
+            const ds=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('DEPLOYMENT_COUNT');
+            async function run(url,opts){const x=await api('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{method:'POST',body:JSON.stringify({function:'tmv3_fetchJson_',parameters:[url,opts],devMode:true})});if(!x.done||x.error){console.log(JSON.stringify({status:'SCRIPT_CALL_FAILED',code:x.error&&x.error.code}));return null}return x.response&&x.response.result}
+            const loc=await run('https://api.striven.com/v1/customers/62883/locations',{method:'get'});
+            if(!loc){console.log('LOCATION_DEFAULT_UNAVAILABLE');return}
+            const rows=loc.Data||loc.data||[];if(Array.isArray(rows)) console.log(JSON.stringify({kind:'LOCATIONS',count:rows.length,rows:rows.map(x=>({id:x.Id||x.id,flags:Object.fromEntries(Object.entries(x).filter(([k,v])=>/default|primary/i.test(k)&&['boolean','number','string'].includes(typeof v)))}))}));
+            for(const num of ['586685','586743','585394','586312','586702']){
+              const x=await run('https://api.striven.com/v1/sales-orders/search',{method:'post',contentType:'application/json',payload:JSON.stringify({PageIndex:0,PageSize:5,Number:num})});
+              if(!x){console.log(JSON.stringify({kind:'ORDER',number:num,status:'UNAVAILABLE'}));continue}
+              const d=x.Data||x.data||[];console.log(JSON.stringify({kind:'ORDER',number:num,total:x.TotalCount,rows:Array.isArray(d)?d.map(y=>({number:y.Number||y.OrderNumber,status:y.Status})):[]}));
+            }
+          })().catch(e=>{console.error(JSON.stringify({status:'STOPPED',reason:e.message}));process.exitCode=1});
+          NODE
