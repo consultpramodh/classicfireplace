@@ -1732,6 +1732,7 @@ function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
   if(tmv3_preInspectionApprovalHold_(eventRecord&&eventRecord.eventId))return {status:'APPROVAL_GUEST_HOLD',writePerformed:false};
   // An appointment owned by another organizer must not invite Stephen.
   const organizer=tmv3_clean_(eventRecord && eventRecord.organizerCalendarId);
+  if (!organizer) return {status:'OWNER_UNKNOWN_NO_GUEST_WRITE',writePerformed:false};
   const secondary=((TMV3.VERTICALS.PreInspection || {}).secondaryCalendarIds || []).map(tmv3_clean_);
   if (eventRecord && eventRecord.vertical==='PreInspection' && organizer && secondary.indexOf(organizer)<0) {
     return {status:'OTHER_ORGANIZER_NO_STEPHEN_MIRROR',writePerformed:false};
@@ -2160,9 +2161,7 @@ function tmv3_preInspectionMissingDetailAssessment_(eventRecord) {
   const missing = [];
   if (!customerNumber) missing.push({code:'CUSTOMER_NUMBER',field:'Title',
     message:'Customer Number missing'});
-  if (!tmv3_preInspectionHasSalesOrderReference_(record)) {
-    missing.push({code:'SALES_ORDER',field:'Sales Order Number',message:'Sales Order Number not provided (optional; task creation can proceed)'});
-  }
+  // The Sales Order is optional. Never email the creator for its absence.
   if (!tmv3_clean_(record.location)) missing.push({code:'LOCATION',field:'Location',
     message:'Location missing — please add the full job-site address'});
   return {eventId:record.eventId || '', title:tmv3_clean_(record.title),
@@ -2475,247 +2474,14 @@ function tmv3_preInspectionGuestSyncDecision_(
 
 // Original: 60_Automation; Function: tmv3_reconcilePreInspectionSharedGuest_AUTO_
 function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
-  options = options || {};
-  const policy = tmv3_operationPolicy_();
-  if (policy.preInspectionAutomationScheduleHours && options.force !== true) return {status:'SCHEDULE_ONLY',writes:0};
-  const cfg = TMV3.VERTICALS.PreInspection;
-
-  if (policy.preInspectionGuestSyncEnabled !== true) {
-    return { status:'DISABLED', writes:0 };
-  }
-
-  const primaryId = tmv3_clean_(cfg.primaryCalendarId);
-  const stephenEmail = tmv3_clean_(
-    cfg.secondaryOwnerEmail ||
-    'stephen@classicfireplace.ca'
-  );
-
-  if (!primaryId || !stephenEmail) {
-    return {
-      status:'BLOCKED_CONFIG',
-      writes:0,
-      errors:[
-        'CF Preinspects Calendar ID or Stephen guest email is not configured.'
-      ]
-    };
-  }
-
-  const intervalMinutes = Math.max(
-    1,
-    Number(
-      policy.preInspectionGuestSyncIntervalMinutes ||
-      5
-    )
-  );
-  const maxWrites = Math.max(
-    1,
-    Number(
-      policy.preInspectionGuestSyncMaxWrites ||
-      50
-    )
-  );
-  const cache = CacheService.getScriptCache();
-  const throttleKey =
-    'TMV3_PREINSPECTION_STEPPHEN_GUEST_SYNC_ACTIVE'
-      .replace('STEPPHEN', 'STEPHEN');
-
-  if (
-    options.force !== true &&
-    cache.get(throttleKey)
-  ) {
-    return { status:'THROTTLED', writes:0 };
-  }
-
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) {
-    return { status:'LOCK_BUSY', writes:0 };
-  }
-
-  try {
-    if (
-      options.force !== true &&
-      cache.get(throttleKey)
-    ) {
-      return { status:'THROTTLED', writes:0 };
-    }
-
-    cache.put(
-      throttleKey,
-      String(new Date().getTime()),
-      Math.min(21600, intervalMinutes * 60)
-    );
-
-    const start = new Date();
-    start.setDate(
-      start.getDate() -
-      Number(cfg.lookbackDays || 0)
-    );
-    start.setHours(0,0,0,0);
-
-    const end = new Date();
-    end.setDate(
-      end.getDate() +
-      Number(cfg.lookaheadDays || 365)
-    );
-    end.setHours(23,59,59,999);
-
-    const result = {
-      status:'PASS',
-      reason:tmv3_clean_(
-        options.reason ||
-        'AUTO'
-      ),
-      authoritativeCalendar:'CF Preinspects',
-      primaryCalendarId:primaryId,
-      requiredGuest:stephenEmail,
-      scanned:0,
-      writes:0,
-      added:0,
-      alreadyPresent:0,
-      deferred:0,
-      errors:[]
-    };
-
-    const cal =
-      CalendarApp.getCalendarById(primaryId);
-
-    if (!cal) {
-      result.status = 'ATTENTION';
-      result.errors.push(
-        'CF Preinspects Calendar unavailable: ' +
-        primaryId
-      );
-      return result;
-    }
-
-    cal.getEvents(start, end).forEach(
-      function(event) {
-        result.scanned++;
-        if(tmv3_preInspectionApprovalHold_(event.getId())) {result.deferred++;return;}
-
-        const guests = tmv3_safeCalendar_(
-          function() {
-            return (
-              event.getGuestList
-                ? event.getGuestList(true)
-                : []
-            )
-              .map(function(guest) {
-                return (
-                  guest &&
-                  guest.getEmail
-                    ? guest.getEmail()
-                    : ''
-                );
-              })
-              .filter(Boolean);
-          },
-          []
-        );
-
-        const decision =
-          tmv3_preInspectionGuestSyncDecision_(
-            guests,
-            stephenEmail
-          );
-
-        if (
-          decision.status ===
-          'ALREADY_PRESENT'
-        ) {
-          result.alreadyPresent++;
-          return;
-        }
-
-        if (
-          decision.action === 'NONE'
-        ) {
-          result.errors.push(
-            'Guest decision blocked for Event ' +
-            tmv3_clean_(event.getId()) +
-            ': ' +
-            decision.status
-          );
-          return;
-        }
-
-        if (
-          result.writes >= maxWrites
-        ) {
-          result.deferred++;
-          return;
-        }
-
-        try {
-          event.addGuest(stephenEmail);
-
-          const readbackGuests = (
-            event.getGuestList
-              ? event.getGuestList(true)
-              : []
-          )
-            .map(function(guest) {
-              return tmv3_normEmail_(
-                guest &&
-                guest.getEmail
-                  ? guest.getEmail()
-                  : ''
-              );
-            })
-            .filter(Boolean);
-
-          if (
-            readbackGuests.indexOf(
-              tmv3_normEmail_(
-                stephenEmail
-              )
-            ) === -1
-          ) {
-            throw new Error(
-              'Stephen guest read-back failed.'
-            );
-          }
-
-          result.writes++;
-          result.added++;
-        } catch (err) {
-          result.errors.push(
-            'Event ' +
-            tmv3_clean_(event.getId()) +
-            ': ' +
-            String(
-              err &&
-              err.message ||
-              err
-            )
-          );
-        }
-      }
-    );
-
-    if (result.errors.length) {
-      result.status = 'ATTENTION';
-    }
-
-    tmv3_audit_(
-      'PreInspection',
-      '',
-      '',
-      'PREINSPECTION_STEPPHEN_GUEST_SYNC'.replace(
-        'STEPPHEN',
-        'STEPHEN'
-      ),
-      result.status,
-      JSON.stringify(result)
-    );
-
-    return result;
-  } finally {
-    lock.releaseLock();
-  }
+  // Legacy global Stephen sync is unsafe for Jay/Karen appointments.
+  // Keep the public entrypoint without mutating any Calendar guest.
+  tmv3_piAssertLockedStandard_();
+  return {status:'RETIRED_UNCONDITIONAL_STEPHEN_GUEST_SYNC',
+    standard:'2026-11-10-r1',writes:0,scanned:0,
+    reason:'OWNER_SPECIFIC_GUEST_SYNC_ONLY'};
 }
 
-// Original: 60_Automation; Function: tmv3_preInspectionExplicitCandidate_
 function tmv3_preInspectionExplicitCandidate_(record) {
   return !!record && tmv3_preInspectionClassifyLikely_(record,TMV3.VERTICALS.PreInspection).status==='EXPLICIT_PREINSPECTION';
 }
@@ -2999,9 +2765,12 @@ function tmv3_preInspectionNotificationDecision_(record,state,nowValue) {
 
 // Original: 60_Automation; Function: tmv3_preInspectionSendMissingDetails_
 function tmv3_preInspectionSendMissingDetails_(record) {
+  tmv3_piAssertLockedStandard_();
   if(tmv3_preInspectionApprovalHold_(record&&record.eventId))return {status:'APPROVAL_NOTIFICATION_HOLD',sent:0};
   const assessment=tmv3_preInspectionMissingDetailAssessment_(record);
-  if (!assessment.shouldNotify || (assessment.missing||[]).every(function(item){return item.code==='SALES_ORDER';})) return {status:'NO_MISSING_DETAILS',sent:0};
+  if (!assessment.shouldNotify) return {status:'NO_MISSING_DETAILS',sent:0};
+  if (!tmv3_normEmail_(assessment.creatorEmail)) return {status:'UNVERIFIED_CREATOR_NO_SEND',sent:0};
+  if (tmv3_piCreatorEmailExcluded_(assessment.creatorEmail)) return {status:'EXCLUDED_CREATOR_NO_SEND',sent:0};
   if (TMV3.MODE!=='PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled!==true) return {status:'DELIVERY_GATED',sent:0};
   const props=PropertiesService.getScriptProperties();
   const key='TMV3_PI_NOTIFICATION_'+tmv3_hash_(record.eventId);
@@ -3052,6 +2821,7 @@ function tmv3_preInspectionTargetedIntake_(eventId,props) {
 
 // Original: 60_Automation; Function: tmv3_preInspectionAutomationCycle_
 function tmv3_preInspectionAutomationCycle_(options) {
+  tmv3_piAssertLockedStandard_();
   options = options || {};
   if (!tmv3_operationWritesEnabled_('PREINSPECTIONAUTO')) return {status:'PREINSPECTION_GATED',writes:0};
   if (TMV3.OPERATIONS.preInspectionAutomationScheduleHours && options.force !== true) return {status:'SCHEDULE_ONLY',writes:0};
@@ -3473,6 +3243,7 @@ function tmv3_preInspectionContinueEligibleSweep() {
 
 // Original: 60_Automation; Function: tmv3_runPreInspectionDailySlot_
 function tmv3_runPreInspectionDailySlot_(slot) {
+  tmv3_piAssertLockedStandard_();
   const sheetRefreshStarted=Date.now();
   // Report-only Calendar synchronization; failure preserves last-good view and never blocks Striven work.
   let calendarReview=null;
