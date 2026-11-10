@@ -12945,9 +12945,10 @@ function tmv3_desiredAssignment_(eventRecord) {
   if (eventRecord.vertical === 'PreInspection') {
     // A targeted operator instruction may add an employee for one verified
     // event. It does not turn every organizer into an assignee.
-    const employees = tmv3_preInspectionAssignmentOverride_(eventRecord);
+    const override = tmv3_preInspectionAssignmentOverride_(eventRecord);
+    const owner = tmv3_piVerifiedOwnerEmployee_(eventRecord);
     return {
-      employeeIds: employees,
+      employeeIds: override.length ? override : (owner.status==='MATCHED' ? [owner.employeeId] : []),
       poolIds: [Number(cfg.defaultPoolId)]
     };
   }
@@ -14296,6 +14297,14 @@ function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
   }
 
   let bundle = tmv3_step7BundleFromContract_(contract);
+  if (contract.vertical === 'PreInspection') {
+    const owner = tmv3_piVerifiedOwnerEmployee_(bundle.eventRecord);
+    if (owner.status !== 'MATCHED') return {
+      status:'BLOCKED_NO_WRITE',vertical:'PreInspection',eventId:contract.eventId,
+      blocker:owner.blocker || 'PI_OWNER_UNVERIFIED_NO_WRITE',
+      taskWrites:0,calendarWrites:0,emailsSent:0
+    };
+  }
 
   if (
     TMV3.MODE === 'CANARY_WRITE' &&
