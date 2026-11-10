@@ -1,0 +1,39 @@
+name: Capture legacy Pre-Inspection source for audit
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-legacy-source-read-20261110.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Capture and encrypt legacy source without mutation
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          const crypto=require('node:crypto'),fs=require('node:fs');
+          const pub="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApcGOvTANThc0GAbg0FEO\nWNXjSvBHH6meKEEOX5dUHOJSjxynlGf080WTNdIBUIK75RzkPXVha9OpRUgA70px\n540jPxhzG/vGtCKWf6+XZynQdPFHN7Lto5tV6mL/Mhr10sehGZs78LA710DYvgwF\nmKf0i91XwUFMIXl/T8Pe/xdpVU1QQsbHtbsy5niTzJMo7qgY6N4JeZ670VK1cq5D\nK8iPHEAlBQTmb6NxVsIkOsIySnSAmkcAR331AkpO/+QF9wIaUCiXPfw3UcKLXaqO\nqkLNYYN+L6eOLwFa67RlYUuAHmiRDQCzIiH8fuPlT5D3YanfRwHapw49i3aj5tNC\nxQIDAQAB\n-----END PUBLIC KEY-----";
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('PROFILE_COUNT');
+            const a=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});if(!a.ok)throw Error('AUTH');const token=(await a.json()).access_token;
+            const r=await fetch('https://script.googleapis.com/v1/projects/1E86mhD2dZcOFpqWnCvoIpwEkwZ0MA63MgM8DifV6WyB2FvVQkRWKIZ_m/content',{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw Error('SOURCE_HTTP_'+r.status);
+            const source=await r.text(),key=crypto.randomBytes(32),iv=crypto.randomBytes(12),cipher=crypto.createCipheriv('aes-256-gcm',key,iv);
+            const encrypted=Buffer.concat([cipher.update(source,'utf8'),cipher.final()]),wrapped=crypto.publicEncrypt({key:pub,oaepHash:'sha256'},key);
+            fs.writeFileSync('legacy-encrypted.json',JSON.stringify({key:wrapped.toString('base64'),iv:iv.toString('base64'),tag:cipher.getAuthTag().toString('base64'),data:encrypted.toString('base64')}));
+            const data=JSON.parse(source);console.log(JSON.stringify({status:'LEGACY_SOURCE_CAPTURED',fileCount:data.files.length,sourceWrites:0,taskWrites:0}));
+          })().catch(e=>{console.error(JSON.stringify({status:'BLOCKED',reason:e.message}));process.exitCode=1});
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: legacy-source-encrypted
+          path: legacy-encrypted.json
+          retention-days: 1
