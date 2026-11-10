@@ -29,7 +29,7 @@ jobs:
             const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('AUTH_PROFILE_COUNT');
             const auth=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});
             if(!auth.ok)throw Error('AUTH_FAILED');const token=(await auth.json()).access_token;
-            async function api(url,o={}){const r=await fetch(url,{...o,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},signal:AbortSignal.timeout(120000)});if(!r.ok)throw Error('HTTP_'+r.status);return r.json()}
+            async function api(url,o={}){const r=await fetch(url,{...o,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},signal:AbortSignal.timeout(120000)});if(!r.ok){const d=await r.json().catch(()=>({}));const stage=url.includes('/deployments')?'DEPLOYMENTS':'EXECUTION';throw Error(stage+'_HTTP_'+r.status+'_'+String(d.error?.message||'').slice(0,200));}return r.json()}
             const inv=await api('https://script.googleapis.com/v1/projects/'+sid+'/deployments');
             const ds=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXECUTION_DEPLOYMENT_NOT_UNIQUE');
             const result=await api('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{method:'POST',body:JSON.stringify({function:'tmv3_verticalLinkedTaskDiagnostics',parameters:['PreInspection',ids],devMode:true})});
