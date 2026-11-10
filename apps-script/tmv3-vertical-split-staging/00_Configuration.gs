@@ -8,8 +8,25 @@ const TMV3_TIMEZONE = 'America/Toronto';
 const TMV3_MODE = 'PRODUCTION_WRITE';
 
 const TMV3_HARD_RULES = Object.freeze({
-  version:'2026-10-26-r15',
+  version:'2026-11-10-r16-standards-contract',
   GLOBAL:Object.freeze({
+    authority:'TMV3_HARD_RULES_IN_00_CONFIGURATION',
+    executionGate:'CANONICAL_STAGE7_FRESH_EVIDENCE_READBACK',
+    timezone:'America/Toronto',
+    dailySlots:Object.freeze([8,13,17]),
+    titleDelimiter:' - ',
+    phoneDisplayFormat:'(###) ###-####',
+    noGuess:'REVIEW_ON_AMBIGUOUS_IDENTITY_OWNER_VISIT_OR_TASK',
+    calendarReadback:'REQUIRED_AFTER_MANAGED_WRITE',
+    calendarDescription:'PRESERVE_AUTHORED_NOTES_NO_INVENTED_BREAKS',
+    clickableLinks:'HTML_ANCHORS_NOT_LITERAL_MARKDOWN',
+    cachedReadPolicy:'CACHED_NORMAL_FRESH_WRITE_CRITICAL',
+    missingDetailsNotification:'DYNAMIC_HTML_DEDUPE_VERIFIED_CREATOR',
+    pendingPolicyDecisions:Object.freeze([
+      'PreInspection.RequestedBy contact vs employee',
+      'PreInspection.Field854 copy notes vs do-not-manage',
+      'PreInspection.Calendar guest for non-Stephen owners'
+    ]),
     ambiguityPolicy:'REVIEW_NO_GUESS',
     uncertainCreatePolicy:'RECONCILE_BEFORE_RETRY',
     mutationVerification:'READ_BACK_REQUIRED',
@@ -30,6 +47,18 @@ const TMV3_HARD_RULES = Object.freeze({
     missingLinkedTaskCacheDecision:'REVIEW_FAIL_CLOSED'
   }),
   Install:Object.freeze({
+    presentation:Object.freeze({
+      calendarTitleMode:'VERIFIED_SO_CUSTOMER_PHONE',
+      calendarTitleParts:Object.freeze(['orderNumber','customerName','phone']),
+      orderNumberPrefix:'SO#',
+      taskTitleMode:'VERIFIED_SO_PREFIX_PRESERVE_SOURCE_NAME',
+      linkHeading:'------- Install Striven Task Link -------',
+      linkOrder:'TASK_ONLY',
+      linkTemplate:'CLICKABLE_TASK_ID_AND_NAME',
+      retainCorrectLinkBlock:true
+    }),
+    taskWriteGate:'APPROVED_SO_VERIFIED_CUSTOMER_LOCATION_CONTACT',
+    assigneeSource:'CALENDAR_TITLE_ONLY',
     requiredSalesOrderStatus:'Approved',
     orderRequired:true,
     orderLabel:'Sales Order',
@@ -38,6 +67,17 @@ const TMV3_HARD_RULES = Object.freeze({
     preserveUnrelatedManualEmployees:true
   }),
   Delivery:Object.freeze({
+    presentation:Object.freeze({
+      calendarTitleMode:'PRESERVE_EXISTING_NO_AUTHORIZED_NORMALIZATION',
+      taskTitleMode:'VERIFIED_SO_PREFIX_PRESERVE_SOURCE_NAME',
+      linkHeading:'------- Delivery Striven Links -------',
+      linkOrder:'SALES_ORDER_THEN_DELIVERY_TASK',
+      orderSection:'Sales Order',taskSection:'Delivery Task',
+      linkTemplate:'CLICKABLE_ORDER_AND_TASK_ID_NAME',
+      retainCorrectLinkBlock:true
+    }),
+    taskWriteGate:'APPROVED_SO_VERIFIED_CUSTOMER_LOCATION_CONTACT',
+    assigneeSource:'CALENDAR_TITLE_ONLY',
     requiredSalesOrderStatus:'Approved',
     orderRequired:true,
     orderLabel:'Sales Order',
@@ -46,6 +86,16 @@ const TMV3_HARD_RULES = Object.freeze({
     preserveUnrelatedManualEmployees:true
   }),
   Service:Object.freeze({
+    presentation:Object.freeze({
+      calendarTitleMode:'PRESERVE_EXISTING_NO_AUTHORIZED_NORMALIZATION',
+      taskTitleMode:'VERIFIED_SO_PREFIX_KEEP_FP_NUMBERS',
+      linkHeading:'------- Striven Links -------',
+      linkOrder:'WORK_ORDER_THEN_ALL_VERIFIED_FP_TASKS',
+      linkTemplate:'CLICKABLE_WORK_ORDER_AND_ALL_TASK_IDS_NAMES',
+      retainCorrectLinkBlock:true
+    }),
+    taskWriteGate:'RECONCILE_ONLY_STRIVEN_WORKFLOW_OWNS_TASK_CREATE',
+    assigneeSource:'TECHNICIAN_CALENDAR',
     requiredSalesOrderStatus:'In Progress',
     orderRequired:true,
     orderLabel:'Work Order',
@@ -57,6 +107,24 @@ const TMV3_HARD_RULES = Object.freeze({
     removeOnlyConflictingKnownServiceTechnicians:true
   }),
   PreInspection:Object.freeze({
+    presentation:Object.freeze({
+      calendarTitleMode:'VERIFIED_CUSTOMER_NUMBER_NAME_PHONE',
+      calendarTitleParts:Object.freeze(['customerNumber','customerName','phone']),
+      taskTitleMode:'VERIFIED_CUSTOMER_STREET_CITY_PHONE',
+      taskTitleParts:Object.freeze(['customerName','address','phone']),
+      linkHeading:'-----Striven Links-----',
+      customerLinkPrefix:'View Sales Orders – ',
+      taskLinkPrefix:'Task #',
+      taskLinkSeparator:' – ',
+      linkOrder:'CUSTOMER_SALES_ORDERS_PAGE_THEN_VERIFIED_TASK',
+      oldTitlePolicy:'PRESERVE_EXACT_PREVIOUS_TITLE_FIRST_LINE_WITHOUT_HEADER',
+      linkTemplate:'CLICKABLE_CUSTOMER_PAGE_AND_TASK_ID_NAME',
+      retainCorrectLinkBlock:true,
+      requireCalendarCopyParity:true
+    }),
+    taskWriteGate:'FRESH_TASK_HISTORY_AND_CUSTOMER_OWNED_LOCATION',
+    knownOwnerEmployeeIds:Object.freeze({stephen:15,jay:1,karen:'UNVERIFIED_NO_WRITE'}),
+    notificationMode:'EXISTING_DYNAMIC_HTML_WITH_DEDUPE',
     discoveryPolicy:'EXPLICIT_INSTRUCTION_OR_REVIEW_NO_GUESS',
     taskBusinessSource:'CF_PREINSPECTS_ONLY',
     supersededLegacyMutations:'RETIRED_TO_V3',

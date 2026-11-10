@@ -539,6 +539,15 @@ function tmv3_assertHardRules_() {
     if (!ok) errors.push(message);
   }
 
+  requireRule(globalRules.titleDelimiter===' - ', 'Invalid title separator standard.');
+  requireRule(globalRules.executionGate==='CANONICAL_STAGE7_FRESH_EVIDENCE_READBACK', 'Stage 7 contract drift.');
+  requireRule(TMV3_HARD_RULES.Install.presentation.calendarTitleParts.join('|')==='orderNumber|customerName|phone', 'Install title parts drift.');
+  requireRule(TMV3_HARD_RULES.PreInspection.presentation.calendarTitleParts.join('|')==='customerNumber|customerName|phone', 'PreInspection Calendar title parts drift.');
+  requireRule(TMV3_HARD_RULES.PreInspection.presentation.taskTitleParts.join('|')==='customerName|address|phone', 'PreInspection Task title parts drift.');
+  requireRule(TMV3_HARD_RULES.PreInspection.presentation.linkHeading==='-----Striven Links-----', 'PreInspection link format drift.');
+  requireRule(TMV3_HARD_RULES.Install.presentation.linkHeading==='------- Install Striven Task Link -------', 'Install link format drift.');
+  requireRule(TMV3_HARD_RULES.Delivery.presentation.linkHeading==='------- Delivery Striven Links -------', 'Delivery link format drift.');
+  requireRule(TMV3_HARD_RULES.Service.presentation.linkHeading==='------- Striven Links -------', 'Service link format drift.');
   requireRule(globalRules.taskLifecyclePolicy === 'SHARED_STAGE6_HISTORY_GATE', 'All verticals must use the shared Stage 6 Task history gate.');
   requireRule(globalRules.singleOpenDecision === 'MATCH_EXISTING', 'Exactly one valid OPEN Task must resolve to MATCH_EXISTING.');
   requireRule(globalRules.multipleOpenDecision === 'REVIEW', 'Multiple OPEN Tasks must require REVIEW unless the explicit Service multi-fireplace exception applies.');
@@ -4510,7 +4519,7 @@ function tmv3_step2Verify_(records, step1Snapshot) {
 
 const TMV3_LINK_BLOCK_START = '<!-- TMV3_STRIVEN_LINKS_START -->';
 const TMV3_LINK_BLOCK_END = '<!-- TMV3_STRIVEN_LINKS_END -->';
-const TMV3_FINAL_LINK_HEADING = '-----Striven Links-----';
+const TMV3_FINAL_LINK_HEADING = TMV3_HARD_RULES.PreInspection.presentation.linkHeading;
 
 function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
   const cfg = TMV3.VERTICALS[eventRecord.vertical];
@@ -4557,7 +4566,7 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
     links.push({
       key:'CUSTOMER_SALES_ORDERS_PAGE',
       label:
-        'View Sales Orders – ' +
+        TMV3_HARD_RULES.PreInspection.presentation.customerLinkPrefix +
         customerName +
         ' (#' + customerNumber + ')',
       url:
@@ -4609,7 +4618,7 @@ function tmv3_buildCalendarLinkPlan_(eventRecord, resolved) {
           );
         }
 
-        label = 'Task #' + taskId + ' – ' + taskName;
+        label = TMV3_HARD_RULES.PreInspection.presentation.taskLinkPrefix + taskId + TMV3_HARD_RULES.PreInspection.presentation.taskLinkSeparator + taskName;
       } else {
         label =
           (
@@ -4972,8 +4981,10 @@ function tmv3_writeCalendarLinksForEvent_(eventRecord, resolvedRecords) {
 // Google Apps Script: retain valid per-vertical blocks; repair only managed links.
 function tmv3_verticalClickableDescription_(description,plan) {
   const raw=String(description||''),links=plan.links||[];
-  const heading=plan.vertical==='Install'?/------- Install Striven Task Link -------/:plan.vertical==='Delivery'?/------- Delivery Striven Links -------/:/------- Striven Links -------/;
-  const correct=heading.test(raw) && links.length>0 && links.every(function(link){
+  const rules=TMV3_HARD_RULES[plan.vertical];
+  if(!rules||!rules.presentation)throw new Error('UNDEFINED_VERTICAL_LINK_STANDARD_NO_WRITE');
+  const heading=rules.presentation.linkHeading;
+  const correct=raw.indexOf(heading)>=0 && links.length>0 && links.every(function(link){
     const esc=tmv3_regexEscape_(String(link.url));
     const rx=new RegExp('<a\\b[^>]*\\bhref=["\']'+esc+'["\'][^>]*>([\\s\\S]*?)<\\/a>','i');
     const m=rx.exec(raw);
@@ -4989,9 +5000,9 @@ function tmv3_verticalClickableDescription_(description,plan) {
   const order=links.filter(function(l){return l.key==='ORDER';})[0];
   const taskLines=tasks.map(function(l){return anchor(l,l.label.replace(/^(.*?Task #\d+)\s*–\s*/,'$1 - '));});
   let block;
-  if(plan.vertical==='Install')block='------- Install Striven Task Link -------<br><br>'+taskLines.join('<br>')+'<br><br>------------------------------------';
-  else if(plan.vertical==='Delivery')block='------- Delivery Striven Links -------<br><br>Sales Order<br>'+(order?anchor(order,order.label.replace(/^Sales Order\s*[–-]\s*/,'SO #')):'')+'<br><br>Delivery Task<br>'+taskLines.join('<br>')+'<br><br>------------------------------------';
-  else block='------- Striven Links -------<br>'+(order?anchor(order,order.label.replace(/\s*[–-]\s*/,' #'))+'<br>':'')+taskLines.join('<br>')+'<br>------------------------------------';
+  if(plan.vertical==='Install')block=heading+'<br><br>'+taskLines.join('<br>')+'<br><br>------------------------------------';
+  else if(plan.vertical==='Delivery')block=heading+'<br><br>'+rules.presentation.orderSection+'<br>'+(order?anchor(order,order.label.replace(/^Sales Order\s*[–-]\s*/,'SO #')):'')+'<br><br>'+rules.presentation.taskSection+'<br>'+taskLines.join('<br>')+'<br><br>------------------------------------';
+  else block=heading+'<br>'+(order?anchor(order,order.label.replace(/\s*[–-]\s*/,' #'))+'<br>':'')+taskLines.join('<br>')+'<br>------------------------------------';
   return (authored?authored+'<br><br>':'')+block;
 }
 
@@ -13139,7 +13150,7 @@ function tmv3_desiredTaskName_(record, options) {
       record.calendarId===TMV3.VERTICALS.PreInspection.primaryCalendarId &&
       /^\d+$/.test(context.customerNumber || '')) {
     return {status:'READY',value:[context.customerName || ('Customer #'+context.customerNumber),context.address,context.phone]
-      .map(tmv3_clean_).filter(Boolean).join(' - '),reason:'',source:'VERIFIED_CUSTOMER_NUMBER_AVAILABLE_DETAILS'};
+      .map(tmv3_clean_).filter(Boolean).join(TMV3_HARD_RULES.GLOBAL.titleDelimiter),reason:'',source:'VERIFIED_CUSTOMER_NUMBER_AVAILABLE_DETAILS'};
   }
   const missing = [];
   if (!context.customerName) missing.push('Customer Name');
@@ -13171,11 +13182,9 @@ function tmv3_desiredTaskName_(record, options) {
     return {status:'READY',value:standard,reason:'',source:'VERIFIED_ORDER_PRESERVE_EXISTING_STANDARD_TASK_NAME'};
   }
 
-  let value = [
-    context.customerName,
-    context.address,
-    context.phone
-  ].join(' - ');
+  let value = TMV3_HARD_RULES.PreInspection.presentation.taskTitleParts.map(function(key) {
+    return context[key];
+  }).join(TMV3_HARD_RULES.GLOBAL.titleDelimiter);
 
   if (record.vertical === 'Service') {
     const sourceTitle = tmv3_clean_(options.sourceTaskTitle);
@@ -13226,11 +13235,9 @@ function tmv3_desiredCalendarTitle_(record) {
 
     return {
       status:'READY',
-      value:[
-        'SO#' + context.orderNumber,
-        context.customerName,
-        context.phone
-      ].join(' - '),
+      value:TMV3_HARD_RULES.Install.presentation.calendarTitleParts.map(function(key) {
+        return key==='orderNumber' ? TMV3_HARD_RULES.Install.presentation.orderNumberPrefix + context.orderNumber : context[key];
+      }).join(TMV3_HARD_RULES.GLOBAL.titleDelimiter),
       reason:'',
       source:'VERIFIED_SO_CUSTOMER_PHONE'
     };
@@ -13255,11 +13262,9 @@ function tmv3_desiredCalendarTitle_(record) {
 
     return {
       status:'READY',
-      value:[
-        context.customerNumber,
-        context.customerName,
-        context.phone
-      ].join(' - '),
+      value:TMV3_HARD_RULES.PreInspection.presentation.calendarTitleParts.map(function(key) {
+        return context[key];
+      }).join(TMV3_HARD_RULES.GLOBAL.titleDelimiter),
       reason:'',
       source:'VERIFIED_CUSTOMER_NUMBER_NAME_PHONE'
     };
