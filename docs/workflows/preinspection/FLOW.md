@@ -1,18 +1,18 @@
 # PreInspection — Canonical Business Flow
 
-**Status:** current operating contract as of 2026-10-06.
+**Status:** canonical process background; 2026-11-10 display and notification rules are superseded by [STANDARD_2026_11_10.md](STANDARD_2026_11_10.md). This document is not proof of a live Apps Script deployment.
 
 ## A. Authoritative Calendar intake
 
 The **CF Preinspects** calendar is the single authoritative PreInspection source.
 
-- Stephen's Calendar is mirror-only for intake and does not create an independent Task Mapping record.
+- An inspector's personal Calendar is a mirror/copy for intake and does not create an independent Task Mapping record.
 - CF Preinspects remains the sole authoritative intake source.
-- Both CF Preinspects and Stephen's Calendar must converge to the same business-visible event state after a verified reconciliation.
-- Every CF Preinspects event must include `stephen@classicfireplace.ca` as a required guest.
-- Canonical Calendar title on both copies: `<Customer Number> - <Customer Name> - <Phone>`.
+- CF Preinspects and each verified appointment-owner personal Calendar copy must converge to the same business-visible event state after a verified reconciliation.
+- Include the verified appointment inspector in required participation. Do not add Stephen to Jay/Karen appointments solely because they appear on CF Preinspects.
+- Canonical Calendar title on each required copy: `<Customer Number> - <Customer Name> - <Phone>`.
 - Striven Links must be clickable Google Calendar hyperlinks. Preserve an already-correct clickable block exactly; raw `[label](URL)` text is not an acceptable rendered result.
-- Calendar description on both copies is identical for business-visible content: preserved prior title when applicable, cleaned authored notes, and exactly one managed `-----Striven Links-----` block.
+- Calendar description on each required copy is identical for business-visible content: preserved prior title when applicable, cleaned authored notes, and exactly one managed `-----Striven Links-----` block.
 - Location, start time, end time, and required attendee/guest state must also match the authoritative CF Preinspects event on every required copy. Only unavoidable Google system metadata may differ.
 - Use the established Monic OLIVER Calendar source pattern for managed links: `[label](URL)`. Google Calendar must render the Sales Orders and Task labels as clickable links; do not emit literal HTML tags or `<br>` formatting.
 - When the Calendar title is standardized, preserve the exact previous title as the first line of the Description without adding an `Original Title:` heading.
@@ -118,7 +118,7 @@ After Task read-back succeeds:
 - include the Customer Sales Orders link as a clickable hyperlink;
 - include one verified Task link as a clickable hyperlink when a deterministic Task exists;
 - normalize the canonical Calendar title on both copies;
-- ensure Stephen remains a required guest;
+- ensure the verified appointment inspector's required participation is present;
 - read every required Calendar copy back and verify full business-visible parity: title, Description, location, start/end, required attendee/guest state, and managed links.
 
 ## I. Technician completion and Install handoff
