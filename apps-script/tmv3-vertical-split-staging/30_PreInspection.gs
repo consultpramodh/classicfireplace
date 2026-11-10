@@ -4562,5 +4562,9 @@ function tmv3_terryQuietCalendarIntake_(mode) {
     Logger.log('PI_TERRY_INTAKE='+JSON.stringify(result));return result;
   }finally{lock.releaseLock();}
 }
-function tmv3_previewTerryQuietCalendarIntake(){return tmv3_terryQuietCalendarIntake_('PREVIEW');}
-function tmv3_importTerryQuietCalendarIntake(){return tmv3_terryQuietCalendarIntake_('IMPORT');}
+function tmv3_previewTerryQuietCalendarIntake() {
+  return tmv3_terryQuietCalendarIntake_('PREVIEW');
+}
+function tmv3_importTerryQuietCalendarIntake() {
+  return tmv3_terryQuietCalendarIntake_('IMPORT');
+}
