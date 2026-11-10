@@ -4432,3 +4432,20 @@ function tmv3_piAssertSafeTaskPatch_(payload) {
 function tmv3_preInspectionLockedStandardStatus() {
   return tmv3_piAssertLockedStandard_();
 }
+
+
+// Only positively verified owner -> employee mappings may authorize writes.
+// Jay and Karen calendar IDs are not yet certified in this staging source.
+function tmv3_piVerifiedOwnerEmployee_(eventRecord) {
+  const record = eventRecord || {};
+  const cfg = TMV3.VERTICALS.PreInspection || {};
+  const ownerCalendar = String(record.organizerCalendarId || '').trim();
+  const stephenCalendar = String((cfg.secondaryCalendarIds || [])[0] || '').trim();
+  if (ownerCalendar && stephenCalendar && ownerCalendar === stephenCalendar) {
+    return {status:'MATCHED',employeeId:15,employeeName:'Stephen Foley',
+      evidence:'VERIFIED_STEPHEN_CALENDAR_ID'};
+  }
+  return {status:'REVIEW',employeeId:null,
+    blocker:ownerCalendar ? 'PI_CALENDAR_OWNER_NOT_VERIFIED_IN_EXECUTION_CONFIG' :
+      'PI_CALENDAR_OWNER_MISSING_NO_WRITE'};
+}
