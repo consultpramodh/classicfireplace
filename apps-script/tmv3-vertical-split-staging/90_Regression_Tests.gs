@@ -3985,3 +3985,40 @@ function tmv3_preInspectionLockedStandardsRegression() {
   if(failed.length)throw new Error('PI_R1_LOCKED_REGRESSION_FAILED:'+JSON.stringify(failed));
   return out;
 }
+
+
+/**
+ * PreInspection R1 - pure fixture tests for shared Task comparison.
+ * No Calendar, Striven or Sheet reads/writes.
+ */
+function tmv3_taskDifferencesPrecisionRegression() {
+  const cfg = {orderRequired:false,orderLabel:'Sales Order',defaultPoolId:8,
+    defaultPoolName:'Pre-Inspection Pool'};
+  const event = {vertical:'PreInspection',start:new Date('2026-11-11T13:00:00-05:00'),
+    end:new Date('2026-11-11T14:00:00-05:00')};
+  const task = {'Customer ID':63164,'Location ID':58781,'Order ID':'',
+    'Start':'2026-11-11T13:00:00-05:00','Due':'2026-11-11T14:00:00-05:00',
+    'Assignees':'Stephen Foley','Pools':'Preinspection Pool'};
+  const customer={'Customer ID':63164},location={'Location ID':58781};
+  const cases=[];
+  function check(name,condition) {cases.push({name:name,pass:condition===true});}
+  function diff(changes) {return tmv3_taskDifferences_(event,cfg,
+    Object.assign({},task,changes||{}),null,customer,location);}
+  check('JEFF_IDENTICAL_MINUTE_AND_POOL_ALIAS_NO_DIFFERENCES',diff().length===0);
+  check('DATE_WRONG_MINUTE_CAUGHT',diff({Start:'2026-11-11T13:01:00-05:00'}).indexOf('Start date/time differs')!==-1);
+  check('DUE_WRONG_MINUTE_CAUGHT',diff({Due:'2026-11-11T14:01:00-05:00'}).indexOf('Due date/time differs')!==-1);
+  check('POOL_ALIAS_NORMALIZED',diff({Pools:'Pre-Inspection Pool'}).length===0);
+  check('POOL_8_MISSING_CAUGHT',diff({Pools:'Some Other Pool'}).indexOf('Pre-Inspection Pool 8 missing')!==-1);
+  check('POOL_EMPTY_CAUGHT',diff({Pools:''}).indexOf('Pre-Inspection Pool 8 missing')!==-1);
+  check('CUSTOMER_ID_DRIFT_CAUGHT',diff({'Customer ID':111}).indexOf('Task customer differs')!==-1);
+  check('LOCATION_ID_DRIFT_CAUGHT',diff({'Location ID':111}).indexOf('Task location differs')!==-1);
+  check('SO_ATTACHED_TO_PI_REJECTED',diff({'Order ID':123}).indexOf('PreInspection task must not be attached to Sales Order')!==-1);
+  const serviceEvent={vertical:'Service',start:event.start,end:event.end,technician:'Chris'};
+  const serviceCfg={orderRequired:false,defaultPoolName:''};
+  check('SERVICE_ASSIGNMENT_RULE_PRESERVED',
+    tmv3_taskDifferences_(serviceEvent,serviceCfg,Object.assign({},task,{'Assignees':'Matt'}),
+      null,customer,location).indexOf('Technician assignment differs')!==-1);
+  const bad=cases.filter(function(x){return !x.pass;});
+  if (bad.length) throw new Error('TASK_DIFFERENCES_PRECISION_FAILED:'+JSON.stringify(bad));
+  return {status:'PASS',cases:cases.length,results:cases};
+}
