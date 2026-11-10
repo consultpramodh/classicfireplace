@@ -3627,7 +3627,8 @@ function tmv3_preInspectionGuestSyncRegression() {
     'PRIMARY_EVENT_WITHOUT_STEPHEN_ADDS_STEPHEN',
     tmv3_preInspectionGuestSyncDecision_(
       [],
-      owner
+      owner,
+      TMV3.VERTICALS.PreInspection.secondaryCalendarIds[0]
     ),
     { status:'ADD_STEPHEN', action:'ADD' }
   );
@@ -3636,7 +3637,8 @@ function tmv3_preInspectionGuestSyncRegression() {
     'PRIMARY_EVENT_WITH_STEPHEN_IS_IDEMPOTENT',
     tmv3_preInspectionGuestSyncDecision_(
       [owner],
-      owner
+      owner,
+      TMV3.VERTICALS.PreInspection.secondaryCalendarIds[0]
     ),
     { status:'ALREADY_PRESENT', action:'NONE' }
   );
@@ -3648,7 +3650,8 @@ function tmv3_preInspectionGuestSyncRegression() {
         'spencer@classicfireplace.ca',
         'thang@classicfireplace.ca'
       ],
-      owner
+      owner,
+      TMV3.VERTICALS.PreInspection.secondaryCalendarIds[0]
     ),
     { status:'ADD_STEPHEN', action:'ADD' }
   );
@@ -3657,10 +3660,18 @@ function tmv3_preInspectionGuestSyncRegression() {
     'MISSING_STEPHEN_ARGUMENT_USES_CANONICAL_FALLBACK',
     tmv3_preInspectionGuestSyncDecision_(
       [],
-      ''
+      '',
+      TMV3.VERTICALS.PreInspection.secondaryCalendarIds[0]
     ),
     { status:'ADD_STEPHEN', action:'ADD' }
   );
+
+  check('OWNER_MISSING_CANNOT_ADD_STEPHEN',
+    tmv3_preInspectionGuestSyncDecision_([], owner),
+    {status:'OWNER_NOT_VERIFIED',action:'NONE'});
+  check('JAY_KAREN_OWNER_CANNOT_ADD_STEPHEN',
+    tmv3_preInspectionGuestSyncDecision_([], owner,'other-inspector-calendar'),
+    {status:'OTHER_OWNER_NO_STEPHEN',action:'NONE'});
 
   const calendars = tmv3_verticalCalendars_(
     'PreInspection',
