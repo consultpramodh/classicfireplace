@@ -13144,14 +13144,7 @@ function tmv3_desiredTaskName_(record, options) {
     };
   }
 
-  // On the authoritative Preinspects calendar, a verified customer number
-  // is enough to name the task. Include address and phone when available.
-  if (record.vertical==='PreInspection' && record.calendarRole==='PRIMARY_SHARED' &&
-      record.calendarId===TMV3.VERTICALS.PreInspection.primaryCalendarId &&
-      /^\d+$/.test(context.customerNumber || '')) {
-    return {status:'READY',value:[context.customerName || ('Customer #'+context.customerNumber),context.address,context.phone]
-      .map(tmv3_clean_).filter(Boolean).join(TMV3_HARD_RULES.GLOBAL.titleDelimiter),reason:'',source:'VERIFIED_CUSTOMER_NUMBER_AVAILABLE_DETAILS'};
-  }
+  // Locked standard: require verified name, street/city and phone.
   const missing = [];
   if (!context.customerName) missing.push('Customer Name');
   if (!context.address) missing.push('Address');
@@ -13244,14 +13237,7 @@ function tmv3_desiredCalendarTitle_(record) {
   }
 
   if (record.vertical === 'PreInspection') {
-    // Preserve the existing title when optional name or phone information is
-    // missing; missing title decorations must not prevent task creation.
-    if (record.calendarRole==='PRIMARY_SHARED' && record.calendarId===TMV3.VERTICALS.PreInspection.primaryCalendarId &&
-        /^\d+$/.test(context.customerNumber || '') && (!context.customerName || !context.phone)) {
-      const original=tmv3_clean_(record.title);
-      return original ? {status:'READY',value:original,reason:'',source:'PRESERVE_EXISTING_TITLE'} :
-        {status:'BLOCKED',value:'',reason:'Calendar title is missing.'};
-    }
+    // Locked standard: incomplete identity blocks non-standard title writes.
     if (!context.customerNumber || !context.customerName || !context.phone) {
       return {
         status:'BLOCKED',
@@ -14265,6 +14251,7 @@ function tmv3_step7ActionsForMode_(contract, mode) {
 
 function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
   const target=selection&&selection.contract;
+  if (target && target.vertical === 'PreInspection') tmv3_piAssertLockedStandard_();
   if(target&&target.vertical==='PreInspection'&&tmv3_preInspectionApprovalHold_(target.eventId))
     return {status:'BLOCKED_NO_WRITE',eventId:target.eventId,vertical:'PreInspection',
       blocker:'OPERATOR_APPROVED_INTAKE_AWAITING_FRESH_VERIFICATION',
@@ -14493,6 +14480,10 @@ function tmv3_operationPatchTask_(taskId, payload, scope) {
   const id = Number(taskId || 0);
   if (!id) throw new Error('Task ID is required.');
   const normalizedScope = tmv3_norm_(scope);
+  if (normalizedScope.indexOf('preinspection') >= 0 ||
+      (typeof TMV3_PREINSPECTION_API_CONTEXT_ACTIVE !== 'undefined' && TMV3_PREINSPECTION_API_CONTEXT_ACTIVE === true)) {
+    tmv3_piAssertSafeTaskPatch_(payload);
+  }
   if (normalizedScope === 'taskfirstproduction' || normalizedScope === 'taskfirstcanary19083') {
     const allowed = ['Id','SalesOrder','RequestedBy','Location'];
     if (!Number.isSafeInteger(id) || id <= 0 || Number((payload || {}).Id) !== id ||
@@ -15089,6 +15080,7 @@ function tmv3_operationNormalizeCalendarTitle_(bundle, contract, scope) {
   if (!eventRecord) throw new Error('Calendar title normalization requires an Event record.');
 
   const desired = tmv3_clean_(contract.desiredCalendarTitle);
+  if (contract.vertical === 'PreInspection') tmv3_piAssertCalendarTitle_(desired);
   if (!desired) throw new Error('Step 7 contract has no desired Calendar title.');
 
   const ids = tmv3_titleNormalizationCalendarIds_(eventRecord);
@@ -15287,6 +15279,7 @@ function tmv3_operationNormalizeTaskName_(taskId, desiredTaskName, contract, sco
 
   const id = Number(taskId || 0);
   const desired = tmv3_clean_(desiredTaskName);
+  if (contract && contract.vertical === 'PreInspection') tmv3_piAssertTaskTitle_(desired);
 
   if (!id || !desired) {
     throw new Error('Task Name normalization requires Task ID and desired Task Name.');
@@ -17302,6 +17295,7 @@ function tmv3_executeExistingTaskSync_(
   contract
 ) {
   contract = tmv3_step7ValidateExecutionContract_(contract);
+  if (contract.vertical === 'PreInspection') tmv3_piAssertLockedStandard_();
   tmv3_assertOperationWrite_(scope);
 
   if (!contract.taskId) {
