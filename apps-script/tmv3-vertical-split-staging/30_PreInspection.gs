@@ -2438,41 +2438,22 @@ function tmv3_preInspectionCanonicalCacheTask_(task,canonical) {
 }
 
 // Original: 60_Automation; Function: tmv3_preInspectionGuestSyncDecision_
-function tmv3_preInspectionGuestSyncDecision_(
-  guestEmails,
-  stephenEmail
-) {
-  const stephen = tmv3_normEmail_(
-    stephenEmail ||
-    'stephen@classicfireplace.ca'
-  );
-  const guests = tmv3_unique_(
-    (guestEmails || [])
-      .map(tmv3_normEmail_)
-      .filter(Boolean)
-  );
-
-  if (!stephen) {
-    return {
-      status:'BLOCKED_CONFIG',
-      action:'NONE'
-    };
-  }
-
-  if (guests.indexOf(stephen) !== -1) {
-    return {
-      status:'ALREADY_PRESENT',
-      action:'NONE'
-    };
-  }
-
-  return {
-    status:'ADD_STEPHEN',
-    action:'ADD'
-  };
+function tmv3_preInspectionGuestSyncDecision_(guestEmails, stephenEmail, ownerCalendarId) {
+  // Owner is required. Guest presence alone must never add Stephen.
+  const cfg = TMV3.VERTICALS.PreInspection || {};
+  const verifiedStephenCalendar = String((cfg.secondaryCalendarIds || [])[0] || '').trim();
+  const actualOwner = String(ownerCalendarId || '').trim();
+  if (!actualOwner) return {status:'OWNER_NOT_VERIFIED',action:'NONE'};
+  if (!verifiedStephenCalendar || actualOwner !== verifiedStephenCalendar)
+    return {status:'OTHER_OWNER_NO_STEPHEN',action:'NONE'};
+  const stephen = tmv3_normEmail_(stephenEmail || cfg.secondaryOwnerEmail);
+  if (!stephen) return {status:'BLOCKED_CONFIG',action:'NONE'};
+  const guests = tmv3_unique_((guestEmails || []).map(tmv3_normEmail_).filter(Boolean));
+  if (guests.indexOf(stephen) >= 0) return {status:'ALREADY_PRESENT',action:'NONE'};
+  return {status:'ADD_STEPHEN',action:'ADD'};
 }
 
-// Original: 60_Automation; Function: tmv3_reconcilePreInspectionSharedGuest_AUTO_
+// Original next-section boundary
 function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
   // Legacy global Stephen sync is unsafe for Jay/Karen appointments.
   // Keep the public entrypoint without mutating any Calendar guest.
