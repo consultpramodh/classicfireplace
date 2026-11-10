@@ -1,4 +1,4 @@
-name: V3 standards contract guarded source release
+name: V3 standards contract guarded source release (init fix)
 on:
   push:
     branches:

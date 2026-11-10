@@ -12,7 +12,7 @@ const piBaseline=require('node:child_process').execFileSync('git',
  {encoding:'utf8'});
 const stagedPI=fs.readFileSync(path.join(dir,'30_PreInspection.gs'),'utf8');
 const expectedLivePI=piBaseline.replace(extractDiagnostic(piBaseline),extractDiagnostic(stagedPI));
-const priorPIHash=sha(expectedLivePI);
+const priorPIHash=crypto.createHash('sha256').update(expectedLivePI).digest('hex');
 // Approved staging source is pinned to this checkout. All live files are retained except configuration and shared core.
 const allNames=['00_Configuration','10_Shared_Core','20_Master_Triggers','30_PreInspection','40_Installation','50_Delivery','60_Service','90_Regression_Tests'];
 const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
