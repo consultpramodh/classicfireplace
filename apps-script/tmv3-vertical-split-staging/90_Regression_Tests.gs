@@ -3908,3 +3908,69 @@ function tmv3_preInspectionCalendarCopyParityRegression() {
   return result;
 }
 
+
+
+// 2026-11-10-r1 read-only, zero external writes.
+function tmv3_preInspectionLockedStandardsRegression() {
+  const cases = [];
+  function check(name, pass, detail) {
+    cases.push({name:name,pass:pass===true,detail:detail||''});
+  }
+  function throws(func) {
+    try { func(); return false; } catch (err) { return true; }
+  }
+
+  const locked = tmv3_piAssertLockedStandard_();
+  check('LOCKED_STANDARD_VERSION', locked.standard==='2026-11-10-r1');
+  check('EXACT_EMAIL_RENDERER_UNCHANGED',
+    tmv3_piRendererFingerprint_()===TMV3_HARD_RULES.PreInspection.notificationRendererFingerprint);
+  check('CALENDAR_TITLE_ACCEPTS_CANONICAL',
+    tmv3_piAssertCalendarTitle_('12345 - Sample Customer - (416) 555-0100')===true);
+  check('CALENDAR_TITLE_REJECTS_PREFIX',
+    throws(function(){tmv3_piAssertCalendarTitle_('Preinspect - Sample Customer - (416) 555-0100');}));
+  check('TASK_TITLE_ACCEPTS_STREET_CITY',
+    tmv3_piAssertTaskTitle_('Sample Customer - 10 Example St, Toronto - (416) 555-0100')===true);
+  check('TASK_TITLE_REJECTS_MISSING_CITY',
+    throws(function(){tmv3_piAssertTaskTitle_('Sample Customer - 10 Example St - (416) 555-0100');}));
+  check('TASK_PATCH_REJECTS_INSPECTOR_FIELD_854',
+    throws(function(){tmv3_piAssertSafeTaskPatch_({Id:123,InfoCustomFields:[{Id:854,Value:'NO'}]});}));
+  check('TASK_PATCH_REJECTS_DESCRIPTION',
+    throws(function(){tmv3_piAssertSafeTaskPatch_({Id:123,Description:'calendar notes'});}));
+  check('TASK_PATCH_REJECTS_SALES_ORDER',
+    throws(function(){tmv3_piAssertSafeTaskPatch_({Id:123,SalesOrder:{Id:456}});}));
+  check('TASK_PATCH_REJECTS_CONTACT_REQUESTED_BY',
+    throws(function(){tmv3_piAssertSafeTaskPatch_({Id:123,RequestedBy:{Id:99,Type:'contact'}});}));
+  check('TASK_PATCH_ALLOWS_EMPLOYEE_REQUESTED_BY',
+    tmv3_piAssertSafeTaskPatch_({Id:123,RequestedBy:{Id:15,Type:'employee'}})===true);
+  check('CREATOR_EXCLUSION_STEVE',
+    tmv3_piCreatorEmailExcluded_('stephen@classicfireplace.ca')===true);
+  check('CREATOR_EXCLUSION_NORMALIZATION',
+    tmv3_piCreatorEmailExcluded_(' JAY@classicfireplace.ca ')===true);
+  check('OTHER_CREATOR_NOT_EXCLUDED',
+    tmv3_piCreatorEmailExcluded_('adam@classicfireplace.ca')===false);
+  check('NO_GLOBAL_STEPHEN_GUEST_SYNC',
+    tmv3_reconcilePreInspectionSharedGuest_AUTO_({force:true}).writes===0);
+  const missing = tmv3_preInspectionMissingDetailAssessment_({
+    eventId:'synthetic',title:'12345 - Sample Customer - (416) 555-0100',
+    location:'10 Example St, Toronto, ON',creator:'adam@classicfireplace.ca'
+  });
+  check('OPTIONAL_SO_NOT_A_MISSING_FIELD',
+    !(missing.missing||[]).some(function(x){return x.code==='SALES_ORDER';}));
+  check('NO_SO_ONLY_EMAIL',
+    missing.shouldNotify===false);
+  const owner = tmv3_piVerifiedOwnerEmployee_({
+    organizerCalendarId:TMV3.VERTICALS.PreInspection.secondaryCalendarIds[0]});
+  check('VERIFIED_STEPHEN_OWNER',owner.status==='MATCHED' && Number(owner.employeeId)===15);
+  check('UNVERIFIED_OTHER_OWNER_BLOCKS',
+    tmv3_piVerifiedOwnerEmployee_({organizerCalendarId:'unverified-other-calendar'}).status==='REVIEW');
+  check('PREINSPECTION_CREATE_POLICY',
+    tmv3_preInspectionCreatePolicy().field854==='DO_NOT_MANAGE' &&
+    tmv3_preInspectionCreatePolicy().infoCustomFieldsAtCreate==='NONE' &&
+    tmv3_preInspectionCreatePolicy().attachSalesOrder===false);
+
+  const failed=cases.filter(function(x){return !x.pass;});
+  const out={status:failed.length?'FAIL':'PASS',standard:locked.standard,
+    total:cases.length,passed:cases.length-failed.length,failed:failed.length,cases:cases};
+  if(failed.length)throw new Error('PI_R1_LOCKED_REGRESSION_FAILED:'+JSON.stringify(failed));
+  return out;
+}
