@@ -1,0 +1,40 @@
+name: Pre-Inspection four-event read-only diagnostics
+on:
+  push:
+    branches: [task_mapping]
+    paths: [.github/workflows/tmv3-four-event-readonly-20261110.yml]
+permissions:
+  contents: read
+concurrency:
+  group: task-mapping-v3-clean-bootstrap
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Execute existing read-only Apps Script diagnostic
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node <<'NODE'
+          const {profiles}=require('./tools/tmv3-execution-access-diagnostic.js');
+          const sid='1shaSL1CeNhR2-fr8H4x0fP2KUIjpOizLFyrNRAnGGXkCvERX4hZyJ5Gt';
+          const ids=['0aa25j196lol5imushv6mrpmv1@google.com','2rpr964ne2i9n2bgagu6f1huho@google.com','3lff3jji596dsuskun27ccu6qp@google.com','6to9gp63iofcs1qrmkna6k46a1@google.com'];
+          (async()=>{
+            const p=profiles(JSON.parse(process.env.CLASPRC_JSON||'{}'));if(p.length!==1)throw Error('AUTH_PROFILE_COUNT');
+            const auth=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:p[0].client,client_secret:p[0].secret,refresh_token:p[0].refresh})});
+            if(!auth.ok)throw Error('AUTH_FAILED');const token=(await auth.json()).access_token;
+            async function api(url,o={}){const r=await fetch(url,{...o,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},signal:AbortSignal.timeout(120000)});if(!r.ok)throw Error('HTTP_'+r.status);return r.json()}
+            const inv=await api('https://script.googleapis.com/v1/projects/'+sid+'/deployments');
+            const ds=(inv.deployments||[]).filter(d=>(d.entryPoints||[]).some(e=>e.entryPointType==='EXECUTION_API'||e.executionApi));if(ds.length!==1)throw Error('EXECUTION_DEPLOYMENT_NOT_UNIQUE');
+            const result=await api('https://script.googleapis.com/v1/scripts/'+encodeURIComponent(ds[0].deploymentId)+':run',{method:'POST',body:JSON.stringify({function:'tmv3_verticalLinkedTaskDiagnostics',parameters:['PreInspection',ids],devMode:true})});
+            if(!result.done||result.error)throw Error('APPS_SCRIPT_DIAGNOSTIC_FAILED');
+            const rows=result.response&&result.response.result;if(!Array.isArray(rows)||rows.length!==ids.length)throw Error('INCOMPLETE_DIAGNOSTIC');
+            console.log(JSON.stringify({status:'READ_ONLY',results:rows.map((x,i)=>({index:i+1,identity:x.identity||null,locationStatus:x.locationStatus||null,hasCustomer:!!x.expectedCustomer,hasLocation:!!x.expectedLocation,linkedTaskId:Number(x.linkedId||0),freshTaskRead:!!(x.fresh&&x.fresh.ok),error:!!x.error})),businessWrites:0}));
+          })().catch(e=>{console.error(JSON.stringify({status:'STOPPED',reason:e.message}));process.exitCode=1});
+          NODE
