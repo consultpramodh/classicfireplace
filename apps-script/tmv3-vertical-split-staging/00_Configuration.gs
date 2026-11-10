@@ -122,6 +122,19 @@ const TMV3_HARD_RULES = Object.freeze({
       retainCorrectLinkBlock:true,
       requireCalendarCopyParity:true
     }),
+    operatorApprovedIntakeHolds:Object.freeze([
+      Object.freeze({
+        eventId:'5mafnqht16o2hrqv4232rofmm3@google.com',customerNumber:'53480',
+        sourceCalendarId:'classicfireplace.ca_c20qcqfhvjbv784asn9pvuiaf4@group.calendar.google.com',
+        primaryCalendarId:'c_3088a3989f3eb809957ed5c40137a7111a0ac97f68c29b40c144028cb14320dc@group.calendar.google.com',
+        start:'2026-11-11T15:00:00-05:00',end:'2026-11-11T16:00:00-05:00',
+        title:'53480 - Terry Beettam (416) 523-9364',
+        location:'29 Hilling Dr, Ajax, ON L1S 4Z7, Canada',
+        creator:'adam@classicfireplace.ca',
+        mode:'APPROVED_INTAKE_ONLY_TASK_AND_NOTIFICATION_HELD',
+        authorizeTaskWrites:false,authorizeGuestChanges:false,authorizeEmail:false
+      })
+    ]),
     taskWriteGate:'FRESH_TASK_HISTORY_AND_CUSTOMER_OWNED_LOCATION',
     knownOwnerEmployeeIds:Object.freeze({stephen:15,jay:1,karen:'UNVERIFIED_NO_WRITE'}),
     notificationMode:'EXISTING_DYNAMIC_HTML_WITH_DEDUPE',

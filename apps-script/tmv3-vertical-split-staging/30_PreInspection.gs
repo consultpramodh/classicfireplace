@@ -1691,6 +1691,17 @@ function tmv3_configurePreInspectionAssignmentOverride(eventId, customerNumber, 
   return {status:'ASSIGNMENT_OVERRIDE_VERIFIED',employeeId:Number(employeeId),businessWrites:0};
 }
 
+// Explicit operator approval, scoped to immutable iCalUID. No write permission.
+function tmv3_preInspectionApprovalHold_(eventId) {
+  const normalized=String(eventId||'').trim().toLowerCase().replace(/@google[.]com$/,'');
+  const entries=TMV3_HARD_RULES.PreInspection.operatorApprovedIntakeHolds||[];
+  const matches=entries.filter(function(x) {
+    return String(x.eventId||'').toLowerCase().replace(/@google[.]com$/,'')===normalized;
+  });
+  if(matches.length>1)throw new Error('DUPLICATE_PI_OPERATOR_APPROVAL_NO_WRITE');
+  return matches.length?matches[0]:null;
+}
+
 // Original: 50_Verticals; Function: tmv3_preInspectionCreatePolicy
 function tmv3_preInspectionCreatePolicy() {
   return {
@@ -1718,6 +1729,7 @@ function tmv3_preInspectionCreatePolicy() {
 
 // Original: 58_Operations; Function: tmv3_ensurePreInspectionMirror_
 function tmv3_ensurePreInspectionMirror_(eventRecord, scope) {
+  if(tmv3_preInspectionApprovalHold_(eventRecord&&eventRecord.eventId))return {status:'APPROVAL_GUEST_HOLD',writePerformed:false};
   // An appointment owned by another organizer must not invite Stephen.
   const organizer=tmv3_clean_(eventRecord && eventRecord.organizerCalendarId);
   const secondary=((TMV3.VERTICALS.PreInspection || {}).secondaryCalendarIds || []).map(tmv3_clean_);
@@ -1862,6 +1874,7 @@ function tmv3_preInspectionCalendarParityEqual_(expected, actual) {
 
 // Original: 58_Operations; Function: tmv3_reconcilePreInspectionCalendarParity_
 function tmv3_reconcilePreInspectionCalendarParity_(eventRecord, scope) {
+  if(tmv3_preInspectionApprovalHold_(eventRecord&&eventRecord.eventId))return {status:'APPROVAL_CALENDAR_HOLD',copies:[],writes:0};
   if (!eventRecord || eventRecord.vertical !== 'PreInspection') {
     return { status:'NOT_NEEDED', copies:[] };
   }
@@ -2578,6 +2591,7 @@ function tmv3_reconcilePreInspectionSharedGuest_AUTO_(options) {
     cal.getEvents(start, end).forEach(
       function(event) {
         result.scanned++;
+        if(tmv3_preInspectionApprovalHold_(event.getId())) {result.deferred++;return;}
 
         const guests = tmv3_safeCalendar_(
           function() {
@@ -2897,6 +2911,7 @@ function tmv3_preInspectionIntakeRecords_(options) {
 
 // Original: 60_Automation; Function: tmv3_preInspectionPromoteCandidate_
 function tmv3_preInspectionPromoteCandidate_(record) {
+  if(tmv3_preInspectionApprovalHold_(record&&record.eventId))return {status:'APPROVED_INTAKE_EXTERNAL_IMPORT_ONLY_NO_INVITES',record:record};
   if (record.calendarRole !== 'SECONDARY_STEPHEN') return {status:'PRIMARY',record:record};
   if (!tmv3_preInspectionExplicitCandidate_(record)) throw new Error('NOT_EXPLICIT_PREINSPECTION');
   if (!tmv3_preInspectionCreatorEmail_(record)) throw new Error('CREATOR_MISSING_OR_AMBIGUOUS_NO_INTAKE_WRITE');
@@ -2984,6 +2999,7 @@ function tmv3_preInspectionNotificationDecision_(record,state,nowValue) {
 
 // Original: 60_Automation; Function: tmv3_preInspectionSendMissingDetails_
 function tmv3_preInspectionSendMissingDetails_(record) {
+  if(tmv3_preInspectionApprovalHold_(record&&record.eventId))return {status:'APPROVAL_NOTIFICATION_HOLD',sent:0};
   const assessment=tmv3_preInspectionMissingDetailAssessment_(record);
   if (!assessment.shouldNotify || (assessment.missing||[]).every(function(item){return item.code==='SALES_ORDER';})) return {status:'NO_MISSING_DETAILS',sent:0};
   if (TMV3.MODE!=='PRODUCTION_WRITE' || TMV3.OPERATIONS.preInspectionMissingDetailEmailsEnabled!==true) return {status:'DELIVERY_GATED',sent:0};
@@ -3112,7 +3128,7 @@ function tmv3_preInspectionAutomationCycle_(options) {
     // authoritative events; continuations do not repeat the full mail scan.
     const notificationRecords=options.sweepContinue===true ? [] :
       (scopeEventId ? selected : records);
-    notificationRecords.filter(function(r){return r.calendarRole==='PRIMARY_SHARED';}).forEach(function(r){
+    notificationRecords.filter(function(r){return r.calendarRole==='PRIMARY_SHARED'&&!tmv3_preInspectionApprovalHold_(r.eventId);}).forEach(function(r){
       try {const notice=tmv3_preInspectionSendMissingDetails_(r);result.notifications+=Number(notice.sent || 0);}
       catch(err) {result.status='ATTENTION';tmv3_preInspectionFailureAlert_(r.eventId,String(err));}
     });
@@ -3125,6 +3141,11 @@ function tmv3_preInspectionAutomationCycle_(options) {
       const one = {eventId:record.eventId};
       result.processed++;
       try {
+        if(tmv3_preInspectionApprovalHold_(record.eventId)) {
+          one.status='APPROVED_INTAKE_TASK_AND_NOTIFICATION_HELD';
+          one.notification={status:'APPROVAL_NOTIFICATION_HOLD',sent:0};
+          result.results.push(one);continue;
+        }
         const doneKey='TMV3_PI_DONE_'+tmv3_hash_(record.eventId);
         const done=JSON.parse(props.getProperty(doneKey) || 'null');
         if (!options.eventId && done && done.fingerprint===record.fingerprint && now-Number(done.at || 0)<3600000) {
@@ -3561,6 +3582,7 @@ function tmv3_preInspectionFailureAlert_(eventId,error) {
 
 // Original: 60_Automation; Function: tmv3_restorePreInspectionLegacyTitle_
 function tmv3_restorePreInspectionLegacyTitle_(record) {
+  if(tmv3_preInspectionApprovalHold_(record&&record.eventId))return {status:'APPROVAL_TITLE_HOLD',writes:0};
   tmv3_assertOperationWrite_('PREINSPECTIONAUTO','PRESERVE_LEGACY_TITLE');
   if (!record || record.vertical!=='PreInspection') throw new Error('PreInspection event required.');
   const cfg=TMV3.VERTICALS.PreInspection;

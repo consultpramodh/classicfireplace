@@ -14264,6 +14264,11 @@ function tmv3_step7ActionsForMode_(contract, mode) {
 }
 
 function tmv3_executeFreshStep7Selection_(selection, scope, mode) {
+  const target=selection&&selection.contract;
+  if(target&&target.vertical==='PreInspection'&&tmv3_preInspectionApprovalHold_(target.eventId))
+    return {status:'BLOCKED_NO_WRITE',eventId:target.eventId,vertical:'PreInspection',
+      blocker:'OPERATOR_APPROVED_INTAKE_AWAITING_FRESH_VERIFICATION',
+      taskWrites:0,calendarWrites:0,emailsSent:0};
   if (tmv3_norm_(scope) === 'preinspectionauto' &&
       (!selection || !selection.contract || selection.contract.vertical !== 'PreInspection')) {
     throw new Error('PREINSPECTION_ONLY_SCOPE: other verticals cannot execute.');
@@ -16886,6 +16891,8 @@ function tmv3_createOrRecreateFromBundleUnlocked_(
   scope,
   contract
 ) {
+  if(contract&&contract.vertical==='PreInspection'&&tmv3_preInspectionApprovalHold_(contract.eventId))
+    throw new Error('OPERATOR_APPROVED_INTAKE_TASK_CREATION_HELD');
   contract = tmv3_step7ValidateExecutionContract_(contract);
   tmv3_assertOperationWrite_(scope);
 
