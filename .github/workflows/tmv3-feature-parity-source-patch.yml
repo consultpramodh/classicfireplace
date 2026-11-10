@@ -17,6 +17,8 @@ concurrency:
 
 jobs:
   patch:
+    # Retired: legacy reconstructed source conflicts with current V3 standards.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
