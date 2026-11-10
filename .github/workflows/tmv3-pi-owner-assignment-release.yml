@@ -1,4 +1,4 @@
-name: V3 standards contract guarded source release (init fix)
+name: V3 Terry intake safety hold guarded source release
 on:
   push:
     branches:
@@ -24,16 +24,17 @@ jobs:
           node-version: '22'
       - name: Verify standards format and source safety regression
         run: |
-          node --check tools/tmv3-standards-release.cjs
+          node --check tools/tmv3-terry-guard-release.cjs
           node tools/test-tmv3-preinspection-owner.cjs
           node tools/test-tmv3-pi-calendar-review.cjs
           node tools/test-tmv3-pi-diagnostic.cjs
           node tools/test-tmv3-execution-standards.cjs
-      - name: Require exact live Apps Script HEAD and 684 unchanged functions
+          node tools/test-tmv3-terry-intake-guards.cjs
+      - name: Require exact live Apps Script HEAD and 680 unchanged functions
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-standards-release.cjs dry-run
-      - name: Deploy 00 Configuration + 10 Shared Core with exact source readback
+        run: node tools/tmv3-terry-guard-release.cjs dry-run
+      - name: Deploy Terry safety hold only with exact source readback
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-        run: node tools/tmv3-standards-release.cjs deploy
+        run: node tools/tmv3-terry-guard-release.cjs deploy
