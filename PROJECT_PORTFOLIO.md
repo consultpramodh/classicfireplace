@@ -8,6 +8,7 @@ This file is the canonical portfolio index. Long-lived work is grouped into a sm
 | ServiceOps & Customer Service | `cf-serviceops` | #24 | Existing Stage issues #1–#22 plus #43–#45 |
 | Striven Data Hub & Analytics | `striven-central-data-hub` | #25 | #46–#55 |
 | Product, Inventory & Commerce Automation | `product-inventory-commerce` | #26 | #56–#68 |
+| Customer Statements (AR) | `customer-statements` | — | See branch `PROJECT_BOARD.md` |
 | Growth, Marketing & Business Development | `growth-marketing` | #27 | #69–#79 |
 
 Portfolio tracker: #28
